@@ -121,21 +121,23 @@ create policy "posts: verified users can create posts"
     and public.is_verified()
   );
 
+-- Users can edit only their own posts.
+-- Column-level grants below restrict editable fields to title/body/category/edited.
+revoke update on public.posts from anon;
+revoke update on public.posts from authenticated;
+
+grant update (title, body, category, edited) on public.posts to authenticated;
+
 create policy "posts: authors can update their own posts"
   on public.posts
   for update
-  using (auth.uid() = author_id)
+  using (
+    auth.uid() = author_id
+    and public.is_verified()
+  )
   with check (
     auth.uid() = author_id
-    and status = (select status from public.posts where id = posts.id)
-    and author_id = (select author_id from public.posts where id = posts.id)
-    and anonymous = (select anonymous from public.posts where id = posts.id)
-    and author_name_cached is not distinct from (
-      select author_name_cached from public.posts where id = posts.id
-    )
-    and author_color_cached is not distinct from (
-      select author_color_cached from public.posts where id = posts.id
-    )
+    and public.is_verified()
   );
 
 create policy "posts: admins can update any post"
