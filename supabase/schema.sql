@@ -79,8 +79,10 @@ declare
 begin
   select full_name, avatar_color into pname, pcolor
   from public.profiles where id = new.author_id;
+
   new.author_name_cached  := pname;
   new.author_color_cached := pcolor;
+
   return new;
 end $$;
 
@@ -152,9 +154,9 @@ create trigger posts_updated_at
   for each row execute procedure public.tg_set_updated_at();
 
 -- ─── Cache author display fields on insert / when anonymous changes ────────
--- This makes the feed safe to expose to anonymous users without joining
--- `profiles`. When `anonymous = true`, the cached fields are blanked so the
--- author's identity never leaks through the API.
+-- This makes the feed safe to expose without joining `profiles`.
+-- When `anonymous = true`, cached fields are blanked so the author's identity
+-- does not leak through the public feed view.
 create or replace function public.tg_cache_author_fields()
 returns trigger language plpgsql security definer set search_path = public as $$
 declare
@@ -167,9 +169,11 @@ begin
   else
     select full_name, avatar_color into pname, pcolor
     from public.profiles where id = new.author_id;
+
     new.author_name_cached  := pname;
     new.author_color_cached := pcolor;
   end if;
+
   return new;
 end $$;
 
@@ -206,6 +210,7 @@ begin
     new_status
   )
   on conflict (id) do nothing;
+
   return new;
 end $$;
 
@@ -218,7 +223,11 @@ create trigger on_auth_user_created
 create or replace function public.tg_mark_post_reported()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
-  update public.posts set status = 'reported' where id = new.post_id and status = 'active';
+  update public.posts
+  set status = 'reported'
+  where id = new.post_id
+    and status = 'active';
+
   return new;
 end $$;
 
@@ -229,7 +238,7 @@ create trigger report_marks_post
 
 -- ─── Notify post author when someone commented ────────────────────────────
 -- Caches actor_name and post_title at insert time so the recipient can read
--- their notifications without joining `profiles` (which would expose emails).
+-- their notifications without joining `profiles`.
 create or replace function public.tg_notify_on_comment()
 returns trigger language plpgsql security definer set search_path = public as $$
 declare
@@ -238,7 +247,8 @@ declare
   actor_name_local text;
 begin
   select author_id, title into post_author, post_title_local
-  from public.posts where id = new.post_id;
+  from public.posts
+  where id = new.post_id;
 
   -- Don't notify yourself
   if post_author is null or post_author = new.author_id then
@@ -246,12 +256,14 @@ begin
   end if;
 
   select full_name into actor_name_local
-  from public.profiles where id = new.author_id;
+  from public.profiles
+  where id = new.author_id;
 
   insert into public.notifications
     (recipient_user_id, actor_user_id, actor_name_cached, type, post_id, post_title_cached, comment_id)
   values
     (post_author, new.author_id, actor_name_local, 'comment', new.post_id, post_title_local, new.id);
+
   return new;
 end $$;
 
@@ -264,19 +276,13 @@ create trigger comment_creates_notification
 -- VIEWS
 -- ============================================================================
 
--- Public feed view — uses cached author fields, never joins `profiles`.
--- This view INTENTIONALLY runs with definer rights (no security_invoker).
--- That allows it to read from `public.posts` even though anon/authenticated
--- users have no direct SELECT policy on the underlying table — by design,
--- so users cannot bypass this view to query author_id on anonymous posts.
---
--- The view itself masks anonymous data:
+-- Public feed view — uses cached author fields and never exposes profile email.
+-- SECURITY INVOKER is enabled so Supabase RLS/security checks apply as the querying user.
+-- The view masks anonymous data:
 --   - author_id is NULL when anonymous
 --   - author_name and author_color are NULL when anonymous
--- So the masking is enforced even at the API level. Tested by:
---   select author_id from posts_with_meta where anonymous = true;
--- → returns only NULLs.
-create or replace view public.posts_with_meta as
+create or replace view public.posts_with_meta
+with (security_invoker = true) as
 select
   p.id,
   case when p.anonymous then null else p.author_id end as author_id,
@@ -296,10 +302,9 @@ select
 from public.posts p
 where p.status in ('active', 'reported');
 
--- Same shape as posts_with_meta, but does NOT mask author identity. Used by
--- the profile page so users can see and edit their own anonymous posts.
--- RLS on the underlying `posts` table still applies (authors see their own
--- posts, admins see everything).
+-- Same shape as posts_with_meta, but does NOT mask author identity.
+-- Used by the profile page so users can see and edit their own anonymous posts.
+-- SECURITY INVOKER is enabled so RLS on the underlying posts table applies.
 create or replace view public.my_posts_with_meta
 with (security_invoker = true) as
 select
@@ -321,11 +326,10 @@ select
 from public.posts p;
 
 -- Public-safe profile view. Excludes email, role, and status.
--- This view INTENTIONALLY runs with definer rights (no security_invoker)
--- so that anonymous and authenticated users can read safe profile fields
--- even though the underlying `profiles` table is locked down to own-row +
--- admin only. Only the columns selected here are exposed.
-create or replace view public.public_profiles as
+-- SECURITY INVOKER is enabled so Supabase RLS/security checks apply as the querying user.
+-- Only verified users' safe public profile fields are exposed.
+create or replace view public.public_profiles
+with (security_invoker = true) as
 select
   id,
   full_name,
@@ -336,6 +340,14 @@ select
   created_at
 from public.profiles
 where status = 'verified';
+
+-- ============================================================================
+-- GRANTS
+-- ============================================================================
+
+grant select on public.posts_with_meta to anon, authenticated;
+grant select on public.my_posts_with_meta to authenticated;
+grant select on public.public_profiles to anon, authenticated;
 
 -- ============================================================================
 -- DONE
