@@ -40,7 +40,7 @@ export default function PostCard({ post }) {
 
   const cat = CATEGORIES.find((c) => c.key === post.category) || CATEGORIES[0];
   const userUpvoted = currentUser && myUpvotes.has(post.id);
-  const userReported = currentUser && myReports.has(post.id);
+  const userReported = myReports.has(post.id);
   const isReported = post.status === "reported";
   const displayName = post.anonymous ? "Anonymous Soldier" : post.author_name;
   const displayColor = post.anonymous
@@ -82,7 +82,10 @@ export default function PostCard({ post }) {
           <div className="flex items-center gap-2.5 min-w-0 flex-1">
             <Avatar name={displayName} color={displayColor} size={36} />
             <div className="text-left min-w-0 flex-1">
-              <div className="text-sm font-semibold truncate" style={{ color: T.text }}>
+              <div
+                className="text-sm font-semibold truncate"
+                style={{ color: T.text }}
+              >
                 {displayName}
               </div>
               <div
@@ -157,7 +160,7 @@ export default function PostCard({ post }) {
               icon={Flag}
               label={userReported ? "Reported" : "Report"}
               active={userReported}
-              onClick={() => guard(() => reportPost(post.id))}
+              onClick={() => reportPost(post.id)}
             />
           </div>
         </div>
@@ -184,15 +187,13 @@ export default function PostCard({ post }) {
               const authorName =
                 c.author_name_cached || c.author?.full_name || c.author_name;
               const authorColor =
-                c.author_color_cached || c.author?.avatar_color || c.author_color;
+                c.author_color_cached ||
+                c.author?.avatar_color ||
+                c.author_color;
               const text = c.body ?? c.text;
               return (
                 <div key={c.id} className="flex gap-2.5">
-                  <Avatar
-                    name={authorName}
-                    color={authorColor}
-                    size={30}
-                  />
+                  <Avatar name={authorName} color={authorColor} size={30} />
                   <div
                     className="flex-1 rounded-xl px-3.5 py-2.5 border min-w-0"
                     style={{
@@ -214,7 +215,10 @@ export default function PostCard({ post }) {
                         {timeAgo(c.created_at)}
                       </span>
                     </div>
-                    <div className="text-sm break-words" style={{ color: T.text }}>
+                    <div
+                      className="text-sm break-words"
+                      style={{ color: T.text }}
+                    >
                       {text}
                     </div>
                   </div>

@@ -402,27 +402,63 @@ export function AppProvider({ children }) {
   };
 
   const reportPost = async (postId) => {
-    if (myReports.has(postId)) return;
+  if (myReports.has(postId)) return;
 
-    setMyReports((s) => new Set(s).add(postId));
-    setPosts((arr) =>
-      arr.map((p) =>
-        p.id === postId
-          ? {
-              ...p,
-              report_count: (p.report_count || 0) + 1,
-              status: "reported",
-            }
-          : p
-      )
-    );
+  // Optimistic UI update
+  setMyReports((s) => new Set(s).add(postId));
 
-    if (SUPA) {
-      const { error } = await PostsDB.reportPost(postId, currentUser.id);
-      if (error) pushToast(error.message, "error");
+  setPosts((arr) =>
+    arr.map((p) =>
+      p.id === postId
+        ? {
+            ...p,
+            report_count: (p.report_count || 0) + 1,
+            status: "reported",
+          }
+        : p
+    )
+  );
+
+  if (SUPA) {
+    const verifiedUserId =
+      currentUser?.status === "verified" ? currentUser.id : null;
+
+    const { data, error } = await PostsDB.reportPost(postId, verifiedUserId);
+
+    if (error || data?.ok === false) {
+      // Roll back UI if Supabase rejects report
+      setMyReports((s) => {
+        const n = new Set(s);
+        n.delete(postId);
+        return n;
+      });
+
+      setPosts((arr) =>
+        arr.map((p) =>
+          p.id === postId
+            ? {
+                ...p,
+                report_count: Math.max((p.report_count || 1) - 1, 0),
+              }
+            : p
+        )
+      );
+
+      pushToast(
+        error?.message || data?.error || "Could not report post.",
+        "error"
+      );
+      return;
     }
-    pushToast("Post reported. Admins will review.", "success");
-  };
+
+    if (data?.already_reported) {
+      pushToast("You already reported this post.", "info");
+      return;
+    }
+  }
+
+  pushToast("Post reported. Admins will review.", "success");
+};
 
   const commentOnPost = async (postId, body) => {
     if (SUPA) {

@@ -3,19 +3,18 @@
 import { createClient } from "@/lib/supabase/client";
 
 /**
- * Fetch posts with author info and counts (upvotes/comments/reports).
- * Reads from the `posts_with_meta` view defined in schema.sql.
+ * Fetch public feed posts.
+ * Uses the safe RPC `get_public_posts`, so logged-out users can view posts
+ * without direct SELECT access to the raw `posts` table.
+ * Anonymous author identity stays masked in the SQL function.
  */
 export async function listPosts({ limit = 50 } = {}) {
   const supabase = createClient();
   if (!supabase) return { data: [], error: null };
 
-  const { data, error } = await supabase
-    .from("posts_with_meta")
-    .select("*")
-    .in("status", ["active", "reported"])
-    .order("created_at", { ascending: false })
-    .limit(limit);
+  const { data, error } = await supabase.rpc("get_public_posts", {
+    limit_count: limit,
+  });
 
   return { data: data || [], error };
 }
@@ -24,10 +23,9 @@ export async function listMyPosts(userId) {
   const supabase = createClient();
   if (!supabase) return { data: [], error: null };
 
-  // Use my_posts_with_meta — the masked view (posts_with_meta) blanks
-  // author_id for anonymous posts, which would hide the user's own posts
-  // from their own profile page. RLS on the underlying posts table still
-  // restricts what they can see.
+  // Use my_posts_with_meta — the masked public feed blanks author_id
+  // for anonymous posts, but users still need to see their own posts
+  // on their profile page.
   const { data, error } = await supabase
     .from("my_posts_with_meta")
     .select("*")
@@ -41,8 +39,8 @@ export async function listReportedPosts() {
   const supabase = createClient();
   if (!supabase) return { data: [], error: null };
 
-  // Admins need to see the real author of reported anonymous posts, so we use
-  // my_posts_with_meta. RLS on `posts` already restricts this query to admins.
+  // Admins need to see reported posts, including anonymous ones.
+  // RLS should restrict this query to admins.
   const { data, error } = await supabase
     .from("my_posts_with_meta")
     .select("*")
@@ -75,7 +73,10 @@ export async function updateMyPost(postId, updates) {
     category: updates.category,
     edited: true,
   };
-  Object.keys(allowed).forEach((k) => allowed[k] === undefined && delete allowed[k]);
+
+  Object.keys(allowed).forEach((k) => {
+    if (allowed[k] === undefined) delete allowed[k];
+  });
 
   const { data, error } = await supabase
     .from("posts")
@@ -90,18 +91,27 @@ export async function updateMyPost(postId, updates) {
 export async function deletePost(postId) {
   const supabase = createClient();
   if (!supabase) return { error: null };
+
   return supabase.from("posts").delete().eq("id", postId);
 }
 
+/**
+ * Admin restore.
+ * Uses RPC so both signed-in reports and visitor reports are cleared.
+ */
 export async function restoreReportedPost(postId) {
   const supabase = createClient();
   if (!supabase) return { error: null };
-  // Clear reports + flip status back to active
-  await supabase.from("reports").delete().eq("post_id", postId);
-  return supabase.from("posts").update({ status: "active" }).eq("id", postId);
+
+  const { data, error } = await supabase.rpc("restore_reported_post", {
+    p_post_id: postId,
+  });
+
+  return { data, error };
 }
 
 // ─── Upvotes ─────────────────────────────────────────────────────────────
+
 export async function listMyUpvotedPostIds(userId) {
   const supabase = createClient();
   if (!supabase) return { data: [], error: null };
@@ -117,12 +127,14 @@ export async function listMyUpvotedPostIds(userId) {
 export async function addUpvote(postId, userId) {
   const supabase = createClient();
   if (!supabase) return { error: null };
+
   return supabase.from("upvotes").insert([{ post_id: postId, user_id: userId }]);
 }
 
 export async function removeUpvote(postId, userId) {
   const supabase = createClient();
   if (!supabase) return { error: null };
+
   return supabase
     .from("upvotes")
     .delete()
@@ -131,6 +143,7 @@ export async function removeUpvote(postId, userId) {
 }
 
 // ─── Reports ─────────────────────────────────────────────────────────────
+
 export async function listMyReportedPostIds(userId) {
   const supabase = createClient();
   if (!supabase) return { data: [], error: null };
@@ -143,10 +156,54 @@ export async function listMyReportedPostIds(userId) {
   return { data: (data || []).map((r) => r.post_id), error };
 }
 
+/**
+ * Creates/stores one stable visitor key in browser localStorage.
+ * Supabase stores only the hash of this value through the RPC function.
+ */
+function getVisitorKey() {
+  if (typeof window === "undefined") return null;
+
+  const storageKey = "soldierhub_visitor_key";
+  let visitorKey = window.localStorage.getItem(storageKey);
+
+  if (!visitorKey) {
+    visitorKey =
+      typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random()}`;
+
+    window.localStorage.setItem(storageKey, visitorKey);
+  }
+
+  return visitorKey;
+}
+
+/**
+ * Report post.
+ * - Signed-in verified users report through `reports`.
+ * - Logged-out visitors report through `create_visitor_report` RPC.
+ */
 export async function reportPost(postId, userId, reason = "") {
   const supabase = createClient();
-  if (!supabase) return { error: null };
-  return supabase
-    .from("reports")
-    .insert([{ post_id: postId, user_id: userId, reason }]);
+  if (!supabase) return { data: null, error: null };
+
+  if (userId) {
+    const { data, error } = await supabase
+      .from("reports")
+      .insert([{ post_id: postId, user_id: userId, reason }])
+      .select()
+      .maybeSingle();
+
+    return { data, error };
+  }
+
+  const visitorKey = getVisitorKey();
+
+  const { data, error } = await supabase.rpc("create_visitor_report", {
+    p_post_id: postId,
+    p_visitor_key: visitorKey,
+    p_reason: reason,
+  });
+
+  return { data, error };
 }
