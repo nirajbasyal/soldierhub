@@ -16,15 +16,26 @@ export default function NotificationItem({ notification }) {
     notification.actor?.full_name ||
     notification.actor_name ||
     "Someone";
+
   const postTitle =
     notification.post_title_cached ||
     notification.post?.title ||
     posts.find((p) => p.id === notification.post_id)?.title ||
     "your post";
 
+  const openNotification = () => {
+    if (notification.post_id) {
+      router.push(`/post/${notification.post_id}`);
+      return;
+    }
+
+    router.push("/");
+  };
+
   return (
     <button
-      onClick={() => router.push("/")}
+      type="button"
+      onClick={openNotification}
       className="text-left rounded-2xl border p-4 flex items-start gap-3 transition-shadow hover:shadow-sm"
       style={{
         backgroundColor: notification.read ? T.card : T.surface,
@@ -37,17 +48,21 @@ export default function NotificationItem({ notification }) {
       >
         <MessageCircle size={16} style={{ color: T.gold }} />
       </div>
+
       <div className="flex-1 min-w-0">
         <div className="text-sm" style={{ color: T.text }}>
           <span className="font-semibold">{actorName}</span> commented on your post
         </div>
+
         <div className="text-sm mt-0.5 truncate" style={{ color: T.textMuted }}>
           {postTitle}
         </div>
+
         <div className="text-xs mt-1" style={{ color: T.textSubtle }}>
           {timeAgo(notification.created_at)}
         </div>
       </div>
+
       {!notification.read && (
         <span
           className="w-2 h-2 rounded-full mt-2 shrink-0"
