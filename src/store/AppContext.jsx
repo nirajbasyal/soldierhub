@@ -29,21 +29,13 @@ export const useApp = () => useContext(AppContext);
 
 const SUPA = isSupabaseConfigured();
 
-/**
- * AppProvider — single source of truth.
- *
- * Two modes:
- *   • Demo mode (no env vars set): uses seed data, password "demo".
- *   • Live mode (Supabase configured): real auth + database + realtime.
- *
- * Components consume `useApp()` and don't need to know which mode is active.
- */
 export function AppProvider({ children }) {
   const router = useRouter();
 
   // ─── Data ─────────────────────────────────────────────────────────────
   const [users, setUsers] = useState(SUPA ? [] : SEED_USERS);
   const [pendingUsers, setPendingUsers] = useState(SUPA ? [] : SEED_PENDING);
+  const [blockedUsers, setBlockedUsers] = useState([]);
   const [posts, setPosts] = useState(SUPA ? [] : normalizeSeedPosts(SEED_POSTS));
   const [myPosts, setMyPosts] = useState([]);
   const [postComments, setPostComments] = useState({});
@@ -72,6 +64,29 @@ export function AppProvider({ children }) {
 
   const dismissToast = (id) => setToasts((t) => t.filter((x) => x.id !== id));
 
+  const getProfileStatus = (profile) =>
+    profile?.status || profile?.verification_status || "pending";
+
+  const sendToPendingReview = ({
+    email = "",
+    name = "",
+    found = 1,
+    status = "pending",
+    replace = false,
+  }) => {
+    const url = `/pending-review?email=${encodeURIComponent(
+      email
+    )}&name=${encodeURIComponent(name || "")}&found=${found}&status=${encodeURIComponent(
+      status
+    )}`;
+
+    if (replace) {
+      router.replace(url);
+    } else {
+      router.push(url);
+    }
+  };
+
   // ═════════════════════════════════════════════════════════════════════
   // SESSION & DATA LOADING
   // ═════════════════════════════════════════════════════════════════════
@@ -85,10 +100,27 @@ export function AppProvider({ children }) {
     (async () => {
       const { profile } = await Auth.getCurrentUser();
 
-      if (!cancelled) {
-        setCurrentUser(profile);
+      if (cancelled) return;
+
+      const profileStatus = getProfileStatus(profile);
+
+      if (profileStatus === "rejected" || profileStatus === "revoked") {
+        setCurrentUser(profile || null);
         setAuthLoading(false);
+
+        sendToPendingReview({
+          email: profile?.email || profile?.personal_email || "",
+          name: profile?.full_name || "",
+          found: 1,
+          status: profileStatus,
+          replace: true,
+        });
+
+        return;
       }
+
+      setCurrentUser(profile || null);
+      setAuthLoading(false);
     })();
 
     unsubscribe = Auth.onAuthChange(async (user) => {
@@ -101,10 +133,32 @@ export function AppProvider({ children }) {
       }
 
       const { data: profile } = await ProfilesDB.getProfile(user.id);
+      const profileStatus = getProfileStatus(profile);
+
+      if (profileStatus === "rejected" || profileStatus === "revoked") {
+        setCurrentUser(profile || null);
+        setMyUpvotes(new Set());
+        setMyReports(new Set());
+        setNotifications([]);
+
+        sendToPendingReview({
+          email: profile?.email || user.email || "",
+          name: profile?.full_name || "",
+          found: 1,
+          status: profileStatus,
+          replace: true,
+        });
+
+        return;
+      }
+
       setCurrentUser(profile || null);
     });
 
-    return () => unsubscribe && unsubscribe();
+    return () => {
+      cancelled = true;
+      if (unsubscribe) unsubscribe();
+    };
   }, []);
 
   const reloadPosts = useCallback(async () => {
@@ -133,6 +187,16 @@ export function AppProvider({ children }) {
   useEffect(() => {
     if (!SUPA || !currentUser) return;
 
+    const userStatus = getProfileStatus(currentUser);
+
+    if (userStatus !== "verified") {
+      setMyUpvotes(new Set());
+      setMyReports(new Set());
+      setNotifications([]);
+      setMyPosts([]);
+      return;
+    }
+
     let cancelled = false;
 
     (async () => {
@@ -148,7 +212,7 @@ export function AppProvider({ children }) {
 
       setMyUpvotes(new Set(ups));
       setMyReports(new Set(reps));
-      setNotifications(notifs);
+      setNotifications(notifs || []);
       setMyPosts(mine || []);
     })();
 
@@ -160,6 +224,10 @@ export function AppProvider({ children }) {
   const reloadMyPosts = useCallback(async () => {
     if (!SUPA || !currentUser) return;
 
+    const userStatus = getProfileStatus(currentUser);
+
+    if (userStatus !== "verified") return;
+
     const { data } = await PostsDB.listMyPosts(currentUser.id);
 
     setMyPosts(data || []);
@@ -168,9 +236,13 @@ export function AppProvider({ children }) {
   useEffect(() => {
     if (!SUPA || !currentUser) return;
 
+    const userStatus = getProfileStatus(currentUser);
+
+    if (userStatus !== "verified") return;
+
     const unsubscribe = subscribeToMyNotifications(currentUser.id, async () => {
       const { data } = await NotificationsDB.listMyNotifications(currentUser.id);
-      setNotifications(data);
+      setNotifications(data || []);
     });
 
     return () => unsubscribe();
@@ -192,12 +264,26 @@ export function AppProvider({ children }) {
     setUsers(data || []);
   }, []);
 
+  const reloadBlockedUsers = useCallback(async () => {
+    if (!SUPA) return;
+
+    const { data } = await ProfilesDB.listBlockedProfiles();
+
+    setBlockedUsers(data || []);
+  }, []);
+
   useEffect(() => {
     if (SUPA && currentUser?.role === "admin") {
       reloadPendingUsers();
       reloadVerifiedUsers();
+      reloadBlockedUsers();
     }
-  }, [currentUser, reloadPendingUsers, reloadVerifiedUsers]);
+  }, [
+    currentUser,
+    reloadPendingUsers,
+    reloadVerifiedUsers,
+    reloadBlockedUsers,
+  ]);
 
   // ═════════════════════════════════════════════════════════════════════
   // AUTH
@@ -240,16 +326,17 @@ export function AppProvider({ children }) {
 
       setAuthModal(null);
 
-      router.push(
-        `/pending-review?email=${encodeURIComponent(
-          cleanEmail
-        )}&name=${encodeURIComponent(cleanName)}&found=1`
-      );
+      sendToPendingReview({
+        email: cleanEmail,
+        name: cleanName,
+        found: 1,
+        status: "pending",
+      });
 
       return { ok: true, data };
     }
 
-    // ─── Demo mode ───────────────────────────────────────────────────
+    // Demo mode
     const newUser = {
       id: uid(),
       full_name: cleanName,
@@ -277,19 +364,25 @@ export function AppProvider({ children }) {
       setAuthModal(null);
       pushToast("Profile submitted for review", "success");
 
-      router.push(
-        `/pending-review?email=${encodeURIComponent(
-          cleanEmail
-        )}&name=${encodeURIComponent(cleanName)}&found=1`
-      );
+      sendToPendingReview({
+        email: cleanEmail,
+        name: cleanName,
+        found: 1,
+        status: "pending",
+      });
     }
 
     return { ok: true };
   };
 
   const handleLogin = async (email, password, onError) => {
+    const cleanEmail = email?.trim().toLowerCase() || "";
+
     if (SUPA) {
-      const { data, error } = await Auth.signIn({ email, password });
+      const { data, error } = await Auth.signIn({
+        email: cleanEmail,
+        password,
+      });
 
       if (error) {
         onError && onError(error.message);
@@ -297,31 +390,108 @@ export function AppProvider({ children }) {
       }
 
       const { data: profile } = await ProfilesDB.getProfile(data.user.id);
-      const profileStatus = profile?.status || profile?.verification_status;
 
-      if (profileStatus !== "verified") {
+      if (!profile) {
+        await Auth.signOut();
+
+        setCurrentUser(null);
         setAuthModal(null);
 
         router.push(
-          `/pending-review?email=${encodeURIComponent(
-            email
-          )}&name=${encodeURIComponent(profile?.full_name || "")}&found=1`
+          `/pending-review?email=${encodeURIComponent(cleanEmail)}&found=0`
         );
-      } else {
+
+        return;
+      }
+
+      const profileStatus = getProfileStatus(profile);
+
+      if (profileStatus === "pending") {
+        setCurrentUser(profile);
+        setAuthModal(null);
+
+        sendToPendingReview({
+          email: cleanEmail,
+          name: profile.full_name || "",
+          found: 1,
+          status: "pending",
+        });
+
+        return;
+      }
+
+      if (profileStatus === "rejected") {
+        setCurrentUser(profile);
+        setAuthModal(null);
+
+        sendToPendingReview({
+          email: cleanEmail,
+          name: profile.full_name || "",
+          found: 1,
+          status: "rejected",
+        });
+
+        return;
+      }
+
+      if (profileStatus === "revoked") {
+        setCurrentUser(profile);
+        setAuthModal(null);
+
+        sendToPendingReview({
+          email: cleanEmail,
+          name: profile.full_name || "",
+          found: 1,
+          status: "revoked",
+        });
+
+        return;
+      }
+
+      if (profileStatus === "verified") {
+        setCurrentUser(profile);
         setAuthModal(null);
         pushToast(`Signed in as ${profile.full_name}`, "success");
+
+        return;
       }
+
+      await Auth.signOut();
+
+      setCurrentUser(null);
+      setAuthModal(null);
+
+      router.push(
+        `/pending-review?email=${encodeURIComponent(cleanEmail)}&found=0`
+      );
 
       return;
     }
 
-    // ─── Demo mode ───────────────────────────────────────────────────
-    const verified = users.find((u) => u.email === email);
-    const pending = pendingUsers.find((u) => u.email === email);
+    // Demo mode
+    const verified = users.find((u) => u.email === cleanEmail);
+    const pending = pendingUsers.find((u) => u.email === cleanEmail);
+    const blocked = blockedUsers.find((u) => u.email === cleanEmail);
 
     if (verified) {
       if (verified.password && verified.password !== password) {
         return onError && onError("Incorrect password.");
+      }
+
+      const verifiedStatus = getProfileStatus(verified);
+
+      if (verifiedStatus === "revoked") {
+        setCurrentUser(verified);
+        setAuthModal(null);
+
+        sendToPendingReview({
+          email: cleanEmail,
+          name: verified.full_name || "",
+          found: 1,
+          status: "revoked",
+        });
+
+        return;
       }
 
       setCurrentUser(verified);
@@ -332,16 +502,39 @@ export function AppProvider({ children }) {
         return onError && onError("Incorrect password.");
       }
 
+      const pendingStatus = getProfileStatus(pending);
+
+      setCurrentUser(pending);
+      setAuthModal(null);
+
+      sendToPendingReview({
+        email: cleanEmail,
+        name: pending.full_name || "",
+        found: 1,
+        status: pendingStatus,
+      });
+    } else if (blocked) {
+      if (blocked.password && blocked.password !== password) {
+        return onError && onError("Incorrect password.");
+      }
+
+      const blockedStatus = getProfileStatus(blocked);
+
+      setCurrentUser(blocked);
+      setAuthModal(null);
+
+      sendToPendingReview({
+        email: cleanEmail,
+        name: blocked.full_name || "",
+        found: 1,
+        status: blockedStatus,
+      });
+    } else {
       setAuthModal(null);
 
       router.push(
-        `/pending-review?email=${encodeURIComponent(
-          email
-        )}&name=${encodeURIComponent(pending.full_name)}&found=1`
+        `/pending-review?email=${encodeURIComponent(cleanEmail)}&found=0`
       );
-    } else {
-      setAuthModal(null);
-      router.push(`/pending-review?email=${encodeURIComponent(email)}&found=0`);
     }
   };
 
@@ -359,16 +552,17 @@ export function AppProvider({ children }) {
       return false;
     }
 
-    const userStatus = currentUser.status || currentUser.verification_status;
+    const userStatus = getProfileStatus(currentUser);
 
     if (userStatus !== "verified") {
       const userEmail = currentUser.email || currentUser.personal_email || "";
 
-      router.push(
-        `/pending-review?email=${encodeURIComponent(
-          userEmail
-        )}&name=${encodeURIComponent(currentUser.full_name || "")}&found=1`
-      );
+      sendToPendingReview({
+        email: userEmail,
+        name: currentUser.full_name || "",
+        found: 1,
+        status: userStatus,
+      });
 
       return false;
     }
@@ -381,6 +575,10 @@ export function AppProvider({ children }) {
   // ═════════════════════════════════════════════════════════════════════
 
   const createPost = async ({ title, body, category, anonymous }) => {
+    if (!requireAuth()) {
+      return { ok: false, error: "You must be verified to post." };
+    }
+
     if (SUPA) {
       const { error } = await PostsDB.createPost({
         author_id: currentUser.id,
@@ -426,6 +624,8 @@ export function AppProvider({ children }) {
   };
 
   const upvotePost = async (postId) => {
+    if (!requireAuth()) return;
+
     const has = myUpvotes.has(postId);
 
     setMyUpvotes((s) => {
@@ -468,6 +668,7 @@ export function AppProvider({ children }) {
   };
 
   const reportPost = async (postId) => {
+    if (!requireAuth()) return;
     if (myReports.has(postId)) return;
 
     setMyReports((s) => new Set(s).add(postId));
@@ -485,7 +686,7 @@ export function AppProvider({ children }) {
     );
 
     if (SUPA) {
-      const userStatus = currentUser?.status || currentUser?.verification_status;
+      const userStatus = getProfileStatus(currentUser);
       const verifiedUserId = userStatus === "verified" ? currentUser.id : null;
 
       const { data, error } = await PostsDB.reportPost(postId, verifiedUserId);
@@ -526,6 +727,10 @@ export function AppProvider({ children }) {
   };
 
   const commentOnPost = async (postId, body) => {
+    if (!requireAuth()) {
+      return { ok: false, error: "You must be verified to comment." };
+    }
+
     if (SUPA) {
       const { data, error } = await CommentsDB.createComment({
         post_id: postId,
@@ -613,6 +818,10 @@ export function AppProvider({ children }) {
   );
 
   const editMyPost = async (postId, updates) => {
+    if (!requireAuth()) {
+      return { ok: false, error: "You must be verified to edit posts." };
+    }
+
     if (SUPA) {
       const { error } = await PostsDB.updateMyPost(postId, updates);
 
@@ -639,6 +848,8 @@ export function AppProvider({ children }) {
   };
 
   const deleteMyPost = async (postId) => {
+    if (!requireAuth()) return;
+
     if (SUPA) {
       const { error } = await PostsDB.deletePost(postId);
 
@@ -674,25 +885,202 @@ export function AppProvider({ children }) {
 
       reloadPendingUsers();
       reloadVerifiedUsers();
+      reloadBlockedUsers();
 
       return;
     }
 
-    const u = pendingUsers.find((x) => x.id === profileId);
+    const pendingUser = pendingUsers.find((x) => x.id === profileId);
+    const blockedUser = blockedUsers.find((x) => x.id === profileId);
+    const u = pendingUser || blockedUser;
 
     if (!u) return;
 
-    setUsers((list) => [
-      ...list,
-      {
-        ...u,
-        status: "verified",
-        verification_status: "verified",
-      },
-    ]);
+    const verifiedUser = {
+      ...u,
+      status: "verified",
+      verification_status: "verified",
+    };
 
+    setUsers((list) => [...list, verifiedUser]);
     setPendingUsers((list) => list.filter((x) => x.id !== profileId));
+    setBlockedUsers((list) => list.filter((x) => x.id !== profileId));
+
     pushToast(`Verified ${u.full_name}`, "success");
+  };
+
+  const verifyUserByEmail = async (email) => {
+    const cleanEmail = email?.trim().toLowerCase() || "";
+
+    if (!cleanEmail) {
+      pushToast("Enter an email address first.", "error");
+      return { ok: false, error: "Email is required." };
+    }
+
+    if (SUPA) {
+      const { data, error } = await ProfilesDB.adminVerifyProfileByEmail(
+        cleanEmail
+      );
+
+      if (error) {
+        pushToast(error.message, "error");
+        return { ok: false, error: error.message };
+      }
+
+      if (!data) {
+        pushToast("No profile found with that email.", "error");
+        return { ok: false, error: "No profile found with that email." };
+      }
+
+      pushToast(`Verified ${data.full_name || cleanEmail}`, "success");
+
+      reloadPendingUsers();
+      reloadVerifiedUsers();
+      reloadBlockedUsers();
+
+      return { ok: true, data };
+    }
+
+    const pendingMatch = pendingUsers.find(
+      (u) => u.email === cleanEmail || u.personal_email === cleanEmail
+    );
+
+    const blockedMatch = blockedUsers.find(
+      (u) => u.email === cleanEmail || u.personal_email === cleanEmail
+    );
+
+    const existingUser = users.find(
+      (u) => u.email === cleanEmail || u.personal_email === cleanEmail
+    );
+
+    const target = pendingMatch || blockedMatch || existingUser;
+
+    if (!target) {
+      pushToast("No profile found with that email.", "error");
+      return { ok: false, error: "No profile found with that email." };
+    }
+
+    const verifiedUser = {
+      ...target,
+      status: "verified",
+      verification_status: "verified",
+    };
+
+    setPendingUsers((list) =>
+      list.filter(
+        (u) => u.email !== cleanEmail && u.personal_email !== cleanEmail
+      )
+    );
+
+    setBlockedUsers((list) =>
+      list.filter(
+        (u) => u.email !== cleanEmail && u.personal_email !== cleanEmail
+      )
+    );
+
+    setUsers((list) => {
+      const exists = list.some(
+        (u) => u.email === cleanEmail || u.personal_email === cleanEmail
+      );
+
+      if (exists) {
+        return list.map((u) =>
+          u.email === cleanEmail || u.personal_email === cleanEmail
+            ? verifiedUser
+            : u
+        );
+      }
+
+      return [...list, verifiedUser];
+    });
+
+    pushToast(`Verified ${verifiedUser.full_name || cleanEmail}`, "success");
+
+    return { ok: true, data: verifiedUser };
+  };
+
+  const revokeUserByEmail = async (email) => {
+    const cleanEmail = email?.trim().toLowerCase() || "";
+
+    if (!cleanEmail) {
+      pushToast("Enter an email address first.", "error");
+      return { ok: false, error: "Email is required." };
+    }
+
+    if (SUPA) {
+      const { data, error } = await ProfilesDB.adminRevokeProfileByEmail(
+        cleanEmail
+      );
+
+      if (error) {
+        pushToast(error.message, "error");
+        return { ok: false, error: error.message };
+      }
+
+      if (!data) {
+        pushToast("No non-admin profile found with that email.", "error");
+        return { ok: false, error: "No non-admin profile found with that email." };
+      }
+
+      pushToast(`Revoked access for ${data.full_name || cleanEmail}`, "info");
+
+      reloadPendingUsers();
+      reloadVerifiedUsers();
+      reloadBlockedUsers();
+
+      return { ok: true, data };
+    }
+
+    const wasPending = pendingUsers.find(
+      (u) => u.email === cleanEmail || u.personal_email === cleanEmail
+    );
+
+    const wasVerified = users.find(
+      (u) => u.email === cleanEmail || u.personal_email === cleanEmail
+    );
+
+    const wasBlocked = blockedUsers.find(
+      (u) => u.email === cleanEmail || u.personal_email === cleanEmail
+    );
+
+    const target = wasPending || wasVerified || wasBlocked;
+
+    if (!target || target.role === "admin") {
+      pushToast("No non-admin profile found with that email.", "error");
+      return { ok: false, error: "No non-admin profile found with that email." };
+    }
+
+    const revokedUser = {
+      ...target,
+      status: "revoked",
+      verification_status: "revoked",
+    };
+
+    setPendingUsers((list) =>
+      list.filter(
+        (u) => u.email !== cleanEmail && u.personal_email !== cleanEmail
+      )
+    );
+
+    setUsers((list) =>
+      list.filter(
+        (u) => u.email !== cleanEmail && u.personal_email !== cleanEmail
+      )
+    );
+
+    setBlockedUsers((list) => {
+      const exists = list.some((u) => u.id === revokedUser.id);
+
+      if (exists) {
+        return list.map((u) => (u.id === revokedUser.id ? revokedUser : u));
+      }
+
+      return [revokedUser, ...list];
+    });
+
+    pushToast(`Revoked access for ${revokedUser.full_name || cleanEmail}`, "info");
+
+    return { ok: true, data: revokedUser };
   };
 
   const rejectUser = async (profileId) => {
@@ -701,14 +1089,31 @@ export function AppProvider({ children }) {
 
       if (error) return pushToast(error.message, "error");
 
-      pushToast("User rejected", "info");
+      pushToast(
+        "Profile rejected. User can request re-review or contact admin.",
+        "info"
+      );
+
       reloadPendingUsers();
+      reloadBlockedUsers();
 
       return;
     }
 
-    setPendingUsers((list) => list.filter((x) => x.id !== profileId));
-    pushToast("User rejected", "info");
+    const pendingUser = pendingUsers.find((u) => u.id === profileId);
+
+    if (!pendingUser) return;
+
+    const rejectedUser = {
+      ...pendingUser,
+      status: "rejected",
+      verification_status: "rejected",
+    };
+
+    setPendingUsers((list) => list.filter((u) => u.id !== profileId));
+    setBlockedUsers((list) => [rejectedUser, ...list]);
+
+    pushToast("Profile rejected", "info");
   };
 
   const removeUser = async (profileId) => {
@@ -717,13 +1122,30 @@ export function AppProvider({ children }) {
 
       if (error) return pushToast(error.message, "error");
 
-      pushToast("Member access revoked", "info");
+      pushToast(
+        "Member access revoked. Their old posts and comments remain visible.",
+        "info"
+      );
+
       reloadVerifiedUsers();
+      reloadBlockedUsers();
 
       return;
     }
 
+    const userToRevoke = users.find((u) => u.id === profileId);
+
+    if (!userToRevoke) return;
+
+    const revokedUser = {
+      ...userToRevoke,
+      status: "revoked",
+      verification_status: "revoked",
+    };
+
     setUsers((list) => list.filter((u) => u.id !== profileId));
+    setBlockedUsers((list) => [revokedUser, ...list]);
+
     pushToast("Member access revoked", "info");
   };
 
@@ -771,10 +1193,12 @@ export function AppProvider({ children }) {
   };
 
   // ═════════════════════════════════════════════════════════════════════
-  // PROFILE
+  // PROFILE / RE-REVIEW
   // ═════════════════════════════════════════════════════════════════════
 
   const updateProfile = async (updates) => {
+    if (!requireAuth()) return;
+
     if (SUPA) {
       const { data, error } = await ProfilesDB.updateMyProfile(
         currentUser.id,
@@ -798,12 +1222,115 @@ export function AppProvider({ children }) {
     pushToast("Profile updated", "success");
   };
 
+  const requestRereview = async ({ militaryEmail, phone } = {}) => {
+    const cleanMilitaryEmail = militaryEmail?.trim().toLowerCase() || "";
+    const cleanPhone = phone?.trim() || "";
+
+    if (!currentUser) {
+      setAuthModal("login");
+      return { ok: false, error: "You must be signed in to request re-review." };
+    }
+
+    if (SUPA) {
+      const { error } = await ProfilesDB.requestProfileRereview({
+        militaryEmail: cleanMilitaryEmail,
+        phone: cleanPhone,
+      });
+
+      if (error) {
+        pushToast(error.message, "error");
+        return { ok: false, error: error.message };
+      }
+
+      const { profile } = await Auth.getCurrentUser();
+
+      const updatedProfile = profile || {
+        ...currentUser,
+        status: "pending",
+        verification_status: "pending",
+        military_email: cleanMilitaryEmail || currentUser.military_email,
+        phone: cleanPhone || currentUser.phone,
+      };
+
+      setCurrentUser(updatedProfile);
+
+      pushToast(
+        "Re-review request submitted. Your profile is pending admin review again.",
+        "success"
+      );
+
+      sendToPendingReview({
+        email: updatedProfile.email || updatedProfile.personal_email || "",
+        name: updatedProfile.full_name || "",
+        found: 1,
+        status: "pending",
+        replace: true,
+      });
+
+      return { ok: true, data: updatedProfile };
+    }
+
+    const updatedUser = {
+      ...currentUser,
+      status: "pending",
+      verification_status: "pending",
+      military_email: cleanMilitaryEmail || currentUser.military_email,
+      phone: cleanPhone || currentUser.phone,
+    };
+
+    setCurrentUser(updatedUser);
+
+    setUsers((list) =>
+      list.filter(
+        (u) =>
+          u.id !== currentUser.id &&
+          u.email !== currentUser.email &&
+          u.personal_email !== currentUser.personal_email
+      )
+    );
+
+    setBlockedUsers((list) =>
+      list.filter(
+        (u) =>
+          u.id !== currentUser.id &&
+          u.email !== currentUser.email &&
+          u.personal_email !== currentUser.personal_email
+      )
+    );
+
+    setPendingUsers((list) => {
+      const exists = list.some((u) => u.id === currentUser.id);
+
+      if (exists) {
+        return list.map((u) => (u.id === currentUser.id ? updatedUser : u));
+      }
+
+      return [...list, updatedUser];
+    });
+
+    pushToast("Re-review request submitted", "success");
+
+    sendToPendingReview({
+      email: updatedUser.email || updatedUser.personal_email || "",
+      name: updatedUser.full_name || "",
+      found: 1,
+      status: "pending",
+      replace: true,
+    });
+
+    return { ok: true, data: updatedUser };
+  };
+
   // ═════════════════════════════════════════════════════════════════════
   // NOTIFICATIONS
   // ═════════════════════════════════════════════════════════════════════
 
   const userNotifications = useMemo(() => {
     if (!currentUser) return [];
+
+    const userStatus = getProfileStatus(currentUser);
+
+    if (userStatus !== "verified") return [];
 
     if (SUPA) return notifications;
 
@@ -819,6 +1346,10 @@ export function AppProvider({ children }) {
 
   const markNotificationsRead = useCallback(async () => {
     if (!currentUser) return;
+
+    const userStatus = getProfileStatus(currentUser);
+
+    if (userStatus !== "verified") return;
 
     if (SUPA) {
       await NotificationsDB.markAllNotificationsRead(currentUser.id);
@@ -842,6 +1373,10 @@ export function AppProvider({ children }) {
   const userPosts = useMemo(() => {
     if (!currentUser) return [];
 
+    const userStatus = getProfileStatus(currentUser);
+
+    if (userStatus !== "verified") return [];
+
     if (SUPA) return myPosts;
 
     return posts.filter((p) => p.author_id === currentUser.id);
@@ -858,6 +1393,7 @@ export function AppProvider({ children }) {
     // Data
     users,
     pendingUsers,
+    blockedUsers,
     posts,
     myPosts: userPosts,
     postComments,
@@ -901,13 +1437,16 @@ export function AppProvider({ children }) {
 
     // Admin
     verifyUser,
+    verifyUserByEmail,
+    revokeUserByEmail,
     rejectUser,
     removeUser,
     adminDeletePost,
     restoreReportedPost,
 
-    // Profile
+    // Profile / Re-review
     updateProfile,
+    requestRereview,
 
     // Notifications
     markNotificationsRead,

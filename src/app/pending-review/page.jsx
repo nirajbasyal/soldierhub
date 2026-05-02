@@ -8,10 +8,10 @@ import {
   Clock,
   LogOut,
   Mail,
+  Phone,
   RefreshCw,
   ShieldAlert,
   Sparkles,
-  UserPlus,
 } from "lucide-react";
 import { T } from "@/lib/theme";
 import { useApp } from "@/store/AppContext";
@@ -19,29 +19,67 @@ import { createClient } from "@/lib/supabase/client";
 import Button from "@/components/ui/Button";
 import Footer from "@/components/layout/Footer";
 
+const ADMIN_CONTACT_EMAIL = "niraj.basyal2054@gmail.com";
+
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
 function PendingReviewContent() {
   const router = useRouter();
   const params = useSearchParams();
-  const { setAuthModal, isLiveMode } = useApp();
+
+  const { setAuthModal, isLiveMode, requestRereview } = useApp();
 
   const supabase = createClient();
 
   const queryEmail = params.get("email") || "";
   const queryName = params.get("name") || "";
   const foundFromUrl = params.get("found") === "1";
+  const statusFromUrl = params.get("status") || "pending";
 
   const [checking, setChecking] = useState(true);
+  const [profileStatus, setProfileStatus] = useState(statusFromUrl);
   const [emailVerified, setEmailVerified] = useState(false);
   const [currentEmail, setCurrentEmail] = useState(queryEmail);
   const [currentName, setCurrentName] = useState(queryName);
   const [hasUserSession, setHasUserSession] = useState(false);
+
   const [loggingOut, setLoggingOut] = useState(false);
   const [resending, setResending] = useState(false);
   const [resendMessage, setResendMessage] = useState("");
 
+  const [rereviewMilitaryEmail, setRereviewMilitaryEmail] = useState("");
+  const [rereviewPhone, setRereviewPhone] = useState("");
+  const [rereviewing, setRereviewing] = useState(false);
+  const [rereviewMessage, setRereviewMessage] = useState("");
+
+  const isRejected = profileStatus === "rejected";
+  const isRevoked = profileStatus === "revoked";
+  const isApproved = profileStatus === "verified";
+  const isAccessBlocked = isRejected || isRevoked;
+
+  const militaryEmailInvalid =
+    rereviewMilitaryEmail.trim().length > 0 &&
+    !isValidEmail(rereviewMilitaryEmail.trim());
+
+  const phoneInvalid =
+    rereviewPhone.trim().length > 0 && rereviewPhone.trim().length !== 10;
+
+  const safeSignOut = async () => {
+    if (supabase) {
+      await supabase.auth.signOut();
+    }
+
+    setHasUserSession(false);
+    setEmailVerified(false);
+  };
+
   useEffect(() => {
     const checkUserStatus = async () => {
       try {
+        setProfileStatus(statusFromUrl || "pending");
+
         if (!supabase) {
           setChecking(false);
           return;
@@ -61,15 +99,46 @@ function PendingReviewContent() {
           return;
         }
 
-        setHasUserSession(true);
-        setCurrentEmail(user.email || queryEmail);
-        setCurrentName(
-          user.user_metadata?.full_name ||
-            user.user_metadata?.name ||
-            queryName
-        );
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select(
+            "id, email, personal_email, full_name, military_email, phone, status, verification_status"
+          )
+          .eq("id", user.id)
+          .maybeSingle();
 
+        const liveStatus =
+          profile?.status ||
+          profile?.verification_status ||
+          statusFromUrl ||
+          "pending";
+
+        const profileEmail =
+          profile?.email || profile?.personal_email || user.email || queryEmail;
+
+        const profileName =
+          profile?.full_name ||
+          user.user_metadata?.full_name ||
+          user.user_metadata?.name ||
+          queryName;
+
+        setProfileStatus(liveStatus);
+        setCurrentEmail(profileEmail);
+        setCurrentName(profileName);
+        setRereviewMilitaryEmail(profile?.military_email || "");
+        setRereviewPhone(profile?.phone || "");
+        setHasUserSession(true);
         setEmailVerified(Boolean(user.email_confirmed_at || user.confirmed_at));
+
+        if (liveStatus !== statusFromUrl) {
+          router.replace(
+            `/pending-review?email=${encodeURIComponent(
+              profileEmail || ""
+            )}&name=${encodeURIComponent(
+              profileName || ""
+            )}&found=1&status=${encodeURIComponent(liveStatus)}`
+          );
+        }
       } catch (error) {
         console.error("Pending review check failed:", error);
       } finally {
@@ -78,16 +147,12 @@ function PendingReviewContent() {
     };
 
     checkUserStatus();
-  }, [supabase, queryEmail, queryName]);
+  }, [supabase, queryEmail, queryName, statusFromUrl, router]);
 
   const handleLogout = async () => {
     try {
       setLoggingOut(true);
-
-      if (supabase) {
-        await supabase.auth.signOut();
-      }
-
+      await safeSignOut();
       router.replace("/");
     } catch (error) {
       console.error("Logout failed:", error);
@@ -95,6 +160,91 @@ function PendingReviewContent() {
     } finally {
       setLoggingOut(false);
     }
+  };
+
+  const handleBackToFeed = async () => {
+    try {
+      if (isAccessBlocked) {
+        await safeSignOut();
+      }
+
+      router.replace("/");
+    } catch (error) {
+      console.error("Back to feed failed:", error);
+      router.replace("/");
+    }
+  };
+
+  const handleRequestRereview = async () => {
+    try {
+      setRereviewMessage("");
+
+      if (!hasUserSession) {
+        setRereviewMessage(
+          "Please sign in with this same account first, then request re-review."
+        );
+        setAuthModal("login");
+        return;
+      }
+
+      const cleanMilitaryEmail = rereviewMilitaryEmail.trim().toLowerCase();
+      const cleanPhone = rereviewPhone.trim();
+
+      if (cleanMilitaryEmail && !isValidEmail(cleanMilitaryEmail)) {
+        setRereviewMessage("Please enter a valid military email address.");
+        return;
+      }
+
+      if (cleanPhone && cleanPhone.length !== 10) {
+        setRereviewMessage("Please enter a valid 10-digit phone number.");
+        return;
+      }
+
+      setRereviewing(true);
+
+      const result = await requestRereview({
+        militaryEmail: cleanMilitaryEmail,
+        phone: cleanPhone,
+      });
+
+      if (result?.ok === false) {
+        setRereviewMessage(
+          result.error || "Could not request re-review. Please contact admin."
+        );
+        return;
+      }
+
+      setProfileStatus("pending");
+      setRereviewMessage(
+        "Re-review request submitted. Your profile is pending admin review again."
+      );
+
+      router.replace(
+        `/pending-review?email=${encodeURIComponent(
+          currentEmail || ""
+        )}&name=${encodeURIComponent(
+          currentName || ""
+        )}&found=1&status=pending`
+      );
+    } catch (error) {
+      console.error("Request re-review failed:", error);
+      setRereviewMessage("Could not request re-review. Please contact admin.");
+    } finally {
+      setRereviewing(false);
+    }
+  };
+
+  const handleContactAdmin = () => {
+    const subject = encodeURIComponent("SoldierHub account access request");
+    const body = encodeURIComponent(
+      `Hello,\n\nI need help with my SoldierHub account.\n\nEmail: ${
+        currentEmail || ""
+      }\nName: ${currentName || ""}\nStatus: ${
+        profileStatus || ""
+      }\n\nThank you.`
+    );
+
+    window.location.href = `mailto:${ADMIN_CONTACT_EMAIL}?subject=${subject}&body=${body}`;
   };
 
   const handleResendConfirmation = async () => {
@@ -105,7 +255,7 @@ function PendingReviewContent() {
       }
 
       if (!currentEmail) {
-        setResendMessage("Email address was not found. Please sign up again.");
+        setResendMessage("Email address was not found. Please sign in again.");
         return;
       }
 
@@ -116,9 +266,9 @@ function PendingReviewContent() {
         type: "signup",
         email: currentEmail,
         options: {
-          emailRedirectTo: `${window.location.origin}/pending-review?found=1&email=${encodeURIComponent(
+          emailRedirectTo: `${window.location.origin}/pending-review?found=1&status=pending&email=${encodeURIComponent(
             currentEmail
-          )}`,
+          )}&name=${encodeURIComponent(currentName || "")}`,
         },
       });
 
@@ -136,7 +286,7 @@ function PendingReviewContent() {
     }
   };
 
-  const found = foundFromUrl || hasUserSession;
+  const found = foundFromUrl || hasUserSession || isAccessBlocked;
 
   if (checking) {
     return (
@@ -177,16 +327,18 @@ function PendingReviewContent() {
         >
           <div
             className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
-            style={{ backgroundColor: found ? T.goldBg : T.redBg }}
+            style={{
+              backgroundColor: isAccessBlocked || !found ? T.redBg : T.goldBg,
+            }}
           >
-            {found ? (
-              emailVerified ? (
-                <CheckCircle2 size={30} style={{ color: T.gold }} strokeWidth={2} />
-              ) : (
-                <Mail size={28} style={{ color: T.gold }} strokeWidth={2} />
-              )
-            ) : (
+            {isAccessBlocked || !found ? (
               <ShieldAlert size={28} style={{ color: T.red }} strokeWidth={2} />
+            ) : isApproved ? (
+              <CheckCircle2 size={30} style={{ color: T.gold }} strokeWidth={2} />
+            ) : emailVerified ? (
+              <CheckCircle2 size={30} style={{ color: T.gold }} strokeWidth={2} />
+            ) : (
+              <Mail size={28} style={{ color: T.gold }} strokeWidth={2} />
             )}
           </div>
 
@@ -199,14 +351,183 @@ function PendingReviewContent() {
           </div>
 
           <h1 className="text-3xl leading-tight mb-3 font-serif" style={{ color: T.navy }}>
-            {found
-              ? emailVerified
+            {isRejected
+              ? "Profile verification not approved"
+              : isRevoked
+              ? "Account access removed"
+              : found
+              ? isApproved
+                ? "Account approved"
+                : emailVerified
                 ? "Email verified. Admin review pending"
                 : "Verify your email"
               : "We couldn't find that account"}
           </h1>
 
-          {found ? (
+          {isAccessBlocked ? (
+            <>
+              {currentName ? (
+                <p className="text-sm mb-4" style={{ color: T.textMuted }}>
+                  Account name:{" "}
+                  <span style={{ color: T.text, fontWeight: 600 }}>{currentName}</span>
+                </p>
+              ) : null}
+
+              <div
+                className="mt-5 rounded-xl border p-4 text-left"
+                style={{
+                  backgroundColor: T.redBg,
+                  borderColor: T.red,
+                }}
+              >
+                <div className="flex items-start gap-3">
+                  <ShieldAlert
+                    size={20}
+                    style={{ color: T.red }}
+                    className="mt-0.5 shrink-0"
+                  />
+
+                  <div>
+                    <p className="text-sm font-semibold" style={{ color: T.navy }}>
+                      {isRejected
+                        ? "Admin did not approve this profile during verification."
+                        : "For security reasons, admin removed access to this profile."}
+                    </p>
+
+                    <p className="text-xs leading-relaxed mt-2" style={{ color: T.textMuted }}>
+                      You can request another review using the same account. Please make sure
+                      your profile includes helpful information such as your military email and
+                      phone number, or contact the admin for help.
+                    </p>
+
+                    <p className="text-xs leading-relaxed mt-2" style={{ color: T.textMuted }}>
+                      Admin contact:{" "}
+                      <span style={{ color: T.text, fontWeight: 600 }}>
+                        {ADMIN_CONTACT_EMAIL}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {currentEmail && (
+                <div
+                  className="mt-4 px-3 py-2 rounded-lg text-xs flex items-center justify-center gap-2"
+                  style={{ backgroundColor: T.surface, color: T.textMuted }}
+                >
+                  <Mail size={13} /> {currentEmail}
+                </div>
+              )}
+
+              <div className="mt-5 rounded-xl border p-4 text-left" style={{ borderColor: T.border }}>
+                <p className="text-sm font-semibold mb-2" style={{ color: T.navy }}>
+                  Request re-review
+                </p>
+
+                <p className="text-xs leading-relaxed mb-3" style={{ color: T.textMuted }}>
+                  Add or update optional information below. This will move your account back to
+                  pending admin review.
+                </p>
+
+                <label className="block mb-3">
+                  <span className="block text-xs font-medium mb-1.5" style={{ color: T.textMuted }}>
+                    Military email optional
+                  </span>
+
+                  <div className="relative">
+                    <span
+                      className="absolute left-3 top-1/2 -translate-y-1/2"
+                      style={{ color: militaryEmailInvalid ? T.red : T.textSubtle }}
+                    >
+                      <Mail size={16} />
+                    </span>
+
+                    <input
+                      value={rereviewMilitaryEmail}
+                      onChange={(e) => setRereviewMilitaryEmail(e.target.value)}
+                      placeholder="first.last.mil@army.mil"
+                      className="w-full h-11 rounded-xl border text-sm outline-none pl-10 pr-3"
+                      style={{
+                        backgroundColor: T.card,
+                        borderColor: militaryEmailInvalid ? T.red : T.border,
+                        color: T.text,
+                      }}
+                    />
+                  </div>
+
+                  {militaryEmailInvalid && (
+                    <p className="mt-1 text-xs font-medium" style={{ color: T.red }}>
+                      Please enter a valid military email address.
+                    </p>
+                  )}
+                </label>
+
+                <label className="block">
+                  <span className="block text-xs font-medium mb-1.5" style={{ color: T.textMuted }}>
+                    Phone number optional
+                  </span>
+
+                  <div className="relative">
+                    <span
+                      className="absolute left-3 top-1/2 -translate-y-1/2"
+                      style={{ color: phoneInvalid ? T.red : T.textSubtle }}
+                    >
+                      <Phone size={16} />
+                    </span>
+
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      maxLength={10}
+                      value={rereviewPhone}
+                      onChange={(e) => {
+                        const numbersOnly = e.target.value.replace(/\D/g, "");
+                        setRereviewPhone(numbersOnly);
+                      }}
+                      placeholder="9151234567"
+                      className="w-full h-11 rounded-xl border text-sm outline-none pl-10 pr-3"
+                      style={{
+                        backgroundColor: T.card,
+                        borderColor: phoneInvalid ? T.red : T.border,
+                        color: T.text,
+                      }}
+                    />
+                  </div>
+
+                  {phoneInvalid && (
+                    <p className="mt-1 text-xs font-medium" style={{ color: T.red }}>
+                      Please enter a valid 10-digit phone number.
+                    </p>
+                  )}
+                </label>
+
+                {rereviewMessage && (
+                  <p className="mt-3 text-xs leading-relaxed" style={{ color: T.textMuted }}>
+                    {rereviewMessage}
+                  </p>
+                )}
+              </div>
+
+              <div className="mt-6 flex flex-col gap-2">
+                <Button
+                  variant="primary"
+                  icon={RefreshCw}
+                  onClick={handleRequestRereview}
+                  disabled={rereviewing || militaryEmailInvalid || phoneInvalid}
+                >
+                  {rereviewing ? "Submitting..." : "Request re-review"}
+                </Button>
+
+                <Button variant="ghost" icon={Mail} onClick={handleContactAdmin}>
+                  Contact admin
+                </Button>
+
+                <Button variant="ghost" icon={ArrowLeft} onClick={handleBackToFeed}>
+                  Back to feed
+                </Button>
+              </div>
+            </>
+          ) : found ? (
             <>
               {currentName ? (
                 <p className="text-sm mb-4" style={{ color: T.textMuted }}>
@@ -241,9 +562,7 @@ function PendingReviewContent() {
                     <div>
                       <p className="text-sm font-semibold" style={{ color: T.navy }}>
                         Step 1:{" "}
-                        {emailVerified
-                          ? "Your email has been verified"
-                          : "Verify your email"}
+                        {emailVerified ? "Your email has been verified" : "Verify your email"}
                       </p>
 
                       <p className="text-xs leading-relaxed mt-1" style={{ color: T.textMuted }}>
@@ -258,24 +577,37 @@ function PendingReviewContent() {
                 <div
                   className="rounded-xl border p-4"
                   style={{
-                    backgroundColor: T.surface,
-                    borderColor: T.border,
+                    backgroundColor: isApproved ? T.goldBg : T.surface,
+                    borderColor: isApproved ? T.gold : T.border,
                   }}
                 >
                   <div className="flex items-start gap-3">
-                    <Clock
-                      size={20}
-                      style={{ color: T.gold }}
-                      className="mt-0.5 shrink-0"
-                    />
+                    {isApproved ? (
+                      <CheckCircle2
+                        size={20}
+                        style={{ color: T.gold }}
+                        className="mt-0.5 shrink-0"
+                      />
+                    ) : (
+                      <Clock
+                        size={20}
+                        style={{ color: T.gold }}
+                        className="mt-0.5 shrink-0"
+                      />
+                    )}
 
                     <div>
                       <p className="text-sm font-semibold" style={{ color: T.navy }}>
-                        Step 2: Wait for admin verification
+                        Step 2:{" "}
+                        {isApproved
+                          ? "Admin verification approved"
+                          : "Wait for admin verification"}
                       </p>
 
                       <p className="text-xs leading-relaxed mt-1" style={{ color: T.textMuted }}>
-                        {emailVerified
+                        {isApproved
+                          ? "Your SoldierHub account has been approved. You can now browse the feed and use verified member features."
+                          : emailVerified
                           ? "Your SoldierHub profile is now waiting for admin review. Thank you for your patience. You will be able to post, comment, message, and sell once your account is approved."
                           : "After your email is verified, an admin will review your SoldierHub profile. Posting, commenting, messaging, and selling will unlock after approval."}
                       </p>
@@ -312,14 +644,14 @@ function PendingReviewContent() {
                 )}
 
                 <Button
-                  variant={emailVerified ? "primary" : "ghost"}
+                  variant={emailVerified || isApproved ? "primary" : "ghost"}
                   icon={ArrowLeft}
                   onClick={() => router.push("/")}
                 >
                   Browse the feed
                 </Button>
 
-                {emailVerified && (
+                {emailVerified && !isApproved && (
                   <Button
                     variant="ghost"
                     icon={LogOut}
@@ -340,16 +672,16 @@ function PendingReviewContent() {
                 ) : (
                   "that email"
                 )}
-                . You can sign up to submit your profile for review.
+                . Please sign in with your existing account or contact admin.
               </p>
 
               <div className="mt-6 flex flex-col gap-2">
-                <Button
-                  variant="primary"
-                  icon={UserPlus}
-                  onClick={() => setAuthModal("signup")}
-                >
-                  Sign up instead
+                <Button variant="primary" icon={Mail} onClick={() => setAuthModal("login")}>
+                  Sign in
+                </Button>
+
+                <Button variant="ghost" icon={Mail} onClick={handleContactAdmin}>
+                  Contact admin
                 </Button>
 
                 <Button variant="ghost" onClick={() => router.push("/")}>

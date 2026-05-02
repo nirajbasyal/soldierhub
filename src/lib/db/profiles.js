@@ -10,7 +10,7 @@ export async function getProfile(userId) {
     .from("profiles")
     .select("*")
     .eq("id", userId)
-    .single();
+    .maybeSingle();
 
   return { data, error };
 }
@@ -51,15 +51,18 @@ export async function updateMyProfile(userId, updates) {
     avatar_color: updates.avatar_color,
     avatar_url: updates.avatar_url,
   };
+
   // Strip undefined keys
-  Object.keys(allowed).forEach((k) => allowed[k] === undefined && delete allowed[k]);
+  Object.keys(allowed).forEach((key) => {
+    if (allowed[key] === undefined) delete allowed[key];
+  });
 
   const { data, error } = await supabase
     .from("profiles")
     .update(allowed)
     .eq("id", userId)
     .select()
-    .single();
+    .maybeSingle();
 
   return { data, error };
 }
@@ -67,24 +70,92 @@ export async function updateMyProfile(userId, updates) {
 export async function adminVerifyProfile(profileId) {
   const supabase = createClient();
   if (!supabase) return { error: null };
-  return supabase.from("profiles").update({ status: "verified" }).eq("id", profileId);
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      status: "verified",
+      verification_status: "verified",
+    })
+    .eq("id", profileId);
+
+  return { error };
 }
 
 export async function adminRejectProfile(profileId) {
   const supabase = createClient();
   if (!supabase) return { error: null };
-  return supabase.from("profiles").update({ status: "rejected" }).eq("id", profileId);
+
+  const { error } = await supabase.rpc("admin_reject_profile", {
+    p_profile_id: profileId,
+  });
+
+  return { error };
 }
 
-// Soft-disable a member by flipping their status to 'rejected'.
-// Hard delete (including the auth.users row) requires the service role key
-// and must be done from a server-side route — never expose service role
-// to the browser. For now, soft-disable is sufficient and reversible.
 export async function adminRemoveProfile(profileId) {
   const supabase = createClient();
   if (!supabase) return { error: null };
-  return supabase
+
+  const { error } = await supabase.rpc("admin_revoke_profile", {
+    p_profile_id: profileId,
+  });
+
+  return { error };
+}
+
+export async function requestProfileRereview({ militaryEmail, phone }) {
+  const supabase = createClient();
+  if (!supabase) return { error: null };
+
+  const { error } = await supabase.rpc("request_profile_rereview", {
+    p_military_email: militaryEmail || "",
+    p_phone: phone || "",
+  });
+
+  return { error };
+}
+
+export async function adminVerifyProfileByEmail(email) {
+  const supabase = createClient();
+  if (!supabase) return { data: null, error: null };
+
+  const cleanEmail = email?.trim().toLowerCase() || "";
+
+  const { data, error } = await supabase.rpc("admin_verify_profile_by_email", {
+    p_email: cleanEmail,
+  });
+
+  return {
+    data: data?.[0] || null,
+    error,
+  };
+}
+export async function listBlockedProfiles() {
+  const supabase = createClient();
+  if (!supabase) return { data: [], error: null };
+
+  const { data, error } = await supabase
     .from("profiles")
-    .update({ status: "rejected" })
-    .eq("id", profileId);
+    .select("*")
+    .in("status", ["rejected", "revoked"])
+    .order("created_at", { ascending: false });
+
+  return { data: data || [], error };
+}
+
+export async function adminRevokeProfileByEmail(email) {
+  const supabase = createClient();
+  if (!supabase) return { data: null, error: null };
+
+  const cleanEmail = email?.trim().toLowerCase() || "";
+
+  const { data, error } = await supabase.rpc("admin_revoke_profile_by_email", {
+    p_email: cleanEmail,
+  });
+
+  return {
+    data: data?.[0] || null,
+    error,
+  };
 }
