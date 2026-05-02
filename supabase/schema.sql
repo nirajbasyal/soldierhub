@@ -7,6 +7,7 @@
 
 -- ─── Extensions ─────────────────────────────────────────────────────────────
 create extension if not exists "uuid-ossp";
+create extension if not exists pgcrypto with schema extensions;
 
 -- ─── profiles ──────────────────────────────────────────────────────────────
 -- Extends auth.users with app-specific profile data.
@@ -71,26 +72,6 @@ create table if not exists public.comments (
 
 create index if not exists comments_post_idx on public.comments(post_id, created_at);
 
-create or replace function public.tg_cache_comment_author()
-returns trigger language plpgsql security definer set search_path = public as $$
-declare
-  pname  text;
-  pcolor text;
-begin
-  select full_name, avatar_color into pname, pcolor
-  from public.profiles where id = new.author_id;
-
-  new.author_name_cached  := pname;
-  new.author_color_cached := pcolor;
-
-  return new;
-end $$;
-
-drop trigger if exists comments_cache_author on public.comments;
-create trigger comments_cache_author
-  before insert on public.comments
-  for each row execute procedure public.tg_cache_comment_author();
-
 -- ─── upvotes ───────────────────────────────────────────────────────────────
 -- Composite primary key: each (user, post) pair can only exist once.
 create table if not exists public.upvotes (
@@ -103,6 +84,7 @@ create table if not exists public.upvotes (
 create index if not exists upvotes_post_idx on public.upvotes(post_id);
 
 -- ─── reports ───────────────────────────────────────────────────────────────
+-- Signed-in verified user reports.
 create table if not exists public.reports (
   post_id    uuid not null references public.posts(id) on delete cascade,
   user_id    uuid not null references public.profiles(id) on delete cascade,
@@ -112,6 +94,26 @@ create table if not exists public.reports (
 );
 
 create index if not exists reports_post_idx on public.reports(post_id);
+
+-- ─── visitor_reports ───────────────────────────────────────────────────────
+-- Logged-out visitor reports.
+-- Uses a hashed browser visitor key so the same browser cannot repeatedly
+-- report the same post. This does not replace CAPTCHA/rate-limiting later.
+create table if not exists public.visitor_reports (
+  id               uuid primary key default uuid_generate_v4(),
+  post_id          uuid not null references public.posts(id) on delete cascade,
+  visitor_key_hash text not null,
+  reason           text default '',
+  created_at       timestamptz not null default now(),
+  unique (post_id, visitor_key_hash)
+);
+
+create index if not exists visitor_reports_post_idx on public.visitor_reports(post_id);
+
+alter table public.visitor_reports enable row level security;
+
+-- Do not allow direct frontend table access.
+revoke all on public.visitor_reports from anon, authenticated;
 
 -- ─── notifications ─────────────────────────────────────────────────────────
 -- actor_name_cached cached at insert time so reads don't need to join profiles.
@@ -132,12 +134,37 @@ create index if not exists notifications_recipient_idx on public.notifications(r
 create index if not exists notifications_unread_idx    on public.notifications(recipient_user_id, read);
 
 -- ============================================================================
+-- HELPER FUNCTIONS
+-- ============================================================================
+
+-- Admin helper.
+-- policies.sql may also define this. Keeping it here makes schema.sql safer
+-- for fresh Supabase projects.
+create or replace function public.is_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.profiles
+    where id = auth.uid()
+      and role = 'admin'
+      and status = 'verified'
+  );
+$$;
+
+-- ============================================================================
 -- TRIGGERS
 -- ============================================================================
 
 -- ─── Auto-update updated_at on profiles and posts ──────────────────────────
 create or replace function public.tg_set_updated_at()
-returns trigger language plpgsql as $$
+returns trigger
+language plpgsql
+as $$
 begin
   new.updated_at = now();
   return new;
@@ -153,12 +180,42 @@ create trigger posts_updated_at
   before update on public.posts
   for each row execute procedure public.tg_set_updated_at();
 
+-- ─── Cache comment author display fields ──────────────────────────────────
+create or replace function public.tg_cache_comment_author()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  pname  text;
+  pcolor text;
+begin
+  select full_name, avatar_color into pname, pcolor
+  from public.profiles
+  where id = new.author_id;
+
+  new.author_name_cached  := pname;
+  new.author_color_cached := pcolor;
+
+  return new;
+end $$;
+
+drop trigger if exists comments_cache_author on public.comments;
+create trigger comments_cache_author
+  before insert on public.comments
+  for each row execute procedure public.tg_cache_comment_author();
+
 -- ─── Cache author display fields on insert / when anonymous changes ────────
 -- This makes the feed safe to expose without joining `profiles`.
 -- When `anonymous = true`, cached fields are blanked so the author's identity
--- does not leak through the public feed view.
+-- does not leak through the public feed view or public feed RPC.
 create or replace function public.tg_cache_author_fields()
-returns trigger language plpgsql security definer set search_path = public as $$
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
 declare
   pname  text;
   pcolor text;
@@ -168,7 +225,8 @@ begin
     new.author_color_cached := null;
   else
     select full_name, avatar_color into pname, pcolor
-    from public.profiles where id = new.author_id;
+    from public.profiles
+    where id = new.author_id;
 
     new.author_name_cached  := pname;
     new.author_color_cached := pcolor;
@@ -186,7 +244,11 @@ create trigger posts_cache_author
 -- New profiles default to status='pending' and role='user'.
 -- The Niraj admin account is whitelisted and auto-verified.
 create or replace function public.handle_new_user()
-returns trigger language plpgsql security definer set search_path = public as $$
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
 declare
   new_role   text;
   new_status text;
@@ -219,9 +281,13 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
 
--- ─── Mark post as 'reported' once it has any reports ───────────────────────
+-- ─── Mark post as 'reported' once it has any signed-in user reports ────────
 create or replace function public.tg_mark_post_reported()
-returns trigger language plpgsql security definer set search_path = public as $$
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
 begin
   update public.posts
   set status = 'reported'
@@ -240,7 +306,11 @@ create trigger report_marks_post
 -- Caches actor_name and post_title at insert time so the recipient can read
 -- their notifications without joining `profiles`.
 create or replace function public.tg_notify_on_comment()
-returns trigger language plpgsql security definer set search_path = public as $$
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
 declare
   post_author      uuid;
   post_title_local text;
@@ -278,6 +348,7 @@ create trigger comment_creates_notification
 
 -- Public feed view — uses cached author fields and never exposes profile email.
 -- SECURITY INVOKER is enabled so Supabase RLS/security checks apply as the querying user.
+-- Logged-out public feed browsing should use public.get_public_posts().
 -- The view masks anonymous data:
 --   - author_id is NULL when anonymous
 --   - author_name and author_color are NULL when anonymous
@@ -298,7 +369,11 @@ select
   case when p.anonymous then null else p.author_color_cached end as author_color,
   coalesce((select count(*) from public.upvotes  u where u.post_id = p.id), 0) as upvote_count,
   coalesce((select count(*) from public.comments c where c.post_id = p.id), 0) as comment_count,
-  coalesce((select count(*) from public.reports  r where r.post_id = p.id), 0) as report_count
+  (
+    coalesce((select count(*) from public.reports r where r.post_id = p.id), 0)
+    +
+    coalesce((select count(*) from public.visitor_reports vr where vr.post_id = p.id), 0)
+  ) as report_count
 from public.posts p
 where p.status in ('active', 'reported');
 
@@ -322,7 +397,11 @@ select
   p.author_color_cached as author_color,
   coalesce((select count(*) from public.upvotes  u where u.post_id = p.id), 0) as upvote_count,
   coalesce((select count(*) from public.comments c where c.post_id = p.id), 0) as comment_count,
-  coalesce((select count(*) from public.reports  r where r.post_id = p.id), 0) as report_count
+  (
+    coalesce((select count(*) from public.reports r where r.post_id = p.id), 0)
+    +
+    coalesce((select count(*) from public.visitor_reports vr where vr.post_id = p.id), 0)
+  ) as report_count
 from public.posts p;
 
 -- Public-safe profile view. Excludes email, role, and status.
@@ -342,12 +421,165 @@ from public.profiles
 where status = 'verified';
 
 -- ============================================================================
+-- PUBLIC RPC FUNCTIONS
+-- ============================================================================
+
+-- Safe public feed reader.
+-- This lets logged-out users view posts without direct SELECT access to public.posts.
+-- Anonymous author data stays masked here.
+create or replace function public.get_public_posts(limit_count int default 50)
+returns table (
+  id uuid,
+  author_id uuid,
+  category text,
+  title text,
+  body text,
+  anonymous boolean,
+  status text,
+  edited boolean,
+  created_at timestamptz,
+  updated_at timestamptz,
+  author_name text,
+  author_color text,
+  upvote_count bigint,
+  comment_count bigint,
+  report_count bigint
+)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select
+    p.id,
+    case when p.anonymous then null else p.author_id end as author_id,
+    p.category,
+    p.title,
+    p.body,
+    p.anonymous,
+    p.status,
+    p.edited,
+    p.created_at,
+    p.updated_at,
+    case when p.anonymous then null else p.author_name_cached end as author_name,
+    case when p.anonymous then null else p.author_color_cached end as author_color,
+    coalesce((select count(*) from public.upvotes u where u.post_id = p.id), 0) as upvote_count,
+    coalesce((select count(*) from public.comments c where c.post_id = p.id), 0) as comment_count,
+    (
+      coalesce((select count(*) from public.reports r where r.post_id = p.id), 0)
+      +
+      coalesce((select count(*) from public.visitor_reports vr where vr.post_id = p.id), 0)
+    ) as report_count
+  from public.posts p
+  where p.status in ('active', 'reported')
+  order by p.created_at desc
+  limit limit_count;
+$$;
+
+-- Logged-out visitor report function.
+-- Uses a browser-generated visitor key, hashes it, and prevents duplicate report
+-- from the same browser for the same post.
+create or replace function public.create_visitor_report(
+  p_post_id uuid,
+  p_visitor_key text,
+  p_reason text default ''
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  v_hash text;
+  v_inserted int;
+begin
+  if p_post_id is null then
+    return jsonb_build_object('ok', false, 'error', 'Missing post id.');
+  end if;
+
+  if p_visitor_key is null or length(trim(p_visitor_key)) < 10 then
+    return jsonb_build_object('ok', false, 'error', 'Missing visitor key.');
+  end if;
+
+  if not exists (
+    select 1
+    from public.posts
+    where id = p_post_id
+      and status in ('active', 'reported')
+  ) then
+    return jsonb_build_object('ok', false, 'error', 'Post not found.');
+  end if;
+
+  v_hash := encode(
+    extensions.digest(convert_to(trim(p_visitor_key), 'UTF8'), 'sha256'),
+    'hex'
+  );
+
+  insert into public.visitor_reports (post_id, visitor_key_hash, reason)
+  values (
+    p_post_id,
+    v_hash,
+    left(coalesce(p_reason, ''), 500)
+  )
+  on conflict (post_id, visitor_key_hash) do nothing;
+
+  get diagnostics v_inserted = row_count;
+
+  if v_inserted > 0 then
+    update public.posts
+    set status = 'reported'
+    where id = p_post_id
+      and status = 'active';
+  end if;
+
+  return jsonb_build_object(
+    'ok', true,
+    'already_reported', v_inserted = 0
+  );
+end;
+$$;
+
+-- Admin restore function.
+-- Clears both signed-in reports and logged-out visitor reports.
+create or replace function public.restore_reported_post(p_post_id uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.is_admin() then
+    return jsonb_build_object('ok', false, 'error', 'Unauthorized.');
+  end if;
+
+  delete from public.reports
+  where post_id = p_post_id;
+
+  delete from public.visitor_reports
+  where post_id = p_post_id;
+
+  update public.posts
+  set status = 'active'
+  where id = p_post_id;
+
+  return jsonb_build_object('ok', true);
+end;
+$$;
+
+-- ============================================================================
 -- GRANTS
 -- ============================================================================
 
 grant select on public.posts_with_meta to anon, authenticated;
 grant select on public.my_posts_with_meta to authenticated;
 grant select on public.public_profiles to anon, authenticated;
+
+grant execute on function public.get_public_posts(int) to anon, authenticated;
+grant execute on function public.create_visitor_report(uuid, text, text) to anon, authenticated;
+grant execute on function public.restore_reported_post(uuid) to authenticated;
+
+-- Keep visitor_reports private from direct frontend access.
+revoke all on public.visitor_reports from anon, authenticated;
 
 -- ============================================================================
 -- DONE
