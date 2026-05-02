@@ -46,14 +46,14 @@ export function AppProvider({ children }) {
   const [pendingUsers, setPendingUsers] = useState(SUPA ? [] : SEED_PENDING);
   const [posts, setPosts] = useState(SUPA ? [] : normalizeSeedPosts(SEED_POSTS));
   const [myPosts, setMyPosts] = useState([]);
-  const [postComments, setPostComments] = useState({}); // { postId: Comment[] }
+  const [postComments, setPostComments] = useState({});
   const [myUpvotes, setMyUpvotes] = useState(new Set());
   const [myReports, setMyReports] = useState(new Set());
   const [notifications, setNotifications] = useState([]);
 
   // ─── Session ──────────────────────────────────────────────────────────
   const [currentUser, setCurrentUser] = useState(null);
-  const [authLoading, setAuthLoading] = useState(SUPA); // wait for first session check
+  const [authLoading, setAuthLoading] = useState(SUPA);
   const [postsLoading, setPostsLoading] = useState(SUPA);
 
   // ─── UI ───────────────────────────────────────────────────────────────
@@ -69,20 +69,22 @@ export function AppProvider({ children }) {
     setToasts((t) => [...t, { id, text, tone }]);
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3500);
   }, []);
+
   const dismissToast = (id) => setToasts((t) => t.filter((x) => x.id !== id));
 
   // ═════════════════════════════════════════════════════════════════════
   // SESSION & DATA LOADING
   // ═════════════════════════════════════════════════════════════════════
 
-  // Load initial Supabase session + subscribe to changes
   useEffect(() => {
     if (!SUPA) return;
+
     let unsubscribe;
     let cancelled = false;
 
     (async () => {
       const { profile } = await Auth.getCurrentUser();
+
       if (!cancelled) {
         setCurrentUser(profile);
         setAuthLoading(false);
@@ -97,6 +99,7 @@ export function AppProvider({ children }) {
         setNotifications([]);
         return;
       }
+
       const { data: profile } = await ProfilesDB.getProfile(user.id);
       setCurrentUser(profile || null);
     });
@@ -104,11 +107,13 @@ export function AppProvider({ children }) {
     return () => unsubscribe && unsubscribe();
   }, []);
 
-  // Load posts from Supabase
   const reloadPosts = useCallback(async () => {
     if (!SUPA) return;
+
     setPostsLoading(true);
+
     const { data } = await PostsDB.listPosts();
+
     setPosts(data || []);
     setPostsLoading(false);
   }, []);
@@ -117,26 +122,30 @@ export function AppProvider({ children }) {
     if (SUPA) reloadPosts();
   }, [reloadPosts]);
 
-  // Realtime subscription: keep posts in sync
   useEffect(() => {
     if (!SUPA) return;
+
     const unsubscribe = subscribeToPosts(() => reloadPosts());
+
     return () => unsubscribe();
   }, [reloadPosts]);
 
-  // Load my upvotes + reports + notifications + own posts when user changes
   useEffect(() => {
     if (!SUPA || !currentUser) return;
+
     let cancelled = false;
 
     (async () => {
-      const [{ data: ups }, { data: reps }, { data: notifs }, { data: mine }] = await Promise.all([
-        PostsDB.listMyUpvotedPostIds(currentUser.id),
-        PostsDB.listMyReportedPostIds(currentUser.id),
-        NotificationsDB.listMyNotifications(currentUser.id),
-        PostsDB.listMyPosts(currentUser.id),
-      ]);
+      const [{ data: ups }, { data: reps }, { data: notifs }, { data: mine }] =
+        await Promise.all([
+          PostsDB.listMyUpvotedPostIds(currentUser.id),
+          PostsDB.listMyReportedPostIds(currentUser.id),
+          NotificationsDB.listMyNotifications(currentUser.id),
+          PostsDB.listMyPosts(currentUser.id),
+        ]);
+
       if (cancelled) return;
+
       setMyUpvotes(new Set(ups));
       setMyReports(new Set(reps));
       setNotifications(notifs);
@@ -150,30 +159,36 @@ export function AppProvider({ children }) {
 
   const reloadMyPosts = useCallback(async () => {
     if (!SUPA || !currentUser) return;
+
     const { data } = await PostsDB.listMyPosts(currentUser.id);
+
     setMyPosts(data || []);
   }, [currentUser]);
 
-  // Realtime: incoming notifications
   useEffect(() => {
     if (!SUPA || !currentUser) return;
+
     const unsubscribe = subscribeToMyNotifications(currentUser.id, async () => {
       const { data } = await NotificationsDB.listMyNotifications(currentUser.id);
       setNotifications(data);
     });
+
     return () => unsubscribe();
   }, [currentUser]);
 
-  // Load pending users when admin opens admin page (lazy)
   const reloadPendingUsers = useCallback(async () => {
     if (!SUPA) return;
+
     const { data } = await ProfilesDB.listPendingProfiles();
+
     setPendingUsers(data || []);
   }, []);
 
   const reloadVerifiedUsers = useCallback(async () => {
     if (!SUPA) return;
+
     const { data } = await ProfilesDB.listVerifiedProfiles();
+
     setUsers(data || []);
   }, []);
 
@@ -188,50 +203,71 @@ export function AppProvider({ children }) {
   // AUTH
   // ═════════════════════════════════════════════════════════════════════
 
-  const handleSignup = async ({ name, email, bio, password }) => {
+  const handleSignup = async ({
+    name,
+    email,
+    militaryEmail,
+    phone,
+    bio,
+    password,
+  }) => {
+    const cleanName = name?.trim() || "";
+    const cleanEmail = email?.trim().toLowerCase() || "";
+    const cleanMilitaryEmail = militaryEmail?.trim().toLowerCase() || "";
+    const cleanPhone = phone?.trim() || "";
+    const cleanBio = bio?.trim() || "";
+
     if (SUPA) {
       const { data, error } = await Auth.signUp({
-        email,
+        email: cleanEmail,
         password,
-        fullName: name,
-        bio,
-        avatarColor: colorFromString(name),
+        fullName: cleanName,
+        militaryEmail: cleanMilitaryEmail,
+        phone: cleanPhone,
+        bio: cleanBio,
+        avatarColor: colorFromString(cleanName),
       });
+
       if (error) {
         pushToast(error.message, "error");
         return { ok: false, error: error.message };
       }
-      // Email confirmation required if Supabase is configured to require it
-      if (data?.user && !data.session) {
-        pushToast("Check your email to confirm your account.", "info");
-        setAuthModal(null);
-        router.push(
-          `/pending-review?email=${encodeURIComponent(email)}&name=${encodeURIComponent(name)}&found=1`
-        );
-        return { ok: true };
-      }
-      pushToast("Profile submitted for review", "success");
-      setAuthModal(null);
-      router.push(
-        `/pending-review?email=${encodeURIComponent(email)}&name=${encodeURIComponent(name)}&found=1`
+
+      pushToast(
+        "Account created. Please check your email to confirm your address.",
+        "info"
       );
-      return { ok: true };
+
+      setAuthModal(null);
+
+      router.push(
+        `/pending-review?email=${encodeURIComponent(
+          cleanEmail
+        )}&name=${encodeURIComponent(cleanName)}&found=1`
+      );
+
+      return { ok: true, data };
     }
 
     // ─── Demo mode ───────────────────────────────────────────────────
     const newUser = {
       id: uid(),
-      full_name: name,
-      email,
-      bio,
+      full_name: cleanName,
+      email: cleanEmail,
+      personal_email: cleanEmail,
+      military_email: cleanMilitaryEmail || null,
+      phone: cleanPhone || null,
+      bio: cleanBio,
       password,
-      role: email === ADMIN_EMAIL ? "admin" : "user",
-      status: email === ADMIN_EMAIL ? "verified" : "pending",
-      avatar_color: colorFromString(name),
+      role: cleanEmail === ADMIN_EMAIL ? "admin" : "user",
+      status: cleanEmail === ADMIN_EMAIL ? "verified" : "pending",
+      verification_status: cleanEmail === ADMIN_EMAIL ? "verified" : "pending",
+      avatar_color: colorFromString(cleanName),
       base: "Fort Bliss",
       created_at: new Date().toISOString(),
     };
-    if (email === ADMIN_EMAIL) {
+
+    if (cleanEmail === ADMIN_EMAIL) {
       setUsers((u) => [...u, newUser]);
       setCurrentUser(newUser);
       setAuthModal(null);
@@ -240,41 +276,54 @@ export function AppProvider({ children }) {
       setPendingUsers((u) => [...u, newUser]);
       setAuthModal(null);
       pushToast("Profile submitted for review", "success");
+
       router.push(
-        `/pending-review?email=${encodeURIComponent(email)}&name=${encodeURIComponent(name)}&found=1`
+        `/pending-review?email=${encodeURIComponent(
+          cleanEmail
+        )}&name=${encodeURIComponent(cleanName)}&found=1`
       );
     }
+
     return { ok: true };
   };
 
   const handleLogin = async (email, password, onError) => {
     if (SUPA) {
       const { data, error } = await Auth.signIn({ email, password });
+
       if (error) {
         onError && onError(error.message);
         return;
       }
-      // Check profile status
+
       const { data: profile } = await ProfilesDB.getProfile(data.user.id);
-      if (profile?.status !== "verified") {
+      const profileStatus = profile?.status || profile?.verification_status;
+
+      if (profileStatus !== "verified") {
         setAuthModal(null);
+
         router.push(
-          `/pending-review?email=${encodeURIComponent(email)}&name=${encodeURIComponent(profile?.full_name || "")}&found=1`
+          `/pending-review?email=${encodeURIComponent(
+            email
+          )}&name=${encodeURIComponent(profile?.full_name || "")}&found=1`
         );
       } else {
         setAuthModal(null);
         pushToast(`Signed in as ${profile.full_name}`, "success");
       }
+
       return;
     }
 
     // ─── Demo mode ───────────────────────────────────────────────────
     const verified = users.find((u) => u.email === email);
     const pending = pendingUsers.find((u) => u.email === email);
+
     if (verified) {
       if (verified.password && verified.password !== password) {
         return onError && onError("Incorrect password.");
       }
+
       setCurrentUser(verified);
       setAuthModal(null);
       pushToast(`Signed in as ${verified.full_name}`, "success");
@@ -282,9 +331,13 @@ export function AppProvider({ children }) {
       if (pending.password && pending.password !== password) {
         return onError && onError("Incorrect password.");
       }
+
       setAuthModal(null);
+
       router.push(
-        `/pending-review?email=${encodeURIComponent(email)}&name=${encodeURIComponent(pending.full_name)}&found=1`
+        `/pending-review?email=${encodeURIComponent(
+          email
+        )}&name=${encodeURIComponent(pending.full_name)}&found=1`
       );
     } else {
       setAuthModal(null);
@@ -294,6 +347,7 @@ export function AppProvider({ children }) {
 
   const handleLogout = async () => {
     if (SUPA) await Auth.signOut();
+
     setCurrentUser(null);
     pushToast("Signed out", "info");
     router.push("/");
@@ -304,12 +358,21 @@ export function AppProvider({ children }) {
       setAuthModal("login");
       return false;
     }
-    if (currentUser.status !== "verified") {
+
+    const userStatus = currentUser.status || currentUser.verification_status;
+
+    if (userStatus !== "verified") {
+      const userEmail = currentUser.email || currentUser.personal_email || "";
+
       router.push(
-        `/pending-review?email=${encodeURIComponent(currentUser.email)}&name=${encodeURIComponent(currentUser.full_name)}&found=1`
+        `/pending-review?email=${encodeURIComponent(
+          userEmail
+        )}&name=${encodeURIComponent(currentUser.full_name || "")}&found=1`
       );
+
       return false;
     }
+
     return true;
   };
 
@@ -326,20 +389,19 @@ export function AppProvider({ children }) {
         body,
         anonymous,
       });
+
       if (error) {
         pushToast(error.message, "error");
         return { ok: false, error: error.message };
       }
+
       pushToast("Posted to feed", "success");
       await reloadPosts();
       await reloadMyPosts();
+
       return { ok: true };
     }
 
-    // Demo mode mirrors the database trigger: blank author display fields
-    // when anonymous so the UI has nothing identifying to render. We keep
-    // author_id locally so the user can still see/edit their own anonymous
-    // posts on the profile page.
     const post = {
       id: uid(),
       category,
@@ -356,20 +418,22 @@ export function AppProvider({ children }) {
       edited: false,
       created_at: new Date().toISOString(),
     };
+
     setPosts((p) => [post, ...p]);
     pushToast("Posted to feed", "success");
+
     return { ok: true };
   };
 
   const upvotePost = async (postId) => {
     const has = myUpvotes.has(postId);
 
-    // Optimistic update
     setMyUpvotes((s) => {
       const n = new Set(s);
       has ? n.delete(postId) : n.add(postId);
       return n;
     });
+
     setPosts((arr) =>
       arr.map((p) =>
         p.id === postId
@@ -382,13 +446,14 @@ export function AppProvider({ children }) {
       const { error } = has
         ? await PostsDB.removeUpvote(postId, currentUser.id)
         : await PostsDB.addUpvote(postId, currentUser.id);
+
       if (error) {
-        // Roll back on failure
         setMyUpvotes((s) => {
           const n = new Set(s);
           has ? n.add(postId) : n.delete(postId);
           return n;
         });
+
         setPosts((arr) =>
           arr.map((p) =>
             p.id === postId
@@ -396,69 +461,69 @@ export function AppProvider({ children }) {
               : p
           )
         );
+
         pushToast(error.message, "error");
       }
     }
   };
 
   const reportPost = async (postId) => {
-  if (myReports.has(postId)) return;
+    if (myReports.has(postId)) return;
 
-  // Optimistic UI update
-  setMyReports((s) => new Set(s).add(postId));
+    setMyReports((s) => new Set(s).add(postId));
 
-  setPosts((arr) =>
-    arr.map((p) =>
-      p.id === postId
-        ? {
-            ...p,
-            report_count: (p.report_count || 0) + 1,
-            status: "reported",
-          }
-        : p
-    )
-  );
+    setPosts((arr) =>
+      arr.map((p) =>
+        p.id === postId
+          ? {
+              ...p,
+              report_count: (p.report_count || 0) + 1,
+              status: "reported",
+            }
+          : p
+      )
+    );
 
-  if (SUPA) {
-    const verifiedUserId =
-      currentUser?.status === "verified" ? currentUser.id : null;
+    if (SUPA) {
+      const userStatus = currentUser?.status || currentUser?.verification_status;
+      const verifiedUserId = userStatus === "verified" ? currentUser.id : null;
 
-    const { data, error } = await PostsDB.reportPost(postId, verifiedUserId);
+      const { data, error } = await PostsDB.reportPost(postId, verifiedUserId);
 
-    if (error || data?.ok === false) {
-      // Roll back UI if Supabase rejects report
-      setMyReports((s) => {
-        const n = new Set(s);
-        n.delete(postId);
-        return n;
-      });
+      if (error || data?.ok === false) {
+        setMyReports((s) => {
+          const n = new Set(s);
+          n.delete(postId);
+          return n;
+        });
 
-      setPosts((arr) =>
-        arr.map((p) =>
-          p.id === postId
-            ? {
-                ...p,
-                report_count: Math.max((p.report_count || 1) - 1, 0),
-              }
-            : p
-        )
-      );
+        setPosts((arr) =>
+          arr.map((p) =>
+            p.id === postId
+              ? {
+                  ...p,
+                  report_count: Math.max((p.report_count || 1) - 1, 0),
+                }
+              : p
+          )
+        );
 
-      pushToast(
-        error?.message || data?.error || "Could not report post.",
-        "error"
-      );
-      return;
+        pushToast(
+          error?.message || data?.error || "Could not report post.",
+          "error"
+        );
+
+        return;
+      }
+
+      if (data?.already_reported) {
+        pushToast("You already reported this post.", "info");
+        return;
+      }
     }
 
-    if (data?.already_reported) {
-      pushToast("You already reported this post.", "info");
-      return;
-    }
-  }
-
-  pushToast("Post reported. Admins will review.", "success");
-};
+    pushToast("Post reported. Admins will review.", "success");
+  };
 
   const commentOnPost = async (postId, body) => {
     if (SUPA) {
@@ -467,16 +532,17 @@ export function AppProvider({ children }) {
         author_id: currentUser.id,
         body,
       });
+
       if (error) {
         pushToast(error.message, "error");
         return { ok: false, error: error.message };
       }
-      // Append to local cache
+
       setPostComments((m) => ({
         ...m,
         [postId]: [...(m[postId] || []), data],
       }));
-      // Bump comment count
+
       setPosts((arr) =>
         arr.map((p) =>
           p.id === postId
@@ -484,6 +550,7 @@ export function AppProvider({ children }) {
             : p
         )
       );
+
       return { ok: true };
     }
 
@@ -496,19 +563,22 @@ export function AppProvider({ children }) {
       author_name_cached: currentUser.full_name,
       author_color_cached: currentUser.avatar_color,
     };
+
     setPostComments((m) => ({
       ...m,
       [postId]: [...(m[postId] || []), newComment],
     }));
+
     setPosts((arr) =>
       arr.map((p) => {
         if (p.id !== postId) return p;
+
         return { ...p, comment_count: (p.comment_count || 0) + 1 };
       })
     );
 
-    // Demo notification
     const post = posts.find((p) => p.id === postId);
+
     if (post && post.author_id !== currentUser.id) {
       setNotifications((n) => [
         {
@@ -526,46 +596,65 @@ export function AppProvider({ children }) {
         ...n,
       ]);
     }
+
     return { ok: true };
   };
 
-  const loadCommentsForPost = useCallback(async (postId) => {
-    if (!SUPA) return;
-    if (postComments[postId]) return; // already cached
-    const { data } = await CommentsDB.listCommentsForPost(postId);
-    setPostComments((m) => ({ ...m, [postId]: data || [] }));
-  }, [postComments]);
+  const loadCommentsForPost = useCallback(
+    async (postId) => {
+      if (!SUPA) return;
+      if (postComments[postId]) return;
+
+      const { data } = await CommentsDB.listCommentsForPost(postId);
+
+      setPostComments((m) => ({ ...m, [postId]: data || [] }));
+    },
+    [postComments]
+  );
 
   const editMyPost = async (postId, updates) => {
     if (SUPA) {
       const { error } = await PostsDB.updateMyPost(postId, updates);
+
       if (error) {
         pushToast(error.message, "error");
         return { ok: false, error: error.message };
       }
+
       pushToast("Post updated", "success");
+
       await reloadPosts();
       await reloadMyPosts();
+
       return { ok: true };
     }
+
     setPosts((arr) =>
       arr.map((p) => (p.id === postId ? { ...p, ...updates, edited: true } : p))
     );
+
     pushToast("Post updated", "success");
+
     return { ok: true };
   };
 
   const deleteMyPost = async (postId) => {
     if (SUPA) {
       const { error } = await PostsDB.deletePost(postId);
+
       if (error) return pushToast(error.message, "error");
+
       setPosts((arr) => arr.filter((p) => p.id !== postId));
       setMyPosts((arr) => arr.filter((p) => p.id !== postId));
+
       pushToast("Post deleted", "success");
+
       return;
     }
+
     setPosts((arr) => arr.filter((p) => p.id !== postId));
     setNotifications((n) => n.filter((x) => x.post_id !== postId));
+
     pushToast("Post deleted", "success");
   };
 
@@ -576,16 +665,32 @@ export function AppProvider({ children }) {
   const verifyUser = async (profileId) => {
     if (SUPA) {
       const { error } = await ProfilesDB.adminVerifyProfile(profileId);
+
       if (error) return pushToast(error.message, "error");
+
       const verified = pendingUsers.find((p) => p.id === profileId);
+
       pushToast(`Verified ${verified?.full_name || "user"}`, "success");
+
       reloadPendingUsers();
       reloadVerifiedUsers();
+
       return;
     }
+
     const u = pendingUsers.find((x) => x.id === profileId);
+
     if (!u) return;
-    setUsers((list) => [...list, { ...u, status: "verified" }]);
+
+    setUsers((list) => [
+      ...list,
+      {
+        ...u,
+        status: "verified",
+        verification_status: "verified",
+      },
+    ]);
+
     setPendingUsers((list) => list.filter((x) => x.id !== profileId));
     pushToast(`Verified ${u.full_name}`, "success");
   };
@@ -593,11 +698,15 @@ export function AppProvider({ children }) {
   const rejectUser = async (profileId) => {
     if (SUPA) {
       const { error } = await ProfilesDB.adminRejectProfile(profileId);
+
       if (error) return pushToast(error.message, "error");
+
       pushToast("User rejected", "info");
       reloadPendingUsers();
+
       return;
     }
+
     setPendingUsers((list) => list.filter((x) => x.id !== profileId));
     pushToast("User rejected", "info");
   };
@@ -605,11 +714,15 @@ export function AppProvider({ children }) {
   const removeUser = async (profileId) => {
     if (SUPA) {
       const { error } = await ProfilesDB.adminRemoveProfile(profileId);
+
       if (error) return pushToast(error.message, "error");
+
       pushToast("Member access revoked", "info");
       reloadVerifiedUsers();
+
       return;
     }
+
     setUsers((list) => list.filter((u) => u.id !== profileId));
     pushToast("Member access revoked", "info");
   };
@@ -617,11 +730,15 @@ export function AppProvider({ children }) {
   const adminDeletePost = async (postId) => {
     if (SUPA) {
       const { error } = await PostsDB.deletePost(postId);
+
       if (error) return pushToast(error.message, "error");
+
       pushToast("Post permanently deleted", "info");
       reloadPosts();
+
       return;
     }
+
     setPosts((arr) => arr.filter((p) => p.id !== postId));
     pushToast("Post permanently deleted", "info");
   };
@@ -629,18 +746,27 @@ export function AppProvider({ children }) {
   const restoreReportedPost = async (postId) => {
     if (SUPA) {
       const { error } = await PostsDB.restoreReportedPost(postId);
+
       if (error) return pushToast(error.message, "error");
+
       pushToast("Post sent back to feed", "success");
       reloadPosts();
+
       return;
     }
+
     setPosts((arr) =>
       arr.map((p) =>
         p.id === postId
-          ? { ...p, status: "active", report_count: 0 }
+          ? {
+              ...p,
+              status: "active",
+              report_count: 0,
+            }
           : p
       )
     );
+
     pushToast("Post sent back to feed", "success");
   };
 
@@ -654,15 +780,21 @@ export function AppProvider({ children }) {
         currentUser.id,
         updates
       );
+
       if (error) return pushToast(error.message, "error");
+
       setCurrentUser(data);
       pushToast("Profile updated", "success");
+
       return;
     }
+
     setCurrentUser((u) => ({ ...u, ...updates }));
+
     setUsers((arr) =>
       arr.map((u) => (u.id === currentUser.id ? { ...u, ...updates } : u))
     );
+
     pushToast("Profile updated", "success");
   };
 
@@ -672,7 +804,9 @@ export function AppProvider({ children }) {
 
   const userNotifications = useMemo(() => {
     if (!currentUser) return [];
+
     if (SUPA) return notifications;
+
     return notifications
       .filter((n) => n.recipient_user_id === currentUser.id)
       .sort(
@@ -685,11 +819,15 @@ export function AppProvider({ children }) {
 
   const markNotificationsRead = useCallback(async () => {
     if (!currentUser) return;
+
     if (SUPA) {
       await NotificationsDB.markAllNotificationsRead(currentUser.id);
+
       setNotifications((arr) => arr.map((n) => ({ ...n, read: true })));
+
       return;
     }
+
     setNotifications((arr) =>
       arr.map((n) =>
         n.recipient_user_id === currentUser.id ? { ...n, read: true } : n
@@ -701,21 +839,22 @@ export function AppProvider({ children }) {
   // PROVIDER
   // ═════════════════════════════════════════════════════════════════════
 
-  // myPosts: in live mode this is loaded from my_posts_with_meta (preserves
-  // author_id on anonymous posts). In demo mode we just filter the main
-  // posts array since demo keeps author_id intact on anonymous posts.
   const userPosts = useMemo(() => {
     if (!currentUser) return [];
+
     if (SUPA) return myPosts;
+
     return posts.filter((p) => p.author_id === currentUser.id);
   }, [currentUser, posts, myPosts]);
 
   const value = {
-    // Mode flag for components that want to know
+    // Mode flag
     isLiveMode: SUPA,
+
     // Loading
     authLoading,
     postsLoading,
+
     // Data
     users,
     pendingUsers,
@@ -726,11 +865,14 @@ export function AppProvider({ children }) {
     myReports,
     notifications: userNotifications,
     unreadCount,
+
     // Cache loaders
     loadCommentsForPost,
+
     // Session
     currentUser,
     requireAuth,
+
     // UI
     authModal,
     setAuthModal,
@@ -743,10 +885,12 @@ export function AppProvider({ children }) {
     setSearch,
     category,
     setCategory,
+
     // Auth
     handleSignup,
     handleLogin,
     handleLogout,
+
     // Posts
     createPost,
     upvotePost,
@@ -754,14 +898,17 @@ export function AppProvider({ children }) {
     commentOnPost,
     editMyPost,
     deleteMyPost,
+
     // Admin
     verifyUser,
     rejectUser,
     removeUser,
     adminDeletePost,
     restoreReportedPost,
+
     // Profile
     updateProfile,
+
     // Notifications
     markNotificationsRead,
   };
@@ -771,7 +918,6 @@ export function AppProvider({ children }) {
 
 // ─── Helpers ────────────────────────────────────────────────────────────
 
-// Convert old seed format (upvotedBy[], comments[] inline) to new flat shape
 function normalizeSeedPosts(seedPosts) {
   return seedPosts.map((p) => ({
     ...p,

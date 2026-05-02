@@ -8,19 +8,40 @@ import { createClient } from "./client";
  * handle success and failure uniformly.
  */
 
-export async function signUp({ email, password, fullName, bio, avatarColor }) {
+export async function signUp({
+  email,
+  password,
+  fullName,
+  militaryEmail,
+  phone,
+  bio,
+  avatarColor,
+}) {
   const supabase = createClient();
+
   if (!supabase) {
-    return { data: null, error: { message: "Supabase not configured" } };
+    return {
+      data: null,
+      error: { message: "Supabase not configured" },
+    };
   }
 
+  const cleanEmail = email?.trim().toLowerCase() || "";
+  const cleanFullName = fullName?.trim() || "";
+  const cleanMilitaryEmail = militaryEmail?.trim().toLowerCase() || "";
+  const cleanPhone = phone?.trim() || "";
+  const cleanBio = bio?.trim() || "";
+
   const { data, error } = await supabase.auth.signUp({
-    email,
+    email: cleanEmail,
     password,
     options: {
       data: {
-        full_name: fullName,
-        bio: bio || "",
+        full_name: cleanFullName,
+        personal_email: cleanEmail,
+        military_email: cleanMilitaryEmail,
+        phone: cleanPhone,
+        bio: cleanBio,
         avatar_color: avatarColor || "#314A66",
       },
       emailRedirectTo:
@@ -35,12 +56,18 @@ export async function signUp({ email, password, fullName, bio, avatarColor }) {
 
 export async function signIn({ email, password }) {
   const supabase = createClient();
+
   if (!supabase) {
-    return { data: null, error: { message: "Supabase not configured" } };
+    return {
+      data: null,
+      error: { message: "Supabase not configured" },
+    };
   }
 
+  const cleanEmail = email?.trim().toLowerCase() || "";
+
   const { data, error } = await supabase.auth.signInWithPassword({
-    email,
+    email: cleanEmail,
     password,
   });
 
@@ -49,33 +76,61 @@ export async function signIn({ email, password }) {
 
 export async function signOut() {
   const supabase = createClient();
-  if (!supabase) return { error: null };
+
+  if (!supabase) {
+    return {
+      error: null,
+    };
+  }
 
   const { error } = await supabase.auth.signOut();
+
   return { error };
 }
 
 export async function getCurrentUser() {
   const supabase = createClient();
-  if (!supabase) return { user: null, profile: null };
+
+  if (!supabase) {
+    return {
+      user: null,
+      profile: null,
+      error: { message: "Supabase not configured" },
+    };
+  }
 
   const {
     data: { user },
+    error: userError,
   } = await supabase.auth.getUser();
-  if (!user) return { user: null, profile: null };
 
-  const { data: profile } = await supabase
+  if (userError || !user) {
+    return {
+      user: null,
+      profile: null,
+      error: userError,
+    };
+  }
+
+  const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("*")
     .eq("id", user.id)
-    .single();
+    .maybeSingle();
 
-  return { user, profile };
+  return {
+    user,
+    profile: profile || null,
+    error: profileError || null,
+  };
 }
 
 export function onAuthChange(callback) {
   const supabase = createClient();
-  if (!supabase) return () => {};
+
+  if (!supabase) {
+    return () => {};
+  }
 
   const {
     data: { subscription },
@@ -83,5 +138,31 @@ export function onAuthChange(callback) {
     callback(session?.user || null);
   });
 
-  return () => subscription.unsubscribe();
+  return () => subscription?.unsubscribe();
+}
+
+export async function resendSignupConfirmation(email) {
+  const supabase = createClient();
+
+  if (!supabase) {
+    return {
+      data: null,
+      error: { message: "Supabase not configured" },
+    };
+  }
+
+  const cleanEmail = email?.trim().toLowerCase() || "";
+
+  const { data, error } = await supabase.auth.resend({
+    type: "signup",
+    email: cleanEmail,
+    options: {
+      emailRedirectTo:
+        typeof window !== "undefined"
+          ? `${window.location.origin}/auth/callback`
+          : undefined,
+    },
+  });
+
+  return { data, error };
 }
