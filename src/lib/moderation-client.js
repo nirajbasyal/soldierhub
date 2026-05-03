@@ -5,6 +5,7 @@ export async function moderateAsync(text) {
     return {
       allowed: true,
       flagged: false,
+      blocked: false,
       reason: "",
     };
   }
@@ -18,27 +19,46 @@ export async function moderateAsync(text) {
       body: JSON.stringify({ text: cleaned }),
     });
 
+    const data = await response.json().catch(() => null);
+
+    // Temporary debug. Remove after moderation works.
+    console.log("Moderation response:", data);
+
     if (!response.ok) {
       return {
-        allowed: true,
-        flagged: false,
-        reason: "",
+        allowed: false,
+        flagged: true,
+        blocked: true,
+        reason: "Content safety check failed. Please try again in a moment.",
       };
     }
 
-    const data = await response.json();
+    if (!data) {
+      return {
+        allowed: false,
+        flagged: true,
+        blocked: true,
+        reason: "Content safety check failed. Please try again in a moment.",
+      };
+    }
 
     return {
-      allowed: data.allowed !== false,
+      allowed: data.allowed === true,
       flagged: Boolean(data.flagged),
-      reason: data.reason || "",
+      blocked: Boolean(data.blocked),
+      reason:
+        data.reason ||
+        "This content may violate SoldierHub community safety rules. Please revise it and try again.",
       matchedCategories: data.matchedCategories || [],
     };
-  } catch {
+  } catch (error) {
+    console.error("Moderation client error:", error);
+
     return {
-      allowed: true,
-      flagged: false,
-      reason: "",
+      allowed: false,
+      flagged: true,
+      blocked: true,
+      reason: "Content safety check failed. Please try again in a moment.",
     };
   }
 }
