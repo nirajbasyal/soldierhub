@@ -4,12 +4,12 @@ import { useState } from "react";
 import { ArrowUp, Edit3, MessageCircle, Trash2 } from "lucide-react";
 import { CATEGORIES } from "@/lib/constants";
 import { T } from "@/lib/theme";
-import { timeAgo } from "@/lib/helpers";
 import { useApp } from "@/store/AppContext";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import ExpandableText from "@/components/ui/ExpandableText";
+import ClientTimeAgo from "@/components/ui/ClientTimeAgo";
 import EditPostModal from "./EditPostModal";
 
 const PROFILE_POST_PREVIEW_LENGTH = 220;
@@ -140,7 +140,7 @@ export default function UserPostList() {
                   {p.comment_count || 0}
                 </span>
 
-                <span>{timeAgo(p.created_at)}</span>
+                <ClientTimeAgo date={p.created_at} />
 
                 {p.edited && <span>· edited</span>}
               </div>

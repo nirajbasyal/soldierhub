@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { CATEGORIES } from "@/lib/constants";
 import { T } from "@/lib/theme";
-import { colorFromString, shareOrCopy, timeAgo } from "@/lib/helpers";
+import { colorFromString, shareOrCopy } from "@/lib/helpers";
 import { moderateAsync } from "@/lib/moderation-client";
 import { useApp } from "@/store/AppContext";
 import Avatar from "@/components/ui/Avatar";
@@ -20,6 +20,7 @@ import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import IconButton from "@/components/ui/IconButton";
 import ExpandableText from "@/components/ui/ExpandableText";
+import ClientTimeAgo from "@/components/ui/ClientTimeAgo";
 
 const POST_PREVIEW_LENGTH = 240;
 const COMMENT_PREVIEW_LENGTH = 120;
@@ -126,7 +127,7 @@ export default function PostCard({ post }) {
                   </>
                 )}
 
-                <span>{timeAgo(post.created_at)}</span>
+                <ClientTimeAgo date={post.created_at} />
 
                 {post.edited && (
                   <>
@@ -243,14 +244,14 @@ export default function PostCard({ post }) {
                         className="text-xs font-semibold truncate"
                         style={{ color: T.text }}
                       >
-                        {authorName}
+                        {authorName || "Member"}
                       </span>
 
                       <span
                         className="text-[11px] shrink-0"
                         style={{ color: T.textSubtle }}
                       >
-                        {timeAgo(c.created_at)}
+                        <ClientTimeAgo date={c.created_at} />
                       </span>
                     </div>
 
