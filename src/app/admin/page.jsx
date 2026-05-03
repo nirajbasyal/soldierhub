@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Flag,
+  Link2,
   Search,
   Shield,
   UserCheck,
@@ -21,6 +22,7 @@ import ReportedPostsList from "@/components/admin/ReportedPostsList";
 import MembersList from "@/components/admin/MembersList";
 import BlockedUsersList from "@/components/admin/BlockedUsersList";
 import AdminVerifyByEmail from "@/components/admin/AdminVerifyByEmail";
+import ResourceManager from "@/components/admin/ResourceManager";
 
 export default function AdminPage() {
   const router = useRouter();
@@ -90,6 +92,12 @@ export default function AdminPage() {
       label: "Blocked",
       icon: UserX,
       count: blockedCount,
+    },
+    {
+      k: "resources",
+      label: "Resources",
+      icon: Link2,
+      count: 0,
     },
   ];
 
@@ -219,13 +227,13 @@ export default function AdminPage() {
 
             {tab === "reported" && <ReportedPostsList />}
 
-            {tab === "members" && (
-              <MembersList searchQuery={searchQuery} />
-            )}
+            {tab === "members" && <MembersList searchQuery={searchQuery} />}
 
             {tab === "blocked" && (
               <BlockedUsersList searchQuery={searchQuery} />
             )}
+
+            {tab === "resources" && <ResourceManager />}
           </div>
 
           <Footer />

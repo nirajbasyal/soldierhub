@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   ArrowUp,
   Flag,
@@ -19,6 +19,10 @@ import Avatar from "@/components/ui/Avatar";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import IconButton from "@/components/ui/IconButton";
+import ExpandableText from "@/components/ui/ExpandableText";
+
+const POST_PREVIEW_LENGTH = 240;
+const COMMENT_PREVIEW_LENGTH = 120;
 
 export default function PostCard({ post }) {
   const {
@@ -39,10 +43,13 @@ export default function PostCard({ post }) {
   const [commentError, setCommentError] = useState("");
 
   const cat = CATEGORIES.find((c) => c.key === post.category) || CATEGORIES[0];
+
   const userUpvoted = currentUser && myUpvotes.has(post.id);
   const userReported = myReports.has(post.id);
   const isReported = post.status === "reported";
+
   const displayName = post.anonymous ? "Anonymous Soldier" : post.author_name;
+
   const displayColor = post.anonymous
     ? "#5C6470"
     : post.author_color || colorFromString(post.author_name);
@@ -57,17 +64,33 @@ export default function PostCard({ post }) {
   const toggleComments = () => {
     const next = !showComments;
     setShowComments(next);
-    if (next) loadCommentsForPost(post.id);
+
+    if (next) {
+      loadCommentsForPost(post.id);
+    }
   };
 
   const submitComment = async () => {
     setCommentError("");
-    const mod = await moderateAsync(comment);
-    if (!mod.allowed) return setCommentError(mod.reason);
-    const result = await commentOnPost(post.id, comment);
-    if (result?.ok === false) {
-      return setCommentError(result.error || "Could not post comment.");
+
+    const cleanedComment = comment.trim();
+
+    if (!cleanedComment) return;
+
+    const mod = await moderateAsync(cleanedComment);
+
+    if (!mod.allowed) {
+      setCommentError(mod.reason);
+      return;
     }
+
+    const result = await commentOnPost(post.id, cleanedComment);
+
+    if (result?.ok === false) {
+      setCommentError(result.error || "Could not post comment.");
+      return;
+    }
+
     setComment("");
   };
 
@@ -81,6 +104,7 @@ export default function PostCard({ post }) {
         <div className="flex items-start justify-between gap-2 mb-3 flex-wrap">
           <div className="flex items-center gap-2.5 min-w-0 flex-1">
             <Avatar name={displayName} color={displayColor} size={36} />
+
             <div className="text-left min-w-0 flex-1">
               <div
                 className="text-sm font-semibold truncate"
@@ -88,6 +112,7 @@ export default function PostCard({ post }) {
               >
                 {displayName}
               </div>
+
               <div
                 className="text-xs flex items-center gap-1.5 flex-wrap"
                 style={{ color: T.textSubtle }}
@@ -100,7 +125,9 @@ export default function PostCard({ post }) {
                     <span>·</span>
                   </>
                 )}
+
                 <span>{timeAgo(post.created_at)}</span>
+
                 {post.edited && (
                   <>
                     <span>·</span>
@@ -110,8 +137,10 @@ export default function PostCard({ post }) {
               </div>
             </div>
           </div>
+
           <div className="flex items-center gap-1.5 flex-wrap shrink-0 justify-end">
             <Badge tone={cat.tone}>{cat.label}</Badge>
+
             {isReported && (
               <Badge tone="red" icon={ShieldAlert}>
                 Under review
@@ -127,12 +156,14 @@ export default function PostCard({ post }) {
         >
           {post.title}
         </h3>
-        <p
+
+        <ExpandableText
+          text={post.body || ""}
+          previewLength={POST_PREVIEW_LENGTH}
           className="text-[15px] leading-relaxed whitespace-pre-wrap"
           style={{ color: T.textMuted }}
-        >
-          {post.body}
-        </p>
+          buttonSize="sm"
+        />
 
         {/* Actions */}
         <div className="flex items-center gap-1 mt-4 -mx-1.5">
@@ -143,6 +174,7 @@ export default function PostCard({ post }) {
             active={userUpvoted}
             onClick={() => guard(() => upvotePost(post.id))}
           />
+
           <IconButton
             icon={MessageCircle}
             label="Comments"
@@ -150,11 +182,13 @@ export default function PostCard({ post }) {
             active={showComments}
             onClick={toggleComments}
           />
+
           <IconButton
             icon={Share2}
             label="Share"
             onClick={() => shareOrCopy(post, pushToast)}
           />
+
           <div className="ml-auto">
             <IconButton
               icon={Flag}
@@ -181,19 +215,22 @@ export default function PostCard({ post }) {
                 No comments yet. Be the first to share your thoughts.
               </div>
             )}
+
             {comments.map((c) => {
-              // Live mode returns author_name_cached / author_color_cached;
-              // demo mode uses the legacy `author` object or flat fields.
               const authorName =
                 c.author_name_cached || c.author?.full_name || c.author_name;
+
               const authorColor =
                 c.author_color_cached ||
                 c.author?.avatar_color ||
                 c.author_color;
-              const text = c.body ?? c.text;
+
+              const text = c.body ?? c.text ?? "";
+
               return (
                 <div key={c.id} className="flex gap-2.5">
                   <Avatar name={authorName} color={authorColor} size={30} />
+
                   <div
                     className="flex-1 rounded-xl px-3.5 py-2.5 border min-w-0"
                     style={{
@@ -208,6 +245,7 @@ export default function PostCard({ post }) {
                       >
                         {authorName}
                       </span>
+
                       <span
                         className="text-[11px] shrink-0"
                         style={{ color: T.textSubtle }}
@@ -215,12 +253,14 @@ export default function PostCard({ post }) {
                         {timeAgo(c.created_at)}
                       </span>
                     </div>
-                    <div
-                      className="text-sm break-words"
+
+                    <ExpandableText
+                      text={text}
+                      previewLength={COMMENT_PREVIEW_LENGTH}
+                      className="text-sm break-words whitespace-pre-wrap"
                       style={{ color: T.text }}
-                    >
-                      {text}
-                    </div>
+                      buttonSize="xs"
+                    />
                   </div>
                 </div>
               );
@@ -233,6 +273,7 @@ export default function PostCard({ post }) {
                   color={currentUser.avatar_color}
                   size={30}
                 />
+
                 <div className="flex-1 min-w-0">
                   <div className="flex gap-2 min-w-0">
                     <input
@@ -241,9 +282,11 @@ export default function PostCard({ post }) {
                         setComment(e.target.value);
                         setCommentError("");
                       }}
-                      onKeyDown={(e) =>
-                        e.key === "Enter" && comment.trim() && submitComment()
-                      }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && comment.trim()) {
+                          submitComment();
+                        }
+                      }}
                       placeholder="Write a thoughtful reply…"
                       className="flex-1 min-w-0 h-10 px-3.5 rounded-xl border text-sm outline-none"
                       style={{
@@ -252,6 +295,7 @@ export default function PostCard({ post }) {
                         color: T.text,
                       }}
                     />
+
                     <Button
                       variant="primary"
                       size="md"
@@ -263,8 +307,12 @@ export default function PostCard({ post }) {
                       Reply
                     </Button>
                   </div>
+
                   {commentError && (
-                    <div className="text-xs mt-1.5" style={{ color: T.red }}>
+                    <div
+                      className="text-xs mt-1.5"
+                      style={{ color: T.danger || T.red || "#B42318" }}
+                    >
                       {commentError}
                     </div>
                   )}
@@ -272,6 +320,7 @@ export default function PostCard({ post }) {
               </div>
             ) : (
               <button
+                type="button"
                 onClick={() => guard(() => {})}
                 className="text-xs text-center w-full py-2 rounded-lg border"
                 style={{
