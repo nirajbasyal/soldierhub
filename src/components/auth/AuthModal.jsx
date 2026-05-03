@@ -389,7 +389,7 @@ export default function AuthModal() {
           {tab === "signup" && (
             <>
               <EmailField
-                label="Military email optional"
+                label="Military email (optional)"
                 value={militaryEmail}
                 onChange={(e) => setMilitaryEmail(e.target.value)}
                 placeholder="first.last.mil@army.mil"
@@ -398,7 +398,7 @@ export default function AuthModal() {
               />
 
               <PhoneField
-                label="Phone number optional"
+                label="Phone number (optional)"
                 value={phone}
                 onChange={(e) => {
                   const numbersOnly = e.target.value.replace(/\D/g, "");
