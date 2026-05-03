@@ -92,8 +92,7 @@ export default function PostComposer() {
   const submit = async () => {
     setError("");
     if (!title.trim()) return setError("Add a title for your post.");
-    const mod = await moderateAsync(`${title} ${body}`);
-    if (!mod.allowed) return setError(mod.reason);
+const mod = await moderateAsync(`${title.trim()}\n\n${body.trim()}`);    if (!mod.allowed) return setError(mod.reason);
 
     setSubmitting(true);
     const result = await createPost({

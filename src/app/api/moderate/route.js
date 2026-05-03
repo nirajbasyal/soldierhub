@@ -1,64 +1,116 @@
-import { moderateContent } from "@/lib/moderation";
+import OpenAI from "openai";
+import { NextResponse } from "next/server";
 
-/**
- * POST /api/moderate
- * Body: { text: string }
- * Response: { allowed: boolean, reason?: string }
- *
- * Behavior:
- *   - Always runs the local rule-based filter (catches obvious cases fast).
- *   - If MODERATION_API_KEY is set, also calls OpenAI Moderation for nuanced
- *     content. Either filter rejecting blocks the post.
- *
- * To disable AI moderation: leave MODERATION_API_KEY blank.
- */
-export async function POST(request) {
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+const BLOCKED_CATEGORIES = [
+  "hate",
+  "hate/threatening",
+  "harassment/threatening",
+  "self-harm",
+  "self-harm/intent",
+  "self-harm/instructions",
+  "sexual/minors",
+  "violence/graphic",
+  "illicit",
+  "illicit/violent",
+];
+
+export async function POST(req) {
   try {
-    const { text } = await request.json();
-    if (typeof text !== "string") {
-      return Response.json(
-        { allowed: false, reason: "Invalid request body." },
-        { status: 400 }
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json(
+        {
+          allowed: true,
+          flagged: false,
+          reason: "Moderation is not configured.",
+        },
+        { status: 200 }
       );
     }
 
-    // ─── Local rule-based filter ──────────────────────────────────────
-    const local = moderateContent(text);
-    if (!local.allowed) return Response.json(local);
+    const body = await req.json();
+    const text = String(body?.text || "").trim();
 
-    // ─── Optional: OpenAI moderation ──────────────────────────────────
-    const apiKey = process.env.MODERATION_API_KEY;
-    if (apiKey) {
-      try {
-        const r = await fetch("https://api.openai.com/v1/moderations", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({ input: text, model: "omni-moderation-latest" }),
-          signal: AbortSignal.timeout(5000),
-        });
-        if (r.ok) {
-          const data = await r.json();
-          if (data?.results?.[0]?.flagged) {
-            return Response.json({
-              allowed: false,
-              reason: "Content flagged by automated moderation. Please rephrase.",
-            });
-          }
-        }
-        // If OpenAI errors, we already passed the local filter — let it through
-      } catch {
-        // Network/timeout — fail open (local filter already passed)
-      }
+    if (!text) {
+      return NextResponse.json({
+        allowed: true,
+        flagged: false,
+        reason: "",
+      });
     }
 
-    return Response.json({ allowed: true });
-  } catch (e) {
-    return Response.json(
-      { allowed: false, reason: "Moderation service error." },
-      { status: 500 }
+    if (text.length > 8000) {
+      return NextResponse.json(
+        {
+          allowed: false,
+          flagged: true,
+          reason: "Post is too long. Please shorten it and try again.",
+        },
+        { status: 200 }
+      );
+    }
+
+    const moderation = await openai.moderations.create({
+      model: "omni-moderation-latest",
+      input: text,
+    });
+
+    const result = moderation.results?.[0];
+
+    if (!result) {
+      return NextResponse.json({
+        allowed: true,
+        flagged: false,
+        reason: "",
+      });
+    }
+
+    const categories = result.categories || {};
+    const scores = result.category_scores || {};
+
+    const matchedCategories = Object.entries(categories)
+      .filter(([category, flagged]) => {
+        if (!flagged) return false;
+        return BLOCKED_CATEGORIES.includes(category);
+      })
+      .map(([category]) => category);
+
+    const highestScoreCategory = Object.entries(scores).sort(
+      (a, b) => b[1] - a[1]
+    )[0];
+
+    const blocked = matchedCategories.length > 0;
+
+    return NextResponse.json({
+      allowed: !blocked,
+      flagged: result.flagged,
+      blocked,
+      categories,
+      scores,
+      matchedCategories,
+      highestScoreCategory: highestScoreCategory
+        ? {
+            category: highestScoreCategory[0],
+            score: highestScoreCategory[1],
+          }
+        : null,
+      reason: blocked
+        ? "This content may violate SoldierHub community safety rules. Please revise it and try again."
+        : "",
+    });
+  } catch (error) {
+    console.error("Moderation error:", error);
+
+    return NextResponse.json(
+      {
+        allowed: true,
+        flagged: false,
+        reason: "Moderation temporarily unavailable.",
+      },
+      { status: 200 }
     );
   }
 }
