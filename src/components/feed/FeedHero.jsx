@@ -4,7 +4,9 @@ import { MapPin, ShieldCheck, TrendingUp } from "lucide-react";
 import { T } from "@/lib/theme";
 import Badge from "@/components/ui/Badge";
 
-export default function FeedHero({ currentUser, postCount }) {
+export default function FeedHero({ currentUser, postCount = 0 }) {
+  const firstName = currentUser?.full_name?.split(" ")?.[0] || "there";
+
   return (
     <div
       className="rounded-2xl border p-6 md:p-9 mb-5 relative overflow-hidden"
@@ -30,10 +32,18 @@ export default function FeedHero({ currentUser, postCount }) {
       </svg>
 
       <div className="relative">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-4"
-             style={{ backgroundColor: "rgba(176,125,44,0.18)", border: `1px solid ${T.gold}` }}>
+        <div
+          className="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-4"
+          style={{
+            backgroundColor: "rgba(176,125,44,0.18)",
+            border: `1px solid ${T.gold}`,
+          }}
+        >
           <MapPin size={12} style={{ color: T.goldSoft }} />
-          <span className="text-xs font-medium tracking-wider uppercase" style={{ color: T.goldSoft }}>
+          <span
+            className="text-xs font-medium tracking-wider uppercase"
+            style={{ color: T.goldSoft }}
+          >
             Fort Bliss · El Paso, TX
           </span>
         </div>
@@ -43,7 +53,7 @@ export default function FeedHero({ currentUser, postCount }) {
           style={{ color: "#fff" }}
         >
           {currentUser ? (
-            <>Welcome back, {currentUser.full_name?.split(" ")[0]}.</>
+            <>Welcome back, {firstName}.</>
           ) : (
             <>The Fort Bliss community help platform.</>
           )}
@@ -68,6 +78,7 @@ export default function FeedHero({ currentUser, postCount }) {
           <Badge tone="amber" icon={TrendingUp}>
             {postCount} active discussions
           </Badge>
+
           <Badge tone="green" icon={ShieldCheck}>
             Verified members only
           </Badge>

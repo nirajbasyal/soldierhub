@@ -13,7 +13,7 @@ import CategoryStrip from "@/components/feed/CategoryStrip";
 import PostCard from "@/components/feed/PostCard";
 import PostSkeleton from "@/components/ui/PostSkeleton";
 import EmptyState from "@/components/ui/EmptyState";
-import WeatherCard from "@/components/tools/WeatherCard";
+import MobileWeatherStrip from "@/components/tools/MobileWeatherStrip";
 import BAHCard from "@/components/tools/BAHCard";
 import GateHoursCard from "@/components/tools/GateHoursCard";
 
@@ -30,19 +30,25 @@ export default function HomePage() {
   // Counts per category for the filter chips
   const counts = useMemo(() => {
     const c = { All: posts.length };
+
     CATEGORIES.forEach((cat) => {
-      if (cat.key !== "All")
+      if (cat.key !== "All") {
         c[cat.key] = posts.filter((p) => p.category === cat.key).length;
+      }
     });
+
     return c;
   }, [posts]);
 
   // Filter by category + free-text search
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
+
     return posts.filter((p) => {
       if (category !== "All" && p.category !== category) return false;
+
       if (!q) return true;
+
       return (
         p.title.toLowerCase().includes(q) ||
         (p.body || "").toLowerCase().includes(q) ||
@@ -57,7 +63,13 @@ export default function HomePage() {
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
           {/* Main column */}
           <div className="flex flex-col gap-4 min-w-0">
+            {/* Mobile only: weather strip above FeedHero */}
+            <div className="block lg:hidden">
+              <MobileWeatherStrip />
+            </div>
+
             <FeedHero currentUser={currentUser} postCount={posts.length} />
+
             <PostComposer />
 
             <div
@@ -103,7 +115,7 @@ export default function HomePage() {
 
           {/* Desktop sidebar */}
           <aside className="hidden lg:flex flex-col gap-4 sticky top-6 self-start">
-            <WeatherCard />
+            <MobileWeatherStrip />
             <BAHCard />
             <GateHoursCard />
           </aside>
