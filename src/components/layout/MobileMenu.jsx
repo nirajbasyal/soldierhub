@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   Bell,
@@ -19,7 +20,6 @@ import { useApp } from "@/store/AppContext";
 import Avatar from "@/components/ui/Avatar";
 import Button from "@/components/ui/Button";
 import MenuItem from "@/components/ui/MenuItem";
-import MobileWeatherStrip from "@/components/tools/MobileWeatherStrip";
 
 export default function MobileMenu() {
   const router = useRouter();
@@ -35,18 +35,27 @@ export default function MobileMenu() {
   if (!mobileMenu) return null;
 
   const close = () => setMobileMenu(false);
+
   const go = (path) => {
     close();
     router.push(path);
   };
 
   const goProfile = () => {
-    if (!currentUser) return (close(), setAuthModal("login"));
+    if (!currentUser) {
+      close();
+      setAuthModal("login");
+      return;
+    }
+
     if (currentUser.status !== "verified") {
       return go(
-        `/pending-review?email=${encodeURIComponent(currentUser.email)}&name=${encodeURIComponent(currentUser.full_name)}&found=1`,
+        `/pending-review?email=${encodeURIComponent(
+          currentUser.email
+        )}&name=${encodeURIComponent(currentUser.full_name)}&found=1`
       );
     }
+
     go("/profile");
   };
 
@@ -69,21 +78,31 @@ export default function MobileMenu() {
           className="sticky top-0 px-5 py-4 flex items-center justify-between border-b z-10"
           style={{ backgroundColor: T.bg, borderColor: T.border }}
         >
-          <div>
-            <div
-              className="text-xs font-medium tracking-wider uppercase"
-              style={{ color: T.gold }}
-            >
-              Soldier Hub
-            </div>
-            <div
-              className="text-lg leading-none mt-0.5 font-serif"
-              style={{ color: T.navy }}
-            >
-              Menu
+          <div className="flex items-center gap-3">
+            <Image
+              src="/brand/soldierhub-icon.png"
+              alt="SoldierHub"
+              width={42}
+              height={42}
+              priority
+              className="h-10 w-10 object-contain"
+            />
+
+            <div>
+              <div
+                className="text-sm font-semibold leading-none"
+                style={{ color: T.navy }}
+              >
+                SoldierHub
+              </div>
+              <div className="text-xs mt-1" style={{ color: T.textSubtle }}>
+                Menu
+              </div>
             </div>
           </div>
+
           <button
+            type="button"
             onClick={close}
             className="w-9 h-9 rounded-lg flex items-center justify-center"
             style={{
@@ -111,6 +130,7 @@ export default function MobileMenu() {
               >
                 Sign in
               </Button>
+
               <Button
                 variant="secondary"
                 size="lg"
@@ -125,6 +145,7 @@ export default function MobileMenu() {
             </div>
           ) : (
             <button
+              type="button"
               onClick={goProfile}
               className="rounded-xl border p-3.5 flex items-center gap-3 text-left transition-shadow hover:shadow-sm"
               style={{ backgroundColor: T.card, borderColor: T.border }}
@@ -134,6 +155,7 @@ export default function MobileMenu() {
                 color={currentUser.avatar_color}
                 size={42}
               />
+
               <div className="flex-1 min-w-0">
                 <div
                   className="text-sm font-semibold truncate"
@@ -148,6 +170,7 @@ export default function MobileMenu() {
                   {currentUser.email}
                 </div>
               </div>
+
               <ChevronRight
                 size={16}
                 style={{ color: T.textSubtle }}
@@ -164,6 +187,7 @@ export default function MobileMenu() {
               >
                 Account
               </div>
+
               <div className="flex flex-col gap-2">
                 <MenuItem
                   icon={Bell}
@@ -173,12 +197,14 @@ export default function MobileMenu() {
                   }
                   onClick={() => go("/notifications")}
                 />
+
                 <MenuItem
                   icon={User}
                   label="Profile"
                   hint="Edit your info and posts"
                   onClick={goProfile}
                 />
+
                 {currentUser.role === "admin" && (
                   <MenuItem
                     icon={Shield}
@@ -198,6 +224,7 @@ export default function MobileMenu() {
             >
               Fort Bliss
             </div>
+
             <div className="flex flex-col gap-2">
               <MenuItem
                 icon={BookMarked}
@@ -215,6 +242,7 @@ export default function MobileMenu() {
             >
               Base Info
             </div>
+
             <div className="flex flex-col gap-2">
               <MenuItem
                 icon={Calculator}
@@ -222,6 +250,7 @@ export default function MobileMenu() {
                 hint="Calculate housing allowance"
                 onClick={() => go("/tools/bah")}
               />
+
               <MenuItem
                 icon={Compass}
                 label="Gate Hours"

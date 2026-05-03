@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -8,7 +9,6 @@ import {
   Menu,
   Search,
   Shield,
-  Sparkles,
   UserPlus,
 } from "lucide-react";
 import { T } from "@/lib/theme";
@@ -29,11 +29,15 @@ export default function TopNav() {
 
   const goProfile = () => {
     if (!currentUser) return setAuthModal("login");
+
     if (currentUser.status !== "verified") {
       return router.push(
-        `/pending-review?email=${encodeURIComponent(currentUser.email)}&name=${encodeURIComponent(currentUser.full_name)}&found=1`
+        `/pending-review?email=${encodeURIComponent(
+          currentUser.email
+        )}&name=${encodeURIComponent(currentUser.full_name)}&found=1`
       );
     }
+
     router.push("/profile");
   };
 
@@ -43,30 +47,32 @@ export default function TopNav() {
   };
 
   return (
-    <div className="border-b" style={{ borderColor: T.border, backgroundColor: T.bg }}>
+    <div
+      className="border-b"
+      style={{ borderColor: T.border, backgroundColor: T.bg }}
+    >
       <div className="max-w-6xl mx-auto px-4 md:px-6 h-16 flex items-center gap-3 md:gap-5">
         {/* Brand */}
-        <Link href="/" className="flex items-center gap-2.5 shrink-0">
-          <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center"
-            style={{ backgroundColor: T.navy }}
-          >
-            <Sparkles size={16} color={T.gold} strokeWidth={2.25} />
-          </div>
-          <div>
-            <div
-              className="text-xs font-medium tracking-wider uppercase leading-none"
-              style={{ color: T.gold }}
-            >
-              Soldier
-            </div>
-            <div
-              className="text-lg leading-none mt-0.5 font-serif"
-              style={{ color: T.navy }}
-            >
-              Hub
-            </div>
-          </div>
+        <Link href="/" className="flex items-center gap-2 shrink-0">
+          {/* Mobile: icon only */}
+          <Image
+            src="/brand/soldierhub-icon.png"
+            alt="SoldierHub"
+            width={40}
+            height={40}
+            priority
+            className="h-10 w-10 object-contain sm:hidden"
+          />
+
+          {/* Tablet/Desktop: full transparent logo */}
+          <Image
+            src="/brand/soldierhub-logo.png"
+            alt="SoldierHub"
+            width={220}
+            height={64}
+            priority
+            className="hidden sm:block h-11 w-auto object-contain"
+          />
         </Link>
 
         {/* Desktop search */}
@@ -109,6 +115,7 @@ export default function TopNav() {
           {currentUser ? (
             <>
               <button
+                type="button"
                 onClick={goNotifications}
                 className="relative w-10 h-10 rounded-xl border flex items-center justify-center transition-colors"
                 style={{
@@ -127,6 +134,7 @@ export default function TopNav() {
                   </span>
                 )}
               </button>
+
               {currentUser.role === "admin" && (
                 <Button
                   variant="secondary"
@@ -137,7 +145,9 @@ export default function TopNav() {
                   Admin
                 </Button>
               )}
+
               <button
+                type="button"
                 onClick={goProfile}
                 className="rounded-xl border p-1 pr-3 flex items-center gap-2 hover:shadow-sm transition-shadow"
                 style={{ borderColor: T.border, backgroundColor: T.card }}
@@ -170,6 +180,7 @@ export default function TopNav() {
 
         {/* Mobile menu toggle */}
         <button
+          type="button"
           onClick={() => setMobileMenu(true)}
           className="md:hidden w-10 h-10 rounded-xl border flex items-center justify-center"
           style={{
