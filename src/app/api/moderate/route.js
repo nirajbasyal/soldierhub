@@ -4,10 +4,6 @@ import { NextResponse } from "next/server";
 const SAFETY_MESSAGE =
   "This content may violate SoldierHub community safety rules. Please revise it and try again.";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 const BLOCKED_CATEGORIES = [
   "hate",
   "hate/threatening",
@@ -39,6 +35,9 @@ const THREAT_KEYWORDS = [
   "beat u",
   "stab you",
   "stab u",
+  "bomb threat",
+  "terrorist attack",
+  "kill yourself",
 ];
 
 export async function POST(req) {
@@ -81,16 +80,23 @@ export async function POST(req) {
       });
     }
 
+    // If OpenAI key is missing, do not block normal posts.
+    // Local threat phrases above still block dangerous text.
     if (!process.env.OPENAI_API_KEY) {
+      console.warn("OPENAI_API_KEY is missing. Using local moderation only.");
+
       return NextResponse.json({
-        allowed: false,
-        flagged: true,
-        blocked: true,
-        blockedBy: "missing_openai_key",
-        reason:
-          "Content safety check is not configured. Please contact SoldierHub support.",
+        allowed: true,
+        flagged: false,
+        blocked: false,
+        blockedBy: "local_only_missing_openai_key",
+        reason: "",
       });
     }
+
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
 
     const moderation = await openai.moderations.create({
       model: "omni-moderation-latest",
@@ -100,12 +106,13 @@ export async function POST(req) {
     const result = moderation.results?.[0];
 
     if (!result) {
+      console.warn("No moderation result returned. Allowing normal post.");
+
       return NextResponse.json({
-        allowed: false,
-        flagged: true,
-        blocked: true,
-        blockedBy: "no_moderation_result",
-        reason: "Content safety check failed. Please try again.",
+        allowed: true,
+        flagged: false,
+        blocked: false,
+        reason: "",
       });
     }
 
@@ -118,10 +125,7 @@ export async function POST(req) {
       })
       .map(([category]) => category);
 
-    const blockedByCategory = matchedCategories.length > 0;
-
-    // Extra safety: if OpenAI flags it at all, block it.
-    const blocked = Boolean(result.flagged) || blockedByCategory;
+    const blocked = Boolean(result.flagged) || matchedCategories.length > 0;
 
     return NextResponse.json({
       allowed: !blocked,
@@ -134,15 +138,17 @@ export async function POST(req) {
       reason: blocked ? SAFETY_MESSAGE : "",
     });
   } catch (error) {
-    console.error("Moderation error:", error);
+    console.error("Moderation route error:", error);
 
+    // Do not block every normal post if OpenAI temporarily fails.
+    // Local threat phrases already ran before this.
     return NextResponse.json(
       {
-        allowed: false,
-        flagged: true,
-        blocked: true,
-        blockedBy: "moderation_error",
-        reason: "Content safety check failed. Please try again in a moment.",
+        allowed: true,
+        flagged: false,
+        blocked: false,
+        blockedBy: "moderation_error_allowed_local_only",
+        reason: "",
       },
       { status: 200 }
     );
