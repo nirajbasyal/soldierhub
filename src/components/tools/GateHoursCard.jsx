@@ -1,51 +1,231 @@
 "use client";
-import { Compass } from "lucide-react";
-import { GATES } from "@/lib/constants";
+
+import { useEffect, useMemo, useState } from "react";
+import { Clock3, DoorOpen, Info, MapPin } from "lucide-react";
 import { T } from "@/lib/theme";
 
-function gateStatus(hours) {
-  if (hours === "24/7") return { label: "24/7", bg: T.greenBg, color: T.green };
-  if (hours === "Closed") return { label: "Closed", bg: T.redBg, color: T.red };
-  return { label: "Limited", bg: T.goldBg, color: T.gold };
+const GATES = [
+  {
+    name: "MSG Pena Gate",
+    label: "Main Gate",
+    hours: "24/7",
+    type: "always",
+    note: "Primary access gate.",
+  },
+  {
+    name: "Buffalo Soldier Gate",
+    label: "Visitor Center",
+    hours: "24/7",
+    type: "always",
+    note: "Gate passes and visitor access can go here.",
+  },
+  {
+    name: "Cassidy Gate",
+    label: "Access Gate",
+    hours: "24/7",
+    type: "always",
+    note: "Open daily.",
+  },
+  {
+    name: "Constitution Gate",
+    label: "Access Gate",
+    hours: "24/7",
+    type: "always",
+    note: "Open daily.",
+  },
+  {
+    name: "Old Ironsides Gate",
+    label: "Weekday Gate",
+    hours: "Mon–Fri · 5 AM–9 PM",
+    type: "weekday-limited",
+    note: "Closed Saturday, Sunday, and national holidays.",
+  },
+];
+
+function getElPasoParts(date) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Denver",
+    weekday: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+
+  const get = (type) => parts.find((part) => part.type === type)?.value;
+
+  return {
+    weekday: get("weekday"),
+    hour: Number(get("hour") || 0),
+    minute: Number(get("minute") || 0),
+  };
+}
+
+function formatElPasoTime(date) {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Denver",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function getGateStatus(gate, now) {
+  if (gate.type === "always") {
+    return {
+      open: true,
+      text: "Open 24/7",
+    };
+  }
+
+  const weekday = now.weekday;
+  const minutes = now.hour * 60 + now.minute;
+
+  const isWeekday = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"].includes(
+    weekday
+  );
+
+  const opensAt = 5 * 60;
+  const closesAt = 21 * 60;
+
+  const isOpen = isWeekday && minutes >= opensAt && minutes < closesAt;
+
+  return {
+    open: isOpen,
+    text: isOpen ? "Open now" : "Closed now",
+  };
+}
+
+function GateRow({ gate, status }) {
+  return (
+    <div
+      className="rounded-xl border px-3 py-3"
+      style={{
+        backgroundColor: "#FFFFFF",
+        borderColor: T.border,
+      }}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <div
+              className="h-2.5 w-2.5 rounded-full shrink-0"
+              style={{
+                backgroundColor: status.open ? "#207245" : "#B42318",
+              }}
+            />
+
+            <div
+              className="text-sm font-semibold leading-snug"
+              style={{ color: T.navy }}
+            >
+              {gate.name}
+            </div>
+          </div>
+
+          <div className="mt-1 text-xs" style={{ color: T.textSubtle }}>
+            {gate.label}
+          </div>
+
+          <div className="mt-2 text-xs leading-relaxed" style={{ color: T.textMuted }}>
+            {gate.note}
+          </div>
+        </div>
+
+        <div className="text-right shrink-0">
+          <div
+            className="rounded-full px-2.5 py-1 text-[11px] font-semibold"
+            style={{
+              backgroundColor: status.open ? "#F0F7F2" : "#FFF1F0",
+              color: status.open ? "#207245" : "#B42318",
+            }}
+          >
+            {status.text}
+          </div>
+
+          <div className="mt-1 text-[11px]" style={{ color: T.textSubtle }}>
+            {gate.hours}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function GateHoursCard() {
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60 * 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const elPasoNow = useMemo(() => getElPasoParts(now), [now]);
+  const localTime = useMemo(() => formatElPasoTime(now), [now]);
+
   return (
-    <div className="rounded-2xl border" style={{ backgroundColor: T.card, borderColor: T.border }}>
-      <div className="px-5 pt-5 pb-3 flex items-center justify-between">
-        <div>
-          <div className="text-xs font-medium uppercase tracking-wider" style={{ color: T.textSubtle }}>
-            Gate Hours
-          </div>
-          <div className="text-sm font-semibold" style={{ color: T.text }}>Fort Bliss</div>
+    <div
+      className="rounded-2xl border p-4"
+      style={{
+        backgroundColor: T.card,
+        borderColor: T.border,
+      }}
+    >
+      <div className="flex items-start gap-3">
+        <div
+          className="h-11 w-11 rounded-full flex items-center justify-center shrink-0"
+          style={{ backgroundColor: T.goldBg }}
+        >
+          <DoorOpen size={20} style={{ color: T.gold }} strokeWidth={2.2} />
         </div>
-        <Compass size={18} style={{ color: T.gold }} />
+
+        <div className="min-w-0 flex-1">
+          <h3
+            className="text-lg font-semibold leading-none"
+            style={{ color: T.navy }}
+          >
+            Gate Hours
+          </h3>
+
+          <div
+            className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs"
+            style={{ color: T.textSubtle }}
+          >
+            <span className="inline-flex items-center gap-1">
+              <MapPin size={12} />
+              Fort Bliss
+            </span>
+
+            <span>•</span>
+
+            <span className="inline-flex items-center gap-1">
+              <Clock3 size={12} />
+              {localTime}
+            </span>
+          </div>
+        </div>
       </div>
 
-      <div className="border-t" style={{ borderColor: T.borderSoft }}>
-        {GATES.map((g, i) => {
-          const status = gateStatus(g.hours);
-          return (
-            <div
-              key={g.name}
-              className="px-5 py-3 flex items-start justify-between gap-3"
-              style={{ borderTop: i === 0 ? "none" : `1px solid ${T.borderSoft}` }}
-            >
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium" style={{ color: T.text }}>{g.name}</div>
-                <div className="text-xs mt-0.5 leading-relaxed" style={{ color: T.textMuted }}>
-                  {g.hours}
-                </div>
-              </div>
-              <span
-                className="text-[10px] font-medium px-1.5 py-0.5 rounded-full uppercase tracking-wider whitespace-nowrap"
-                style={{ backgroundColor: status.bg, color: status.color }}
-              >
-                {status.label}
-              </span>
-            </div>
-          );
-        })}
+      <div className="mt-4 flex flex-col gap-2.5">
+        {GATES.map((gate) => (
+          <GateRow
+            key={gate.name}
+            gate={gate}
+            status={getGateStatus(gate, elPasoNow)}
+          />
+        ))}
+      </div>
+
+      <div
+        className="mt-3 flex items-start gap-2 rounded-xl px-3 py-2 text-xs leading-relaxed"
+        style={{
+          backgroundColor: "#F6F7F9",
+          color: T.textMuted,
+        }}
+      >
+        <Info size={14} className="mt-0.5 shrink-0" />
+        <span>
+          Gate hours can change for holidays, training events, or security
+          conditions. Confirm with official Fort Bliss channels before travel.
+        </span>
       </div>
     </div>
   );

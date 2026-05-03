@@ -1,0 +1,40 @@
+{
+  "year": 2026,
+  "locations": {
+    "fort-bliss-tx": {
+      "label": "Fort Bliss",
+      "city": "El Paso, TX",
+      "zip": "79916",
+      "mha": "Fort Bliss / El Paso",
+      "rates": {
+        "E-1": { "with": 1665, "without": 1302 },
+        "E-2": { "with": 1665, "without": 1302 },
+        "E-3": { "with": 1665, "without": 1302 },
+        "E-4": { "with": 1665, "without": 1302 },
+        "E-5": { "with": 1809, "without": 1437 },
+        "E-6": { "with": 2148, "without": 1611 },
+        "E-7": { "with": 2172, "without": 1668 },
+        "E-8": { "with": 2187, "without": 1881 },
+        "E-9": { "with": 2241, "without": 1977 },
+
+        "W-1": { "with": 2169, "without": 1626 },
+        "W-2": { "with": 2178, "without": 1878 },
+        "W-3": { "with": 2205, "without": 1992 },
+        "W-4": { "with": 2256, "without": 2148 },
+        "W-5": { "with": 2334, "without": 2169 },
+
+        "O-1": { "with": 1857, "without": 1518 },
+        "O-2": { "with": 2145, "without": 1764 },
+        "O-3": { "with": 2202, "without": 2022 },
+        "O-4": { "with": 2352, "without": 2157 },
+        "O-5": { "with": 2466, "without": 2172 },
+        "O-6": { "with": 2484, "without": 2178 },
+        "O-7": { "with": 2496, "without": 2214 },
+
+        "O-1E": { "with": 2175, "without": 1806 },
+        "O-2E": { "with": 2196, "without": 1956 },
+        "O-3E": { "with": 2268, "without": 2142 }
+      }
+    }
+  }
+}
