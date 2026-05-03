@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CloudSun, Clock3, MapPin, Shirt } from "lucide-react";
 import { T } from "@/lib/theme";
 
-const WEATHER_CACHE_KEY = "soldierhub_fort_bliss_weather_v3";
+const WEATHER_CACHE_KEY = "soldierhub_fort_bliss_weather_v4";
 const WEATHER_CACHE_MAX_AGE = 1 * 60 * 1000; // 1 minute
 
 function formatElPasoTime(date) {
@@ -61,16 +61,16 @@ function saveWeatherToCache(data) {
   }
 }
 
-function getUpdatedLabel(weather) {
-  const updatedAt = weather?.updatedAt;
+function getCheckedLabel(weather) {
+  const checkedAt = weather?.checkedAt;
 
-  if (!updatedAt) return "Updating now";
+  if (!checkedAt) return "Checking now";
 
-  const updatedTime = new Date(updatedAt).getTime();
+  const checkedTime = new Date(checkedAt).getTime();
 
-  if (!Number.isFinite(updatedTime)) return "Updating now";
+  if (!Number.isFinite(checkedTime)) return "Checking now";
 
-  const diffMs = Date.now() - updatedTime;
+  const diffMs = Date.now() - checkedTime;
   const diffSeconds = Math.max(0, Math.floor(diffMs / 1000));
   const diffMinutes = Math.floor(diffSeconds / 60);
 
@@ -91,7 +91,7 @@ export default function MobileWeatherStrip() {
 
     updateTime();
 
-    const timer = setInterval(updateTime, 60 * 1000);
+    const timer = setInterval(updateTime, 30 * 1000);
 
     return () => clearInterval(timer);
   }, []);
@@ -121,10 +121,17 @@ export default function MobileWeatherStrip() {
 
         const data = await res.json();
 
+        const weatherWithMeta = {
+          ...data,
+          checkedAt: new Date().toISOString(),
+          sourceName: "NWS",
+          sourceLabel: "Weather.gov",
+        };
+
         if (alive) {
-          setWeather(data);
+          setWeather(weatherWithMeta);
           setStatus("ready");
-          saveWeatherToCache(data);
+          saveWeatherToCache(weatherWithMeta);
         }
       } catch {
         if (alive) {
@@ -138,12 +145,17 @@ export default function MobileWeatherStrip() {
     const cached = getCachedWeather();
 
     if (cached?.data) {
-      setWeather(cached.data);
+      const cachedWeatherWithMeta = {
+        ...cached.data,
+        checkedAt: cached.data.checkedAt || new Date(cached.savedAt).toISOString(),
+        sourceName: cached.data.sourceName || "NWS",
+        sourceLabel: cached.data.sourceLabel || "Weather.gov",
+      };
+
+      setWeather(cachedWeatherWithMeta);
       setStatus("ready");
 
-      // Important:
-      // Show saved weather instantly, but always refresh silently right away
-      // so all devices quickly match the same SoldierHub API value.
+      // Show saved weather instantly, then refresh silently right away.
       loadWeather({ silent: true });
     } else {
       loadWeather();
@@ -161,7 +173,7 @@ export default function MobileWeatherStrip() {
 
   const time = useMemo(() => formatElPasoTime(now), [now]);
   const date = useMemo(() => formatElPasoDate(now), [now]);
-  const updatedLabel = useMemo(() => getUpdatedLabel(weather), [weather, now]);
+  const checkedLabel = useMemo(() => getCheckedLabel(weather), [weather, now]);
 
   const tempText =
     typeof weather?.tempF === "number"
@@ -238,8 +250,14 @@ export default function MobileWeatherStrip() {
 
           <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
             <span style={{ color: T.textSubtle }}>{date}</span>
+
             <span style={{ color: T.textSubtle }}>•</span>
-            <span style={{ color: T.textMuted }}>{updatedLabel}</span>
+
+            <span style={{ color: T.textMuted }}>{checkedLabel}</span>
+
+            <span style={{ color: T.textSubtle }}>•</span>
+
+            <span style={{ color: T.textMuted }}>Weather by National Weather Service</span>
           </div>
         </div>
       </div>
