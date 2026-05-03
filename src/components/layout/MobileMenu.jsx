@@ -44,7 +44,7 @@ export default function MobileMenu() {
     if (!currentUser) return (close(), setAuthModal("login"));
     if (currentUser.status !== "verified") {
       return go(
-        `/pending-review?email=${encodeURIComponent(currentUser.email)}&name=${encodeURIComponent(currentUser.full_name)}&found=1`
+        `/pending-review?email=${encodeURIComponent(currentUser.email)}&name=${encodeURIComponent(currentUser.full_name)}&found=1`,
       );
     }
     go("/profile");
@@ -54,7 +54,10 @@ export default function MobileMenu() {
     <div
       className="fixed inset-0 z-[90] md:hidden"
       onClick={close}
-      style={{ backgroundColor: "rgba(11,28,44,0.45)", backdropFilter: "blur(4px)" }}
+      style={{
+        backgroundColor: "rgba(11,28,44,0.45)",
+        backdropFilter: "blur(4px)",
+      }}
     >
       <div
         className="absolute right-0 top-0 bottom-0 w-[88%] max-w-sm overflow-y-auto"
@@ -138,7 +141,10 @@ export default function MobileMenu() {
                 >
                   {currentUser.full_name}
                 </div>
-                <div className="text-xs truncate" style={{ color: T.textSubtle }}>
+                <div
+                  className="text-xs truncate"
+                  style={{ color: T.textSubtle }}
+                >
                   {currentUser.email}
                 </div>
               </div>
@@ -162,7 +168,9 @@ export default function MobileMenu() {
                 <MenuItem
                   icon={Bell}
                   label="Notifications"
-                  hint={unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}
+                  hint={
+                    unreadCount > 0 ? `${unreadCount} unread` : "All caught up"
+                  }
                   onClick={() => go("/notifications")}
                 />
                 <MenuItem
@@ -205,9 +213,8 @@ export default function MobileMenu() {
               className="text-[11px] font-semibold uppercase tracking-wider px-1 mb-2"
               style={{ color: T.textSubtle }}
             >
-              PCS Tools
+              Base Info
             </div>
-            <MobileWeatherStrip />
             <div className="flex flex-col gap-2">
               <MenuItem
                 icon={Calculator}
