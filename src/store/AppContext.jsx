@@ -538,13 +538,25 @@ export function AppProvider({ children }) {
     }
   };
 
-  const handleLogout = async () => {
-    if (SUPA) await Auth.signOut();
-
+ const handleLogout = async () => {
+  try {
+    if (SUPA) {
+      await Auth.signOut();
+    }
+  } catch (error) {
+    console.error("Logout failed:", error);
+  } finally {
     setCurrentUser(null);
-    pushToast("Signed out", "info");
-    router.push("/");
-  };
+    setMyUpvotes(new Set());
+    setMyReports(new Set());
+    setNotifications([]);
+    setMyPosts([]);
+    setAuthModal(null);
+    setMobileMenu(false);
+
+    window.location.replace("/");
+  }
+};
 
   const requireAuth = () => {
     if (!currentUser) {

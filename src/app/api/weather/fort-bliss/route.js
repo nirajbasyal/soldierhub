@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
-export const revalidate = 1800;
+export const revalidate = 60;
 
 const NWS_BASE = "https://api.weather.gov";
 
@@ -18,7 +18,7 @@ async function fetchNws(url) {
       "User-Agent": USER_AGENT,
       Accept: "application/geo+json",
     },
-    next: { revalidate: 1800 },
+    next: { revalidate: 60 },
   });
 
   if (!response.ok) {
@@ -110,7 +110,7 @@ export async function GET() {
 
         if (nearestStationUrl) {
           const observationData = await fetchNws(
-            `${nearestStationUrl}/observations/latest`
+            `${nearestStationUrl}/observations/latest`,
           );
 
           observation = observationData?.properties || null;
@@ -147,18 +147,24 @@ export async function GET() {
         city: "El Paso, TX",
         tempF,
         condition,
-        wind: windMph !== null ? `${windMph} mph` : currentPeriod?.windSpeed || null,
+        wind:
+          windMph !== null
+            ? `${windMph} mph`
+            : currentPeriod?.windSpeed || null,
         humidity: humidity !== null ? `${humidity}%` : null,
         localTimeZone: "America/Denver",
         ptUniform: getPtUniform(tempF),
-        source: observedTempF !== null ? "NWS latest observation" : "NWS hourly forecast",
+        source:
+          observedTempF !== null
+            ? "NWS latest observation"
+            : "NWS hourly forecast",
         updatedAt: new Date().toISOString(),
       },
       {
         headers: {
-          "Cache-Control": "s-maxage=1800, stale-while-revalidate=3600",
+          "Cache-Control": "s-maxage=60, stale-while-revalidate=30",
         },
-      }
+      },
     );
   } catch {
     return NextResponse.json(
@@ -174,7 +180,7 @@ export async function GET() {
           detail: "Weather unavailable — follow local guidance.",
         },
       },
-      { status: 503 }
+      { status: 503 },
     );
   }
 }

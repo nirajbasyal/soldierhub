@@ -21,7 +21,12 @@ export default function FeedHero({ currentUser, postCount = 0 }) {
         xmlns="http://www.w3.org/2000/svg"
       >
         <defs>
-          <pattern id="grain" width="80" height="80" patternUnits="userSpaceOnUse">
+          <pattern
+            id="grain"
+            width="80"
+            height="80"
+            patternUnits="userSpaceOnUse"
+          >
             <circle cx="2" cy="2" r="1" fill="white" />
             <circle cx="40" cy="20" r="0.5" fill="white" />
             <circle cx="60" cy="60" r="1" fill="white" />
@@ -49,13 +54,13 @@ export default function FeedHero({ currentUser, postCount = 0 }) {
         </div>
 
         <h1
-          className="text-3xl md:text-5xl leading-[1.05] max-w-2xl font-serif"
+          className="text-2xl md:text-4xl leading-[1.08] max-w-2xl font-serif"
           style={{ color: "#fff" }}
         >
           {currentUser ? (
             <>Welcome back, {firstName}.</>
           ) : (
-            <>The Fort Bliss community help platform.</>
+            <>Ask, share, and support the Fort Bliss community.</>
           )}
         </h1>
 
@@ -67,9 +72,10 @@ export default function FeedHero({ currentUser, postCount = 0 }) {
             <>Catch up on what your community is asking and sharing today.</>
           ) : (
             <>
-              Get real answers from soldiers and families already at Fort Bliss —
-              housing tips, gate updates, PCS advice, mechanic recommendations,
-              and warnings you won&apos;t find on the official site.
+              Connect with the Fort Bliss community to ask for help, share tips,
+              get recommendations, and support each other. Find guidance on
+              housing, PCS moves, local services, daily questions, or anything
+              else soldiers and families may need around Fort Bliss.
             </>
           )}
         </p>

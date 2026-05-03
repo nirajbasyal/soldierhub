@@ -4,8 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { CloudSun, Clock3, MapPin, Shirt } from "lucide-react";
 import { T } from "@/lib/theme";
 
-const WEATHER_CACHE_KEY = "soldierhub_fort_bliss_weather";
-const WEATHER_CACHE_MAX_AGE = 30 * 60 * 1000; // 30 minutes
+const WEATHER_CACHE_KEY = "soldierhub_fort_bliss_weather_v3";
+const WEATHER_CACHE_MAX_AGE = 1 * 60 * 1000; // 1 minute
 
 function formatElPasoTime(date) {
   if (!date) return "--:--";
@@ -33,7 +33,6 @@ function getCachedWeather() {
     if (typeof window === "undefined") return null;
 
     const cached = window.localStorage.getItem(WEATHER_CACHE_KEY);
-
     if (!cached) return null;
 
     const parsed = JSON.parse(cached);
@@ -62,12 +61,29 @@ function saveWeatherToCache(data) {
   }
 }
 
+function getUpdatedLabel(weather) {
+  const updatedAt = weather?.updatedAt;
+
+  if (!updatedAt) return "Updating now";
+
+  const updatedTime = new Date(updatedAt).getTime();
+
+  if (!Number.isFinite(updatedTime)) return "Updating now";
+
+  const diffMs = Date.now() - updatedTime;
+  const diffSeconds = Math.max(0, Math.floor(diffMs / 1000));
+  const diffMinutes = Math.floor(diffSeconds / 60);
+
+  if (diffSeconds < 20) return "Updated just now";
+  if (diffSeconds < 60) return `Updated ${diffSeconds}s ago`;
+  if (diffMinutes === 1) return "Updated 1 min ago";
+
+  return `Updated ${diffMinutes} min ago`;
+}
+
 export default function MobileWeatherStrip() {
   const [now, setNow] = useState(null);
   const [weather, setWeather] = useState(null);
-
-  // Important: start as loading, not idle.
-  // This prevents the temporary "Weather unavailable" flash on reload.
   const [status, setStatus] = useState("loading");
 
   useEffect(() => {
@@ -125,11 +141,10 @@ export default function MobileWeatherStrip() {
       setWeather(cached.data);
       setStatus("ready");
 
-      const cacheAge = Date.now() - cached.savedAt;
-
-      if (cacheAge > WEATHER_CACHE_MAX_AGE) {
-        loadWeather({ silent: true });
-      }
+      // Important:
+      // Show saved weather instantly, but always refresh silently right away
+      // so all devices quickly match the same SoldierHub API value.
+      loadWeather({ silent: true });
     } else {
       loadWeather();
     }
@@ -146,6 +161,7 @@ export default function MobileWeatherStrip() {
 
   const time = useMemo(() => formatElPasoTime(now), [now]);
   const date = useMemo(() => formatElPasoDate(now), [now]);
+  const updatedLabel = useMemo(() => getUpdatedLabel(weather), [weather, now]);
 
   const tempText =
     typeof weather?.tempF === "number"
@@ -220,8 +236,10 @@ export default function MobileWeatherStrip() {
             ) : null}
           </div>
 
-          <div className="mt-1 text-xs" style={{ color: T.textSubtle }}>
-            {date}
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+            <span style={{ color: T.textSubtle }}>{date}</span>
+            <span style={{ color: T.textSubtle }}>•</span>
+            <span style={{ color: T.textMuted }}>{updatedLabel}</span>
           </div>
         </div>
       </div>
