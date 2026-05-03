@@ -5,12 +5,15 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://soldierhub.com";
 
 export const metadata = {
   metadataBase: new URL(SITE_URL),
+
   title: {
     default: "Soldier Hub — Fort Bliss Community",
     template: "%s · Soldier Hub",
   },
+
   description:
-    "An unofficial Fort Bliss community platform for housing tips, gate updates, PCS advice, and warnings — by and for verified soldiers and families.",
+    "An unofficial Fort Bliss community platform to ask for help, share tips, get recommendations, and support each other around housing, gates, PCS moves, local services, and everyday Fort Bliss life.",
+
   keywords: [
     "Fort Bliss",
     "Army community",
@@ -19,23 +22,47 @@ export const metadata = {
     "BAH",
     "military housing",
     "soldier community",
+    "gate hours",
+    "Fort Bliss housing",
+    "military PCS help",
   ],
+
   authors: [{ name: "Soldier Hub" }],
+
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon.png", type: "image/png", sizes: "512x512" },
+    ],
+    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
+  },
+
   openGraph: {
     title: "Soldier Hub — Fort Bliss Community",
     description:
-      "Real questions, answered by people who've been there. Get help with housing, gates, PCS, and El Paso life from verified Fort Bliss community members.",
+      "Connect with the Fort Bliss community to ask for help, share tips, get recommendations, and support each other.",
     url: SITE_URL,
     siteName: "Soldier Hub",
     type: "website",
     locale: "en_US",
+    images: [
+      {
+        url: "/icon.png",
+        width: 512,
+        height: 512,
+        alt: "Soldier Hub logo",
+      },
+    ],
   },
+
   twitter: {
-    card: "summary_large_image",
+    card: "summary",
     title: "Soldier Hub — Fort Bliss Community",
     description:
-      "Real questions, answered by people who've been there.",
+      "Ask for help, share tips, get recommendations, and support the Fort Bliss community.",
+    images: ["/icon.png"],
   },
+
   robots: {
     index: true,
     follow: true,
@@ -52,7 +79,7 @@ export const metadata = {
 export const viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#F6F3EC",
+  themeColor: "#0B1C2C",
 };
 
 export default function RootLayout({ children }) {
