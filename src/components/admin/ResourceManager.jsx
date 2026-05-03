@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Edit3, ExternalLink, Plus, Save, Trash2, X } from "lucide-react";
 import { T } from "@/lib/theme";
 import { useApp } from "@/store/AppContext";
@@ -19,7 +19,7 @@ const EMPTY_FORM = {
   link: "",
 };
 
-export default function ResourceManager() {
+export default function ResourceManager({ onCountChange }) {
   const { pushToast } = useApp();
 
   const [resources, setResources] = useState([]);
@@ -31,7 +31,7 @@ export default function ResourceManager() {
 
   const isEditing = Boolean(editingId);
 
-  const loadResources = async () => {
+  const loadResources = useCallback(async () => {
     setLoading(true);
 
     const { data, error } = await listResources();
@@ -42,13 +42,16 @@ export default function ResourceManager() {
       return;
     }
 
-    setResources(data || []);
+    const nextResources = data || [];
+
+    setResources(nextResources);
+    onCountChange?.(nextResources.length);
     setLoading(false);
-  };
+  }, [onCountChange, pushToast]);
 
   useEffect(() => {
     loadResources();
-  }, []);
+  }, [loadResources]);
 
   const updateField = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -133,11 +136,12 @@ export default function ResourceManager() {
     }
 
     pushToast("Resource deleted", "info");
-    loadResources();
 
     if (editingId === resource.id) {
       resetForm();
     }
+
+    loadResources();
   };
 
   return (
@@ -278,6 +282,7 @@ export default function ResourceManager() {
           <h3 className="text-sm font-semibold" style={{ color: T.text }}>
             Existing resources
           </h3>
+
           <span className="text-xs" style={{ color: T.textSubtle }}>
             {resources.length} total
           </span>
@@ -299,7 +304,10 @@ export default function ResourceManager() {
             No resources yet. Add your first resource above.
           </div>
         ) : (
-          <div className="flex flex-col divide-y" style={{ borderColor: T.border }}>
+          <div
+            className="flex flex-col divide-y"
+            style={{ borderColor: T.border }}
+          >
             {resources.map((resource) => (
               <div
                 key={resource.id}
@@ -312,6 +320,7 @@ export default function ResourceManager() {
                   >
                     {resource.title}
                   </div>
+
                   <div
                     className="text-xs truncate"
                     style={{ color: T.textSubtle }}

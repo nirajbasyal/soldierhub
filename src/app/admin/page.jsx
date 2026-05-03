@@ -38,6 +38,7 @@ export default function AdminPage() {
 
   const [tab, setTab] = useState("pending");
   const [searchQuery, setSearchQuery] = useState("");
+  const [resourceCount, setResourceCount] = useState(0);
 
   // Guard: only admins
   useEffect(() => {
@@ -97,7 +98,7 @@ export default function AdminPage() {
       k: "resources",
       label: "Resources",
       icon: Link2,
-      count: 0,
+      count: resourceCount,
     },
   ];
 
@@ -233,7 +234,9 @@ export default function AdminPage() {
               <BlockedUsersList searchQuery={searchQuery} />
             )}
 
-            {tab === "resources" && <ResourceManager />}
+            {tab === "resources" && (
+              <ResourceManager onCountChange={setResourceCount} />
+            )}
           </div>
 
           <Footer />
