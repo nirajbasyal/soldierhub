@@ -15,18 +15,26 @@ export default function ResourcesPage() {
 
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
     let alive = true;
 
     async function loadResources() {
       setLoading(true);
+      setLoadError("");
 
-      const { data } = await listResources();
+      const { data, error } = await listResources();
 
       if (!alive) return;
 
-      setResources(data || []);
+      if (error) {
+        setLoadError(error.message || "Could not load resources.");
+        setResources([]);
+      } else {
+        setResources(data || []);
+      }
+
       setLoading(false);
     }
 
@@ -41,7 +49,9 @@ export default function ResourcesPage() {
     return resources.reduce((groups, resource) => {
       const section = resource.section || "General";
 
-      if (!groups[section]) groups[section] = [];
+      if (!groups[section]) {
+        groups[section] = [];
+      }
 
       groups[section].push(resource);
 
@@ -102,6 +112,17 @@ export default function ResourcesPage() {
             >
               Loading resources...
             </div>
+          ) : loadError ? (
+            <div
+              className="rounded-2xl border p-6 text-sm"
+              style={{
+                backgroundColor: T.card,
+                borderColor: T.border,
+                color: T.textMuted,
+              }}
+            >
+              {loadError}
+            </div>
           ) : resources.length === 0 ? (
             <div
               className="rounded-2xl border p-6 text-sm"
@@ -130,6 +151,7 @@ export default function ResourcesPage() {
                         key={resource.id}
                         title={resource.title}
                         description={resource.description}
+                        url={resource.link}
                         link={resource.link}
                       />
                     ))}
