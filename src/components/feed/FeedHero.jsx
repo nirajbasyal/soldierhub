@@ -60,7 +60,7 @@ export default function FeedHero({ currentUser, postCount = 0 }) {
           {currentUser ? (
             <>Welcome back, {firstName}.</>
           ) : (
-            <>Ask, share, and support the Fort Bliss community.</>
+            <>Connect, share, and support the Fort Bliss community.</>
           )}
         </h1>
 
