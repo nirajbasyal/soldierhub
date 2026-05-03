@@ -6,7 +6,6 @@ import { CATEGORIES } from "@/lib/constants";
 import { T } from "@/lib/theme";
 import { useApp } from "@/store/AppContext";
 import AppShell from "@/components/layout/AppShell";
-import Footer from "@/components/layout/Footer";
 import FeedHero from "@/components/feed/FeedHero";
 import PostComposer from "@/components/feed/PostComposer";
 import CategoryStrip from "@/components/feed/CategoryStrip";
@@ -16,6 +15,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import MobileWeatherStrip from "@/components/tools/MobileWeatherStrip";
 import BAHCard from "@/components/tools/BAHCard";
 import GateHoursCard from "@/components/tools/GateHoursCard";
+import SiteInfoCard from "@/components/tools/SiteInfoCard";
 
 export default function HomePage() {
   const {
@@ -118,10 +118,9 @@ export default function HomePage() {
             <MobileWeatherStrip />
             <BAHCard />
             <GateHoursCard />
+            <SiteInfoCard />
           </aside>
         </div>
-
-        <Footer />
       </main>
     </AppShell>
   );
