@@ -5,7 +5,13 @@ import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
 import { T } from "@/lib/theme";
 
-export default function SiteInfoCard() {
+export default function SiteInfoCard({ onNavigate }) {
+  const handleNavigate = () => {
+    if (typeof onNavigate === "function") {
+      onNavigate();
+    }
+  };
+
   return (
     <div
       className="rounded-2xl border overflow-hidden"
@@ -74,11 +80,10 @@ export default function SiteInfoCard() {
         </div>
 
         {/* Legal links */}
-        <div
-          className="mt-4 grid grid-cols-2 gap-2"
-        >
+        <div className="mt-4 grid grid-cols-2 gap-2">
           <Link
             href="/privacy"
+            onClick={handleNavigate}
             className="rounded-xl px-3 py-2.5 text-sm font-semibold text-center transition-opacity hover:opacity-75"
             style={{
               color: T.text,
@@ -91,6 +96,7 @@ export default function SiteInfoCard() {
 
           <Link
             href="/terms"
+            onClick={handleNavigate}
             className="rounded-xl px-3 py-2.5 text-sm font-semibold text-center transition-opacity hover:opacity-75"
             style={{
               color: T.text,
@@ -116,6 +122,7 @@ export default function SiteInfoCard() {
 
           <a
             href="mailto:support@soldierhub.com?subject=SoldierHub%20Contact%20%2F%20Feedback"
+            onClick={handleNavigate}
             className="text-sm font-semibold break-all hover:underline underline-offset-4"
             style={{ color: T.navy }}
           >

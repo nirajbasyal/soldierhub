@@ -53,8 +53,8 @@ export default function MobileMenu() {
     if (currentUser.status !== "verified") {
       return go(
         `/pending-review?email=${encodeURIComponent(
-          currentUser.email
-        )}&name=${encodeURIComponent(currentUser.full_name)}&found=1`
+          currentUser.email,
+        )}&name=${encodeURIComponent(currentUser.full_name)}&found=1`,
       );
     }
 
@@ -281,7 +281,7 @@ export default function MobileMenu() {
 
           {/* Mobile menu footer/site info */}
           <div className="pt-2">
-            <SiteInfoCard />
+            <SiteInfoCard onNavigate={close} />
           </div>
         </div>
       </div>
