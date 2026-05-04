@@ -3,7 +3,6 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
-  Bell,
   BookMarked,
   Calculator,
   ChevronRight,
@@ -26,7 +25,6 @@ export default function MobileMenu() {
 
   const {
     currentUser,
-    unreadCount,
     mobileMenu,
     setMobileMenu,
     setAuthModal,
@@ -42,7 +40,6 @@ export default function MobileMenu() {
   const go = (path) => {
     close();
 
-    // Small delay lets the hamburger close before the new page renders.
     window.setTimeout(() => {
       router.push(path);
     }, 0);
@@ -203,33 +200,22 @@ export default function MobileMenu() {
             </button>
           )}
 
-          {currentUser && (
+          {currentUser?.role === "admin" && (
             <div>
               <div
                 className="text-[11px] font-semibold uppercase tracking-wider px-1 mb-2"
                 style={{ color: T.textSubtle }}
               >
-                Account
+                Admin
               </div>
 
               <div className="flex flex-col gap-2">
                 <MenuItem
-                  icon={Bell}
-                  label="Notifications"
-                  hint={
-                    unreadCount > 0 ? `${unreadCount} unread` : "All caught up"
-                  }
-                  onClick={() => go("/notifications")}
+                  icon={Shield}
+                  label="Admin dashboard"
+                  hint="Pending users, reports, and resources"
+                  onClick={() => go("/admin")}
                 />
-
-                {currentUser?.role === "admin" && (
-                  <MenuItem
-                    icon={Shield}
-                    label="Admin dashboard"
-                    hint="Pending soldiers and reports"
-                    onClick={() => go("/admin")}
-                  />
-                )}
               </div>
             </div>
           )}
@@ -288,7 +274,6 @@ export default function MobileMenu() {
             </div>
           )}
 
-          {/* Mobile menu footer/site info */}
           <div className="pt-2">
             <SiteInfoCard
               onNavigate={(path) => {

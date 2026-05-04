@@ -1,5 +1,6 @@
 "use client";
-import { Home, Menu, User } from "lucide-react";
+
+import { Bell, Home, Menu } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { T } from "@/lib/theme";
 import { useApp } from "@/store/AppContext";
@@ -7,31 +8,67 @@ import { useApp } from "@/store/AppContext";
 export default function BottomNav() {
   const router = useRouter();
   const pathname = usePathname();
+
   const {
-    currentUser, unreadCount,
-    setAuthModal, setMobileMenu,
+    currentUser,
+    unreadCount,
+    setAuthModal,
+    setMobileMenu,
   } = useApp();
 
-  const goProfile = () => {
-    if (!currentUser) return setAuthModal("login");
-    if (currentUser.status !== "verified") {
-      return router.push(`/pending-review?email=${encodeURIComponent(currentUser.email)}&name=${encodeURIComponent(currentUser.full_name)}&found=1`);
+  const goNotifications = () => {
+    if (!currentUser) {
+      return setAuthModal("login");
     }
-    router.push("/profile");
+
+    const userStatus =
+      currentUser?.status || currentUser?.verification_status || "pending";
+
+    if (userStatus !== "verified") {
+      return router.push(
+        `/pending-review?email=${encodeURIComponent(
+          currentUser?.email || ""
+        )}&name=${encodeURIComponent(
+          currentUser?.full_name || "SoldierHub user"
+        )}&found=1`
+      );
+    }
+
+    router.push("/notifications");
   };
 
-  // Routes where opening the Menu drawer should appear "active"
   const menuActive =
     pathname.startsWith("/admin") ||
-    pathname.startsWith("/notifications") ||
     pathname.startsWith("/tools") ||
     pathname.startsWith("/resources") ||
-    pathname.startsWith("/pending-review");
+    pathname.startsWith("/pending-review") ||
+    pathname.startsWith("/profile") ||
+    pathname.startsWith("/privacy") ||
+    pathname.startsWith("/terms");
 
   const tabs = [
-    { k: "feed",    label: "Feed",    icon: Home, active: pathname === "/",          onClick: () => router.push("/") },
-    { k: "profile", label: "Profile", icon: User, active: pathname === "/profile",   onClick: goProfile },
-    { k: "menu",    label: "Menu",    icon: Menu, active: menuActive,                onClick: () => setMobileMenu(true), count: unreadCount },
+    {
+      k: "feed",
+      label: "Feed",
+      icon: Home,
+      active: pathname === "/",
+      onClick: () => router.push("/"),
+    },
+    {
+      k: "notifications",
+      label: "Notifications",
+      icon: Bell,
+      active: pathname === "/notifications",
+      onClick: goNotifications,
+      count: unreadCount,
+    },
+    {
+      k: "menu",
+      label: "Menu",
+      icon: Menu,
+      active: menuActive,
+      onClick: () => setMobileMenu(true),
+    },
   ];
 
   return (
@@ -46,23 +83,35 @@ export default function BottomNav() {
       <div className="grid grid-cols-3">
         {tabs.map((t) => {
           const Icon = t.icon;
+
           return (
             <button
               key={t.k}
+              type="button"
               onClick={t.onClick}
               className="flex flex-col items-center justify-center py-2.5 px-1 gap-1 relative min-w-0"
             >
               <div className="relative">
-                <Icon size={20} strokeWidth={t.active ? 2.5 : 2} style={{ color: t.active ? T.gold : T.textMuted }} />
+                <Icon
+                  size={20}
+                  strokeWidth={t.active ? 2.5 : 2}
+                  style={{ color: t.active ? T.gold : T.textMuted }}
+                />
+
                 {t.count > 0 && (
                   <span
                     className="absolute -top-1.5 -right-2 min-w-[16px] h-[16px] rounded-full text-[9px] font-semibold flex items-center justify-center px-1"
-                    style={{ backgroundColor: T.gold, color: "#fff", border: `1.5px solid ${T.card}` }}
+                    style={{
+                      backgroundColor: T.gold,
+                      color: "#fff",
+                      border: `1.5px solid ${T.card}`,
+                    }}
                   >
                     {t.count > 9 ? "9+" : t.count}
                   </span>
                 )}
               </div>
+
               <span
                 className="text-[10px] font-medium leading-none"
                 style={{ color: t.active ? T.gold : T.textMuted }}
