@@ -15,7 +15,7 @@ import EditPostModal from "./EditPostModal";
 const PROFILE_POST_PREVIEW_LENGTH = 220;
 
 export default function UserPostList() {
-  const { myPosts: userPosts, editMyPost, deleteMyPost } = useApp();
+  const { myPosts: userPosts = [], editMyPost, deleteMyPost } = useApp();
 
   const [editingId, setEditingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
