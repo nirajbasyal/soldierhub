@@ -1,13 +1,10 @@
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
-export const revalidate = 60;
+export const revalidate = 300;
 
 const NWS_BASE = "https://api.weather.gov";
-
-// Fort Bliss / El Paso coordinates
-const LAT = "31.8128";
-const LON = "-106.4216";
+const STATION_ID = "KELP"; // El Paso International Airport
 
 const USER_AGENT =
   process.env.NWS_USER_AGENT || "SoldierHub/1.0 (niraj.basyal2054@gmail.com)";
@@ -18,7 +15,7 @@ async function fetchNws(url) {
       "User-Agent": USER_AGENT,
       Accept: "application/geo+json",
     },
-    next: { revalidate: 60 },
+    next: { revalidate: 300 },
   });
 
   if (!response.ok) {
@@ -89,45 +86,13 @@ function getPtUniform(tempF) {
 
 export async function GET() {
   try {
-    const pointData = await fetchNws(`${NWS_BASE}/points/${LAT},${LON}`);
+    const observationData = await fetchNws(
+      `${NWS_BASE}/stations/${STATION_ID}/observations/latest`
+    );
 
-    const hourlyUrl = pointData?.properties?.forecastHourly;
-    const stationsUrl = pointData?.properties?.observationStations;
+    const observation = observationData?.properties || null;
 
-    if (!hourlyUrl) {
-      throw new Error("No hourly forecast URL returned by NWS.");
-    }
-
-    const hourlyData = await fetchNws(hourlyUrl);
-    const currentPeriod = hourlyData?.properties?.periods?.[0];
-
-    let observation = null;
-
-    try {
-      if (stationsUrl) {
-        const stationsData = await fetchNws(stationsUrl);
-        const nearestStationUrl = stationsData?.features?.[0]?.id;
-
-        if (nearestStationUrl) {
-          const observationData = await fetchNws(
-            `${nearestStationUrl}/observations/latest`,
-          );
-
-          observation = observationData?.properties || null;
-        }
-      }
-    } catch {
-      observation = null;
-    }
-
-    const observedTempF = cToF(observation?.temperature?.value);
-
-    const forecastTempF =
-      currentPeriod?.temperatureUnit === "F"
-        ? currentPeriod?.temperature
-        : cToF(currentPeriod?.temperature);
-
-    const tempF = observedTempF ?? forecastTempF ?? null;
+    const tempF = cToF(observation?.temperature?.value);
 
     const windMph = msToMph(observation?.windSpeed?.value);
 
@@ -137,9 +102,34 @@ export async function GET() {
         : null;
 
     const condition =
-      observation?.textDescription ||
-      currentPeriod?.shortForecast ||
-      "Weather unavailable";
+      observation?.textDescription || "Weather unavailable";
+
+    if (tempF === null) {
+      return NextResponse.json(
+        {
+          error: "Current NWS observation unavailable.",
+          base: "Fort Bliss",
+          city: "El Paso, TX",
+          tempF: null,
+          condition: "Unavailable",
+          localTimeZone: "America/Denver",
+          stationId: STATION_ID,
+          source: "NWS latest observation unavailable",
+          observedAt: observation?.timestamp || null,
+          updatedAt: new Date().toISOString(),
+          ptUniform: {
+            title: "PT Uniform",
+            detail: "Weather unavailable — follow local guidance.",
+          },
+        },
+        {
+          status: 503,
+          headers: {
+            "Cache-Control": "s-maxage=60, stale-while-revalidate=30",
+          },
+        }
+      );
+    }
 
     return NextResponse.json(
       {
@@ -147,24 +137,20 @@ export async function GET() {
         city: "El Paso, TX",
         tempF,
         condition,
-        wind:
-          windMph !== null
-            ? `${windMph} mph`
-            : currentPeriod?.windSpeed || null,
+        wind: windMph !== null ? `${windMph} mph` : null,
         humidity: humidity !== null ? `${humidity}%` : null,
         localTimeZone: "America/Denver",
-        ptUniform: getPtUniform(tempF),
-        source:
-          observedTempF !== null
-            ? "NWS latest observation"
-            : "NWS hourly forecast",
+        stationId: STATION_ID,
+        source: "NWS latest observation",
+        observedAt: observation?.timestamp || null,
         updatedAt: new Date().toISOString(),
+        ptUniform: getPtUniform(tempF),
       },
       {
         headers: {
-          "Cache-Control": "s-maxage=60, stale-while-revalidate=30",
+          "Cache-Control": "s-maxage=300, stale-while-revalidate=300",
         },
-      },
+      }
     );
   } catch {
     return NextResponse.json(
@@ -175,12 +161,15 @@ export async function GET() {
         tempF: null,
         condition: "Unavailable",
         localTimeZone: "America/Denver",
+        stationId: STATION_ID,
+        source: "NWS latest observation",
+        updatedAt: new Date().toISOString(),
         ptUniform: {
           title: "PT Uniform",
           detail: "Weather unavailable — follow local guidance.",
         },
       },
-      { status: 503 },
+      { status: 503 }
     );
   }
 }

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CloudSun, Clock3, MapPin, Shirt } from "lucide-react";
 import { T } from "@/lib/theme";
 
-const WEATHER_CACHE_KEY = "soldierhub_fort_bliss_weather_v4";
+const WEATHER_CACHE_KEY = "soldierhub_fort_bliss_weather_v5";
 const WEATHER_CACHE_MAX_AGE = 1 * 60 * 1000; // 1 minute
 
 function formatElPasoTime(date) {
