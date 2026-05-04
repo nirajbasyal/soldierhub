@@ -11,7 +11,6 @@ import {
   LogIn,
   LogOut,
   Shield,
-  User,
   UserPlus,
   X,
 } from "lucide-react";
@@ -36,29 +35,55 @@ export default function MobileMenu() {
 
   if (!mobileMenu) return null;
 
-  const close = () => setMobileMenu(false);
+  const close = () => {
+    setMobileMenu(false);
+  };
 
   const go = (path) => {
     close();
-    router.push(path);
+
+    // Small delay lets the hamburger close before the new page renders.
+    window.setTimeout(() => {
+      router.push(path);
+    }, 0);
+  };
+
+  const openAuth = (mode) => {
+    close();
+
+    window.setTimeout(() => {
+      setAuthModal(mode);
+    }, 0);
   };
 
   const goProfile = () => {
     if (!currentUser) {
-      close();
-      setAuthModal("login");
+      openAuth("login");
       return;
     }
 
-    if (currentUser.status !== "verified") {
-      return go(
-        `/pending-review?email=${encodeURIComponent(
-          currentUser.email,
-        )}&name=${encodeURIComponent(currentUser.full_name)}&found=1`,
+    const userStatus =
+      currentUser?.status || currentUser?.verification_status || "pending";
+
+    if (userStatus !== "verified") {
+      const email = encodeURIComponent(currentUser?.email || "");
+      const name = encodeURIComponent(
+        currentUser?.full_name || "SoldierHub user"
       );
+
+      go(`/pending-review?email=${email}&name=${name}&found=1`);
+      return;
     }
 
     go("/profile");
+  };
+
+  const logout = async () => {
+    close();
+
+    window.setTimeout(async () => {
+      await handleLogout?.();
+    }, 0);
   };
 
   return (
@@ -127,10 +152,7 @@ export default function MobileMenu() {
                 variant="primary"
                 size="lg"
                 icon={LogIn}
-                onClick={() => {
-                  close();
-                  setAuthModal("login");
-                }}
+                onClick={() => openAuth("login")}
               >
                 Sign in
               </Button>
@@ -139,10 +161,7 @@ export default function MobileMenu() {
                 variant="secondary"
                 size="lg"
                 icon={UserPlus}
-                onClick={() => {
-                  close();
-                  setAuthModal("signup");
-                }}
+                onClick={() => openAuth("signup")}
               >
                 Create account
               </Button>
@@ -155,8 +174,8 @@ export default function MobileMenu() {
               style={{ backgroundColor: T.card, borderColor: T.border }}
             >
               <Avatar
-                name={currentUser.full_name}
-                color={currentUser.avatar_color}
+                name={currentUser?.full_name || "SoldierHub user"}
+                color={currentUser?.avatar_color}
                 size={42}
               />
 
@@ -165,14 +184,14 @@ export default function MobileMenu() {
                   className="text-sm font-semibold truncate"
                   style={{ color: T.text }}
                 >
-                  {currentUser.full_name}
+                  {currentUser?.full_name || "SoldierHub user"}
                 </div>
 
                 <div
                   className="text-xs truncate"
                   style={{ color: T.textSubtle }}
                 >
-                  {currentUser.email}
+                  {currentUser?.email || currentUser?.personal_email || ""}
                 </div>
               </div>
 
@@ -203,14 +222,7 @@ export default function MobileMenu() {
                   onClick={() => go("/notifications")}
                 />
 
-                <MenuItem
-                  icon={User}
-                  label="Profile"
-                  hint="Edit your info and posts"
-                  onClick={goProfile}
-                />
-
-                {currentUser.role === "admin" && (
+                {currentUser?.role === "admin" && (
                   <MenuItem
                     icon={Shield}
                     label="Admin dashboard"
@@ -271,17 +283,22 @@ export default function MobileMenu() {
                 icon={LogOut}
                 label="Sign out"
                 danger
-                onClick={() => {
-                  close();
-                  handleLogout();
-                }}
+                onClick={logout}
               />
             </div>
           )}
 
           {/* Mobile menu footer/site info */}
           <div className="pt-2">
-            <SiteInfoCard onNavigate={close} />
+            <SiteInfoCard
+              onNavigate={(path) => {
+                if (path) {
+                  go(path);
+                } else {
+                  close();
+                }
+              }}
+            />
           </div>
         </div>
       </div>
