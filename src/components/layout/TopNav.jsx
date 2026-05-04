@@ -53,35 +53,15 @@ export default function TopNav() {
       style={{ borderColor: T.border, backgroundColor: T.bg }}
     >
       <div className="max-w-6xl mx-auto px-4 md:px-6 h-16 flex items-center gap-3 md:gap-5">
-        {/* Brand */}
-        <Link href="/" className="flex items-center gap-2 shrink-0 min-w-0">
-          {/* Mobile: icon + Soldier Hub text */}
-          <div className="flex sm:hidden items-center gap-2 min-w-0">
-            <Image
-              src="/brand/soldierhub-icon.png"
-              alt="SoldierHub"
-              width={36}
-              height={36}
-              priority
-              className="h-9 w-9 object-contain rounded-lg shrink-0"
-            />
-
-            <span
-              className="text-lg font-bold tracking-tight leading-none whitespace-nowrap"
-              style={{ color: T.navy }}
-            >
-              Soldier Hub
-            </span>
-          </div>
-
-          {/* Tablet/Desktop: full transparent logo */}
+        {/* Brand - same logo for mobile and desktop */}
+        <Link href="/" className="flex items-center shrink-0 min-w-0">
           <Image
             src="/brand/soldierhub-logo.png"
             alt="SoldierHub"
             width={220}
             height={64}
             priority
-            className="hidden sm:block h-11 w-auto object-contain"
+            className="h-10 sm:h-11 md:h-12 w-auto object-contain max-w-[170px] sm:max-w-[220px]"
           />
         </Link>
 

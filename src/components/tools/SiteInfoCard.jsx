@@ -25,39 +25,16 @@ export default function SiteInfoCard({ onNavigate }) {
           backgroundColor: "#FBFAF6",
         }}
       >
-        <div className="flex items-center gap-3">
-          <div
-            className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border shadow-sm overflow-hidden"
-            style={{
-              backgroundColor: T.navy,
-              borderColor: "rgba(11, 28, 44, 0.12)",
-            }}
-          >
-            <Image
-              src="/brand/soldierhub-icon.png"
-              alt="SoldierHub logo"
-              width={42}
-              height={42}
-              className="w-10 h-10 object-contain"
-              priority={false}
-            />
-          </div>
+        <div className="flex flex-col items-start">
+          <Image
+            src="/brand/soldierhub-logo.png"
+            alt="SoldierHub logo"
+            width={240}
+            height={80}
+            className="h-12 sm:h-14 w-auto object-contain"
+            priority={false}
+          />
 
-          <div className="min-w-0">
-            <h3
-              className="text-xl font-bold leading-tight tracking-tight"
-              style={{ color: T.navy }}
-            >
-              Soldier Hub
-            </h3>
-
-            <p
-              className="text-xs mt-0.5 font-medium tracking-wide"
-              style={{ color: T.textSubtle }}
-            >
-              Connect · Share · Support
-            </p>
-          </div>
         </div>
       </div>
 

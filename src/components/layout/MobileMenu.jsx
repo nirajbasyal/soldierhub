@@ -102,29 +102,16 @@ export default function MobileMenu() {
           className="sticky top-0 px-5 py-4 flex items-center justify-between border-b z-10"
           style={{ backgroundColor: T.bg, borderColor: T.border }}
         >
-          <div className="flex items-center gap-3">
-            <Image
-              src="/brand/soldierhub-icon.png"
-              alt="SoldierHub"
-              width={42}
-              height={42}
-              priority
-              className="h-10 w-10 object-contain rounded-lg"
-            />
-
-            <div>
-              <div
-                className="text-base font-bold leading-none"
-                style={{ color: T.navy }}
-              >
-                Soldier Hub
-              </div>
-
-              <div className="text-xs mt-1" style={{ color: T.textSubtle }}>
-                Connect · Share · Support
-              </div>
-            </div>
-          </div>
+         <div className="flex items-center min-w-0">
+  <Image
+    src="/brand/soldierhub-logo.png"
+    alt="SoldierHub"
+    width={220}
+    height={72}
+    priority
+    className="h-12 w-auto object-contain max-w-[210px]"
+  />
+</div>
 
           <button
             type="button"
