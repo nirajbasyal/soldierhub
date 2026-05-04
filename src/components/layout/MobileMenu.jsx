@@ -20,9 +20,11 @@ import { useApp } from "@/store/AppContext";
 import Avatar from "@/components/ui/Avatar";
 import Button from "@/components/ui/Button";
 import MenuItem from "@/components/ui/MenuItem";
+import SiteInfoCard from "@/components/tools/SiteInfoCard";
 
 export default function MobileMenu() {
   const router = useRouter();
+
   const {
     currentUser,
     unreadCount,
@@ -85,18 +87,19 @@ export default function MobileMenu() {
               width={42}
               height={42}
               priority
-              className="h-10 w-10 object-contain"
+              className="h-10 w-10 object-contain rounded-lg"
             />
 
             <div>
               <div
-                className="text-sm font-semibold leading-none"
+                className="text-base font-bold leading-none"
                 style={{ color: T.navy }}
               >
-                SoldierHub
+                Soldier Hub
               </div>
+
               <div className="text-xs mt-1" style={{ color: T.textSubtle }}>
-                Menu
+                Connect · Share · Support
               </div>
             </div>
           </div>
@@ -110,6 +113,7 @@ export default function MobileMenu() {
               border: `1px solid ${T.border}`,
               color: T.text,
             }}
+            aria-label="Close mobile menu"
           >
             <X size={18} />
           </button>
@@ -163,6 +167,7 @@ export default function MobileMenu() {
                 >
                   {currentUser.full_name}
                 </div>
+
                 <div
                   className="text-xs truncate"
                   style={{ color: T.textSubtle }}
@@ -273,6 +278,11 @@ export default function MobileMenu() {
               />
             </div>
           )}
+
+          {/* Mobile menu footer/site info */}
+          <div className="pt-2">
+            <SiteInfoCard />
+          </div>
         </div>
       </div>
     </div>

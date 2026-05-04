@@ -27,7 +27,6 @@ export default function HomePage() {
     postsLoading,
   } = useApp();
 
-  // Counts per category for the filter chips
   const counts = useMemo(() => {
     const c = { All: posts.length };
 
@@ -40,7 +39,6 @@ export default function HomePage() {
     return c;
   }, [posts]);
 
-  // Filter by category + free-text search
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
 
@@ -111,9 +109,12 @@ export default function HomePage() {
                 ))}
               </div>
             )}
+
+            {/* Do NOT put SiteInfoCard here.
+                It will show at bottom of mobile feed if placed here. */}
           </div>
 
-          {/* Desktop sidebar */}
+          {/* Desktop sidebar only */}
           <aside className="hidden lg:flex flex-col gap-4 sticky top-6 self-start">
             <MobileWeatherStrip />
             <BAHCard />

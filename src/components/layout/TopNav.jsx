@@ -18,6 +18,7 @@ import Button from "@/components/ui/Button";
 
 export default function TopNav() {
   const router = useRouter();
+
   const {
     currentUser,
     unreadCount,
@@ -53,16 +54,25 @@ export default function TopNav() {
     >
       <div className="max-w-6xl mx-auto px-4 md:px-6 h-16 flex items-center gap-3 md:gap-5">
         {/* Brand */}
-        <Link href="/" className="flex items-center gap-2 shrink-0">
-          {/* Mobile: icon only */}
-          <Image
-            src="/brand/soldierhub-icon.png"
-            alt="SoldierHub"
-            width={40}
-            height={40}
-            priority
-            className="h-10 w-10 object-contain sm:hidden"
-          />
+        <Link href="/" className="flex items-center gap-2 shrink-0 min-w-0">
+          {/* Mobile: icon + Soldier Hub text */}
+          <div className="flex sm:hidden items-center gap-2 min-w-0">
+            <Image
+              src="/brand/soldierhub-icon.png"
+              alt="SoldierHub"
+              width={36}
+              height={36}
+              priority
+              className="h-9 w-9 object-contain rounded-lg shrink-0"
+            />
+
+            <span
+              className="text-lg font-bold tracking-tight leading-none whitespace-nowrap"
+              style={{ color: T.navy }}
+            >
+              Soldier Hub
+            </span>
+          </div>
 
           {/* Tablet/Desktop: full transparent logo */}
           <Image
@@ -83,6 +93,7 @@ export default function TopNav() {
               className="absolute left-3.5 top-1/2 -translate-y-1/2"
               style={{ color: T.textSubtle }}
             />
+
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -93,8 +104,12 @@ export default function TopNav() {
                 backgroundColor: T.card,
                 color: T.text,
               }}
-              onFocus={(e) => (e.currentTarget.style.borderColor = T.navy)}
-              onBlur={(e) => (e.currentTarget.style.borderColor = T.border)}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = T.navy;
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = T.border;
+              }}
             />
           </div>
         </div>
@@ -123,8 +138,10 @@ export default function TopNav() {
                   backgroundColor: T.card,
                   color: T.text,
                 }}
+                aria-label="Open notifications"
               >
                 <Bell size={16} />
+
                 {unreadCount > 0 && (
                   <span
                     className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full text-[10px] font-semibold flex items-center justify-center px-1"
@@ -157,6 +174,7 @@ export default function TopNav() {
                   color={currentUser.avatar_color}
                   size={32}
                 />
+
                 <span className="text-sm font-medium" style={{ color: T.text }}>
                   {currentUser.full_name?.split(" ")[0]}
                 </span>
@@ -167,6 +185,7 @@ export default function TopNav() {
               <Button variant="ghost" onClick={() => setAuthModal("login")}>
                 Sign in
               </Button>
+
               <Button
                 variant="primary"
                 icon={UserPlus}
@@ -182,12 +201,13 @@ export default function TopNav() {
         <button
           type="button"
           onClick={() => setMobileMenu(true)}
-          className="md:hidden w-10 h-10 rounded-xl border flex items-center justify-center"
+          className="md:hidden w-10 h-10 rounded-xl border flex items-center justify-center shrink-0"
           style={{
             borderColor: T.border,
             backgroundColor: T.card,
             color: T.text,
           }}
+          aria-label="Open mobile menu"
         >
           <Menu size={18} />
         </button>
@@ -201,6 +221,7 @@ export default function TopNav() {
             className="absolute left-3.5 top-1/2 -translate-y-1/2"
             style={{ color: T.textSubtle }}
           />
+
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
