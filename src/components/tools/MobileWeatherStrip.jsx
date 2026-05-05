@@ -4,8 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { CloudSun, Clock3, MapPin, Shirt } from "lucide-react";
 import { T } from "@/lib/theme";
 
-const WEATHER_CACHE_KEY = "soldierhub_fort_bliss_weather_v5";
-const WEATHER_CACHE_MAX_AGE = 1 * 60 * 1000; // 1 minute
+const WEATHER_CACHE_KEY = "soldierhub_fort_bliss_weather_v6";
+const WEATHER_CACHE_MAX_AGE = 60 * 1000;          // refresh interval: 1 min
+const WEATHER_CACHE_STALE_AFTER = 10 * 60 * 1000; // hard expiry: 10 min
 
 function formatElPasoTime(date) {
   if (!date) return "--:--";
@@ -38,6 +39,12 @@ function getCachedWeather() {
     const parsed = JSON.parse(cached);
 
     if (!parsed?.data || !parsed?.savedAt) return null;
+
+    // Don't trust cache older than the hard expiry window.
+    if (Date.now() - parsed.savedAt > WEATHER_CACHE_STALE_AFTER) {
+      window.localStorage.removeItem(WEATHER_CACHE_KEY);
+      return null;
+    }
 
     return parsed;
   } catch {
@@ -108,7 +115,8 @@ export default function MobileWeatherStrip() {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 7000);
 
-        const res = await fetch("/api/weather/fort-bliss", {
+        // Cache-busting query param ensures no intermediate cache returns stale data.
+        const res = await fetch(`/api/weather/fort-bliss?t=${Date.now()}`, {
           signal: controller.signal,
           cache: "no-store",
         });

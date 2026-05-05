@@ -89,6 +89,7 @@ export default function PostCard({ post }) {
   const [showComments, setShowComments] = useState(false);
   const [comment, setComment] = useState("");
   const [commentError, setCommentError] = useState("");
+  const [commentSubmitting, setCommentSubmitting] = useState(false);
 
   const cat = CATEGORIES.find((c) => c.key === post.category) || CATEGORIES[0];
 
@@ -154,27 +155,38 @@ export default function PostCard({ post }) {
   };
 
   const submitComment = async () => {
+    if (commentSubmitting) return;
+
     setCommentError("");
 
     const cleanedComment = comment.trim();
 
     if (!cleanedComment) return;
 
-    const mod = await moderateAsync(cleanedComment);
+    setCommentSubmitting(true);
 
-    if (!mod.allowed) {
-      setCommentError(mod.reason);
-      return;
+    try {
+      const mod = await moderateAsync(cleanedComment);
+
+      if (!mod.allowed) {
+        setCommentError(mod.reason);
+        return;
+      }
+
+      const result = await commentOnPost(post.id, cleanedComment);
+
+      if (result?.ok === false) {
+        setCommentError(result.error || "Could not post comment.");
+        return;
+      }
+
+      setComment("");
+    } catch (error) {
+      console.error("Failed to submit comment:", error);
+      setCommentError("Could not post comment. Please try again.");
+    } finally {
+      setCommentSubmitting(false);
     }
-
-    const result = await commentOnPost(post.id, cleanedComment);
-
-    if (result?.ok === false) {
-      setCommentError(result.error || "Could not post comment.");
-      return;
-    }
-
-    setComment("");
   };
 
   return (
@@ -379,7 +391,12 @@ export default function PostCard({ post }) {
                         setCommentError("");
                       }}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter" && comment.trim()) {
+                        if (
+                          e.key === "Enter" &&
+                          comment.trim() &&
+                          !commentSubmitting
+                        ) {
+                          e.preventDefault();
                           submitComment();
                         }
                       }}
@@ -398,9 +415,9 @@ export default function PostCard({ post }) {
                       icon={Send}
                       className="shrink-0"
                       onClick={submitComment}
-                      disabled={!comment.trim()}
+                      disabled={!comment.trim() || commentSubmitting}
                     >
-                      Reply
+                      {commentSubmitting ? "Posting..." : "Reply"}
                     </Button>
                   </div>
                 </div>

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 const NWS_BASE = "https://api.weather.gov";
 const STATION_ID = "KELP"; // El Paso International Airport
@@ -19,7 +19,7 @@ async function fetchNws(url) {
       "User-Agent": USER_AGENT,
       Accept: "application/geo+json",
     },
-    next: { revalidate: 60 },
+    cache: "no-store",
   });
 
   if (!response.ok) {
@@ -156,7 +156,7 @@ export async function GET() {
         {
           status: 503,
           headers: {
-            "Cache-Control": "s-maxage=60, stale-while-revalidate=30",
+            "Cache-Control": "no-store",
           },
         }
       );
@@ -179,7 +179,7 @@ export async function GET() {
       },
       {
         headers: {
-          "Cache-Control": "s-maxage=60, stale-while-revalidate=60",
+          "Cache-Control": "public, max-age=0, s-maxage=30, must-revalidate",
         },
       }
     );
@@ -208,7 +208,7 @@ export async function GET() {
       {
         status: 503,
         headers: {
-          "Cache-Control": "s-maxage=30, stale-while-revalidate=30",
+          "Cache-Control": "no-store",
         },
       }
     );
