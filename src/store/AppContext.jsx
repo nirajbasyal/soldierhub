@@ -602,54 +602,55 @@ export function AppProvider({ children }) {
   // POSTS
   // ═════════════════════════════════════════════════════════════════════
 
-  const createPost = async ({ title, body, category, anonymous }) => {
-    if (!requireAuth()) {
-      return { ok: false, error: "You must be verified to post." };
-    }
+  const createPost = async ({ id, title, body, category, anonymous }) => {
+  if (!requireAuth()) {
+    return { ok: false, error: "You must be verified to post." };
+  }
 
-    if (SUPA) {
-      const { error } = await PostsDB.createPost({
-        author_id: currentUser.id,
-        category,
-        title,
-        body,
-        anonymous,
-      });
-
-      if (error) {
-        pushToast(error.message, "error");
-        return { ok: false, error: error.message };
-      }
-
-      pushToast("Posted to feed", "success");
-      await reloadPosts();
-      await reloadMyPosts();
-
-      return { ok: true };
-    }
-
-    const post = {
-      id: uid(),
+  if (SUPA) {
+    const { error } = await PostsDB.createPost({
+      id,
+      author_id: currentUser.id,
       category,
       title,
       body,
       anonymous,
-      author_id: currentUser.id,
-      author_name: anonymous ? null : currentUser.full_name,
-      author_color: anonymous ? null : currentUser.avatar_color,
-      upvote_count: 0,
-      comment_count: 0,
-      report_count: 0,
-      status: "active",
-      edited: false,
-      created_at: new Date().toISOString(),
-    };
+    });
 
-    setPosts((p) => [post, ...p]);
+    if (error) {
+      pushToast(error.message, "error");
+      return { ok: false, error: error.message };
+    }
+
     pushToast("Posted to feed", "success");
+    await reloadPosts();
+    await reloadMyPosts();
 
     return { ok: true };
+  }
+
+  const post = {
+    id: id || uid(),
+    category,
+    title,
+    body,
+    anonymous,
+    author_id: currentUser.id,
+    author_name: anonymous ? null : currentUser.full_name,
+    author_color: anonymous ? null : currentUser.avatar_color,
+    upvote_count: 0,
+    comment_count: 0,
+    report_count: 0,
+    status: "active",
+    edited: false,
+    created_at: new Date().toISOString(),
   };
+
+  setPosts((p) => [post, ...p]);
+  pushToast("Posted to feed", "success");
+
+  return { ok: true };
+};
 
   const upvotePost = async (postId) => {
     if (!requireAuth()) return;

@@ -25,6 +25,52 @@ import ClientTimeAgo from "@/components/ui/ClientTimeAgo";
 const POST_PREVIEW_LENGTH = 240;
 const COMMENT_PREVIEW_LENGTH = 120;
 
+function getAnonymousDisplayName(postId) {
+  const source = String(postId || "anonymous");
+  let total = 0;
+
+  for (let i = 0; i < source.length; i += 1) {
+    total += source.charCodeAt(i) * (i + 1);
+  }
+
+  const number = String(total % 10000).padStart(4, "0");
+
+  return `Anonymous${number}`;
+}
+
+function getSafeCommentAuthor({ comment, post }) {
+  const anonymousName = getAnonymousDisplayName(post.id);
+
+  const isAnonymousPostAuthorComment =
+    post.anonymous &&
+    (comment.is_anonymous_author === true ||
+      (comment.author_id &&
+        post.author_id &&
+        comment.author_id === post.author_id));
+
+  if (isAnonymousPostAuthorComment) {
+    return {
+      name: anonymousName,
+      color: "#5C6470",
+      anonymous: true,
+    };
+  }
+
+  return {
+    name:
+      comment.author_name_cached ||
+      comment.author?.full_name ||
+      comment.author_name ||
+      "Member",
+    color:
+      comment.author_color_cached ||
+      comment.author?.avatar_color ||
+      comment.author_color ||
+      "#314A66",
+    anonymous: false,
+  };
+}
+
 export default function PostCard({ post }) {
   const {
     currentUser,
@@ -35,6 +81,7 @@ export default function PostCard({ post }) {
     commentOnPost,
     myUpvotes,
     myReports,
+    myPosts,
     postComments,
     loadCommentsForPost,
   } = useApp();
@@ -49,14 +96,49 @@ export default function PostCard({ post }) {
   const userReported = myReports.has(post.id);
   const isReported = post.status === "reported";
 
-  const displayName = post.anonymous ? "Anonymous Soldier" : post.author_name;
+  const anonymousDisplayName = getAnonymousDisplayName(post.id);
+
+  const displayName = post.anonymous
+    ? anonymousDisplayName
+    : post.author_name || "Member";
 
   const displayColor = post.anonymous
     ? "#5C6470"
-    : post.author_color || colorFromString(post.author_name);
+    : post.author_color || colorFromString(post.author_name || "Member");
 
   const comments = postComments[post.id] || [];
   const commentCount = post.comment_count ?? comments.length;
+
+  const ownsPostBySafeViewerFlag = post.viewer_is_author === true;
+
+  const ownsPostByVisibleAuthorId =
+    currentUser?.id && post.author_id && post.author_id === currentUser.id;
+
+  const ownsPostByMyPosts =
+    currentUser?.id &&
+    Array.isArray(myPosts) &&
+    myPosts.some((myPost) => myPost.id === post.id);
+
+  const currentUserIsAnonymousPostAuthor =
+    Boolean(post.anonymous) &&
+    Boolean(
+      ownsPostBySafeViewerFlag ||
+        ownsPostByVisibleAuthorId ||
+        ownsPostByMyPosts
+    );
+
+  const replyAvatarName = currentUserIsAnonymousPostAuthor
+    ? anonymousDisplayName
+    : currentUser?.full_name || "Member";
+
+  const replyAvatarColor = currentUserIsAnonymousPostAuthor
+    ? "#5C6470"
+    : currentUser?.avatar_color ||
+      colorFromString(currentUser?.full_name || "Member");
+
+  const replyPlaceholder = currentUserIsAnonymousPostAuthor
+    ? `Reply as ${anonymousDisplayName}…`
+    : "Write a thoughtful reply…";
 
   const guard = (fn) => {
     if (requireAuth()) fn();
@@ -97,7 +179,7 @@ export default function PostCard({ post }) {
 
   return (
     <article
-      className="rounded-2xl border transition-shadow hover:shadow-sm"
+      className="rounded-2xl border sh-fade-up sh-smooth sh-hover-lift hover:shadow-sm"
       style={{ backgroundColor: T.card, borderColor: T.border }}
     >
       <div className="p-5 md:p-6">
@@ -218,19 +300,20 @@ export default function PostCard({ post }) {
             )}
 
             {comments.map((c) => {
-              const authorName =
-                c.author_name_cached || c.author?.full_name || c.author_name;
-
-              const authorColor =
-                c.author_color_cached ||
-                c.author?.avatar_color ||
-                c.author_color;
+              const safeAuthor = getSafeCommentAuthor({
+                comment: c,
+                post,
+              });
 
               const text = c.body ?? c.text ?? "";
 
               return (
                 <div key={c.id} className="flex gap-2.5">
-                  <Avatar name={authorName} color={authorColor} size={30} />
+                  <Avatar
+                    name={safeAuthor.name}
+                    color={safeAuthor.color}
+                    size={30}
+                  />
 
                   <div
                     className="flex-1 rounded-xl px-3.5 py-2.5 border min-w-0"
@@ -241,10 +324,18 @@ export default function PostCard({ post }) {
                   >
                     <div className="flex items-center justify-between gap-2 mb-0.5">
                       <span
-                        className="text-xs font-semibold truncate"
+                        className="text-xs font-semibold truncate inline-flex items-center gap-1"
                         style={{ color: T.text }}
                       >
-                        {authorName || "Member"}
+                        {safeAuthor.name}
+
+                        {safeAuthor.anonymous && (
+                          <Lock
+                            size={10}
+                            strokeWidth={2.5}
+                            style={{ color: T.textSubtle }}
+                          />
+                        )}
                       </span>
 
                       <span
@@ -268,15 +359,19 @@ export default function PostCard({ post }) {
             })}
 
             {currentUser?.status === "verified" ? (
-              <div className="flex gap-2 items-end mt-1">
-                <Avatar
-                  name={currentUser.full_name}
-                  color={currentUser.avatar_color}
-                  size={30}
-                />
+              <div className="mt-1 grid grid-cols-[30px_minmax(0,1fr)] gap-x-2 gap-y-1.5">
+                {/* Avatar stays locked beside the reply input */}
+                <div className="col-start-1 row-start-1 self-center flex items-center justify-center">
+                  <Avatar
+                    name={replyAvatarName}
+                    color={replyAvatarColor}
+                    size={30}
+                  />
+                </div>
 
-                <div className="flex-1 min-w-0">
-                  <div className="flex gap-2 min-w-0">
+                {/* Reply input row */}
+                <div className="col-start-2 row-start-1 min-w-0">
+                  <div className="flex items-center gap-2 min-w-0">
                     <input
                       value={comment}
                       onChange={(e) => {
@@ -288,8 +383,8 @@ export default function PostCard({ post }) {
                           submitComment();
                         }
                       }}
-                      placeholder="Write a thoughtful reply…"
-                      className="flex-1 min-w-0 h-10 px-3.5 rounded-xl border text-sm outline-none"
+                      placeholder={replyPlaceholder}
+                      className="flex-1 min-w-0 h-11 px-3.5 rounded-xl border text-sm outline-none sh-smooth sh-input-focus"
                       style={{
                         borderColor: T.border,
                         backgroundColor: T.card,
@@ -308,16 +403,31 @@ export default function PostCard({ post }) {
                       Reply
                     </Button>
                   </div>
-
-                  {commentError && (
-                    <div
-                      className="text-xs mt-1.5"
-                      style={{ color: T.danger || T.red || "#B42318" }}
-                    >
-                      {commentError}
-                    </div>
-                  )}
                 </div>
+
+                {/* Helper/error text stays under the input only */}
+                {(currentUserIsAnonymousPostAuthor || commentError) && (
+                  <div className="col-start-2 row-start-2 min-w-0">
+                    {currentUserIsAnonymousPostAuthor && (
+                      <div
+                        className="text-xs inline-flex items-center gap-1"
+                        style={{ color: T.textSubtle }}
+                      >
+                        <Lock size={11} strokeWidth={2.5} />
+                        You are replying as {anonymousDisplayName}.
+                      </div>
+                    )}
+
+                    {commentError && (
+                      <div
+                        className="text-xs mt-1"
+                        style={{ color: T.danger || T.red || "#B42318" }}
+                      >
+                        {commentError}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ) : (
               <button

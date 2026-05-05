@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
   ChevronRight,
+  Lock,
   Pencil,
   Plus,
   Send,
@@ -19,6 +20,27 @@ import Button from "@/components/ui/Button";
 const SAFETY_MESSAGE =
   "This content may violate SoldierHub community safety rules. Please revise it and try again.";
 
+function createDraftPostId() {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function getAnonymousDisplayName(postId) {
+  const source = String(postId || "anonymous");
+  let total = 0;
+
+  for (let i = 0; i < source.length; i += 1) {
+    total += source.charCodeAt(i) * (i + 1);
+  }
+
+  const number = String(total % 10000).padStart(4, "0");
+
+  return `Anonymous${number}`;
+}
+
 export default function PostComposer() {
   const { currentUser, requireAuth, createPost } = useApp();
 
@@ -27,6 +49,7 @@ export default function PostComposer() {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [anonymous, setAnonymous] = useState(false);
+  const [draftPostId, setDraftPostId] = useState(() => createDraftPostId());
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -49,6 +72,7 @@ export default function PostComposer() {
     setTitle("");
     setBody("");
     setAnonymous(false);
+    setDraftPostId(createDraftPostId());
     setError("");
     setOpen(false);
   };
@@ -76,6 +100,7 @@ export default function PostComposer() {
       }
 
       const result = await createPost({
+        id: draftPostId,
         title: cleanedTitle,
         body: cleanedBody,
         category,
@@ -183,6 +208,12 @@ export default function PostComposer() {
     );
   }
 
+  const composerDisplayName = anonymous
+    ? getAnonymousDisplayName(draftPostId)
+    : currentUser.full_name;
+
+  const composerDisplayColor = anonymous ? "#5C6470" : currentUser.avatar_color;
+
   // Expanded composer
   return (
     <div
@@ -190,19 +221,21 @@ export default function PostComposer() {
       style={{ backgroundColor: T.card, borderColor: T.border }}
     >
       <div className="flex items-center gap-3 mb-4">
-        <Avatar
-          name={currentUser.full_name}
-          color={currentUser.avatar_color}
-          size={36}
-        />
+        <Avatar name={composerDisplayName} color={composerDisplayColor} size={36} />
 
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-semibold truncate" style={{ color: T.text }}>
-            {anonymous ? "Anonymous Soldier" : currentUser.full_name}
+          <div
+            className="text-sm font-semibold truncate flex items-center gap-1.5"
+            style={{ color: T.text }}
+          >
+            {anonymous && <Lock size={12} strokeWidth={2.5} />}
+            <span>{composerDisplayName}</span>
           </div>
 
           <div className="text-xs" style={{ color: T.textSubtle }}>
-            Posting to Soldier Hub
+            {anonymous
+              ? "Posting anonymously to SoldierHub"
+              : "Posting to SoldierHub"}
           </div>
         </div>
 
@@ -269,6 +302,19 @@ export default function PostComposer() {
         className="w-full resize-none outline-none text-[15px] leading-relaxed border-0 bg-transparent placeholder:text-[#A8ABB2] disabled:opacity-70"
         style={{ color: T.text }}
       />
+
+      {anonymous && (
+        <div
+          className="text-xs px-3 py-2 rounded-lg flex items-start gap-2 my-3"
+          style={{ backgroundColor: T.goldBg, color: T.gold }}
+        >
+          <Lock size={14} className="shrink-0 mt-0.5" />
+          <span>
+            Your name will be hidden publicly as {composerDisplayName}. Avoid
+            typing details that identify you inside the post.
+          </span>
+        </div>
+      )}
 
       {error && (
         <div

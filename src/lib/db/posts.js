@@ -23,9 +23,6 @@ export async function listMyPosts(userId) {
   const supabase = createClient();
   if (!supabase) return { data: [], error: null };
 
-  // Use my_posts_with_meta — the masked public feed blanks author_id
-  // for anonymous posts, but users still need to see their own posts
-  // on their profile page.
   const { data, error } = await supabase
     .from("my_posts_with_meta")
     .select("*")
@@ -39,8 +36,6 @@ export async function listReportedPosts() {
   const supabase = createClient();
   if (!supabase) return { data: [], error: null };
 
-  // Admins need to see reported posts, including anonymous ones.
-  // RLS should restrict this query to admins.
   const { data, error } = await supabase
     .from("my_posts_with_meta")
     .select("*")
@@ -50,13 +45,34 @@ export async function listReportedPosts() {
   return { data: data || [], error };
 }
 
-export async function createPost({ author_id, category, title, body, anonymous }) {
+export async function createPost({
+  id,
+  author_id,
+  category,
+  title,
+  body,
+  anonymous,
+}) {
   const supabase = createClient();
   if (!supabase) return { data: null, error: null };
 
+  const payload = {
+    author_id,
+    category,
+    title,
+    body,
+    anonymous,
+  };
+
+  // This lets the composer create the post ID before publishing.
+  // That keeps AnonymousXXXX the same while typing and after publishing.
+  if (id) {
+    payload.id = id;
+  }
+
   const { data, error } = await supabase
     .from("posts")
-    .insert([{ author_id, category, title, body, anonymous }])
+    .insert([payload])
     .select()
     .single();
 
