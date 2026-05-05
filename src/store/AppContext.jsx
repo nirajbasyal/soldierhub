@@ -324,14 +324,15 @@ export function AppProvider({ children }) {
         "info"
       );
 
-      setAuthModal(null);
-
       sendToPendingReview({
         email: cleanEmail,
         name: cleanName,
         found: 1,
         status: "pending",
+        replace: true,
       });
+
+      setAuthModal(null);
 
       return { ok: true, data };
     }
@@ -361,7 +362,6 @@ export function AppProvider({ children }) {
       pushToast("Welcome, admin", "success");
     } else {
       setPendingUsers((u) => [...u, newUser]);
-      setAuthModal(null);
       pushToast("Profile submitted for review", "success");
 
       sendToPendingReview({
@@ -369,7 +369,10 @@ export function AppProvider({ children }) {
         name: cleanName,
         found: 1,
         status: "pending",
+        replace: true,
       });
+
+      setAuthModal(null);
     }
 
     return { ok: true };
@@ -397,7 +400,7 @@ export function AppProvider({ children }) {
         setCurrentUser(null);
         setAuthModal(null);
 
-        router.push(
+        router.replace(
           `/pending-review?email=${encodeURIComponent(cleanEmail)}&found=0`
         );
 
@@ -408,42 +411,48 @@ export function AppProvider({ children }) {
 
       if (profileStatus === "pending") {
         setCurrentUser(profile);
-        setAuthModal(null);
 
         sendToPendingReview({
           email: cleanEmail,
           name: profile.full_name || "",
           found: 1,
           status: "pending",
+          replace: true,
         });
+
+        setAuthModal(null);
 
         return;
       }
 
       if (profileStatus === "rejected") {
         setCurrentUser(profile);
-        setAuthModal(null);
 
         sendToPendingReview({
           email: cleanEmail,
           name: profile.full_name || "",
           found: 1,
           status: "rejected",
+          replace: true,
         });
+
+        setAuthModal(null);
 
         return;
       }
 
       if (profileStatus === "revoked") {
         setCurrentUser(profile);
-        setAuthModal(null);
 
         sendToPendingReview({
           email: cleanEmail,
           name: profile.full_name || "",
           found: 1,
           status: "revoked",
+          replace: true,
         });
+
+        setAuthModal(null);
 
         return;
       }
@@ -461,7 +470,7 @@ export function AppProvider({ children }) {
       setCurrentUser(null);
       setAuthModal(null);
 
-      router.push(
+      router.replace(
         `/pending-review?email=${encodeURIComponent(cleanEmail)}&found=0`
       );
 
@@ -482,14 +491,16 @@ export function AppProvider({ children }) {
 
       if (verifiedStatus === "revoked") {
         setCurrentUser(verified);
-        setAuthModal(null);
 
         sendToPendingReview({
           email: cleanEmail,
           name: verified.full_name || "",
           found: 1,
           status: "revoked",
+          replace: true,
         });
+
+        setAuthModal(null);
 
         return;
       }
@@ -505,14 +516,16 @@ export function AppProvider({ children }) {
       const pendingStatus = getProfileStatus(pending);
 
       setCurrentUser(pending);
-      setAuthModal(null);
 
       sendToPendingReview({
         email: cleanEmail,
         name: pending.full_name || "",
         found: 1,
         status: pendingStatus,
+        replace: true,
       });
+
+      setAuthModal(null);
     } else if (blocked) {
       if (blocked.password && blocked.password !== password) {
         return onError && onError("Incorrect password.");
@@ -521,42 +534,44 @@ export function AppProvider({ children }) {
       const blockedStatus = getProfileStatus(blocked);
 
       setCurrentUser(blocked);
-      setAuthModal(null);
 
       sendToPendingReview({
         email: cleanEmail,
         name: blocked.full_name || "",
         found: 1,
         status: blockedStatus,
+        replace: true,
       });
+
+      setAuthModal(null);
     } else {
       setAuthModal(null);
 
-      router.push(
+      router.replace(
         `/pending-review?email=${encodeURIComponent(cleanEmail)}&found=0`
       );
     }
   };
 
- const handleLogout = async () => {
-  try {
-    if (SUPA) {
-      await Auth.signOut();
-    }
-  } catch (error) {
-    console.error("Logout failed:", error);
-  } finally {
-    setCurrentUser(null);
-    setMyUpvotes(new Set());
-    setMyReports(new Set());
-    setNotifications([]);
-    setMyPosts([]);
-    setAuthModal(null);
-    setMobileMenu(false);
+  const handleLogout = async () => {
+    try {
+      if (SUPA) {
+        await Auth.signOut();
+      }
+    } catch (error) {
+      console.error("Logout failed:", error);
+    } finally {
+      setCurrentUser(null);
+      setMyUpvotes(new Set());
+      setMyReports(new Set());
+      setNotifications([]);
+      setMyPosts([]);
+      setAuthModal(null);
+      setMobileMenu(false);
 
-    window.location.replace("/");
-  }
-};
+      window.location.replace("/");
+    }
+  };
 
   const requireAuth = () => {
     if (!currentUser) {
@@ -574,6 +589,7 @@ export function AppProvider({ children }) {
         name: currentUser.full_name || "",
         found: 1,
         status: userStatus,
+        replace: true,
       });
 
       return false;
@@ -1031,7 +1047,10 @@ export function AppProvider({ children }) {
 
       if (!data) {
         pushToast("No non-admin profile found with that email.", "error");
-        return { ok: false, error: "No non-admin profile found with that email." };
+        return {
+          ok: false,
+          error: "No non-admin profile found with that email.",
+        };
       }
 
       pushToast(`Revoked access for ${data.full_name || cleanEmail}`, "info");

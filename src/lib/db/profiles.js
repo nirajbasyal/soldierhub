@@ -2,13 +2,19 @@
 
 import { createClient } from "@/lib/supabase/client";
 
+const SELF_PROFILE_FIELDS =
+  "id, full_name, email, personal_email, military_email, phone, bio, avatar_color, avatar_url, role, status, verification_status, base, created_at, updated_at";
+
+const ADMIN_PROFILE_FIELDS =
+  "id, full_name, email, personal_email, military_email, phone, bio, avatar_color, avatar_url, role, status, verification_status, base, created_at, updated_at";
+
 export async function getProfile(userId) {
   const supabase = createClient();
   if (!supabase) return { data: null, error: null };
 
   const { data, error } = await supabase
     .from("profiles")
-    .select("*")
+    .select(SELF_PROFILE_FIELDS)
     .eq("id", userId)
     .maybeSingle();
 
@@ -21,7 +27,7 @@ export async function listVerifiedProfiles() {
 
   const { data, error } = await supabase
     .from("profiles")
-    .select("*")
+    .select(ADMIN_PROFILE_FIELDS)
     .eq("status", "verified")
     .order("created_at", { ascending: false });
 
@@ -34,7 +40,7 @@ export async function listPendingProfiles() {
 
   const { data, error } = await supabase
     .from("profiles")
-    .select("*")
+    .select(ADMIN_PROFILE_FIELDS)
     .eq("status", "pending")
     .order("created_at", { ascending: false });
 
@@ -61,7 +67,7 @@ export async function updateMyProfile(userId, updates) {
     .from("profiles")
     .update(allowed)
     .eq("id", userId)
-    .select()
+    .select(SELF_PROFILE_FIELDS)
     .maybeSingle();
 
   return { data, error };
@@ -131,13 +137,14 @@ export async function adminVerifyProfileByEmail(email) {
     error,
   };
 }
+
 export async function listBlockedProfiles() {
   const supabase = createClient();
   if (!supabase) return { data: [], error: null };
 
   const { data, error } = await supabase
     .from("profiles")
-    .select("*")
+    .select(ADMIN_PROFILE_FIELDS)
     .in("status", ["rejected", "revoked"])
     .order("created_at", { ascending: false });
 

@@ -2,6 +2,9 @@
 
 import { createClient } from "./client";
 
+const CURRENT_USER_PROFILE_FIELDS =
+  "id, full_name, email, personal_email, military_email, phone, bio, avatar_color, avatar_url, role, status, verification_status, base, created_at, updated_at";
+
 /**
  * Auth helpers — thin wrappers over Supabase auth that match the shapes
  * AppContext expects. All functions return { data, error } so callers can
@@ -114,7 +117,7 @@ export async function getCurrentUser() {
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("*")
+    .select(CURRENT_USER_PROFILE_FIELDS)
     .eq("id", user.id)
     .maybeSingle();
 
