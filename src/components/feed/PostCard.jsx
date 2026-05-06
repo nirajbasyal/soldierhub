@@ -24,22 +24,39 @@ function getAnonymousDisplayName(postId) {
   return `Anonymous${String(total % 10000).padStart(4, "0")}`;
 }
 
+function getCommentAuthorId(comment) {
+  return (
+    comment.author_id ||
+    comment.user_id ||
+    comment.profile_id ||
+    comment.commenter_id ||
+    comment.created_by ||
+    comment.created_by_id ||
+    comment.author_user_id ||
+    comment.author?.id ||
+    comment.user?.id ||
+    comment.profile?.id ||
+    null
+  );
+}
+
 function getSafeCommentAuthor({ comment, post }) {
   const anonymousName = getAnonymousDisplayName(post.id);
+  const authorId = getCommentAuthorId(comment);
   const isAnonymousPostAuthorComment =
     post.anonymous &&
     (comment.is_anonymous_author === true ||
-      (comment.author_id && post.author_id && comment.author_id === post.author_id));
+      (authorId && post.author_id && authorId === post.author_id));
 
   if (isAnonymousPostAuthorComment) {
     return { name: anonymousName, color: "#5C6470", anonymous: true, authorId: null };
   }
 
   return {
-    name: comment.author_name_cached || comment.author?.full_name || comment.author_name || "Member",
-    color: comment.author_color_cached || comment.author?.avatar_color || comment.author_color || "#314A66",
+    name: comment.author_name_cached || comment.author?.full_name || comment.profile?.full_name || comment.user?.full_name || comment.author_name || "Member",
+    color: comment.author_color_cached || comment.author?.avatar_color || comment.profile?.avatar_color || comment.user?.avatar_color || comment.author_color || "#314A66",
     anonymous: false,
-    authorId: comment.author_id || comment.author?.id || null,
+    authorId,
   };
 }
 
@@ -48,8 +65,18 @@ function ProfileIdentity({ href, name, color, size = 42, children }) {
     return children || <Avatar name={name} color={color} size={size} />;
   }
 
+  const isTextLink = Boolean(children);
+
   return (
-    <Link href={href} className="inline-flex min-w-0 focus:outline-none focus:ring-2 focus:ring-offset-2 rounded-full" style={{ "--tw-ring-color": T.blue }}>
+    <Link
+      href={href}
+      className={
+        isTextLink
+          ? "inline-flex min-w-0 rounded-md outline-none focus-visible:underline"
+          : "inline-flex min-w-0 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2"
+      }
+      style={isTextLink ? undefined : { "--tw-ring-color": T.blue }}
+    >
       {children || <Avatar name={name} color={color} size={size} />}
     </Link>
   );
