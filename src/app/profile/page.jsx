@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, LogOut, UserRound } from "lucide-react";
 import { T } from "@/lib/theme";
@@ -11,20 +12,53 @@ import Button from "@/components/ui/Button";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import UserPostList from "@/components/profile/UserPostList";
 
+function ProfileStatusCard({ icon: Icon, title, body, action }) {
+  return (
+    <AppShell hideNav>
+      <main
+        className="min-h-screen flex items-center justify-center px-4 pb-24 md:pb-12"
+        style={{
+          background:
+            "radial-gradient(circle at top left, rgba(220,232,247,0.9), transparent 32%), linear-gradient(180deg, #F4F8FD 0%, #FFFFFF 48%, #F4F8FD 100%)",
+        }}
+      >
+        <div
+          className="w-full max-w-md rounded-[28px] border p-6 text-center"
+          style={{
+            backgroundColor: T.card,
+            borderColor: "#D5E2F2",
+            boxShadow: "0 18px 44px rgba(7,27,51,0.08)",
+          }}
+        >
+          <div
+            className="w-14 h-14 rounded-2xl mx-auto flex items-center justify-center mb-4"
+            style={{ backgroundColor: "rgba(220,232,247,0.95)", color: T.blue }}
+          >
+            <Icon size={24} />
+          </div>
+
+          <h1 className="text-2xl font-extrabold mb-2" style={{ color: T.navy }}>
+            {title}
+          </h1>
+
+          <p className="text-sm leading-7 mb-5" style={{ color: T.textMuted }}>
+            {body}
+          </p>
+
+          {action}
+        </div>
+      </main>
+    </AppShell>
+  );
+}
+
 export default function ProfilePage() {
   const router = useRouter();
 
-  const {
-    currentUser,
-    authLoading,
-    setAuthModal,
-    handleLogout,
-  } = useApp();
+  const { currentUser, authLoading, setAuthModal, handleLogout } = useApp();
 
   const userStatus =
-    currentUser?.status ||
-    currentUser?.verification_status ||
-    "pending";
+    currentUser?.status || currentUser?.verification_status || "pending";
 
   const isVerified = userStatus === "verified";
 
@@ -47,95 +81,42 @@ export default function ProfilePage() {
 
   if (authLoading) {
     return (
-      <AppShell hideNav>
-        <main
-          className="min-h-screen flex items-center justify-center px-4 pb-24 md:pb-12"
-          style={{ backgroundColor: T.bg }}
-        >
-          <div
-            className="rounded-2xl border px-5 py-4 text-sm"
-            style={{
-              backgroundColor: T.card,
-              borderColor: T.border,
-              color: T.textMuted,
-            }}
-          >
-            Loading profile...
-          </div>
-        </main>
-      </AppShell>
+      <ProfileStatusCard
+        icon={UserRound}
+        title="Loading profile"
+        body="Getting your SoldierHub profile ready."
+      />
     );
   }
 
   if (!currentUser) {
     return (
-      <AppShell hideNav>
-        <main
-          className="min-h-screen flex items-center justify-center px-4 pb-24 md:pb-12"
-          style={{ backgroundColor: T.bg }}
-        >
-          <div
-            className="w-full max-w-md rounded-2xl border p-6 text-center"
-            style={{
-              backgroundColor: T.card,
-              borderColor: T.border,
+      <ProfileStatusCard
+        icon={UserRound}
+        title="Sign in required"
+        body="Please sign in to view your profile."
+        action={
+          <Button
+            variant="primary"
+            onClick={() => {
+              router.push("/");
+              setAuthModal?.("login");
             }}
           >
-            <div
-              className="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center mb-4"
-              style={{ backgroundColor: T.goldBg, color: T.gold }}
-            >
-              <UserRound size={22} />
-            </div>
-
-            <h1
-              className="text-2xl font-serif mb-2"
-              style={{ color: T.navy }}
-            >
-              Sign in required
-            </h1>
-
-            <p
-              className="text-sm leading-relaxed mb-5"
-              style={{ color: T.textMuted }}
-            >
-              Please sign in to view your profile.
-            </p>
-
-            <Button
-              variant="primary"
-              onClick={() => {
-                router.push("/");
-                setAuthModal?.("login");
-              }}
-            >
-              Go to sign in
-            </Button>
-          </div>
-        </main>
-      </AppShell>
+            Go to sign in
+          </Button>
+        }
+      />
     );
   }
 
   if (!isVerified) {
     return (
-      <AppShell hideNav>
-        <main
-          className="min-h-screen flex items-center justify-center px-4 pb-24 md:pb-12"
-          style={{ backgroundColor: T.bg }}
-        >
-          <div
-            className="rounded-2xl border px-5 py-4 text-sm"
-            style={{
-              backgroundColor: T.card,
-              borderColor: T.border,
-              color: T.textMuted,
-            }}
-          >
-            Redirecting to account review...
-          </div>
-        </main>
-      </AppShell>
+      <ProfileStatusCard
+        icon={UserRound}
+        title="Redirecting to account review"
+        body="Your account needs verification before your profile is available."
+      />
     );
   }
 
@@ -143,25 +124,39 @@ export default function ProfilePage() {
     <AppShell hideNav>
       <main
         className="min-h-screen pb-24 md:pb-12"
-        style={{ backgroundColor: T.bg }}
+        style={{
+          background:
+            "radial-gradient(circle at top left, rgba(220,232,247,0.9), transparent 32%), linear-gradient(180deg, #F4F8FD 0%, #FFFFFF 48%, #F4F8FD 100%)",
+        }}
       >
-        <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 md:py-10">
+        <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-10">
           <div className="flex items-center justify-between gap-3 mb-6">
-            <Button
-              variant="secondary"
-              icon={ArrowLeft}
-              onClick={() => router.push("/")}
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition hover:-translate-y-0.5"
+              style={{
+                backgroundColor: "rgba(255,255,255,0.86)",
+                borderColor: "#D5E2F2",
+                color: T.navy,
+              }}
             >
+              <ArrowLeft size={16} />
               Back to feed
-            </Button>
+            </Link>
 
-            <Button
-              variant="ghost"
-              icon={LogOut}
+            <button
+              type="button"
               onClick={handleLogout}
+              className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition hover:-translate-y-0.5"
+              style={{
+                backgroundColor: "rgba(255,255,255,0.86)",
+                borderColor: "#D5E2F2",
+                color: T.textMuted,
+              }}
             >
+              <LogOut size={16} />
               Sign out
-            </Button>
+            </button>
           </div>
 
           <ProfileHeader />
