@@ -9,13 +9,14 @@ import {
   LogIn,
   Mail,
   Phone,
-  Plus,
+  Send,
   ShieldCheck,
   User,
   UserPlus,
   X,
 } from "lucide-react";
 import { T } from "@/lib/theme";
+import { resetPasswordForEmail } from "@/lib/supabase/auth";
 import { useApp } from "@/store/AppContext";
 import Modal from "@/components/ui/Modal";
 import Button from "@/components/ui/Button";
@@ -155,6 +156,7 @@ export default function AuthModal() {
     handleLogin,
     handleSignup,
     isLiveMode,
+    pushToast,
   } = useApp();
 
   const [tab, setTab] = useState(authModal || "login");
@@ -175,6 +177,7 @@ export default function AuthModal() {
 
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
   const trimmedEmail = email.trim().toLowerCase();
   const trimmedMilitaryEmail = militaryEmail.trim().toLowerCase();
@@ -199,13 +202,50 @@ export default function AuthModal() {
     if (authModal) {
       setTab(authModal);
       setError("");
+      setResetSent(false);
     }
   }, [authModal]);
 
   const close = () => setAuthModal(null);
 
+  const sendPasswordReset = async () => {
+    setError("");
+    setResetSent(false);
+
+    const personalEmail = email.trim().toLowerCase();
+
+    if (!personalEmail) {
+      return setError("Email is required to reset your password.");
+    }
+
+    if (!isValidEmail(personalEmail)) {
+      return setError("Please enter valid email address.");
+    }
+
+    try {
+      setSubmitting(true);
+      const { error: resetError } = await resetPasswordForEmail(personalEmail);
+
+      if (resetError) {
+        return setError(resetError.message || "Could not send reset email.");
+      }
+
+      setResetSent(true);
+      pushToast?.("Password reset email sent. Check your inbox.", "success");
+    } catch (err) {
+      console.error("Password reset failed:", err);
+      setError("Could not send reset email. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const submit = async () => {
     setError("");
+
+    if (tab === "forgot") {
+      return sendPasswordReset();
+    }
 
     const fullName = name.trim();
     const personalEmail = email.trim().toLowerCase();
@@ -313,6 +353,13 @@ export default function AuthModal() {
     }
   };
 
+  const title =
+    tab === "signup"
+      ? "Join the community"
+      : tab === "forgot"
+      ? "Reset your password"
+      : "Welcome back";
+
   return (
     <Modal open onClose={close} maxWidth={440}>
       <div className="p-5 md:p-6">
@@ -320,7 +367,7 @@ export default function AuthModal() {
           <div>
             <div
               className="text-[10px] font-medium tracking-wider uppercase"
-              style={{ color: T.gold }}
+              style={{ color: T.red }}
             >
               Soldier Hub
             </div>
@@ -329,7 +376,7 @@ export default function AuthModal() {
               className="text-xl mt-0.5 leading-tight font-serif"
               style={{ color: T.navy }}
             >
-              {tab === "signup" ? "Join the community" : "Welcome back"}
+              {title}
             </h2>
           </div>
 
@@ -352,6 +399,7 @@ export default function AuthModal() {
               onClick={() => {
                 setTab(k);
                 setError("");
+                setResetSent(false);
               }}
               className="flex-1 h-9 rounded-lg text-sm font-medium transition-all"
               style={{
@@ -366,6 +414,19 @@ export default function AuthModal() {
         </div>
 
         <div className="flex flex-col gap-2.5">
+          {tab === "forgot" && (
+            <div
+              className="rounded-xl border px-3 py-3 text-sm leading-relaxed"
+              style={{
+                backgroundColor: T.surface,
+                borderColor: T.borderSoft,
+                color: T.textMuted,
+              }}
+            >
+              Enter your account email. SoldierHub will send you a secure link to set a new password.
+            </div>
+          )}
+
           {tab === "signup" && (
             <TextInput
               label={<RequiredLabel>Full name</RequiredLabel>}
@@ -380,7 +441,10 @@ export default function AuthModal() {
             label={tab === "signup" ? "Personal email" : "Email"}
             required
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setResetSent(false);
+            }}
             placeholder="you@example.com"
             invalid={emailIsInvalid}
             errorText="Please enter valid email address."
@@ -411,57 +475,13 @@ export default function AuthModal() {
             </>
           )}
 
-          <label className="block">
-            <span
-              className="block text-xs font-medium mb-1.5"
-              style={{ color: T.textMuted }}
-            >
-              Password <span style={{ color: T.red }}>*</span>
-            </span>
-
-            <div className="relative">
-              <span
-                className="absolute left-3 top-1/2 -translate-y-1/2"
-                style={{ color: T.textSubtle }}
-              >
-                <Lock size={16} strokeWidth={2.25} />
-              </span>
-
-              <input
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && submit()}
-                placeholder={tab === "signup" ? "Min 6 characters" : "Your password"}
-                className="w-full h-11 rounded-xl border text-sm outline-none placeholder:text-[#A8ABB2] pl-10 pr-11"
-                style={{
-                  backgroundColor: T.card,
-                  borderColor: T.border,
-                  color: T.text,
-                }}
-                onFocus={(e) => (e.currentTarget.style.borderColor = T.navy)}
-                onBlur={(e) => (e.currentTarget.style.borderColor = T.border)}
-              />
-
-              <button
-                type="button"
-                onClick={() => setShowPassword((s) => !s)}
-                title={showPassword ? "Hide password" : "Show password"}
-                className="absolute right-3 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg flex items-center justify-center"
-                style={{ color: T.textMuted }}
-              >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-          </label>
-
-          {tab === "signup" && (
+          {tab !== "forgot" && (
             <label className="block">
               <span
                 className="block text-xs font-medium mb-1.5"
                 style={{ color: T.textMuted }}
               >
-                Confirm password <span style={{ color: T.red }}>*</span>
+                Password <span style={{ color: T.red }}>*</span>
               </span>
 
               <div className="relative">
@@ -473,66 +493,111 @@ export default function AuthModal() {
                 </span>
 
                 <input
-                  type={showConfirmPassword ? "text" : "password"}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && submit()}
-                  placeholder="Re-enter your password"
-                  className="w-full h-11 rounded-xl border text-sm outline-none placeholder:text-[#A8ABB2] pl-10 pr-11"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder={tab === "signup" ? "Create a password" : "Your password"}
+                  className="w-full h-11 rounded-xl border text-sm outline-none placeholder:text-[#A8ABB2] pl-10 pr-10"
                   style={{
                     backgroundColor: T.card,
-                    borderColor: passwordsDoNotMatch ? T.red : T.border,
+                    borderColor: T.border,
                     color: T.text,
                   }}
-                  onFocus={(e) =>
-                    (e.currentTarget.style.borderColor = passwordsDoNotMatch
-                      ? T.red
-                      : T.navy)
-                  }
-                  onBlur={(e) =>
-                    (e.currentTarget.style.borderColor = passwordsDoNotMatch
-                      ? T.red
-                      : T.border)
-                  }
                 />
 
                 <button
                   type="button"
-                  onClick={() => setShowConfirmPassword((s) => !s)}
-                  title={showConfirmPassword ? "Hide password" : "Show password"}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg flex items-center justify-center"
-                  style={{ color: T.textMuted }}
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2"
+                  style={{ color: T.textSubtle }}
                 >
-                  {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
-
-              {passwordsDoNotMatch && (
-                <p className="mt-1 text-xs font-medium" style={{ color: T.red }}>
-                  Password does not match.
-                </p>
-              )}
             </label>
+          )}
+
+          {tab === "login" && (
+            <div className="flex justify-end -mt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setTab("forgot");
+                  setPassword("");
+                  setError("");
+                  setResetSent(false);
+                }}
+                className="text-xs font-semibold hover:underline"
+                style={{ color: T.red }}
+              >
+                Forgot password?
+              </button>
+            </div>
           )}
 
           {tab === "signup" && (
             <>
-              {!showBio ? (
-                <button
-                  type="button"
-                  onClick={() => setShowBio(true)}
-                  className="text-xs font-medium text-left flex items-center gap-1 mt-0.5"
-                  style={{ color: T.gold }}
+              <label className="block">
+                <span
+                  className="block text-xs font-medium mb-1.5"
+                  style={{ color: T.textMuted }}
                 >
-                  <Plus size={12} /> Add a short bio optional
-                </button>
-              ) : (
+                  Confirm password <span style={{ color: T.red }}>*</span>
+                </span>
+
+                <div className="relative">
+                  <span
+                    className="absolute left-3 top-1/2 -translate-y-1/2"
+                    style={{ color: passwordsDoNotMatch ? T.red : T.textSubtle }}
+                  >
+                    <Lock size={16} strokeWidth={2.25} />
+                  </span>
+
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Re-enter your password"
+                    className="w-full h-11 rounded-xl border text-sm outline-none placeholder:text-[#A8ABB2] pl-10 pr-10"
+                    style={{
+                      backgroundColor: T.card,
+                      borderColor: passwordsDoNotMatch ? T.red : T.border,
+                      color: T.text,
+                    }}
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2"
+                    style={{ color: T.textSubtle }}
+                  >
+                    {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+
+                {passwordsDoNotMatch && (
+                  <p className="mt-1 text-xs font-medium" style={{ color: T.red }}>
+                    Passwords do not match.
+                  </p>
+                )}
+              </label>
+
+              <button
+                type="button"
+                onClick={() => setShowBio((v) => !v)}
+                className="text-left text-xs font-semibold"
+                style={{ color: T.navy }}
+              >
+                {showBio ? "Hide optional bio" : "+ Add optional bio"}
+              </button>
+
+              {showBio && (
                 <TextArea
-                  label="Short bio optional"
+                  label="Bio (optional)"
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
-                  placeholder="Tell the community a little about yourself…"
-                  rows={2}
+                  placeholder="Unit, role, interests, or anything helpful for the community."
                 />
               )}
             </>
@@ -540,37 +605,58 @@ export default function AuthModal() {
 
           {error && (
             <div
-              className="text-xs px-3 py-2 rounded-lg flex items-start gap-2"
+              className="rounded-xl px-3 py-2 text-xs flex items-start gap-2"
               style={{ backgroundColor: T.redBg, color: T.red }}
             >
-              <AlertTriangle size={14} className="shrink-0 mt-0.5" /> {error}
+              <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+              <span>{error}</span>
             </div>
           )}
-        </div>
 
-        <Button
-          variant="primary"
-          size="lg"
-          className="w-full mt-4"
-          onClick={submit}
-          icon={tab === "signup" ? UserPlus : LogIn}
-          disabled={submitting}
-        >
-          {submitting
-            ? "Please wait…"
-            : tab === "signup"
-            ? "Submit for review"
-            : "Sign in"}
-        </Button>
+          {resetSent && (
+            <div
+              className="rounded-xl px-3 py-2 text-xs flex items-start gap-2"
+              style={{ backgroundColor: T.greenBg, color: T.green }}
+            >
+              <ShieldCheck size={14} className="shrink-0 mt-0.5" />
+              <span>Password reset email sent. Check your inbox and follow the secure link.</span>
+            </div>
+          )}
 
-        <div
-          className="mt-3 text-[11px] leading-relaxed flex items-center gap-1.5"
-          style={{ color: T.textSubtle }}
-        >
-          <ShieldCheck size={12} className="shrink-0" style={{ color: T.gold }} />
-          {tab === "signup"
-            ? "Fields marked with * are required. Phone number is optional, but must be a valid 10-digit number if entered."
-            : "Fields marked with * are required to sign in."}
+          <Button
+            variant="primary"
+            icon={tab === "signup" ? UserPlus : tab === "forgot" ? Send : LogIn}
+            onClick={submit}
+            disabled={submitting}
+            className="w-full mt-1"
+          >
+            {submitting
+              ? tab === "forgot"
+                ? "Sending..."
+                : tab === "signup"
+                ? "Creating..."
+                : "Signing in..."
+              : tab === "signup"
+              ? "Create account"
+              : tab === "forgot"
+              ? "Send reset link"
+              : "Sign in"}
+          </Button>
+
+          {tab === "forgot" && (
+            <button
+              type="button"
+              onClick={() => {
+                setTab("login");
+                setError("");
+                setResetSent(false);
+              }}
+              className="text-sm font-semibold mt-1 hover:underline"
+              style={{ color: T.navy }}
+            >
+              Back to sign in
+            </button>
+          )}
         </div>
       </div>
     </Modal>
