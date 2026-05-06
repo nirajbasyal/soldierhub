@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import {
+  AlertTriangle,
   Check,
   Edit3,
+  KeyRound,
   Mail,
   Shield,
   ShieldCheck,
@@ -12,6 +14,7 @@ import {
 } from "lucide-react";
 import { T } from "@/lib/theme";
 import { useApp } from "@/store/AppContext";
+import * as Auth from "@/lib/supabase/auth";
 import Avatar from "@/components/ui/Avatar";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
@@ -56,8 +59,23 @@ export default function ProfileHeader() {
   const [bio, setBio] = useState(currentUser.bio || "");
   const [color, setColor] = useState(currentUser.avatar_color || "#1E4E8C");
 
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordSuccess, setPasswordSuccess] = useState("");
+  const [passwordSaving, setPasswordSaving] = useState(false);
+
   const totalUpvotes = myPosts.reduce((sum, post) => sum + (post.upvote_count || 0), 0);
   const totalReplies = myPosts.reduce((sum, post) => sum + (post.comment_count || 0), 0);
+
+  const resetPasswordForm = () => {
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setPasswordError("");
+    setPasswordSuccess("");
+  };
 
   const save = () => {
     updateProfile({ full_name: name.trim() || currentUser.full_name, bio, avatar_color: color });
@@ -68,7 +86,58 @@ export default function ProfileHeader() {
     setName(currentUser.full_name || "");
     setBio(currentUser.bio || "");
     setColor(currentUser.avatar_color || "#1E4E8C");
+    resetPasswordForm();
     setEditing(false);
+  };
+
+  const changePassword = async () => {
+    setPasswordError("");
+    setPasswordSuccess("");
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setPasswordError("Enter your current password, new password, and confirmation password.");
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setPasswordError("New password must be at least 6 characters.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError("New password and confirmation password do not match.");
+      return;
+    }
+
+    if (currentPassword === newPassword) {
+      setPasswordError("New password must be different from your current password.");
+      return;
+    }
+
+    setPasswordSaving(true);
+
+    const email = currentUser.email || currentUser.personal_email || "";
+    const verify = await Auth.signIn({ email, password: currentPassword });
+
+    if (verify.error) {
+      setPasswordSaving(false);
+      setPasswordError("Current password is incorrect. Please try again.");
+      return;
+    }
+
+    const result = await Auth.updatePassword(newPassword);
+
+    setPasswordSaving(false);
+
+    if (result.error) {
+      setPasswordError(result.error.message || "Could not update password.");
+      return;
+    }
+
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setPasswordSuccess("Password updated successfully.");
   };
 
   return (
@@ -174,7 +243,7 @@ export default function ProfileHeader() {
                         Edit profile
                       </h2>
                       <p className="text-sm mt-1" style={{ color: T.textMuted }}>
-                        Update your display name, bio, and avatar color.
+                        Update your display name, bio, avatar color, and password.
                       </p>
                     </div>
 
@@ -196,9 +265,92 @@ export default function ProfileHeader() {
                     </div>
                   </div>
 
+                  <div
+                    className="mt-4 rounded-3xl border p-4"
+                    style={{
+                      background:
+                        "linear-gradient(135deg, rgba(244,248,253,0.96), rgba(255,255,255,0.96))",
+                      borderColor: "#D5E2F2",
+                    }}
+                  >
+                    <div className="flex items-start gap-3 mb-3">
+                      <div
+                        className="h-10 w-10 rounded-2xl flex items-center justify-center shrink-0"
+                        style={{ backgroundColor: "rgba(220,232,247,0.95)", color: T.blue }}
+                      >
+                        <KeyRound size={18} />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-extrabold" style={{ color: T.navy }}>
+                          Change password
+                        </h3>
+                        <p className="text-xs leading-5 mt-0.5" style={{ color: T.textMuted }}>
+                          Enter your current password first, then choose a new password.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3">
+                      <TextInput
+                        label="Current password"
+                        type="password"
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
+                        autoComplete="current-password"
+                      />
+                      <div className="grid sm:grid-cols-2 gap-3">
+                        <TextInput
+                          label="New password"
+                          type="password"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          autoComplete="new-password"
+                        />
+                        <TextInput
+                          label="Confirm new password"
+                          type="password"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          autoComplete="new-password"
+                        />
+                      </div>
+                    </div>
+
+                    {passwordError && (
+                      <div
+                        className="text-xs px-3 py-2 rounded-2xl flex items-start gap-2 mt-3 border"
+                        style={{ backgroundColor: "rgba(253,236,240,0.95)", borderColor: "#F3C7D1", color: "#B31942" }}
+                      >
+                        <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+                        {passwordError}
+                      </div>
+                    )}
+
+                    {passwordSuccess && (
+                      <div
+                        className="text-xs px-3 py-2 rounded-2xl flex items-start gap-2 mt-3 border"
+                        style={{ backgroundColor: "rgba(220,232,247,0.95)", borderColor: "#BCD0EA", color: T.blue }}
+                      >
+                        <Check size={14} className="shrink-0 mt-0.5" />
+                        {passwordSuccess}
+                      </div>
+                    )}
+
+                    <div className="mt-3 flex justify-start">
+                      <Button
+                        variant="ghost"
+                        onClick={changePassword}
+                        icon={KeyRound}
+                        disabled={passwordSaving}
+                      >
+                        {passwordSaving ? "Updating password…" : "Update password"}
+                      </Button>
+                    </div>
+                  </div>
+
                   <div className="flex flex-col sm:flex-row gap-2 mt-4">
                     <Button variant="primary" onClick={save} icon={Check}>
-                      Save changes
+                      Save profile changes
                     </Button>
                     <Button variant="ghost" onClick={cancel}>
                       Cancel
