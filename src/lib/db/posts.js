@@ -22,38 +22,79 @@ function normalizePostRow(row = {}) {
   };
 }
 
-/**
- * Fetch public feed posts.
- * Primary path: safe RPC `get_public_posts`.
- * Fallback path: safe view `posts_with_meta`.
- * This prevents the feed from going empty if an RPC parameter/return shape changes.
- */
-export async function listPosts({ limit = 30 } = {}) {
-  const supabase = createClient();
-  if (!supabase) return { data: [], error: null };
-
-  const rpcResult = await supabase.rpc("get_public_posts", {
-    limit_count: limit,
-  });
-
-  if (!rpcResult.error && Array.isArray(rpcResult.data)) {
-    return {
-      data: rpcResult.data.map(normalizePostRow),
-      error: null,
-    };
-  }
-
-  console.warn("get_public_posts failed. Falling back to posts_with_meta.", rpcResult.error);
-
-  const fallbackResult = await supabase
+async function listPostsFromView(supabase, limit) {
+  const result = await supabase
     .from("posts_with_meta")
     .select("*")
     .order("created_at", { ascending: false })
     .limit(limit);
 
   return {
-    data: (fallbackResult.data || []).map(normalizePostRow),
-    error: fallbackResult.error || rpcResult.error,
+    data: (result.data || []).map(normalizePostRow),
+    error: result.error,
+  };
+}
+
+async function listPostsFromRpc(supabase, limit) {
+  const attempts = [
+    () => supabase.rpc("get_public_posts", { limit_count: limit }),
+    () => supabase.rpc("get_public_posts", { p_limit: limit }),
+    () => supabase.rpc("get_public_posts"),
+  ];
+
+  let lastError = null;
+
+  for (const attempt of attempts) {
+    const result = await attempt();
+
+    if (!result.error && Array.isArray(result.data)) {
+      return {
+        data: result.data.map(normalizePostRow),
+        error: null,
+      };
+    }
+
+    lastError = result.error || lastError;
+  }
+
+  return { data: [], error: lastError };
+}
+
+/**
+ * Fetch public feed posts.
+ * Production-ready behavior:
+ * 1. Use the safe public view first because it reflects the actual feed shape.
+ * 2. Fall back to RPC if the view fails.
+ * 3. If either path returns posts, normalize the row shape for the UI.
+ *
+ * This prevents the feed from going empty when the RPC parameter name changes
+ * or when an old RPC returns an empty array while posts still exist in the view.
+ */
+export async function listPosts({ limit = 30 } = {}) {
+  const supabase = createClient();
+  if (!supabase) return { data: [], error: null };
+
+  const viewResult = await listPostsFromView(supabase, limit);
+
+  if (!viewResult.error && viewResult.data.length > 0) {
+    return viewResult;
+  }
+
+  const rpcResult = await listPostsFromRpc(supabase, limit);
+
+  if (!rpcResult.error && rpcResult.data.length > 0) {
+    return rpcResult;
+  }
+
+  // If both succeeded but both are empty, return empty without a false error.
+  if (!viewResult.error && !rpcResult.error) {
+    return { data: [], error: null };
+  }
+
+  // Prefer the view error because the feed is primarily powered by the public view.
+  return {
+    data: viewResult.data.length ? viewResult.data : rpcResult.data,
+    error: viewResult.error || rpcResult.error,
   };
 }
 
