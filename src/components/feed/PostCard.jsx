@@ -18,7 +18,6 @@ import { useApp } from "@/store/AppContext";
 import Avatar from "@/components/ui/Avatar";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
-import IconButton from "@/components/ui/IconButton";
 import ExpandableText from "@/components/ui/ExpandableText";
 import ClientTimeAgo from "@/components/ui/ClientTimeAgo";
 
@@ -34,7 +33,6 @@ function getAnonymousDisplayName(postId) {
   }
 
   const number = String(total % 10000).padStart(4, "0");
-
   return `Anonymous${number}`;
 }
 
@@ -71,6 +69,40 @@ function getSafeCommentAuthor({ comment, post }) {
   };
 }
 
+function FeedActionButton({
+  icon: Icon,
+  label,
+  count,
+  active = false,
+  onClick,
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex-1 h-10 rounded-xl text-sm font-medium transition-all inline-flex items-center justify-center gap-2 hover:bg-slate-100"
+      style={{
+        color: active ? T.navy : T.textMuted,
+        backgroundColor: active ? T.surface : "transparent",
+      }}
+    >
+      <Icon size={18} strokeWidth={2.2} />
+      <span>{label}</span>
+      {typeof count === "number" && count > 0 ? (
+        <span
+          className="min-w-[18px] h-[18px] px-1 rounded-full text-[11px] font-bold inline-flex items-center justify-center"
+          style={{
+            backgroundColor: active ? T.blueSoft : T.borderSoft,
+            color: active ? T.navy : T.textSubtle,
+          }}
+        >
+          {count}
+        </span>
+      ) : null}
+    </button>
+  );
+}
+
 export default function PostCard({ post }) {
   const {
     currentUser,
@@ -93,8 +125,8 @@ export default function PostCard({ post }) {
 
   const cat = CATEGORIES.find((c) => c.key === post.category) || CATEGORIES[0];
 
-  const userUpvoted = currentUser && myUpvotes.has(post.id);
-  const userReported = myReports.has(post.id);
+  const userUpvoted = Boolean(currentUser && myUpvotes.has(post.id));
+  const userReported = Boolean(myReports.has(post.id));
   const isReported = post.status === "reported";
 
   const anonymousDisplayName = getAnonymousDisplayName(post.id);
@@ -109,6 +141,7 @@ export default function PostCard({ post }) {
 
   const comments = postComments[post.id] || [];
   const commentCount = post.comment_count ?? comments.length;
+  const upvoteCount = post.upvote_count ?? 0;
 
   const ownsPostBySafeViewerFlag = post.viewer_is_author === true;
 
@@ -139,7 +172,7 @@ export default function PostCard({ post }) {
 
   const replyPlaceholder = currentUserIsAnonymousPostAuthor
     ? `Reply as ${anonymousDisplayName}…`
-    : "Write a thoughtful reply…";
+    : "Write a reply...";
 
   const guard = (fn) => {
     if (requireAuth()) fn();
@@ -160,7 +193,6 @@ export default function PostCard({ post }) {
     setCommentError("");
 
     const cleanedComment = comment.trim();
-
     if (!cleanedComment) return;
 
     setCommentSubmitting(true);
@@ -169,7 +201,7 @@ export default function PostCard({ post }) {
       const mod = await moderateAsync(cleanedComment);
 
       if (!mod.allowed) {
-        setCommentError(mod.reason);
+        setCommentError(mod.reason || "Comment could not be posted.");
         return;
       }
 
@@ -191,31 +223,35 @@ export default function PostCard({ post }) {
 
   return (
     <article
-      className="rounded-2xl border sh-fade-up sh-smooth sh-hover-lift hover:shadow-sm"
-      style={{ backgroundColor: T.card, borderColor: T.border }}
+      className="border rounded-[20px] overflow-hidden shadow-sm"
+      style={{
+        backgroundColor: T.card,
+        borderColor: T.border,
+      }}
     >
-      <div className="p-5 md:p-6">
+      <div className="px-4 md:px-5 pt-4 pb-3">
         {/* Header */}
-        <div className="flex items-start justify-between gap-2 mb-3 flex-wrap">
-          <div className="flex items-center gap-2.5 min-w-0 flex-1">
-            <Avatar name={displayName} color={displayColor} size={36} />
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3 min-w-0 flex-1">
+            <Avatar name={displayName} color={displayColor} size={40} />
 
-            <div className="text-left min-w-0 flex-1">
+            <div className="min-w-0 flex-1">
               <div
-                className="text-sm font-semibold truncate"
+                className="text-[15px] font-bold leading-tight truncate"
                 style={{ color: T.text }}
               >
                 {displayName}
               </div>
 
               <div
-                className="text-xs flex items-center gap-1.5 flex-wrap"
+                className="mt-1 text-xs flex items-center gap-1.5 flex-wrap"
                 style={{ color: T.textSubtle }}
               >
                 {post.anonymous && (
                   <>
                     <span className="inline-flex items-center gap-1">
-                      <Lock size={10} strokeWidth={2.5} /> anonymous
+                      <Lock size={10} strokeWidth={2.5} />
+                      anonymous
                     </span>
                     <span>·</span>
                   </>
@@ -233,7 +269,7 @@ export default function PostCard({ post }) {
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 flex-wrap shrink-0 justify-end">
+          <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
             <Badge tone={cat.tone}>{cat.label}</Badge>
 
             {isReported && (
@@ -244,70 +280,109 @@ export default function PostCard({ post }) {
           </div>
         </div>
 
-        {/* Body */}
-        <h3
-          className="text-lg md:text-xl mb-2 leading-snug font-semibold tracking-tight"
-          style={{ color: T.text }}
+        {/* Content */}
+        <div className="mt-4">
+          {post.title ? (
+            <h3
+              className="text-[24px] md:text-[28px] leading-tight font-bold tracking-tight"
+              style={{ color: T.text }}
+            >
+              {post.title}
+            </h3>
+          ) : null}
+
+          {post.body ? (
+            <div className={post.title ? "mt-2" : ""}>
+              <ExpandableText
+                text={post.body || ""}
+                previewLength={POST_PREVIEW_LENGTH}
+                className="text-[16px] leading-7 whitespace-pre-wrap"
+                style={{ color: T.textMuted }}
+                buttonSize="sm"
+              />
+            </div>
+          ) : null}
+        </div>
+
+        {/* Meta row */}
+        <div
+          className="mt-4 pt-3 flex items-center justify-between gap-3 text-sm"
+          style={{ borderTop: `1px solid ${T.borderSoft}` }}
         >
-          {post.title}
-        </h3>
+          <div className="flex items-center gap-3" style={{ color: T.textSubtle }}>
+            <span>{upvoteCount} upvote{upvoteCount === 1 ? "" : "s"}</span>
+          </div>
 
-        <ExpandableText
-          text={post.body || ""}
-          previewLength={POST_PREVIEW_LENGTH}
-          className="text-[15px] leading-relaxed whitespace-pre-wrap"
-          style={{ color: T.textMuted }}
-          buttonSize="sm"
-        />
-
-        {/* Actions */}
-        <div className="flex items-center gap-1 mt-4 -mx-1.5">
-          <IconButton
-            icon={ArrowUp}
-            label="Upvote"
-            count={post.upvote_count}
-            active={userUpvoted}
-            onClick={() => guard(() => upvotePost(post.id))}
-          />
-
-          <IconButton
-            icon={MessageCircle}
-            label="Comments"
-            count={commentCount}
-            active={showComments}
+          <button
+            type="button"
             onClick={toggleComments}
-          />
+            className="text-sm hover:underline"
+            style={{ color: T.textSubtle }}
+          >
+            {commentCount} repl{commentCount === 1 ? "y" : "ies"}
+          </button>
+        </div>
 
-          <IconButton
-            icon={Share2}
-            label="Share"
-            onClick={() => shareOrCopy(post, pushToast)}
-          />
+        {/* Action bar */}
+        <div
+          className="mt-2 pt-2 flex items-center gap-2"
+          style={{ borderTop: `1px solid ${T.borderSoft}` }}
+        >
+          <div className="flex-1 grid grid-cols-3 gap-1">
+            <FeedActionButton
+              icon={ArrowUp}
+              label="Upvote"
+              count={upvoteCount}
+              active={userUpvoted}
+              onClick={() => guard(() => upvotePost(post.id))}
+            />
 
-          <div className="ml-auto">
-            <IconButton
-              icon={Flag}
-              label={userReported ? "Reported" : "Report"}
-              active={userReported}
-              onClick={() => reportPost(post.id)}
+            <FeedActionButton
+              icon={MessageCircle}
+              label="Reply"
+              count={commentCount}
+              active={showComments}
+              onClick={toggleComments}
+            />
+
+            <FeedActionButton
+              icon={Share2}
+              label="Share"
+              onClick={() => shareOrCopy(post, pushToast)}
             />
           </div>
+
+          <button
+            type="button"
+            onClick={() => guard(() => reportPost(post.id))}
+            className="w-10 h-10 rounded-xl inline-flex items-center justify-center transition-all"
+            style={{
+              color: userReported ? T.red : T.textMuted,
+              backgroundColor: userReported ? T.redBg : "transparent",
+            }}
+            aria-label={userReported ? "Reported" : "Report"}
+          >
+            <Flag size={18} strokeWidth={2.2} />
+          </button>
         </div>
       </div>
 
       {/* Comments */}
       {showComments && (
         <div
-          className="border-t"
-          style={{ borderColor: T.borderSoft, backgroundColor: T.surface }}
+          className="px-4 md:px-5 py-4"
+          style={{
+            backgroundColor: T.surface,
+            borderTop: `1px solid ${T.borderSoft}`,
+          }}
         >
-          <div className="p-5 md:p-6 flex flex-col gap-3">
+          <div className="flex flex-col gap-3">
             {comments.length === 0 && (
               <div
-                className="text-sm text-center py-3"
+                className="text-sm text-center py-2"
                 style={{ color: T.textSubtle }}
               >
-                No comments yet. Be the first to share your thoughts.
+                No comments yet. Start the conversation.
               </div>
             )}
 
@@ -324,17 +399,17 @@ export default function PostCard({ post }) {
                   <Avatar
                     name={safeAuthor.name}
                     color={safeAuthor.color}
-                    size={30}
+                    size={32}
                   />
 
                   <div
-                    className="flex-1 rounded-xl px-3.5 py-2.5 border min-w-0"
+                    className="flex-1 rounded-2xl px-3.5 py-3 border min-w-0"
                     style={{
                       backgroundColor: T.card,
                       borderColor: T.borderSoft,
                     }}
                   >
-                    <div className="flex items-center justify-between gap-2 mb-0.5">
+                    <div className="flex items-center justify-between gap-2 mb-1">
                       <span
                         className="text-xs font-semibold truncate inline-flex items-center gap-1"
                         style={{ color: T.text }}
@@ -371,19 +446,15 @@ export default function PostCard({ post }) {
             })}
 
             {currentUser?.status === "verified" ? (
-              <div className="mt-1 grid grid-cols-[30px_minmax(0,1fr)] gap-x-2 gap-y-1.5">
-                {/* Avatar stays locked beside the reply input */}
-                <div className="col-start-1 row-start-1 self-center flex items-center justify-center">
-                  <Avatar
-                    name={replyAvatarName}
-                    color={replyAvatarColor}
-                    size={30}
-                  />
-                </div>
+              <div className="flex gap-2.5 pt-1">
+                <Avatar
+                  name={replyAvatarName}
+                  color={replyAvatarColor}
+                  size={32}
+                />
 
-                {/* Reply input row */}
-                <div className="col-start-2 row-start-1 min-w-0">
-                  <div className="flex items-center gap-2 min-w-0">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
                     <input
                       value={comment}
                       onChange={(e) => {
@@ -401,7 +472,7 @@ export default function PostCard({ post }) {
                         }
                       }}
                       placeholder={replyPlaceholder}
-                      className="flex-1 min-w-0 h-11 px-3.5 rounded-xl border text-sm outline-none sh-smooth sh-input-focus"
+                      className="flex-1 min-w-0 h-11 px-4 rounded-full border text-sm outline-none"
                       style={{
                         borderColor: T.border,
                         backgroundColor: T.card,
@@ -420,45 +491,50 @@ export default function PostCard({ post }) {
                       {commentSubmitting ? "Posting..." : "Reply"}
                     </Button>
                   </div>
+
+                  {currentUserIsAnonymousPostAuthor && (
+                    <div
+                      className="mt-2 text-xs"
+                      style={{ color: T.textSubtle }}
+                    >
+                      You are replying as <strong>{anonymousDisplayName}</strong>.
+                    </div>
+                  )}
+
+                  {commentError && (
+                    <div className="mt-2 text-xs" style={{ color: T.red }}>
+                      {commentError}
+                    </div>
+                  )}
                 </div>
-
-                {/* Helper/error text stays under the input only */}
-                {(currentUserIsAnonymousPostAuthor || commentError) && (
-                  <div className="col-start-2 row-start-2 min-w-0">
-                    {currentUserIsAnonymousPostAuthor && (
-                      <div
-                        className="text-xs inline-flex items-center gap-1"
-                        style={{ color: T.textSubtle }}
-                      >
-                        <Lock size={11} strokeWidth={2.5} />
-                        You are replying as {anonymousDisplayName}.
-                      </div>
-                    )}
-
-                    {commentError && (
-                      <div
-                        className="text-xs mt-1"
-                        style={{ color: T.danger || T.red || "#B42318" }}
-                      >
-                        {commentError}
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
             ) : (
-              <button
-                type="button"
-                onClick={() => guard(() => {})}
-                className="text-xs text-center w-full py-2 rounded-lg border"
+              <div
+                className="rounded-2xl border px-4 py-3 flex items-center justify-between gap-3"
                 style={{
-                  borderColor: T.borderSoft,
-                  color: T.textMuted,
                   backgroundColor: T.card,
+                  borderColor: T.borderSoft,
                 }}
               >
-                Sign in as a verified member to reply.
-              </button>
+                <div>
+                  <div
+                    className="text-sm font-semibold"
+                    style={{ color: T.text }}
+                  >
+                    Join the conversation
+                  </div>
+                  <div
+                    className="text-xs mt-0.5"
+                    style={{ color: T.textSubtle }}
+                  >
+                    Sign in as a verified member to comment.
+                  </div>
+                </div>
+
+                <Button variant="secondary" onClick={requireAuth}>
+                  Sign in
+                </Button>
+              </div>
             )}
           </div>
         </div>
