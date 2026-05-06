@@ -105,7 +105,7 @@ export default function HomePage() {
                 />
               </div>
             ) : (
-              <div className="flex flex-col gap-2.5">
+              <div className="-mx-4 md:mx-0 flex flex-col gap-2.5 sh-feed-post-list">
                 {filtered.map((post) => (
                   <PostCard key={post.id} post={post} />
                 ))}
