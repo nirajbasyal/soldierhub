@@ -21,7 +21,7 @@ import Button from "@/components/ui/Button";
 import ExpandableText from "@/components/ui/ExpandableText";
 import ClientTimeAgo from "@/components/ui/ClientTimeAgo";
 
-const POST_PREVIEW_LENGTH = 240;
+const POST_PREVIEW_LENGTH = 260;
 const COMMENT_PREVIEW_LENGTH = 120;
 
 function getAnonymousDisplayName(postId) {
@@ -69,31 +69,29 @@ function getSafeCommentAuthor({ comment, post }) {
   };
 }
 
-function FeedActionButton({
-  icon: Icon,
-  label,
-  count,
-  active = false,
-  onClick,
-}) {
+function FeedActionButton({ icon: Icon, label, count, active = false, onClick }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="flex-1 h-10 rounded-xl text-sm font-medium transition-all inline-flex items-center justify-center gap-2 hover:bg-slate-100"
+      className="h-10 rounded-full text-sm font-semibold transition-all inline-flex items-center justify-center gap-2 px-3 hover:-translate-y-0.5"
       style={{
-        color: active ? T.navy : T.textMuted,
-        backgroundColor: active ? T.surface : "transparent",
+        color: active ? "#FFFFFF" : T.textMuted,
+        background: active
+          ? "linear-gradient(135deg, #071B33 0%, #1E4E8C 100%)"
+          : "rgba(255,255,255,0.70)",
+        border: `1px solid ${active ? "rgba(7,27,51,0.18)" : T.borderSoft}`,
+        boxShadow: active ? "0 8px 18px rgba(7,27,51,0.14)" : "none",
       }}
     >
-      <Icon size={18} strokeWidth={2.2} />
+      <Icon size={17} strokeWidth={2.25} />
       <span>{label}</span>
       {typeof count === "number" && count > 0 ? (
         <span
-          className="min-w-[18px] h-[18px] px-1 rounded-full text-[11px] font-bold inline-flex items-center justify-center"
+          className="min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-bold inline-flex items-center justify-center"
           style={{
-            backgroundColor: active ? T.blueSoft : T.borderSoft,
-            color: active ? T.navy : T.textSubtle,
+            backgroundColor: active ? "rgba(255,255,255,0.18)" : T.surface,
+            color: active ? "#FFFFFF" : T.textSubtle,
           }}
         >
           {count}
@@ -156,9 +154,7 @@ export default function PostCard({ post }) {
   const currentUserIsAnonymousPostAuthor =
     Boolean(post.anonymous) &&
     Boolean(
-      ownsPostBySafeViewerFlag ||
-        ownsPostByVisibleAuthorId ||
-        ownsPostByMyPosts
+      ownsPostBySafeViewerFlag || ownsPostByVisibleAuthorId || ownsPostByMyPosts
     );
 
   const replyAvatarName = currentUserIsAnonymousPostAuthor
@@ -223,112 +219,123 @@ export default function PostCard({ post }) {
 
   return (
     <article
-      className="border rounded-[20px] overflow-hidden shadow-sm"
+      className="group overflow-hidden rounded-[18px] border shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
       style={{
         backgroundColor: T.card,
         borderColor: T.border,
       }}
     >
+      <div className="h-1.5 w-full bg-gradient-to-r from-[#B31942] via-[#FDFEFF] to-[#1E4E8C]" />
+
       <div className="px-4 md:px-5 pt-4 pb-3">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-3 min-w-0 flex-1">
-            <Avatar name={displayName} color={displayColor} size={40} />
+        <div className="flex items-start gap-3">
+          <div className="relative shrink-0">
+            <Avatar name={displayName} color={displayColor} size={42} />
+            <div
+              className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2"
+              style={{ backgroundColor: T.green, borderColor: T.card }}
+            />
+          </div>
 
-            <div className="min-w-0 flex-1">
-              <div
-                className="text-[15px] font-bold leading-tight truncate"
-                style={{ color: T.text }}
-              >
-                {displayName}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div
+                  className="text-[15px] font-bold leading-tight truncate"
+                  style={{ color: T.text }}
+                >
+                  {displayName}
+                </div>
+
+                <div
+                  className="mt-1 text-xs flex items-center gap-1.5 flex-wrap"
+                  style={{ color: T.textSubtle }}
+                >
+                  {post.anonymous && (
+                    <>
+                      <span className="inline-flex items-center gap-1">
+                        <Lock size={10} strokeWidth={2.5} />
+                        anonymous
+                      </span>
+                      <span>·</span>
+                    </>
+                  )}
+
+                  <ClientTimeAgo date={post.created_at} />
+
+                  {post.edited && (
+                    <>
+                      <span>·</span>
+                      <span>edited</span>
+                    </>
+                  )}
+                </div>
               </div>
 
-              <div
-                className="mt-1 text-xs flex items-center gap-1.5 flex-wrap"
-                style={{ color: T.textSubtle }}
-              >
-                {post.anonymous && (
-                  <>
-                    <span className="inline-flex items-center gap-1">
-                      <Lock size={10} strokeWidth={2.5} />
-                      anonymous
-                    </span>
-                    <span>·</span>
-                  </>
-                )}
+              <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                <Badge tone={cat.tone}>{cat.label}</Badge>
 
-                <ClientTimeAgo date={post.created_at} />
-
-                {post.edited && (
-                  <>
-                    <span>·</span>
-                    <span>edited</span>
-                  </>
+                {isReported && (
+                  <Badge tone="red" icon={ShieldAlert}>
+                    Under review
+                  </Badge>
                 )}
               </div>
             </div>
-          </div>
 
-          <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
-            <Badge tone={cat.tone}>{cat.label}</Badge>
-
-            {isReported && (
-              <Badge tone="red" icon={ShieldAlert}>
-                Under review
-              </Badge>
-            )}
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="mt-4">
-          {post.title ? (
-            <h3
-              className="text-[24px] md:text-[28px] leading-tight font-bold tracking-tight"
-              style={{ color: T.text }}
+            <div
+              className="mt-3 rounded-[18px] border px-4 py-3.5"
+              style={{
+                background:
+                  "linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(244,248,253,0.78) 100%)",
+                borderColor: T.borderSoft,
+              }}
             >
-              {post.title}
-            </h3>
-          ) : null}
+              {post.title ? (
+                <h3
+                  className="text-[20px] md:text-[22px] leading-tight font-bold tracking-tight"
+                  style={{ color: T.text }}
+                >
+                  {post.title}
+                </h3>
+              ) : null}
 
-          {post.body ? (
-            <div className={post.title ? "mt-2" : ""}>
-              <ExpandableText
-                text={post.body || ""}
-                previewLength={POST_PREVIEW_LENGTH}
-                className="text-[16px] leading-7 whitespace-pre-wrap"
-                style={{ color: T.textMuted }}
-                buttonSize="sm"
-              />
+              {post.body ? (
+                <div className={post.title ? "mt-2" : ""}>
+                  <ExpandableText
+                    text={post.body || ""}
+                    previewLength={POST_PREVIEW_LENGTH}
+                    className="text-[15px] md:text-[16px] leading-7 whitespace-pre-wrap"
+                    style={{ color: T.textMuted }}
+                    buttonSize="sm"
+                  />
+                </div>
+              ) : null}
             </div>
-          ) : null}
+          </div>
         </div>
 
-        {/* Meta row */}
         <div
-          className="mt-4 pt-3 flex items-center justify-between gap-3 text-sm"
-          style={{ borderTop: `1px solid ${T.borderSoft}` }}
+          className="mt-3 flex items-center justify-between gap-3 text-sm"
+          style={{ color: T.textSubtle }}
         >
-          <div className="flex items-center gap-3" style={{ color: T.textSubtle }}>
-            <span>{upvoteCount} upvote{upvoteCount === 1 ? "" : "s"}</span>
-          </div>
+          <span>
+            {upvoteCount} upvote{upvoteCount === 1 ? "" : "s"}
+          </span>
 
-          <button
-            type="button"
-            onClick={toggleComments}
-            className="text-sm hover:underline"
-            style={{ color: T.textSubtle }}
-          >
+          <button type="button" onClick={toggleComments} className="hover:underline">
             {commentCount} repl{commentCount === 1 ? "y" : "ies"}
           </button>
         </div>
 
-        {/* Action bar */}
         <div
-          className="mt-2 pt-2 flex items-center gap-2"
-          style={{ borderTop: `1px solid ${T.borderSoft}` }}
+          className="mt-3 rounded-[18px] border p-1.5 flex items-center gap-1.5"
+          style={{
+            backgroundColor: T.surface,
+            borderColor: T.borderSoft,
+          }}
         >
-          <div className="flex-1 grid grid-cols-3 gap-1">
+          <div className="grid grid-cols-3 gap-1.5 flex-1">
             <FeedActionButton
               icon={ArrowUp}
               label="Upvote"
@@ -355,10 +362,11 @@ export default function PostCard({ post }) {
           <button
             type="button"
             onClick={() => guard(() => reportPost(post.id))}
-            className="w-10 h-10 rounded-xl inline-flex items-center justify-center transition-all"
+            className="w-10 h-10 rounded-full inline-flex items-center justify-center transition-all shrink-0 hover:-translate-y-0.5"
             style={{
               color: userReported ? T.red : T.textMuted,
-              backgroundColor: userReported ? T.redBg : "transparent",
+              backgroundColor: userReported ? T.redBg : "rgba(255,255,255,0.70)",
+              border: `1px solid ${userReported ? T.redBg : T.borderSoft}`,
             }}
             aria-label={userReported ? "Reported" : "Report"}
           >
@@ -367,7 +375,6 @@ export default function PostCard({ post }) {
         </div>
       </div>
 
-      {/* Comments */}
       {showComments && (
         <div
           className="px-4 md:px-5 py-4"
