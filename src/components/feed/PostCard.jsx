@@ -107,9 +107,19 @@ function FeedActionButton({ icon: Icon, label, count, active = false, onClick })
   );
 }
 
+function LoadingReplies() {
+  return (
+    <div className="flex items-center justify-center gap-2 py-3 text-sm font-medium" style={{ color: T.textSubtle }}>
+      <span className="h-4 w-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
+      Loading replies...
+    </div>
+  );
+}
+
 export default function PostCard({ post }) {
   const { currentUser, requireAuth, pushToast, upvotePost, reportPost, commentOnPost, myUpvotes, myReports, myPosts, postComments, loadCommentsForPost } = useApp();
   const [showComments, setShowComments] = useState(false);
+  const [commentsLoading, setCommentsLoading] = useState(false);
   const [comment, setComment] = useState("");
   const [commentError, setCommentError] = useState("");
   const [commentSubmitting, setCommentSubmitting] = useState(false);
@@ -138,10 +148,18 @@ export default function PostCard({ post }) {
 
   const guard = (fn) => { if (requireAuth()) fn(); };
 
-  const toggleComments = () => {
+  const toggleComments = async () => {
     const next = !showComments;
     setShowComments(next);
-    if (next) loadCommentsForPost(post.id);
+
+    if (!next) return;
+
+    setCommentsLoading(true);
+    try {
+      await loadCommentsForPost(post.id);
+    } finally {
+      setCommentsLoading(false);
+    }
   };
 
   const submitComment = async () => {
@@ -217,8 +235,15 @@ export default function PostCard({ post }) {
       {showComments && (
         <div className="px-4 md:px-5 py-4" style={{ backgroundColor: T.surface, borderTop: `1px solid ${T.borderSoft}` }}>
           <div className="flex flex-col gap-3">
-            {comments.length === 0 && <div className="text-sm text-center py-2" style={{ color: T.textSubtle }}>No comments yet. Start the conversation.</div>}
-            {comments.map((c) => {
+            {commentsLoading && <LoadingReplies />}
+
+            {!commentsLoading && comments.length === 0 && (
+              <div className="text-sm text-center py-2" style={{ color: T.textSubtle }}>
+                No comments yet. Start the conversation.
+              </div>
+            )}
+
+            {!commentsLoading && comments.map((c) => {
               const safeAuthor = getSafeCommentAuthor({ comment: c, post });
               const text = c.body ?? c.text ?? "";
               const commentHref = !safeAuthor.anonymous && safeAuthor.authorId ? `/users/${safeAuthor.authorId}` : null;
