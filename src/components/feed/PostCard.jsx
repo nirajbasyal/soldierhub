@@ -21,7 +21,7 @@ import Button from "@/components/ui/Button";
 import ExpandableText from "@/components/ui/ExpandableText";
 import ClientTimeAgo from "@/components/ui/ClientTimeAgo";
 
-const POST_PREVIEW_LENGTH = 900;
+const POST_PREVIEW_LENGTH = 360;
 const COMMENT_PREVIEW_LENGTH = 120;
 
 function getAnonymousDisplayName(postId) {
@@ -228,7 +228,6 @@ export default function PostCard({ post }) {
       <div className="h-1.5 w-full bg-gradient-to-r from-[#B31942] via-[#FDFEFF] to-[#1E4E8C]" />
 
       <div className="px-4 md:px-6 pt-4 pb-3">
-        {/* Author row */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3 min-w-0 flex-1">
             <div className="relative shrink-0">
@@ -284,11 +283,10 @@ export default function PostCard({ post }) {
           </div>
         </div>
 
-        {/* Full-focus text post area: no inner box/container */}
-        <div className="mt-5 md:mt-6">
+        <div className="mt-4">
           {post.title ? (
             <h3
-              className="text-[25px] md:text-[32px] leading-[1.12] font-extrabold tracking-[-0.025em]"
+              className="text-[20px] md:text-[23px] leading-snug font-bold tracking-[-0.015em]"
               style={{ color: T.text }}
             >
               {post.title}
@@ -296,11 +294,11 @@ export default function PostCard({ post }) {
           ) : null}
 
           {post.body ? (
-            <div className={post.title ? "mt-4" : ""}>
+            <div className={post.title ? "mt-2.5" : ""}>
               <ExpandableText
                 text={post.body || ""}
                 previewLength={POST_PREVIEW_LENGTH}
-                className="text-[16px] md:text-[17px] leading-8 whitespace-pre-wrap max-w-none"
+                className="text-[14px] md:text-[15px] leading-7 whitespace-pre-wrap max-w-none"
                 style={{ color: T.text }}
                 buttonSize="sm"
               />
@@ -308,9 +306,8 @@ export default function PostCard({ post }) {
           ) : null}
         </div>
 
-        {/* Action row only. Counts live inside buttons. */}
         <div
-          className="mt-5 rounded-[18px] border p-1.5 flex items-center gap-1.5"
+          className="mt-4 rounded-[18px] border p-1.5 flex items-center gap-1.5"
           style={{
             backgroundColor: T.surface,
             borderColor: T.borderSoft,
@@ -375,27 +372,16 @@ export default function PostCard({ post }) {
             )}
 
             {comments.map((c) => {
-              const safeAuthor = getSafeCommentAuthor({
-                comment: c,
-                post,
-              });
-
+              const safeAuthor = getSafeCommentAuthor({ comment: c, post });
               const text = c.body ?? c.text ?? "";
 
               return (
                 <div key={c.id} className="flex gap-2.5">
-                  <Avatar
-                    name={safeAuthor.name}
-                    color={safeAuthor.color}
-                    size={32}
-                  />
+                  <Avatar name={safeAuthor.name} color={safeAuthor.color} size={32} />
 
                   <div
                     className="flex-1 rounded-2xl px-3.5 py-3 border min-w-0"
-                    style={{
-                      backgroundColor: T.card,
-                      borderColor: T.borderSoft,
-                    }}
+                    style={{ backgroundColor: T.card, borderColor: T.borderSoft }}
                   >
                     <div className="flex items-center justify-between gap-2 mb-1">
                       <span
@@ -403,20 +389,12 @@ export default function PostCard({ post }) {
                         style={{ color: T.text }}
                       >
                         {safeAuthor.name}
-
                         {safeAuthor.anonymous && (
-                          <Lock
-                            size={10}
-                            strokeWidth={2.5}
-                            style={{ color: T.textSubtle }}
-                          />
+                          <Lock size={10} strokeWidth={2.5} style={{ color: T.textSubtle }} />
                         )}
                       </span>
 
-                      <span
-                        className="text-[11px] shrink-0"
-                        style={{ color: T.textSubtle }}
-                      >
+                      <span className="text-[11px] shrink-0" style={{ color: T.textSubtle }}>
                         <ClientTimeAgo date={c.created_at} />
                       </span>
                     </div>
@@ -435,11 +413,7 @@ export default function PostCard({ post }) {
 
             {currentUser?.status === "verified" ? (
               <div className="flex gap-2.5 pt-1">
-                <Avatar
-                  name={replyAvatarName}
-                  color={replyAvatarColor}
-                  size={32}
-                />
+                <Avatar name={replyAvatarName} color={replyAvatarColor} size={32} />
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
@@ -450,22 +424,14 @@ export default function PostCard({ post }) {
                         setCommentError("");
                       }}
                       onKeyDown={(e) => {
-                        if (
-                          e.key === "Enter" &&
-                          comment.trim() &&
-                          !commentSubmitting
-                        ) {
+                        if (e.key === "Enter" && comment.trim() && !commentSubmitting) {
                           e.preventDefault();
                           submitComment();
                         }
                       }}
                       placeholder={replyPlaceholder}
                       className="flex-1 min-w-0 h-11 px-4 rounded-full border text-sm outline-none"
-                      style={{
-                        borderColor: T.border,
-                        backgroundColor: T.card,
-                        color: T.text,
-                      }}
+                      style={{ borderColor: T.border, backgroundColor: T.card, color: T.text }}
                     />
 
                     <Button
@@ -481,10 +447,7 @@ export default function PostCard({ post }) {
                   </div>
 
                   {currentUserIsAnonymousPostAuthor && (
-                    <div
-                      className="mt-2 text-xs"
-                      style={{ color: T.textSubtle }}
-                    >
+                    <div className="mt-2 text-xs" style={{ color: T.textSubtle }}>
                       You are replying as <strong>{anonymousDisplayName}</strong>.
                     </div>
                   )}
@@ -499,22 +462,13 @@ export default function PostCard({ post }) {
             ) : (
               <div
                 className="rounded-2xl border px-4 py-3 flex items-center justify-between gap-3"
-                style={{
-                  backgroundColor: T.card,
-                  borderColor: T.borderSoft,
-                }}
+                style={{ backgroundColor: T.card, borderColor: T.borderSoft }}
               >
                 <div>
-                  <div
-                    className="text-sm font-semibold"
-                    style={{ color: T.text }}
-                  >
+                  <div className="text-sm font-semibold" style={{ color: T.text }}>
                     Join the conversation
                   </div>
-                  <div
-                    className="text-xs mt-0.5"
-                    style={{ color: T.textSubtle }}
-                  >
+                  <div className="text-xs mt-0.5" style={{ color: T.textSubtle }}>
                     Sign in as a verified member to comment.
                   </div>
                 </div>
