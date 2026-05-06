@@ -51,9 +51,12 @@ function DependencyButton({ active, children, onClick }) {
       onClick={onClick}
       className="rounded-xl px-3 py-2 text-sm font-semibold transition"
       style={{
-        backgroundColor: active ? T.navy : "#FFFFFF",
+        background: active
+          ? "linear-gradient(135deg, #071B33 0%, #1E4E8C 100%)"
+          : "#FFFFFF",
         color: active ? "#FFFFFF" : T.text,
-        border: `1px solid ${active ? T.navy : T.border}`,
+        border: `1px solid ${active ? "#1E4E8C" : T.border}`,
+        boxShadow: active ? "0 8px 18px rgba(7,27,51,0.14)" : "none",
       }}
     >
       {children}
@@ -89,9 +92,9 @@ export default function BAHCard() {
       <div className="flex items-start gap-3">
         <div
           className="h-11 w-11 rounded-full flex items-center justify-center shrink-0"
-          style={{ backgroundColor: T.goldBg }}
+          style={{ backgroundColor: "rgba(220,232,247,0.95)" }}
         >
-          <Calculator size={20} style={{ color: T.gold }} strokeWidth={2.2} />
+          <Calculator size={20} style={{ color: T.blue }} strokeWidth={2.2} />
         </div>
 
         <div className="min-w-0 flex-1">
@@ -181,17 +184,21 @@ export default function BAHCard() {
 
       {/* Result below rank/dependency */}
       <div
-        className="mt-4 rounded-2xl border px-4 py-4"
+        className="mt-4 rounded-2xl border px-4 py-4 relative overflow-hidden"
         style={{
-          backgroundColor: "#F8F3E4",
-          borderColor: "#E9DFC4",
+          background:
+            "linear-gradient(135deg, rgba(220,232,247,0.95) 0%, rgba(253,254,255,0.96) 55%, rgba(253,236,240,0.88) 100%)",
+          borderColor: "#BCD0EA",
         }}
       >
-        <div className="flex items-center justify-between gap-3">
+        <div className="absolute left-0 top-0 h-full w-1.5 bg-[#B31942]" />
+        <div className="absolute right-0 top-0 h-full w-1.5 bg-[#1E4E8C]" />
+
+        <div className="flex items-center justify-between gap-3 pl-2">
           <div>
             <div
               className="text-xs font-semibold uppercase tracking-[0.12em]"
-              style={{ color: T.textSubtle }}
+              style={{ color: T.blue }}
             >
               Monthly BAH
             </div>
@@ -211,13 +218,18 @@ export default function BAHCard() {
             </div>
           </div>
 
-          <Home size={28} style={{ color: T.gold }} />
+          <div
+            className="h-11 w-11 rounded-xl flex items-center justify-center shrink-0"
+            style={{ backgroundColor: "rgba(7,27,51,0.08)" }}
+          >
+            <Home size={25} style={{ color: T.navy }} />
+          </div>
         </div>
 
         <div
-          className="mt-3 rounded-xl px-3 py-2 text-sm"
+          className="mt-3 ml-2 rounded-xl px-3 py-2 text-sm"
           style={{
-            backgroundColor: "#FFFFFF",
+            backgroundColor: "rgba(255,255,255,0.78)",
             color: T.text,
           }}
         >
@@ -230,13 +242,15 @@ export default function BAHCard() {
 
       {/* Note */}
       <div
-        className="mt-3 flex items-start gap-2 rounded-xl px-3 py-2 text-xs leading-relaxed"
+        className="mt-3 flex items-start gap-2 rounded-xl border px-3 py-2 text-xs leading-relaxed"
         style={{
-          backgroundColor: "#F6F7F9",
+          background:
+            "linear-gradient(135deg, rgba(244,248,253,0.95), rgba(253,254,255,0.95))",
+          borderColor: "#D5E2F2",
           color: T.textMuted,
         }}
       >
-        <Info size={14} className="mt-0.5 shrink-0" />
+        <Info size={14} className="mt-0.5 shrink-0" style={{ color: T.blue }} />
         <span>Estimate only. Confirm official rate with DTMO or finance.</span>
       </div>
     </div>
