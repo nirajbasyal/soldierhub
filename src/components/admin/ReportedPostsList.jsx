@@ -9,6 +9,9 @@ import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import EmptyState from "@/components/ui/EmptyState";
+import ExpandableText from "@/components/ui/ExpandableText";
+
+const REPORTED_POST_PREVIEW_LENGTH = 300;
 
 export default function ReportedPostsList() {
   const { posts, restoreReportedPost, adminDeletePost } = useApp();
@@ -38,8 +41,21 @@ export default function ReportedPostsList() {
                 by {p.author_name} · {timeAgo(p.created_at)}
               </span>
             </div>
-            <div className="text-sm font-semibold" style={{ color: T.text }}>{p.title}</div>
-            <p className="text-sm mt-1 leading-relaxed" style={{ color: T.textMuted }}>{p.body}</p>
+
+            <div className="text-[18px] md:text-[20px] font-bold leading-snug" style={{ color: T.text }}>
+              {p.title}
+            </div>
+
+            <div className="mt-2">
+              <ExpandableText
+                text={p.body || ""}
+                previewLength={REPORTED_POST_PREVIEW_LENGTH}
+                className="text-[14px] md:text-[15px] leading-7 whitespace-pre-wrap"
+                style={{ color: T.text }}
+                buttonSize="xs"
+              />
+            </div>
+
             <div className="flex gap-2 mt-3">
               <Button variant="softSuccess" size="sm" icon={ArrowLeft}
                       onClick={() => restoreReportedPost(p.id)}>
