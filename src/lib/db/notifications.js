@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 
-export async function listMyNotifications(userId) {
+export async function listMyNotifications(userId, { limit = 30 } = {}) {
   const supabase = createClient();
   if (!supabase) return { data: [], error: null };
 
@@ -13,7 +13,7 @@ export async function listMyNotifications(userId) {
     )
     .eq("recipient_user_id", userId)
     .order("created_at", { ascending: false })
-    .limit(100);
+    .limit(limit);
 
   return { data: data || [], error };
 }
@@ -35,7 +35,7 @@ export async function getUnreadCount(userId) {
 
   const { count, error } = await supabase
     .from("notifications")
-    .select("id", { count: "exact", head: true })
+    .select("id", { count: "estimated", head: true })
     .eq("recipient_user_id", userId)
     .eq("read", false);
 
