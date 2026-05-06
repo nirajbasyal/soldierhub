@@ -1,41 +1,49 @@
 // Single source of truth for colors. Change values here to reskin the app.
+// SoldierHub front-end theme: U.S. flag inspired, light, premium, and readable.
 export const T = {
   // Surface
-  bg: "#F6F3EC",
-  card: "#FFFFFF",
-  surface: "#FBF8F1",
+  bg: "#EAF0F8",
+  card: "#FDFEFF",
+  surface: "#F3F6FB",
+
   // Brand
-  navy: "#0B1C2C",
-  navy90: "#152D45",
-  navy70: "#314A66",
+  navy: "#071B33",
+  navy90: "#102E52",
+  navy70: "#31577E",
+  blue: "#1E4E8C",
+  blueSoft: "#DCE8F7",
+
   // Accent
-  gold: "#B07D2C",
-  goldSoft: "#E9D7B0",
-  goldBg: "#F7EFDC",
+  gold: "#B31942",       // U.S. flag red, used for primary energy/CTA moments
+  goldSoft: "#F7D6DE",
+  goldBg: "#FDECF0",
+
   // State
-  green: "#2E7D5B",
-  greenBg: "#E5F2EB",
-  red: "#B43A2E",
-  redBg: "#FBEAE7",
-  amber: "#9C6A1F",
-  amberBg: "#FBEFD3",
+  green: "#247151",
+  greenBg: "#E4F3EC",
+  red: "#B31942",
+  redBg: "#FDECF0",
+  amber: "#B86A00",
+  amberBg: "#FFF1D7",
+
   // Text
-  text: "#0F1A24",
-  textMuted: "#5C6470",
-  textSubtle: "#8B8F97",
+  text: "#081827",
+  textMuted: "#43556B",
+  textSubtle: "#7B8797",
+
   // Borders
-  border: "#E5DFD0",
-  borderSoft: "#EFEAD9",
+  border: "#CFDAE8",
+  borderSoft: "#E2E9F3",
 };
 
 export const TONE_STYLES = {
-  navy:   { bg: "#EAEEF4", text: "#0B1C2C", border: "#D6DDE7" },
-  indigo: { bg: "#ECEEFB", text: "#3A3F8F", border: "#D7DAF3" },
-  amber:  { bg: "#FBEFD3", text: "#9C6A1F", border: "#F2DFAE" },
-  green:  { bg: "#E5F2EB", text: "#2E7D5B", border: "#CDE3D6" },
-  blue:   { bg: "#E5EFF7", text: "#1F5A87", border: "#C9DEEC" },
-  violet: { bg: "#EFE9F7", text: "#5B3F8C", border: "#DCD0EC" },
-  rose:   { bg: "#FBE8EE", text: "#9C2A55", border: "#F1CDD8" },
-  teal:   { bg: "#E0F1EE", text: "#1F6E66", border: "#C4E3DD" },
-  red:    { bg: "#FBEAE7", text: "#B43A2E", border: "#F2CFC8" },
+  navy:   { bg: "#E3EAF5", text: "#071B33", border: "#C6D4E6" },
+  indigo: { bg: "#E8EDFA", text: "#284B8F", border: "#CCD8F3" },
+  amber:  { bg: "#FFF1D7", text: "#8A4D00", border: "#F2D29A" },
+  green:  { bg: "#E4F3EC", text: "#247151", border: "#C7E3D4" },
+  blue:   { bg: "#DCE8F7", text: "#1E4E8C", border: "#BCD0EA" },
+  violet: { bg: "#EEE9FA", text: "#57408E", border: "#DAD0F0" },
+  rose:   { bg: "#FDECF0", text: "#B31942", border: "#F2C5D0" },
+  teal:   { bg: "#DFF2F1", text: "#1E6B68", border: "#C0E2E0" },
+  red:    { bg: "#FDECF0", text: "#B31942", border: "#F2C5D0" },
 };
