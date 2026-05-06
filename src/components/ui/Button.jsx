@@ -11,12 +11,12 @@ const SIZES = {
 };
 
 const VARIANTS = {
-  primary:     { bg: T.navy,    color: "#fff",  border: T.navy,    hover: T.navy90 },
-  gold:        { bg: T.gold,    color: "#fff",  border: T.gold,    hover: "#9a6c25" },
-  secondary:   { bg: T.card,    color: T.text,  border: T.border,  hover: T.surface },
+  primary:     { bg: T.red,     color: "#fff",  border: T.red,     hover: "#951534" },
+  gold:        { bg: T.blue,    color: "#fff",  border: T.blue,    hover: "#173F73" },
+  secondary:   { bg: T.card,    color: T.navy,  border: T.border,  hover: T.surface },
   ghost:       { bg: "transparent", color: T.text, border: "transparent", hover: T.borderSoft },
-  danger:      { bg: T.red,     color: "#fff",  border: T.red,     hover: "#962f25" },
-  softDanger:  { bg: T.redBg,   color: T.red,   border: T.redBg,   hover: "#f6dad4" },
+  danger:      { bg: T.red,     color: "#fff",  border: T.red,     hover: "#951534" },
+  softDanger:  { bg: T.redBg,   color: T.red,   border: T.redBg,   hover: "#F7D6DE" },
   softSuccess: { bg: T.greenBg, color: T.green, border: T.greenBg, hover: "#d3e9dc" },
 };
 
@@ -31,11 +31,15 @@ export default function Button({
       {...props}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      className={`inline-flex items-center justify-center font-medium border transition-all duration-150 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${SIZES[size]} ${className}`}
+      className={`inline-flex items-center justify-center font-semibold border transition-all duration-150 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${SIZES[size]} ${className}`}
       style={{
         backgroundColor: hover && !props.disabled ? v.hover : v.bg,
         color: v.color,
         borderColor: v.border,
+        boxShadow:
+          variant === "primary" && !props.disabled
+            ? "0 10px 22px rgba(179,25,66,0.20)"
+            : undefined,
       }}
     >
       {Icon && <Icon size={size === "lg" ? 18 : 16} strokeWidth={2.25} />}
