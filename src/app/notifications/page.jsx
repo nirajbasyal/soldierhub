@@ -13,47 +13,64 @@ import NotificationItem from "@/components/notifications/NotificationItem";
 
 export default function NotificationsPage() {
   const router = useRouter();
-  const { currentUser, authLoading, notifications, setAuthModal, markNotificationsRead } = useApp();
+  const {
+    currentUser,
+    authLoading,
+    notifications = [],
+    setAuthModal,
+    markNotificationsRead,
+  } = useApp();
 
   useEffect(() => {
     if (authLoading) return;
+
     if (!currentUser) {
       router.replace("/");
       setAuthModal("login");
       return;
     }
-    // Mark all as read on visit
+
     markNotificationsRead();
   }, [authLoading, currentUser, router, setAuthModal, markNotificationsRead]);
 
-  if (authLoading) return null;
-  if (!currentUser) return null;
+  if (authLoading) {
+    return <NotificationsLoadingState />;
+  }
+
+  if (!currentUser) {
+    return <NotificationsLoadingState />;
+  }
 
   return (
     <AppShell hideNav>
-      <main className="min-h-screen pb-24 md:pb-12" style={{ backgroundColor: T.bg }}>
-        <div className="max-w-2xl mx-auto px-4 md:px-6 py-6 md:py-10">
+      <main className="min-h-screen bg-[#F3F6FA] pb-24 md:pb-12">
+        <div className="mx-auto w-full max-w-2xl px-4 py-5 md:px-6 md:py-10">
           <Button variant="secondary" icon={ArrowLeft} onClick={() => router.push("/")}>
             Back to feed
           </Button>
 
-          <div className="mt-6 mb-5">
-            <div className="flex items-center gap-2 mb-1">
-              <Bell size={16} style={{ color: T.gold }} />
-              <span className="text-xs font-medium uppercase tracking-wider" style={{ color: T.gold }}>
-                Activity
-              </span>
+          <section className="mt-5 mb-5 rounded-[30px] border border-white/80 bg-white/80 p-5 shadow-sm backdrop-blur">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#EEF3F8]">
+                <Bell size={22} style={{ color: T.gold }} />
+              </div>
+
+              <div>
+                <div className="mb-1 text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: T.gold }}>
+                  Activity
+                </div>
+                <h1 className="text-3xl leading-tight font-serif md:text-4xl" style={{ color: T.navy }}>
+                  Notifications
+                </h1>
+                <p className="mt-1 text-sm" style={{ color: T.muted }}>
+                  Replies and activity from your SoldierHub posts.
+                </p>
+              </div>
             </div>
-            <h1 className="text-3xl md:text-4xl leading-tight font-serif" style={{ color: T.navy }}>
-              Notifications
-            </h1>
-          </div>
+          </section>
 
           {notifications.length === 0 ? (
-            <div
-              className="rounded-2xl border p-8"
-              style={{ backgroundColor: T.card, borderColor: T.border }}
-            >
+            <div className="rounded-[28px] border border-white/80 bg-white/80 p-8 shadow-sm backdrop-blur">
               <EmptyState
                 icon={Bell}
                 title="You're all caught up"
@@ -61,12 +78,52 @@ export default function NotificationsPage() {
               />
             </div>
           ) : (
-            <div className="flex flex-col gap-2">
-              {notifications.map((n) => <NotificationItem key={n.id} notification={n} />)}
+            <div className="flex flex-col gap-3">
+              {notifications.map((notification) => (
+                <NotificationItem key={notification.id} notification={notification} />
+              ))}
             </div>
           )}
 
           <Footer />
+        </div>
+      </main>
+    </AppShell>
+  );
+}
+
+function NotificationsLoadingState() {
+  return (
+    <AppShell hideNav>
+      <main className="min-h-screen bg-[#F3F6FA] px-4 pb-28 pt-5 md:pb-12 md:pt-8">
+        <div className="mx-auto w-full max-w-2xl">
+          <div className="mb-5 rounded-[28px] border border-white/80 bg-white/80 p-5 shadow-sm backdrop-blur">
+            <div className="flex items-center gap-3">
+              <div className="h-12 w-12 shrink-0 animate-pulse rounded-2xl bg-[#E8EEF5]" />
+              <div className="min-w-0 flex-1">
+                <div className="h-5 w-40 animate-pulse rounded-full bg-[#DDE6EF]" />
+                <div className="mt-2 h-3 w-56 max-w-full animate-pulse rounded-full bg-[#E8EEF5]" />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {[1, 2, 3, 4].map((item) => (
+              <div
+                key={item}
+                className="rounded-[26px] border border-white/80 bg-white/75 p-4 shadow-sm backdrop-blur"
+              >
+                <div className="flex gap-3">
+                  <div className="h-11 w-11 shrink-0 animate-pulse rounded-2xl bg-[#E8EEF5]" />
+                  <div className="min-w-0 flex-1">
+                    <div className="h-4 w-3/4 animate-pulse rounded-full bg-[#DDE6EF]" />
+                    <div className="mt-3 h-3 w-full animate-pulse rounded-full bg-[#E8EEF5]" />
+                    <div className="mt-2 h-3 w-2/3 animate-pulse rounded-full bg-[#E8EEF5]" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </main>
     </AppShell>
