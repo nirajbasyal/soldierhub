@@ -49,10 +49,16 @@ export default function TopNav() {
 
   return (
     <div
-      className="border-b"
-      style={{ borderColor: T.border, backgroundColor: T.bg }}
+      className="sticky top-0 z-40 border-b backdrop-blur-xl"
+      style={{
+        borderColor: "rgba(207,218,232,0.95)",
+        background:
+          "linear-gradient(180deg, rgba(253,254,255,0.94) 0%, rgba(243,246,251,0.90) 100%)",
+      }}
     >
-      <div className="max-w-6xl mx-auto px-4 md:px-6 h-16 flex items-center gap-3 md:gap-5">
+      <div className="h-1 w-full bg-gradient-to-r from-[#B31942] via-[#FDFEFF] to-[#1E4E8C]" />
+
+      <div className="max-w-6xl mx-auto px-4 md:px-6 h-[72px] flex items-center gap-3 md:gap-5">
         {/* Brand - same logo for mobile and desktop */}
         <Link href="/" className="flex items-center shrink-0 min-w-0">
           <Image
@@ -61,16 +67,16 @@ export default function TopNav() {
             width={220}
             height={64}
             priority
-            className="h-10 sm:h-11 md:h-12 w-auto object-contain max-w-[170px] sm:max-w-[220px]"
+            className="h-10 sm:h-11 md:h-12 w-auto object-contain max-w-[170px] sm:max-w-[220px] drop-shadow-sm"
           />
         </Link>
 
         {/* Desktop search */}
-        <div className="hidden md:flex flex-1 max-w-md">
-          <div className="relative w-full">
+        <div className="hidden md:flex flex-1 max-w-lg">
+          <div className="relative w-full group">
             <Search
-              size={16}
-              className="absolute left-3.5 top-1/2 -translate-y-1/2"
+              size={17}
+              className="absolute left-4 top-1/2 -translate-y-1/2 transition-colors"
               style={{ color: T.textSubtle }}
             />
 
@@ -78,19 +84,32 @@ export default function TopNav() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search posts, people, places…"
-              className="w-full h-10 pl-10 pr-4 rounded-xl text-sm outline-none border"
+              className="w-full h-12 pl-11 pr-16 rounded-2xl text-sm outline-none border shadow-sm transition-all"
               style={{
                 borderColor: T.border,
-                backgroundColor: T.card,
+                backgroundColor: "rgba(253,254,255,0.88)",
                 color: T.text,
               }}
               onFocus={(e) => {
-                e.currentTarget.style.borderColor = T.navy;
+                e.currentTarget.style.borderColor = T.blue;
+                e.currentTarget.style.boxShadow = "0 0 0 4px rgba(30,78,140,0.10)";
               }}
               onBlur={(e) => {
                 e.currentTarget.style.borderColor = T.border;
+                e.currentTarget.style.boxShadow = "0 1px 2px rgba(7,27,51,0.05)";
               }}
             />
+
+            <span
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-xl border px-2 py-1 text-[11px] font-semibold"
+              style={{
+                color: T.textSubtle,
+                borderColor: T.borderSoft,
+                backgroundColor: T.surface,
+              }}
+            >
+              Ctrl K
+            </span>
           </div>
         </div>
 
@@ -100,10 +119,10 @@ export default function TopNav() {
         <div className="hidden md:flex items-center gap-2">
           <Link
             href="/resources"
-            className="px-3 h-10 rounded-xl text-sm font-medium flex items-center gap-1.5 transition-colors"
-            style={{ color: T.textMuted }}
+            className="px-3 h-11 rounded-2xl text-sm font-semibold flex items-center gap-1.5 transition-all hover:shadow-sm"
+            style={{ color: T.navy }}
           >
-            <BookMarked size={15} />
+            <BookMarked size={16} />
             Resources
           </Link>
 
@@ -112,20 +131,20 @@ export default function TopNav() {
               <button
                 type="button"
                 onClick={goNotifications}
-                className="relative w-10 h-10 rounded-xl border flex items-center justify-center transition-colors"
+                className="relative w-11 h-11 rounded-2xl border flex items-center justify-center transition-all hover:-translate-y-0.5 hover:shadow-sm"
                 style={{
                   borderColor: T.border,
-                  backgroundColor: T.card,
-                  color: T.text,
+                  backgroundColor: "rgba(253,254,255,0.92)",
+                  color: T.navy,
                 }}
                 aria-label="Open notifications"
               >
-                <Bell size={16} />
+                <Bell size={17} />
 
                 {unreadCount > 0 && (
                   <span
-                    className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full text-[10px] font-semibold flex items-center justify-center px-1"
-                    style={{ backgroundColor: T.gold, color: "#fff" }}
+                    className="absolute -top-1 -right-1 min-w-[19px] h-[19px] rounded-full text-[10px] font-bold flex items-center justify-center px-1 ring-2 ring-white"
+                    style={{ backgroundColor: T.red, color: "#fff" }}
                   >
                     {unreadCount > 9 ? "9+" : unreadCount}
                   </span>
@@ -146,16 +165,19 @@ export default function TopNav() {
               <button
                 type="button"
                 onClick={goProfile}
-                className="rounded-xl border p-1 pr-3 flex items-center gap-2 hover:shadow-sm transition-shadow"
-                style={{ borderColor: T.border, backgroundColor: T.card }}
+                className="rounded-2xl border p-1 pr-3 flex items-center gap-2 hover:shadow-md hover:-translate-y-0.5 transition-all"
+                style={{
+                  borderColor: T.border,
+                  backgroundColor: "rgba(253,254,255,0.95)",
+                }}
               >
                 <Avatar
                   name={currentUser.full_name}
                   color={currentUser.avatar_color}
-                  size={32}
+                  size={34}
                 />
 
-                <span className="text-sm font-medium" style={{ color: T.text }}>
+                <span className="text-sm font-semibold" style={{ color: T.text }}>
                   {currentUser.full_name?.split(" ")[0]}
                 </span>
               </button>
@@ -206,7 +228,7 @@ export default function TopNav() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search posts…"
-            className="w-full h-10 pl-10 pr-4 rounded-xl text-sm outline-none border"
+            className="w-full h-11 pl-10 pr-4 rounded-2xl text-sm outline-none border shadow-sm"
             style={{
               borderColor: T.border,
               backgroundColor: T.card,
