@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CloudSun, Clock3, MapPin, Shirt } from "lucide-react";
 import { T } from "@/lib/theme";
 
-const WEATHER_CACHE_KEY = "soldierhub_fort_bliss_weather_v6";
+const WEATHER_CACHE_KEY = "soldierhub_fort_bliss_weather_v7";
 const WEATHER_CACHE_MAX_AGE = 60 * 1000;          // refresh interval: 1 min
 const WEATHER_CACHE_STALE_AFTER = 10 * 60 * 1000; // hard expiry: 10 min
 
@@ -194,12 +194,18 @@ export default function MobileWeatherStrip() {
     weather?.condition && status !== "error" ? weather.condition : "";
 
   const ptUniform = weather?.ptUniform || {
+    label: "Current PT Uniform",
     title: status === "error" ? "PT Uniform" : "Checking PT guidance",
     detail:
       status === "error"
         ? "Weather unavailable — follow local guidance."
         : "Loading current Fort Bliss temperature.",
+    recommendations: [],
   };
+
+  const recommendations = Array.isArray(ptUniform.recommendations)
+    ? ptUniform.recommendations
+    : [];
 
   return (
     <div
@@ -289,12 +295,12 @@ export default function MobileWeatherStrip() {
             <Shirt size={16} style={{ color: T.navy }} strokeWidth={2.2} />
           </div>
 
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <div
               className="text-[11px] font-semibold uppercase tracking-[0.12em]"
               style={{ color: T.blue }}
             >
-              PT Uniform
+              {ptUniform.label || "Current PT Uniform"}
             </div>
 
             <div
@@ -310,6 +316,30 @@ export default function MobileWeatherStrip() {
             >
               {ptUniform.detail}
             </div>
+
+            {recommendations.length > 0 ? (
+              <div className="mt-3 space-y-2 border-t pt-3" style={{ borderColor: "rgba(63,95,125,0.18)" }}>
+                {recommendations.map((item) => (
+                  <div key={`${item.type}-${item.title}`}>
+                    <div
+                      className="text-[10px] font-semibold uppercase tracking-[0.12em]"
+                      style={{ color: T.textSubtle }}
+                    >
+                      {item.label}
+                    </div>
+                    <div
+                      className="mt-0.5 text-sm font-semibold leading-snug"
+                      style={{ color: T.navy }}
+                    >
+                      {item.title}
+                    </div>
+                    <div className="mt-0.5 text-xs leading-relaxed" style={{ color: T.textMuted }}>
+                      {item.detail}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
