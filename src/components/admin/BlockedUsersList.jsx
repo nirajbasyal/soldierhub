@@ -29,11 +29,8 @@ function StatusBadge({ status }) {
 
   return (
     <span
-      className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wide"
-      style={{
-        backgroundColor: isRevoked ? T.redBg : T.goldBg,
-        color: isRevoked ? T.red : T.gold,
-      }}
+      className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide"
+      style={{ backgroundColor: "rgba(253,236,240,0.95)", color: isRevoked ? "#B31942" : T.blue }}
     >
       {isRevoked ? "Revoked" : "Rejected"}
     </span>
@@ -48,23 +45,11 @@ export default function BlockedUsersList({ searchQuery = "" }) {
   );
 
   if (!blockedUsers || blockedUsers.length === 0) {
-    return (
-      <EmptyState
-        icon={UserX}
-        title="No rejected or revoked users"
-        body="Users rejected during verification or revoked later will appear here."
-      />
-    );
+    return <EmptyState icon={UserX} title="No rejected or revoked users" body="Users rejected during verification or revoked later will appear here." />;
   }
 
   if (visibleUsers.length === 0) {
-    return (
-      <EmptyState
-        icon={UserX}
-        title="No matching blocked users"
-        body="Try searching by name, email, military email, phone number, rejected, or revoked."
-      />
-    );
+    return <EmptyState icon={UserX} title="No matching blocked users" body="Try searching by name, email, military email, phone number, rejected, or revoked." />;
   }
 
   const handleVerify = async (user) => {
@@ -80,88 +65,63 @@ export default function BlockedUsersList({ searchQuery = "" }) {
   };
 
   return (
-    <div className="space-y-3">
+    <div className="grid gap-3">
       {visibleUsers.map((user) => {
         const email = user.email || user.personal_email || "No email";
         const status = user.status || user.verification_status;
 
         return (
-          <div
+          <article
             key={user.id}
-            className="rounded-xl border p-4"
-            style={{
-              backgroundColor: T.surface,
-              borderColor: T.border,
-            }}
+            className="rounded-3xl border p-4 md:p-5 relative overflow-hidden"
+            style={{ backgroundColor: T.card, borderColor: "#D5E2F2", boxShadow: "0 10px 26px rgba(7,27,51,0.05)" }}
           >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
+            <div className="absolute left-0 top-0 h-full w-1.5 bg-[#B31942]" />
+
+            <div className="pl-2 flex flex-col sm:flex-row sm:items-start gap-4">
+              <div
+                className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
+                style={{ backgroundColor: "rgba(253,236,240,0.95)", color: "#B31942" }}
+              >
+                <ShieldAlert size={21} />
+              </div>
+
+              <div className="flex-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h3
-                    className="text-sm font-semibold truncate"
-                    style={{ color: T.navy }}
-                  >
+                  <h3 className="text-base font-extrabold truncate" style={{ color: T.navy }}>
                     {user.full_name || "Unnamed user"}
                   </h3>
-
                   <StatusBadge status={status} />
                 </div>
 
-                <div
-                  className="mt-1 flex items-center gap-1.5 text-xs"
-                  style={{ color: T.textMuted }}
-                >
-                  <Mail size={12} />
+                <div className="mt-1 flex items-center gap-1.5 text-xs" style={{ color: T.textMuted }}>
+                  <Mail size={12} className="shrink-0" />
                   <span className="truncate">{email}</span>
                 </div>
 
                 {user.military_email && (
                   <p className="text-xs mt-1" style={{ color: T.textMuted }}>
-                    Military email:{" "}
-                    <span style={{ color: T.text }}>
-                      {user.military_email}
-                    </span>
+                    Military email: <span style={{ color: T.text }}>{user.military_email}</span>
                   </p>
                 )}
 
                 {user.phone && (
-                  <p
-                    className="text-xs mt-1 flex items-center gap-1"
-                    style={{ color: T.textMuted }}
-                  >
+                  <p className="text-xs mt-1 flex items-center gap-1" style={{ color: T.textMuted }}>
                     <Phone size={12} />
                     <span>{user.phone}</span>
                   </p>
                 )}
 
-                <p className="text-xs mt-2" style={{ color: T.textMuted }}>
-                  This user cannot post, comment, report, message, sell, or
-                  access verified features unless admin verifies them again.
+                <p className="text-xs leading-5 mt-2" style={{ color: T.textMuted }}>
+                  This user cannot post, comment, report, message, sell, or access verified features unless admin verifies them again.
                 </p>
               </div>
 
-              <div
-                className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                style={{
-                  backgroundColor: status === "revoked" ? T.redBg : T.goldBg,
-                  color: status === "revoked" ? T.red : T.gold,
-                }}
-              >
-                <ShieldAlert size={17} />
-              </div>
-            </div>
-
-            <div className="mt-3">
-              <Button
-                variant="primary"
-                icon={CheckCircle2}
-                className="w-full"
-                onClick={() => handleVerify(user)}
-              >
-                Verify user again
+              <Button variant="primary" icon={CheckCircle2} onClick={() => handleVerify(user)}>
+                Verify again
               </Button>
             </div>
-          </div>
+          </article>
         );
       })}
     </div>
