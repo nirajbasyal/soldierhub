@@ -271,21 +271,28 @@ export default function MobileWeatherStrip() {
       </div>
 
       <div
-        className="mt-4 rounded-xl border px-3 py-3"
+        className="mt-4 rounded-xl border px-3 py-3 relative overflow-hidden"
         style={{
-          backgroundColor: "#F8F3E4",
-          borderColor: "#E9DFC4",
+          background:
+            "linear-gradient(135deg, rgba(220,232,247,0.95) 0%, rgba(253,254,255,0.96) 55%, rgba(253,236,240,0.88) 100%)",
+          borderColor: "#BCD0EA",
         }}
       >
-        <div className="flex items-start gap-2">
-          <div className="mt-0.5 shrink-0">
+        <div className="absolute left-0 top-0 h-full w-1.5 bg-[#B31942]" />
+        <div className="absolute right-0 top-0 h-full w-1.5 bg-[#1E4E8C]" />
+
+        <div className="flex items-start gap-2 pl-2">
+          <div
+            className="mt-0.5 shrink-0 h-8 w-8 rounded-lg flex items-center justify-center"
+            style={{ backgroundColor: "rgba(7,27,51,0.08)" }}
+          >
             <Shirt size={16} style={{ color: T.navy }} strokeWidth={2.2} />
           </div>
 
           <div className="min-w-0">
             <div
               className="text-[11px] font-semibold uppercase tracking-[0.12em]"
-              style={{ color: T.textSubtle }}
+              style={{ color: T.blue }}
             >
               PT Uniform
             </div>
