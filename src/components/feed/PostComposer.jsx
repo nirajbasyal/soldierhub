@@ -53,13 +53,31 @@ export default function PostComposer() {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const ref = useRef(null);
+  const titleRef = useRef(null);
+  const bodyRef = useRef(null);
+  const lastFocusedFieldRef = useRef("title");
 
   useEffect(() => {
-    if (open && ref.current) {
-      ref.current.focus();
+    if (open && titleRef.current) {
+      titleRef.current.focus();
     }
   }, [open]);
+
+  const focusLastComposerField = () => {
+    const target =
+      lastFocusedFieldRef.current === "body" ? bodyRef.current : titleRef.current;
+
+    window.requestAnimationFrame(() => {
+      target?.focus({ preventScroll: true });
+    });
+  };
+
+  const selectCategory = (nextCategory) => {
+    if (submitting) return;
+
+    setCategory(nextCategory);
+    focusLastComposerField();
+  };
 
   const closeComposer = () => {
     if (submitting) return;
@@ -121,7 +139,6 @@ export default function PostComposer() {
     }
   };
 
-  // Not signed in or pending — show the unverified prompt
   if (!currentUser || currentUser.status !== "verified") {
     return (
       <button
@@ -152,7 +169,6 @@ export default function PostComposer() {
     );
   }
 
-  // Collapsed prompt
   if (!open) {
     const openComposer = () => {
       setError("");
@@ -214,7 +230,6 @@ export default function PostComposer() {
 
   const composerDisplayColor = anonymous ? "#5C6470" : currentUser.avatar_color;
 
-  // Expanded composer
   return (
     <div
       className="rounded-2xl border p-5"
@@ -261,13 +276,25 @@ export default function PostComposer() {
               <button
                 key={c.key}
                 type="button"
-                onClick={() => setCategory(c.key)}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  selectCategory(c.key);
+                }}
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  selectCategory(c.key);
+                }}
+                onClick={(e) => {
+                  e.preventDefault();
+                }}
                 disabled={submitting}
                 className="px-3 h-8 rounded-full text-xs font-medium border whitespace-nowrap transition-all disabled:opacity-60"
                 style={{
                   backgroundColor: active ? s.bg : T.card,
                   color: active ? s.text : T.textMuted,
                   borderColor: active ? s.border : T.border,
+                  WebkitTapHighlightColor: "transparent",
+                  touchAction: "manipulation",
                 }}
               >
                 {c.label}
@@ -278,8 +305,11 @@ export default function PostComposer() {
       </div>
 
       <input
-        ref={ref}
+        ref={titleRef}
         value={title}
+        onFocus={() => {
+          lastFocusedFieldRef.current = "title";
+        }}
         onChange={(e) => {
           setTitle(e.target.value);
           setError("");
@@ -291,7 +321,11 @@ export default function PostComposer() {
       />
 
       <textarea
+        ref={bodyRef}
         value={body}
+        onFocus={() => {
+          lastFocusedFieldRef.current = "body";
+        }}
         onChange={(e) => {
           setBody(e.target.value);
           setError("");
