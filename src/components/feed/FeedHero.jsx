@@ -63,7 +63,10 @@ export default function FeedHero({ currentUser, postCount = 0 }) {
 
           <div className="mt-4 h-1.5 w-20 rounded-full bg-gradient-to-r from-[#B31942] via-white to-[#1E4E8C]" />
 
-          <p className="mt-5 text-[16px] md:text-[18px] leading-relaxed max-w-2xl text-white/82">
+          <p
+            className="mt-5 text-[16px] md:text-[18px] leading-relaxed max-w-2xl font-medium drop-shadow-sm"
+            style={{ color: "#FFFFFF" }}
+          >
             {currentUser ? (
               <>Catch up on what your community is asking, sharing, and solving today.</>
             ) : (
