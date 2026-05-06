@@ -55,6 +55,16 @@ body::before {
   box-shadow: 0 14px 30px rgba(179, 25, 66, 0.18), 0 8px 18px rgba(7, 27, 51, 0.10);
 }
 
+/* Facebook-style mobile feed: posts touch both sides of the phone screen. */
+@media (max-width: 767px) {
+  .sh-feed-post-list > article {
+    border-left: 0 !important;
+    border-right: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: 0 8px 18px rgba(7, 27, 51, 0.045) !important;
+  }
+}
+
 /* Animations referenced by Modal, ToastHost, MobileMenu, ScrollToTop */
 @keyframes modalIn {
   from { transform: translateY(8px); opacity: 0; }
