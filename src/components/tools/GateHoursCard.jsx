@@ -97,13 +97,19 @@ function getGateStatus(gate, now) {
 function GateRow({ gate, status }) {
   return (
     <div
-      className="rounded-xl border px-3 py-3"
+      className="rounded-xl border px-3 py-3 relative overflow-hidden"
       style={{
-        backgroundColor: "#FFFFFF",
-        borderColor: T.border,
+        background:
+          "linear-gradient(135deg, rgba(253,254,255,0.98) 0%, rgba(244,248,253,0.92) 100%)",
+        borderColor: "#D5E2F2",
       }}
     >
-      <div className="flex items-start justify-between gap-3">
+      <div
+        className="absolute left-0 top-0 h-full w-1"
+        style={{ backgroundColor: status.open ? "#1E4E8C" : "#B31942" }}
+      />
+
+      <div className="flex items-start justify-between gap-3 pl-1.5">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <div
@@ -121,7 +127,7 @@ function GateRow({ gate, status }) {
             </div>
           </div>
 
-          <div className="mt-1 text-xs" style={{ color: T.textSubtle }}>
+          <div className="mt-1 text-xs" style={{ color: T.blue }}>
             {gate.label}
           </div>
 
@@ -134,8 +140,10 @@ function GateRow({ gate, status }) {
           <div
             className="rounded-full px-2.5 py-1 text-[11px] font-semibold"
             style={{
-              backgroundColor: status.open ? "#F0F7F2" : "#FFF1F0",
-              color: status.open ? "#207245" : "#B42318",
+              backgroundColor: status.open
+                ? "rgba(220,232,247,0.95)"
+                : "rgba(253,236,240,0.95)",
+              color: status.open ? "#1E4E8C" : "#B31942",
             }}
           >
             {status.text}
@@ -172,9 +180,9 @@ export default function GateHoursCard() {
       <div className="flex items-start gap-3">
         <div
           className="h-11 w-11 rounded-full flex items-center justify-center shrink-0"
-          style={{ backgroundColor: T.goldBg }}
+          style={{ backgroundColor: "rgba(220,232,247,0.95)" }}
         >
-          <DoorOpen size={20} style={{ color: T.gold }} strokeWidth={2.2} />
+          <DoorOpen size={20} style={{ color: T.blue }} strokeWidth={2.2} />
         </div>
 
         <div className="min-w-0 flex-1">
@@ -215,13 +223,15 @@ export default function GateHoursCard() {
       </div>
 
       <div
-        className="mt-3 flex items-start gap-2 rounded-xl px-3 py-2 text-xs leading-relaxed"
+        className="mt-3 flex items-start gap-2 rounded-xl border px-3 py-2 text-xs leading-relaxed"
         style={{
-          backgroundColor: "#F6F7F9",
+          background:
+            "linear-gradient(135deg, rgba(244,248,253,0.95), rgba(253,254,255,0.95))",
+          borderColor: "#D5E2F2",
           color: T.textMuted,
         }}
       >
-        <Info size={14} className="mt-0.5 shrink-0" />
+        <Info size={14} className="mt-0.5 shrink-0" style={{ color: T.blue }} />
         <span>
           Gate hours can change for holidays, training events, or security
           conditions. Confirm with official Fort Bliss channels before travel.
