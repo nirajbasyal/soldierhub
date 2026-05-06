@@ -10,11 +10,23 @@ export async function listCommentsForPost(postId) {
   const supabase = createClient();
   if (!supabase) return { data: [], error: null };
 
-  const { data, error } = await supabase.rpc("get_public_comments_for_post", {
-    p_post_id: postId,
+  // The updated Supabase function uses `target_post_id`.
+  // Keep a fallback to the older `p_post_id` name so local/staging DBs do not break.
+  let result = await supabase.rpc("get_public_comments_for_post", {
+    target_post_id: postId,
   });
 
-  return { data: data || [], error };
+  if (result.error) {
+    const fallback = await supabase.rpc("get_public_comments_for_post", {
+      p_post_id: postId,
+    });
+
+    if (!fallback.error) {
+      result = fallback;
+    }
+  }
+
+  return { data: result.data || [], error: result.error };
 }
 
 export async function listCommentsForPosts(postIds) {
