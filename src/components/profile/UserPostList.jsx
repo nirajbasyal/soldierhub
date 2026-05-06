@@ -12,7 +12,7 @@ import ExpandableText from "@/components/ui/ExpandableText";
 import ClientTimeAgo from "@/components/ui/ClientTimeAgo";
 import EditPostModal from "./EditPostModal";
 
-const PROFILE_POST_PREVIEW_LENGTH = 220;
+const PROFILE_POST_PREVIEW_LENGTH = 300;
 
 export default function UserPostList() {
   const { myPosts: userPosts = [], editMyPost, deleteMyPost } = useApp();
@@ -110,18 +110,18 @@ export default function UserPostList() {
               </div>
 
               <h3
-                className="text-lg font-semibold leading-snug"
+                className="text-[18px] md:text-[20px] font-bold leading-snug"
                 style={{ color: T.text }}
               >
                 {p.title}
               </h3>
 
-              <div className="mt-1">
+              <div className="mt-2">
                 <ExpandableText
                   text={p.body || ""}
                   previewLength={PROFILE_POST_PREVIEW_LENGTH}
-                  className="text-sm leading-relaxed whitespace-pre-wrap"
-                  style={{ color: T.textMuted }}
+                  className="text-[14px] md:text-[15px] leading-7 whitespace-pre-wrap"
+                  style={{ color: T.text }}
                   buttonSize="xs"
                 />
               </div>
