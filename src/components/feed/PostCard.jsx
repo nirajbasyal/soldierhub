@@ -70,11 +70,13 @@ function getSafeCommentAuthor({ comment, post }) {
 }
 
 function FeedActionButton({ icon: Icon, label, count, active = false, onClick }) {
+  const countLabel = typeof count === "number" && count > 99 ? "99+" : count;
+
   return (
     <button
       type="button"
       onClick={onClick}
-      className="h-10 rounded-full text-sm font-semibold transition-all inline-flex items-center justify-center gap-2 px-3 hover:-translate-y-0.5"
+      className="min-w-0 h-9 md:h-10 rounded-full text-xs md:text-sm font-semibold transition-all inline-flex items-center justify-center gap-1 md:gap-2 px-2 md:px-3 hover:-translate-y-0.5"
       style={{
         color: active ? "#FFFFFF" : T.textMuted,
         background: active
@@ -84,17 +86,17 @@ function FeedActionButton({ icon: Icon, label, count, active = false, onClick })
         boxShadow: active ? "0 8px 18px rgba(7,27,51,0.14)" : "none",
       }}
     >
-      <Icon size={17} strokeWidth={2.25} />
-      <span>{label}</span>
+      <Icon size={16} className="shrink-0 md:w-[17px] md:h-[17px]" strokeWidth={2.25} />
+      <span className="min-w-0 truncate">{label}</span>
       {typeof count === "number" && count > 0 ? (
         <span
-          className="min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-bold inline-flex items-center justify-center"
+          className="shrink-0 min-w-[18px] h-[18px] md:min-w-[20px] md:h-5 px-1 rounded-full text-[10px] md:text-[11px] font-bold inline-flex items-center justify-center leading-none"
           style={{
             backgroundColor: active ? "rgba(255,255,255,0.18)" : T.surface,
             color: active ? "#FFFFFF" : T.textSubtle,
           }}
         >
-          {count}
+          {countLabel}
         </span>
       ) : null}
     </button>
@@ -307,13 +309,13 @@ export default function PostCard({ post }) {
         </div>
 
         <div
-          className="mt-4 rounded-[18px] border p-1.5 flex items-center gap-1.5"
+          className="mt-4 rounded-[18px] border p-1 flex items-center gap-1"
           style={{
             backgroundColor: T.surface,
             borderColor: T.borderSoft,
           }}
         >
-          <div className="grid grid-cols-3 gap-1.5 flex-1">
+          <div className="grid grid-cols-3 gap-1 flex-1 min-w-0">
             <FeedActionButton
               icon={ArrowUp}
               label="Upvote"
@@ -340,7 +342,7 @@ export default function PostCard({ post }) {
           <button
             type="button"
             onClick={() => guard(() => reportPost(post.id))}
-            className="w-10 h-10 rounded-full inline-flex items-center justify-center transition-all shrink-0 hover:-translate-y-0.5"
+            className="w-9 h-9 md:w-10 md:h-10 rounded-full inline-flex items-center justify-center transition-all shrink-0 hover:-translate-y-0.5"
             style={{
               color: userReported ? T.red : T.textMuted,
               backgroundColor: userReported ? T.redBg : "rgba(255,255,255,0.76)",
@@ -348,7 +350,7 @@ export default function PostCard({ post }) {
             }}
             aria-label={userReported ? "Reported" : "Report"}
           >
-            <Flag size={18} strokeWidth={2.2} />
+            <Flag size={17} strokeWidth={2.2} />
           </button>
         </div>
       </div>
@@ -412,11 +414,18 @@ export default function PostCard({ post }) {
             })}
 
             {currentUser?.status === "verified" ? (
-              <div className="flex gap-2.5 pt-1">
-                <Avatar name={replyAvatarName} color={replyAvatarColor} size={32} />
+              <div className="flex items-center gap-2.5 pt-1">
+                <div className="shrink-0 self-center">
+                  <Avatar name={replyAvatarName} color={replyAvatarColor} size={34} />
+                </div>
 
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 rounded-full border px-3 py-1.5"
+                    style={{
+                      backgroundColor: T.card,
+                      borderColor: T.border,
+                    }}
+                  >
                     <input
                       value={comment}
                       onChange={(e) => {
@@ -430,20 +439,25 @@ export default function PostCard({ post }) {
                         }
                       }}
                       placeholder={replyPlaceholder}
-                      className="flex-1 min-w-0 h-11 px-4 rounded-full border text-sm outline-none"
-                      style={{ borderColor: T.border, backgroundColor: T.card, color: T.text }}
+                      className="flex-1 min-w-0 h-8 bg-transparent text-sm outline-none placeholder:text-[#A8ABB2]"
+                      style={{ color: T.text }}
                     />
 
-                    <Button
-                      variant="primary"
-                      size="md"
-                      icon={Send}
-                      className="shrink-0"
+                    <button
+                      type="button"
                       onClick={submitComment}
                       disabled={!comment.trim() || commentSubmitting}
+                      className="h-8 w-8 rounded-full inline-flex items-center justify-center shrink-0 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                      style={{
+                        background: comment.trim()
+                          ? "linear-gradient(135deg, #071B33 0%, #1E4E8C 100%)"
+                          : T.surface,
+                        color: comment.trim() ? "#FFFFFF" : T.textSubtle,
+                      }}
+                      aria-label="Post reply"
                     >
-                      {commentSubmitting ? "Posting..." : "Reply"}
-                    </Button>
+                      <Send size={15} strokeWidth={2.25} />
+                    </button>
                   </div>
 
                   {currentUserIsAnonymousPostAuthor && (
