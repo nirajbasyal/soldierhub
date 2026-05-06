@@ -2,21 +2,59 @@
 
 import { createClient } from "@/lib/supabase/client";
 
+function normalizePostRow(row = {}) {
+  return {
+    ...row,
+    author_name:
+      row.author_name ||
+      row.author_name_cached ||
+      row.full_name ||
+      row.profile_full_name ||
+      "Member",
+    author_color:
+      row.author_color ||
+      row.author_color_cached ||
+      row.avatar_color ||
+      row.profile_avatar_color ||
+      "#314A66",
+    upvote_count: row.upvote_count ?? row.upvotes_count ?? 0,
+    comment_count: row.comment_count ?? row.comments_count ?? row.reply_count ?? 0,
+  };
+}
+
 /**
  * Fetch public feed posts.
- * Uses the safe RPC `get_public_posts`, so logged-out users can view posts
- * without direct SELECT access to the raw `posts` table.
- * Anonymous author identity stays masked in the SQL function.
+ * Primary path: safe RPC `get_public_posts`.
+ * Fallback path: safe view `posts_with_meta`.
+ * This prevents the feed from going empty if an RPC parameter/return shape changes.
  */
 export async function listPosts({ limit = 50 } = {}) {
   const supabase = createClient();
   if (!supabase) return { data: [], error: null };
 
-  const { data, error } = await supabase.rpc("get_public_posts", {
+  const rpcResult = await supabase.rpc("get_public_posts", {
     limit_count: limit,
   });
 
-  return { data: data || [], error };
+  if (!rpcResult.error && Array.isArray(rpcResult.data)) {
+    return {
+      data: rpcResult.data.map(normalizePostRow),
+      error: null,
+    };
+  }
+
+  console.warn("get_public_posts failed. Falling back to posts_with_meta.", rpcResult.error);
+
+  const fallbackResult = await supabase
+    .from("posts_with_meta")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  return {
+    data: (fallbackResult.data || []).map(normalizePostRow),
+    error: fallbackResult.error || rpcResult.error,
+  };
 }
 
 export async function listMyPosts(userId) {
@@ -29,7 +67,7 @@ export async function listMyPosts(userId) {
     .eq("author_id", userId)
     .order("created_at", { ascending: false });
 
-  return { data: data || [], error };
+  return { data: (data || []).map(normalizePostRow), error };
 }
 
 export async function listReportedPosts() {
@@ -42,7 +80,7 @@ export async function listReportedPosts() {
     .eq("status", "reported")
     .order("created_at", { ascending: false });
 
-  return { data: data || [], error };
+  return { data: (data || []).map(normalizePostRow), error };
 }
 
 export async function createPost({
