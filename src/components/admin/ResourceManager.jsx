@@ -1,7 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { Edit3, ExternalLink, Plus, Save, Trash2, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  BookMarked,
+  Edit3,
+  ExternalLink,
+  FileText,
+  Link2,
+  Plus,
+  Save,
+  Search,
+  Trash2,
+  X,
+} from "lucide-react";
 import { T } from "@/lib/theme";
 import { useApp } from "@/store/AppContext";
 import {
@@ -11,6 +22,8 @@ import {
   listResources,
 } from "@/lib/db/resources";
 import Button from "@/components/ui/Button";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import EmptyState from "@/components/ui/EmptyState";
 
 const EMPTY_FORM = {
   section: "",
@@ -19,12 +32,124 @@ const EMPTY_FORM = {
   link: "",
 };
 
+function normalizeText(value) {
+  return String(value || "").toLowerCase().trim();
+}
+
+function Field({ label, children }) {
+  return (
+    <label className="block">
+      <span
+        className="text-[11px] font-bold uppercase tracking-[0.14em]"
+        style={{ color: T.textSubtle }}
+      >
+        {label}
+      </span>
+      <div className="mt-1">{children}</div>
+    </label>
+  );
+}
+
+function inputStyle() {
+  return {
+    backgroundColor: T.card,
+    borderColor: "#D5E2F2",
+    color: T.text,
+  };
+}
+
+function ResourceRow({ resource, onEdit, onDelete }) {
+  return (
+    <article
+      className="rounded-3xl border p-4 md:p-5 relative overflow-hidden"
+      style={{
+        backgroundColor: T.card,
+        borderColor: "#D5E2F2",
+        boxShadow: "0 10px 26px rgba(7,27,51,0.05)",
+      }}
+    >
+      <div className="absolute left-0 top-0 h-full w-1.5 bg-[#1E4E8C]" />
+
+      <div className="pl-2 flex flex-col sm:flex-row sm:items-start gap-4">
+        <div
+          className="h-12 w-12 rounded-2xl flex items-center justify-center shrink-0"
+          style={{ backgroundColor: "rgba(220,232,247,0.95)", color: T.blue }}
+        >
+          <FileText size={20} strokeWidth={2.25} />
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="text-base md:text-lg font-extrabold leading-snug" style={{ color: T.navy }}>
+              {resource.title}
+            </h3>
+
+            <span
+              className="rounded-full px-2.5 py-1 text-[11px] font-bold"
+              style={{ backgroundColor: "rgba(220,232,247,0.95)", color: T.blue }}
+            >
+              {resource.section || "General"}
+            </span>
+          </div>
+
+          {resource.description ? (
+            <p className="mt-2 text-sm leading-6 line-clamp-2" style={{ color: T.textMuted }}>
+              {resource.description}
+            </p>
+          ) : (
+            <p className="mt-2 text-sm leading-6" style={{ color: T.textSubtle }}>
+              No description added.
+            </p>
+          )}
+
+          {resource.link ? (
+            <a
+              href={resource.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold max-w-full"
+              style={{ color: T.blue }}
+            >
+              <span className="truncate">{resource.link}</span>
+              <ExternalLink size={13} className="shrink-0" strokeWidth={2.4} />
+            </a>
+          ) : null}
+        </div>
+
+        <div className="flex sm:flex-col gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => onEdit(resource)}
+            className="inline-flex items-center justify-center gap-2 rounded-full border px-3 py-2 text-xs font-bold transition hover:-translate-y-0.5"
+            style={{ backgroundColor: "rgba(244,248,253,0.95)", borderColor: "#D5E2F2", color: T.navy }}
+          >
+            <Edit3 size={14} />
+            Edit
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onDelete(resource)}
+            className="inline-flex items-center justify-center gap-2 rounded-full border px-3 py-2 text-xs font-bold transition hover:-translate-y-0.5"
+            style={{ backgroundColor: "rgba(253,236,240,0.95)", borderColor: "#F3C7D1", color: "#B31942" }}
+          >
+            <Trash2 size={14} />
+            Delete
+          </button>
+        </div>
+      </div>
+    </article>
+  );
+}
+
 export default function ResourceManager({ onCountChange }) {
   const { pushToast } = useApp();
 
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(null);
 
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
@@ -52,6 +177,24 @@ export default function ResourceManager({ onCountChange }) {
   useEffect(() => {
     loadResources();
   }, [loadResources]);
+
+  const filteredResources = useMemo(() => {
+    const q = normalizeText(searchQuery);
+
+    if (!q) return resources;
+
+    return resources.filter((resource) => {
+      const searchable = normalizeText(
+        `${resource.section} ${resource.title} ${resource.description} ${resource.link}`
+      );
+
+      return searchable.includes(q);
+    });
+  }, [resources, searchQuery]);
+
+  const sectionCount = useMemo(() => {
+    return new Set(resources.map((resource) => resource.section || "General")).size;
+  }, [resources]);
 
   const updateField = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -89,10 +232,10 @@ export default function ResourceManager({ onCountChange }) {
     setSaving(true);
 
     const payload = {
-      section: form.section,
-      title: form.title,
-      description: form.description,
-      link: form.link,
+      section: form.section.trim(),
+      title: form.title.trim(),
+      description: form.description.trim(),
+      link: form.link.trim(),
     };
 
     const { error } = isEditing
@@ -121,14 +264,10 @@ export default function ResourceManager({ onCountChange }) {
     });
   };
 
-  const handleDelete = async (resource) => {
-    const confirmed = window.confirm(
-      `Delete "${resource.title}" from resources?`
-    );
+  const handleDelete = async () => {
+    if (!confirmDelete) return;
 
-    if (!confirmed) return;
-
-    const { error } = await adminDeleteResource(resource.id);
+    const { error } = await adminDeleteResource(confirmDelete.id);
 
     if (error) {
       pushToast(error.message || "Could not delete resource.", "error");
@@ -137,247 +276,193 @@ export default function ResourceManager({ onCountChange }) {
 
     pushToast("Resource deleted", "info");
 
-    if (editingId === resource.id) {
+    if (editingId === confirmDelete.id) {
       resetForm();
     }
 
+    setConfirmDelete(null);
     loadResources();
   };
 
   return (
     <div className="flex flex-col gap-5">
-      <form
-        onSubmit={handleSubmit}
-        className="rounded-2xl border p-4"
-        style={{ backgroundColor: T.surface, borderColor: T.border }}
+      <section
+        className="rounded-[28px] border overflow-hidden relative"
+        style={{
+          background:
+            "linear-gradient(135deg, rgba(220,232,247,0.95), rgba(253,254,255,0.98), rgba(253,236,240,0.72))",
+          borderColor: "#BCD0EA",
+        }}
       >
-        <div className="flex items-start justify-between gap-3 mb-4">
-          <div>
-            <h2 className="text-lg font-semibold" style={{ color: T.navy }}>
-              Resource Manager
-            </h2>
-            <p className="text-sm mt-1" style={{ color: T.textMuted }}>
-              Add, update, or delete resources shown on the Resources tab.
-            </p>
+        <div className="absolute left-0 top-0 h-full w-1.5 bg-[#B31942]" />
+        <div className="absolute right-0 top-0 h-full w-1.5 bg-[#1E4E8C]" />
+
+        <div className="p-4 md:p-5">
+          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 pl-2">
+            <div>
+              <div
+                className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold uppercase tracking-[0.12em]"
+                style={{ backgroundColor: "rgba(255,255,255,0.72)", borderColor: "#D5E2F2", color: T.blue }}
+              >
+                <BookMarked size={14} />
+                Resource manager
+              </div>
+
+              <h2 className="mt-3 text-2xl md:text-3xl font-extrabold tracking-[-0.03em]" style={{ color: T.navy }}>
+                {isEditing ? "Edit resource" : "Create resource"}
+              </h2>
+
+              <p className="mt-1 text-sm leading-6 max-w-2xl" style={{ color: T.textMuted }}>
+                Add links that will appear on the public Resources page. These entries come from your admin dashboard and save to your existing Supabase resources table.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 lg:min-w-[220px]">
+              <div className="rounded-2xl border p-3" style={{ backgroundColor: "rgba(255,255,255,0.72)", borderColor: "#D5E2F2" }}>
+                <div className="text-2xl font-extrabold tabular-nums" style={{ color: T.navy }}>{resources.length}</div>
+                <div className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: T.textSubtle }}>Resources</div>
+              </div>
+              <div className="rounded-2xl border p-3" style={{ backgroundColor: "rgba(255,255,255,0.72)", borderColor: "#D5E2F2" }}>
+                <div className="text-2xl font-extrabold tabular-nums" style={{ color: T.navy }}>{sectionCount}</div>
+                <div className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: T.textSubtle }}>Sections</div>
+              </div>
+            </div>
           </div>
 
-          {isEditing && (
-            <button
-              type="button"
-              onClick={resetForm}
-              className="h-9 w-9 rounded-xl border flex items-center justify-center"
-              style={{
-                backgroundColor: T.card,
-                borderColor: T.border,
-                color: T.textMuted,
-              }}
-            >
-              <X size={16} />
-            </button>
-          )}
+          <form onSubmit={handleSubmit} className="mt-5 pl-2">
+            <div className="grid md:grid-cols-2 gap-3">
+              <Field label="Section">
+                <input
+                  value={form.section}
+                  onChange={(e) => updateField("section", e.target.value)}
+                  placeholder="Emergency support"
+                  className="w-full h-11 rounded-2xl border px-3 text-sm outline-none placeholder:text-[#A8ABB2]"
+                  style={inputStyle()}
+                />
+              </Field>
+
+              <Field label="Title">
+                <input
+                  value={form.title}
+                  onChange={(e) => updateField("title", e.target.value)}
+                  placeholder="Fort Bliss official site"
+                  className="w-full h-11 rounded-2xl border px-3 text-sm outline-none placeholder:text-[#A8ABB2]"
+                  style={inputStyle()}
+                />
+              </Field>
+
+              <Field label="Link">
+                <div className="relative">
+                  <Link2 size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: T.blue }} />
+                  <input
+                    value={form.link}
+                    onChange={(e) => updateField("link", e.target.value)}
+                    placeholder="https://home.army.mil/bliss/"
+                    className="w-full h-11 rounded-2xl border pl-9 pr-3 text-sm outline-none placeholder:text-[#A8ABB2]"
+                    style={inputStyle()}
+                  />
+                </div>
+              </Field>
+
+              <Field label="Description">
+                <textarea
+                  value={form.description}
+                  onChange={(e) => updateField("description", e.target.value)}
+                  placeholder="Short note about what this resource helps with."
+                  rows={3}
+                  className="w-full rounded-2xl border px-3 py-3 text-sm outline-none resize-none placeholder:text-[#A8ABB2]"
+                  style={inputStyle()}
+                />
+              </Field>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2 mt-4">
+              <Button type="submit" variant="primary" icon={isEditing ? Save : Plus} disabled={saving}>
+                {saving ? "Saving..." : isEditing ? "Update resource" : "Add resource"}
+              </Button>
+
+              {isEditing && (
+                <Button type="button" variant="ghost" icon={X} onClick={resetForm} disabled={saving}>
+                  Cancel edit
+                </Button>
+              )}
+            </div>
+          </form>
         </div>
+      </section>
 
-        <div className="grid gap-3">
-          <div>
-            <label
-              className="text-xs font-semibold uppercase tracking-wider"
-              style={{ color: T.textSubtle }}
+      <section
+        className="rounded-[28px] border p-4 md:p-5"
+        style={{ backgroundColor: "rgba(255,255,255,0.86)", borderColor: T.border }}
+      >
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+          <div className="flex items-center gap-3">
+            <div
+              className="h-11 w-11 rounded-2xl flex items-center justify-center shrink-0"
+              style={{ backgroundColor: "rgba(220,232,247,0.95)", color: T.blue }}
             >
-              Section
-            </label>
-            <input
-              value={form.section}
-              onChange={(e) => updateField("section", e.target.value)}
-              placeholder="On-post essentials"
-              className="mt-1 w-full h-11 rounded-xl border px-3 text-sm outline-none"
-              style={{
-                backgroundColor: T.card,
-                borderColor: T.border,
-                color: T.text,
-              }}
-            />
+              <FileText size={20} />
+            </div>
+
+            <div>
+              <h3 className="text-xl font-extrabold tracking-[-0.02em]" style={{ color: T.navy }}>
+                Existing resources
+              </h3>
+              <p className="text-sm mt-0.5" style={{ color: T.textMuted }}>
+                Edit or remove links shown on the Resources page.
+              </p>
+            </div>
           </div>
 
-          <div>
-            <label
-              className="text-xs font-semibold uppercase tracking-wider"
-              style={{ color: T.textSubtle }}
-            >
-              Title
-            </label>
-            <input
-              value={form.title}
-              onChange={(e) => updateField("title", e.target.value)}
-              placeholder="Fort Bliss official site"
-              className="mt-1 w-full h-11 rounded-xl border px-3 text-sm outline-none"
-              style={{
-                backgroundColor: T.card,
-                borderColor: T.border,
-                color: T.text,
-              }}
-            />
-          </div>
-
-          <div>
-            <label
-              className="text-xs font-semibold uppercase tracking-wider"
-              style={{ color: T.textSubtle }}
-            >
-              Description
-            </label>
-            <textarea
-              value={form.description}
-              onChange={(e) => updateField("description", e.target.value)}
-              placeholder="Garrison news, events, and policy updates."
-              rows={3}
-              className="mt-1 w-full rounded-xl border px-3 py-3 text-sm outline-none resize-none"
-              style={{
-                backgroundColor: T.card,
-                borderColor: T.border,
-                color: T.text,
-              }}
-            />
-          </div>
-
-          <div>
-            <label
-              className="text-xs font-semibold uppercase tracking-wider"
-              style={{ color: T.textSubtle }}
-            >
-              Link
-            </label>
-            <input
-              value={form.link}
-              onChange={(e) => updateField("link", e.target.value)}
-              placeholder="https://home.army.mil/bliss/"
-              className="mt-1 w-full h-11 rounded-xl border px-3 text-sm outline-none"
-              style={{
-                backgroundColor: T.card,
-                borderColor: T.border,
-                color: T.text,
-              }}
-            />
-          </div>
-
-          <Button
-            type="submit"
-            variant="primary"
-            icon={isEditing ? Save : Plus}
-            disabled={saving}
+          <div
+            className="rounded-2xl border px-3 py-2.5 flex items-center gap-2 md:min-w-[260px]"
+            style={{ backgroundColor: T.card, borderColor: "#D5E2F2" }}
           >
-            {saving
-              ? "Saving..."
-              : isEditing
-              ? "Update Resource"
-              : "Add Resource"}
-          </Button>
-        </div>
-      </form>
-
-      <div
-        className="rounded-2xl border p-4"
-        style={{ backgroundColor: T.card, borderColor: T.border }}
-      >
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold" style={{ color: T.text }}>
-            Existing resources
-          </h3>
-
-          <span className="text-xs" style={{ color: T.textSubtle }}>
-            {resources.length} total
-          </span>
+            <Search size={17} className="shrink-0" style={{ color: T.blue }} />
+            <input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search resources..."
+              className="w-full bg-transparent outline-none text-sm placeholder:text-[#A8ABB2]"
+              style={{ color: T.text }}
+            />
+          </div>
         </div>
 
         {loading ? (
-          <div className="text-sm" style={{ color: T.textMuted }}>
+          <div
+            className="rounded-3xl border p-8 text-center text-sm"
+            style={{ backgroundColor: T.card, borderColor: "#D5E2F2", color: T.textMuted }}
+          >
             Loading resources...
           </div>
         ) : resources.length === 0 ? (
-          <div
-            className="rounded-xl border p-4 text-sm"
-            style={{
-              backgroundColor: T.surface,
-              borderColor: T.border,
-              color: T.textMuted,
-            }}
-          >
-            No resources yet. Add your first resource above.
-          </div>
+          <EmptyState icon={BookMarked} title="No resources yet" body="Add your first resource above. It will appear on the Resources page after it saves." />
+        ) : filteredResources.length === 0 ? (
+          <EmptyState icon={Search} title="No matching resources" body="Try searching by section, title, description, or link." />
         ) : (
-          <div
-            className="flex flex-col divide-y"
-            style={{ borderColor: T.border }}
-          >
-            {resources.map((resource) => (
-              <div
+          <div className="grid gap-3">
+            {filteredResources.map((resource) => (
+              <ResourceRow
                 key={resource.id}
-                className="py-3 flex items-center justify-between gap-3"
-              >
-                <div className="min-w-0">
-                  <div
-                    className="text-sm font-semibold truncate"
-                    style={{ color: T.text }}
-                  >
-                    {resource.title}
-                  </div>
-
-                  <div
-                    className="text-xs truncate"
-                    style={{ color: T.textSubtle }}
-                  >
-                    {resource.section}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <a
-                    href={resource.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="h-8 w-8 rounded-lg border flex items-center justify-center"
-                    style={{
-                      borderColor: T.border,
-                      backgroundColor: T.surface,
-                      color: T.textMuted,
-                    }}
-                    title="Open link"
-                  >
-                    <ExternalLink size={14} />
-                  </a>
-
-                  <button
-                    type="button"
-                    onClick={() => startEdit(resource)}
-                    className="h-8 w-8 rounded-lg border flex items-center justify-center"
-                    style={{
-                      borderColor: T.border,
-                      backgroundColor: T.surface,
-                      color: T.navy,
-                    }}
-                    title="Edit"
-                  >
-                    <Edit3 size={14} />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(resource)}
-                    className="h-8 w-8 rounded-lg border flex items-center justify-center"
-                    style={{
-                      borderColor: T.border,
-                      backgroundColor: T.dangerBg,
-                      color: T.danger,
-                    }}
-                    title="Delete"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              </div>
+                resource={resource}
+                onEdit={startEdit}
+                onDelete={setConfirmDelete}
+              />
             ))}
           </div>
         )}
-      </div>
+      </section>
+
+      <ConfirmDialog
+        open={!!confirmDelete}
+        title={`Delete ${confirmDelete?.title || "this resource"}?`}
+        body="This removes the resource from the public Resources page. You can add it again later if needed."
+        confirmText="Delete resource"
+        danger
+        onConfirm={handleDelete}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   );
 }
