@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ArrowUp,
   Edit3,
@@ -37,11 +37,36 @@ function StatMini({ icon: Icon, value, label }) {
   );
 }
 
+function postBelongsToCurrentUser(post, currentUser) {
+  if (!post || !currentUser?.id) return false;
+
+  return (
+    post.author_id === currentUser.id ||
+    post.user_id === currentUser.id ||
+    post.profile_id === currentUser.id ||
+    post.viewer_is_author === true
+  );
+}
+
 export default function UserPostList() {
-  const { myPosts: userPosts = [], editMyPost, deleteMyPost } = useApp();
+  const {
+    currentUser,
+    posts = [],
+    myPosts: userPosts = [],
+    editMyPost,
+    deleteMyPost,
+  } = useApp();
+
+  const visiblePosts = useMemo(() => {
+    if (userPosts.length > 0) return userPosts;
+
+    return posts.filter((post) => postBelongsToCurrentUser(post, currentUser));
+  }, [currentUser, posts, userPosts]);
 
   const [editingId, setEditingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+
+  const editingPost = visiblePosts.find((p) => p.id === editingId);
 
   return (
     <>
@@ -75,12 +100,12 @@ export default function UserPostList() {
             className="rounded-full px-3 py-1.5 text-xs font-bold"
             style={{ backgroundColor: "rgba(244,248,253,0.95)", color: T.textSubtle }}
           >
-            {userPosts.length} {userPosts.length === 1 ? "post" : "posts"}
+            {visiblePosts.length} {visiblePosts.length === 1 ? "post" : "posts"}
           </div>
         </div>
 
         <div className="flex flex-col gap-3">
-          {userPosts.length === 0 && (
+          {visiblePosts.length === 0 && (
             <div
               className="rounded-3xl border p-8 md:p-10 text-center"
               style={{
@@ -106,7 +131,7 @@ export default function UserPostList() {
             </div>
           )}
 
-          {userPosts.map((p) => {
+          {visiblePosts.map((p) => {
             const cat = CATEGORIES.find((c) => c.key === p.category);
 
             return (
@@ -124,7 +149,7 @@ export default function UserPostList() {
                 <div className="pl-2">
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div className="flex items-center gap-2 flex-wrap min-w-0">
-                      <Badge tone={cat?.tone || "blue"}>{p.category}</Badge>
+                      <Badge tone={cat?.tone || "blue"}>{cat?.label || p.category}</Badge>
 
                       <span className="text-xs font-medium" style={{ color: T.textSubtle }}>
                         <ClientTimeAgo date={p.created_at} />
@@ -195,9 +220,9 @@ export default function UserPostList() {
         </div>
       </section>
 
-      {editingId && (
+      {editingId && editingPost && (
         <EditPostModal
-          post={userPosts.find((p) => p.id === editingId)}
+          post={editingPost}
           onClose={() => setEditingId(null)}
           onSave={async (updates) => {
             const result = await editMyPost(editingId, updates);
