@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   AlertTriangle,
   Check,
@@ -52,8 +52,25 @@ function InfoPill({ icon: Icon, label, value }) {
   );
 }
 
+function postBelongsToCurrentUser(post, currentUser) {
+  if (!post || !currentUser?.id) return false;
+
+  return (
+    post.author_id === currentUser.id ||
+    post.user_id === currentUser.id ||
+    post.profile_id === currentUser.id ||
+    post.viewer_is_author === true
+  );
+}
+
 export default function ProfileHeader() {
-  const { currentUser, updateProfile, myPosts = [] } = useApp();
+  const {
+    currentUser,
+    updateProfile,
+    posts = [],
+    myPosts = [],
+  } = useApp();
+
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(currentUser.full_name || "");
   const [bio, setBio] = useState(currentUser.bio || "");
@@ -66,8 +83,13 @@ export default function ProfileHeader() {
   const [passwordSuccess, setPasswordSuccess] = useState("");
   const [passwordSaving, setPasswordSaving] = useState(false);
 
-  const totalUpvotes = myPosts.reduce((sum, post) => sum + (post.upvote_count || 0), 0);
-  const totalReplies = myPosts.reduce((sum, post) => sum + (post.comment_count || 0), 0);
+  const visiblePosts = useMemo(() => {
+    if (myPosts.length > 0) return myPosts;
+    return posts.filter((post) => postBelongsToCurrentUser(post, currentUser));
+  }, [currentUser, myPosts, posts]);
+
+  const totalUpvotes = visiblePosts.reduce((sum, post) => sum + (post.upvote_count || 0), 0);
+  const totalReplies = visiblePosts.reduce((sum, post) => sum + (post.comment_count || 0), 0);
 
   const resetPasswordForm = () => {
     setCurrentPassword("");
@@ -364,7 +386,7 @@ export default function ProfileHeader() {
           {!editing && (
             <div className="grid grid-cols-3 lg:grid-cols-1 gap-2 lg:min-w-[150px]">
               {[
-                ["Posts", myPosts.length],
+                ["Posts", visiblePosts.length],
                 ["Upvotes", totalUpvotes],
                 ["Replies", totalReplies],
               ].map(([label, value]) => (
