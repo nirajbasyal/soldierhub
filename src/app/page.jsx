@@ -58,10 +58,9 @@ export default function HomePage() {
   return (
     <AppShell>
       <main className="max-w-6xl mx-auto px-4 md:px-6 py-5 md:py-8 pb-24 md:pb-12">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5">
           {/* Main column */}
-          <div className="flex flex-col gap-4 min-w-0">
-            {/* Mobile only: weather strip above FeedHero */}
+          <div className="flex flex-col gap-3 min-w-0">
             <div className="block lg:hidden">
               <MobileWeatherStrip />
             </div>
@@ -71,10 +70,10 @@ export default function HomePage() {
             <PostComposer />
 
             <div
-              className="sticky top-[73px] z-20 -mx-4 md:mx-0 px-4 md:px-0 py-2 md:py-3 backdrop-blur-xl"
+              className="sticky top-[73px] z-20 -mx-4 md:mx-0 px-4 md:px-0 py-2 backdrop-blur-xl"
               style={{
                 background:
-                  "linear-gradient(180deg, rgba(234,240,248,0.96) 0%, rgba(234,240,248,0.72) 100%)",
+                  "linear-gradient(180deg, rgba(234,240,248,0.96) 0%, rgba(234,240,248,0.82) 100%)",
               }}
             >
               <CategoryStrip
@@ -85,7 +84,7 @@ export default function HomePage() {
             </div>
 
             {postsLoading ? (
-              <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-3">
                 <PostSkeleton />
                 <PostSkeleton />
                 <PostSkeleton />
@@ -106,18 +105,15 @@ export default function HomePage() {
                 />
               </div>
             ) : (
-              <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2.5">
                 {filtered.map((post) => (
                   <PostCard key={post.id} post={post} />
                 ))}
               </div>
             )}
-
-            {/* Do NOT put SiteInfoCard here.
-                It will show at bottom of mobile feed if placed here. */}
           </div>
 
-          {/* Desktop sidebar only */}
+          {/* Desktop sidebar */}
           <aside className="hidden lg:flex flex-col gap-4 sticky top-24 self-start">
             <MobileWeatherStrip />
             <BAHCard />
