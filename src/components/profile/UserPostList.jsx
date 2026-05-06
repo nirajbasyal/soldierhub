@@ -1,18 +1,41 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowUp, Edit3, MessageCircle, Trash2 } from "lucide-react";
+import {
+  ArrowUp,
+  Edit3,
+  FileText,
+  MessageCircle,
+  PenLine,
+  Trash2,
+} from "lucide-react";
 import { CATEGORIES } from "@/lib/constants";
 import { T } from "@/lib/theme";
 import { useApp } from "@/store/AppContext";
 import Badge from "@/components/ui/Badge";
-import Button from "@/components/ui/Button";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import ExpandableText from "@/components/ui/ExpandableText";
 import ClientTimeAgo from "@/components/ui/ClientTimeAgo";
 import EditPostModal from "./EditPostModal";
 
-const PROFILE_POST_PREVIEW_LENGTH = 300;
+const PROFILE_POST_PREVIEW_LENGTH = 260;
+
+function StatMini({ icon: Icon, value, label }) {
+  return (
+    <div
+      className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold"
+      style={{
+        backgroundColor: "rgba(244,248,253,0.95)",
+        borderColor: "#D5E2F2",
+        color: T.textMuted,
+      }}
+    >
+      <Icon size={13} style={{ color: T.blue }} />
+      <span className="tabular-nums">{value}</span>
+      <span>{label}</span>
+    </div>
+  );
+}
 
 export default function UserPostList() {
   const { myPosts: userPosts = [], editMyPost, deleteMyPost } = useApp();
@@ -20,134 +43,157 @@ export default function UserPostList() {
   const [editingId, setEditingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
 
-  const stats = [
-    {
-      label: "Posts",
-      value: userPosts.length,
-    },
-    {
-      label: "Upvotes received",
-      value: userPosts.reduce((s, p) => s + (p.upvote_count || 0), 0),
-    },
-    {
-      label: "Replies",
-      value: userPosts.reduce((s, p) => s + (p.comment_count || 0), 0),
-    },
-  ];
-
   return (
     <>
-      {/* Stats row */}
-      <div
-        className="grid grid-cols-3 gap-3 mt-6 pt-6 border-t"
-        style={{ borderColor: T.borderSoft }}
-      >
-        {stats.map((s) => (
-          <div key={s.label}>
+      <section className="mt-6">
+        <div
+          className="rounded-3xl border p-4 md:p-5 mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3"
+          style={{
+            backgroundColor: "rgba(255,255,255,0.86)",
+            borderColor: T.border,
+          }}
+        >
+          <div className="flex items-center gap-3">
             <div
-              className="text-2xl tabular-nums font-serif"
-              style={{ color: T.navy }}
+              className="h-11 w-11 rounded-2xl flex items-center justify-center shrink-0"
+              style={{ backgroundColor: "rgba(220,232,247,0.95)" }}
             >
-              {s.value}
+              <FileText size={20} style={{ color: T.blue }} />
             </div>
 
-            <div
-              className="text-xs uppercase tracking-wider mt-0.5"
-              style={{ color: T.textSubtle }}
-            >
-              {s.label}
+            <div>
+              <h2 className="text-xl md:text-2xl font-extrabold tracking-[-0.02em]" style={{ color: T.navy }}>
+                Your posts
+              </h2>
+              <p className="text-sm mt-0.5" style={{ color: T.textMuted }}>
+                Manage your questions, updates, and community discussions.
+              </p>
             </div>
           </div>
-        ))}
-      </div>
 
-      <h2
-        className="text-2xl mt-8 mb-3 font-serif"
-        style={{ color: T.navy }}
-      >
-        Your posts
-      </h2>
-
-      <div className="flex flex-col gap-3">
-        {userPosts.length === 0 && (
           <div
-            className="rounded-2xl border p-8 text-center"
-            style={{ backgroundColor: T.card, borderColor: T.border }}
+            className="rounded-full px-3 py-1.5 text-xs font-bold"
+            style={{ backgroundColor: "rgba(244,248,253,0.95)", color: T.textSubtle }}
           >
-            <div className="text-sm" style={{ color: T.textMuted }}>
-              You haven&apos;t posted anything yet.
-            </div>
+            {userPosts.length} {userPosts.length === 1 ? "post" : "posts"}
           </div>
-        )}
+        </div>
 
-        {userPosts.map((p) => {
-          const cat = CATEGORIES.find((c) => c.key === p.category);
-
-          return (
+        <div className="flex flex-col gap-3">
+          {userPosts.length === 0 && (
             <div
-              key={p.id}
-              className="rounded-2xl border p-5"
-              style={{ backgroundColor: T.card, borderColor: T.border }}
+              className="rounded-3xl border p-8 md:p-10 text-center"
+              style={{
+                backgroundColor: T.card,
+                borderColor: T.border,
+                boxShadow: "0 12px 30px rgba(7,27,51,0.05)",
+              }}
             >
-              <div className="flex items-start justify-between gap-3 mb-2">
-                <Badge tone={cat?.tone}>{p.category}</Badge>
-
-                <div className="flex gap-1">
-                  <Button
-                    variant="ghost"
-                    size="iconSm"
-                    icon={Edit3}
-                    onClick={() => setEditingId(p.id)}
-                  />
-
-                  <Button
-                    variant="ghost"
-                    size="iconSm"
-                    icon={Trash2}
-                    onClick={() => setDeletingId(p.id)}
-                  />
-                </div>
+              <div
+                className="mx-auto h-14 w-14 rounded-2xl flex items-center justify-center"
+                style={{ backgroundColor: "rgba(220,232,247,0.95)" }}
+              >
+                <PenLine size={24} style={{ color: T.blue }} />
               </div>
 
-              <h3
-                className="text-[18px] md:text-[20px] font-bold leading-snug"
-                style={{ color: T.text }}
-              >
-                {p.title}
+              <h3 className="mt-4 text-xl font-bold" style={{ color: T.navy }}>
+                No posts yet
               </h3>
 
-              <div className="mt-2">
-                <ExpandableText
-                  text={p.body || ""}
-                  previewLength={PROFILE_POST_PREVIEW_LENGTH}
-                  className="text-[14px] md:text-[15px] leading-7 whitespace-pre-wrap"
-                  style={{ color: T.text }}
-                  buttonSize="xs"
-                />
-              </div>
-
-              <div
-                className="flex items-center gap-3 text-xs mt-3"
-                style={{ color: T.textSubtle }}
-              >
-                <span className="flex items-center gap-1">
-                  <ArrowUp size={12} />
-                  {p.upvote_count || 0}
-                </span>
-
-                <span className="flex items-center gap-1">
-                  <MessageCircle size={12} />
-                  {p.comment_count || 0}
-                </span>
-
-                <ClientTimeAgo date={p.created_at} />
-
-                {p.edited && <span>· edited</span>}
-              </div>
+              <p className="mt-2 text-sm leading-7 max-w-md mx-auto" style={{ color: T.textMuted }}>
+                Your posts will appear here after you share something with the Fort Bliss community.
+              </p>
             </div>
-          );
-        })}
-      </div>
+          )}
+
+          {userPosts.map((p) => {
+            const cat = CATEGORIES.find((c) => c.key === p.category);
+
+            return (
+              <article
+                key={p.id}
+                className="rounded-3xl border p-4 md:p-5 relative overflow-hidden"
+                style={{
+                  backgroundColor: T.card,
+                  borderColor: "#D5E2F2",
+                  boxShadow: "0 10px 26px rgba(7,27,51,0.05)",
+                }}
+              >
+                <div className="absolute left-0 top-0 h-full w-1.5 bg-[#1E4E8C]" />
+
+                <div className="pl-2">
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="flex items-center gap-2 flex-wrap min-w-0">
+                      <Badge tone={cat?.tone || "blue"}>{p.category}</Badge>
+
+                      <span className="text-xs font-medium" style={{ color: T.textSubtle }}>
+                        <ClientTimeAgo date={p.created_at} />
+                      </span>
+
+                      {p.edited && (
+                        <span className="text-xs font-medium" style={{ color: T.textSubtle }}>
+                          · edited
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setEditingId(p.id)}
+                        className="h-9 w-9 rounded-full border flex items-center justify-center transition hover:-translate-y-0.5"
+                        style={{
+                          backgroundColor: "rgba(244,248,253,0.95)",
+                          borderColor: "#D5E2F2",
+                          color: T.navy,
+                        }}
+                        aria-label="Edit post"
+                      >
+                        <Edit3 size={15} />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setDeletingId(p.id)}
+                        className="h-9 w-9 rounded-full border flex items-center justify-center transition hover:-translate-y-0.5"
+                        style={{
+                          backgroundColor: "rgba(253,236,240,0.95)",
+                          borderColor: "#F3C7D1",
+                          color: "#B31942",
+                        }}
+                        aria-label="Delete post"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  </div>
+
+                  <h3 className="text-[18px] md:text-[20px] font-extrabold leading-snug tracking-[-0.01em]" style={{ color: T.navy }}>
+                    {p.title}
+                  </h3>
+
+                  {p.body ? (
+                    <div className="mt-2">
+                      <ExpandableText
+                        text={p.body || ""}
+                        previewLength={PROFILE_POST_PREVIEW_LENGTH}
+                        className="text-[14px] md:text-[15px] leading-7 whitespace-pre-wrap"
+                        style={{ color: T.text }}
+                        buttonSize="xs"
+                      />
+                    </div>
+                  ) : null}
+
+                  <div className="flex items-center gap-2 flex-wrap mt-4">
+                    <StatMini icon={ArrowUp} value={p.upvote_count || 0} label={(p.upvote_count || 0) === 1 ? "upvote" : "upvotes"} />
+                    <StatMini icon={MessageCircle} value={p.comment_count || 0} label={(p.comment_count || 0) === 1 ? "reply" : "replies"} />
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </section>
 
       {editingId && (
         <EditPostModal
