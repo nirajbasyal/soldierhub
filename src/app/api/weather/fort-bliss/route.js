@@ -13,6 +13,49 @@ const GRIDPOINT_HOURLY_URL = `${NWS_BASE}/gridpoints/EPZ/120,71/forecast/hourly`
 const USER_AGENT =
   process.env.NWS_USER_AGENT || "SoldierHub/1.0 (niraj.basyal2054@gmail.com)";
 
+const PT_UNIFORM_RULES = [
+  {
+    key: "summer-apfu",
+    min: 61,
+    max: Infinity,
+    title: "Summer APFU",
+    detail: "Short sleeve shirt and shorts.",
+    range: "61°F and above",
+  },
+  {
+    key: "long-sleeve-shorts",
+    min: 50,
+    max: 60,
+    title: "Long sleeve shirt and shorts",
+    detail: "Wear long sleeve shirt and shorts.",
+    range: "50–60°F",
+  },
+  {
+    key: "jacket-shorts",
+    min: 40,
+    max: 49,
+    title: "Jacket and shorts",
+    detail: "Wear jacket and shorts.",
+    range: "40–49°F",
+  },
+  {
+    key: "jacket-pants",
+    min: 33,
+    max: 39,
+    title: "Jacket and pants",
+    detail: "Wear jacket and pants.",
+    range: "33–39°F",
+  },
+  {
+    key: "jacket-pants-cold-accessories",
+    min: -Infinity,
+    max: 32,
+    title: "Jacket, pants, gloves, and fleece cap",
+    detail: "Wear jacket, pants, gloves, and fleece cap.",
+    range: "Below 33°F",
+  },
+];
+
 async function fetchNws(url) {
   const response = await fetch(url, {
     headers: {
@@ -49,75 +92,58 @@ function getPtUniformRule(tempF) {
     };
   }
 
-  if (tempF >= 61) {
-    return {
-      key: "summer-apfu",
-      title: "Summer APFU",
-      detail: "Short sleeve shirt and shorts.",
-      range: "61°F and above",
-    };
-  }
+  return PT_UNIFORM_RULES.find(
+    (rule) => tempF >= rule.min && tempF <= rule.max
+  );
+}
 
-  if (tempF >= 50) {
-    return {
-      key: "long-sleeve-shorts",
-      title: "Long sleeve shirt and shorts",
-      detail: "Wear long sleeve shirt and shorts.",
-      range: "50–60°F",
-    };
-  }
+function buildWarmerLabel(rule) {
+  return `If your phone shows ${rule.min}°F or above`;
+}
 
-  if (tempF >= 40) {
-    return {
-      key: "jacket-shorts",
-      title: "Jacket and shorts",
-      detail: "Wear jacket and shorts.",
-      range: "40–49°F",
-    };
-  }
-
-  if (tempF >= 33) {
-    return {
-      key: "jacket-pants",
-      title: "Jacket and pants",
-      detail: "Wear jacket and pants.",
-      range: "33–39°F",
-    };
-  }
-
-  return {
-    key: "jacket-pants-cold-accessories",
-    title: "Jacket, pants, gloves, and fleece cap",
-    detail: "Wear jacket, pants, gloves, and fleece cap.",
-    range: "Below 33°F",
-  };
+function buildColderLabel(rule) {
+  return `If your phone shows ${rule.max}°F or lower`;
 }
 
 function getPtUniform(tempF) {
   const current = getPtUniformRule(tempF);
 
   if (typeof tempF !== "number") {
-    return current;
+    return {
+      ...current,
+      recommendations: [],
+    };
   }
 
-  const warmer = getPtUniformRule(tempF + 10);
-  const colder = getPtUniformRule(tempF - 10);
+  const currentIndex = PT_UNIFORM_RULES.findIndex(
+    (rule) => rule.key === current.key
+  );
+
+  const warmer = currentIndex > 0 ? PT_UNIFORM_RULES[currentIndex - 1] : null;
+  const colder =
+    currentIndex >= 0 && currentIndex < PT_UNIFORM_RULES.length - 1
+      ? PT_UNIFORM_RULES[currentIndex + 1]
+      : null;
+
   const recommendations = [];
 
-  if (warmer.key !== current.key) {
+  // The 10-degree buffer is only used in the background to decide whether
+  // a nearby uniform category is close enough to mention. The UI shows the
+  // actual cutoff temperature so users can compare with their phone weather.
+  if (warmer && warmer.min - tempF <= 10) {
     recommendations.push({
       type: "warmer",
-      label: `If temperature reaches ${tempF + 10}°F or warmer`,
+      label: buildWarmerLabel(warmer),
       title: warmer.title,
       detail: warmer.detail,
       range: warmer.range,
     });
   }
 
-  if (colder.key !== current.key) {
+  if (colder && tempF - colder.max <= 10) {
     recommendations.push({
       type: "colder",
-      label: `If temperature drops near ${tempF - 10}°F`,
+      label: buildColderLabel(colder),
       title: colder.title,
       detail: colder.detail,
       range: colder.range,
