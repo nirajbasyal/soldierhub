@@ -19,13 +19,17 @@ export default function SiteInfoCard({ onNavigate }) {
     >
       {/* Header */}
       <div
-        className="p-5 border-b"
+        className="p-5 border-b relative overflow-hidden"
         style={{
-          borderColor: T.borderSoft,
-          backgroundColor: "#FBFAF6",
+          borderColor: "#D5E2F2",
+          background:
+            "linear-gradient(135deg, rgba(220,232,247,0.95) 0%, rgba(253,254,255,0.96) 55%, rgba(253,236,240,0.88) 100%)",
         }}
       >
-        <div className="flex flex-col items-start">
+        <div className="absolute left-0 top-0 h-full w-1.5 bg-[#B31942]" />
+        <div className="absolute right-0 top-0 h-full w-1.5 bg-[#1E4E8C]" />
+
+        <div className="flex flex-col items-start pl-2">
           <Image
             src="/brand/soldierhub-logo.png"
             alt="SoldierHub logo"
@@ -34,20 +38,23 @@ export default function SiteInfoCard({ onNavigate }) {
             className="h-12 sm:h-14 w-auto object-contain"
             priority={false}
           />
-
         </div>
       </div>
 
       <div className="p-5">
         {/* Disclaimer */}
         <div
-          className="rounded-2xl px-3.5 py-3 flex gap-2.5"
-          style={{ backgroundColor: T.surface }}
+          className="rounded-2xl border px-3.5 py-3 flex gap-2.5"
+          style={{
+            background:
+              "linear-gradient(135deg, rgba(244,248,253,0.95), rgba(253,254,255,0.95))",
+            borderColor: "#D5E2F2",
+          }}
         >
           <ShieldCheck
             size={16}
             className="shrink-0 mt-0.5"
-            style={{ color: T.gold }}
+            style={{ color: T.blue }}
           />
 
           <p className="text-xs leading-relaxed" style={{ color: T.textMuted }}>
@@ -63,9 +70,9 @@ export default function SiteInfoCard({ onNavigate }) {
             onClick={handleNavigate}
             className="rounded-xl px-3 py-2.5 text-sm font-semibold text-center transition-opacity hover:opacity-75"
             style={{
-              color: T.text,
-              backgroundColor: "#FBFAF6",
-              border: `1px solid ${T.borderSoft}`,
+              color: T.navy,
+              backgroundColor: "rgba(220,232,247,0.55)",
+              border: "1px solid #D5E2F2",
             }}
           >
             Privacy Policy
@@ -76,9 +83,9 @@ export default function SiteInfoCard({ onNavigate }) {
             onClick={handleNavigate}
             className="rounded-xl px-3 py-2.5 text-sm font-semibold text-center transition-opacity hover:opacity-75"
             style={{
-              color: T.text,
-              backgroundColor: "#FBFAF6",
-              border: `1px solid ${T.borderSoft}`,
+              color: T.navy,
+              backgroundColor: "rgba(253,236,240,0.55)",
+              border: "1px solid #E9C4CD",
             }}
           >
             Terms of Use
