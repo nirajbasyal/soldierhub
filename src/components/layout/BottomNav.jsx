@@ -83,6 +83,7 @@ export default function BottomNav() {
       <div className="grid grid-cols-3">
         {tabs.map((t) => {
           const Icon = t.icon;
+          const safeCount = Number(t.count || 0);
 
           return (
             <button
@@ -98,16 +99,17 @@ export default function BottomNav() {
                   style={{ color: t.active ? T.gold : T.textMuted }}
                 />
 
-                {t.count > 0 && (
+                {safeCount > 0 && (
                   <span
-                    className="absolute -top-1.5 -right-2 min-w-[16px] h-[16px] rounded-full text-[9px] font-semibold flex items-center justify-center px-1"
+                    className="absolute -top-2 -right-2.5 min-w-[18px] h-[18px] rounded-full text-[10px] font-extrabold flex items-center justify-center px-1 shadow-sm ring-2 ring-white"
                     style={{
-                      backgroundColor: T.gold,
-                      color: "#fff",
-                      border: `1.5px solid ${T.card}`,
+                      backgroundColor: "#B31942",
+                      color: "#FFFFFF",
+                      lineHeight: 1,
                     }}
+                    aria-label={`${safeCount} unread notifications`}
                   >
-                    {t.count > 9 ? "9+" : t.count}
+                    {safeCount > 9 ? "9+" : safeCount}
                   </span>
                 )}
               </div>
