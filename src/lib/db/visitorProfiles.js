@@ -2,21 +2,18 @@
 
 import { createClient } from "@/lib/supabase/client";
 
-const PUBLIC_PROFILE_FIELDS =
-  "id, full_name, bio, avatar_color, avatar_url, role, status, verification_status, base, created_at";
-
 export async function getPublicProfile(userId) {
   const supabase = createClient();
   if (!supabase || !userId) return { data: null, error: null };
 
-  const { data, error } = await supabase
-    .from("profiles")
-    .select(PUBLIC_PROFILE_FIELDS)
-    .eq("id", userId)
-    .eq("status", "verified")
-    .maybeSingle();
+  const { data, error } = await supabase.rpc("get_public_profile", {
+    p_user_id: userId,
+  });
 
-  return { data, error };
+  return {
+    data: data?.[0] || null,
+    error,
+  };
 }
 
 export async function listPublicPostsByAuthor(userId, { limit = 100 } = {}) {
