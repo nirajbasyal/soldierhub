@@ -21,7 +21,7 @@ import Button from "@/components/ui/Button";
 import ExpandableText from "@/components/ui/ExpandableText";
 import ClientTimeAgo from "@/components/ui/ClientTimeAgo";
 
-const POST_PREVIEW_LENGTH = 260;
+const POST_PREVIEW_LENGTH = 900;
 const COMMENT_PREVIEW_LENGTH = 120;
 
 function getAnonymousDisplayName(postId) {
@@ -79,7 +79,7 @@ function FeedActionButton({ icon: Icon, label, count, active = false, onClick })
         color: active ? "#FFFFFF" : T.textMuted,
         background: active
           ? "linear-gradient(135deg, #071B33 0%, #1E4E8C 100%)"
-          : "rgba(255,255,255,0.70)",
+          : "rgba(255,255,255,0.76)",
         border: `1px solid ${active ? "rgba(7,27,51,0.18)" : T.borderSoft}`,
         boxShadow: active ? "0 8px 18px rgba(7,27,51,0.14)" : "none",
       }}
@@ -227,109 +227,90 @@ export default function PostCard({ post }) {
     >
       <div className="h-1.5 w-full bg-gradient-to-r from-[#B31942] via-[#FDFEFF] to-[#1E4E8C]" />
 
-      <div className="px-4 md:px-5 pt-4 pb-3">
-        <div className="flex items-start gap-3">
-          <div className="relative shrink-0">
-            <Avatar name={displayName} color={displayColor} size={42} />
-            <div
-              className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2"
-              style={{ backgroundColor: T.green, borderColor: T.card }}
-            />
-          </div>
+      <div className="px-4 md:px-6 pt-4 pb-3">
+        {/* Author row */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3 min-w-0 flex-1">
+            <div className="relative shrink-0">
+              <Avatar name={displayName} color={displayColor} size={42} />
+              <div
+                className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2"
+                style={{ backgroundColor: T.green, borderColor: T.card }}
+              />
+            </div>
 
-          <div className="min-w-0 flex-1">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div
-                  className="text-[15px] font-bold leading-tight truncate"
-                  style={{ color: T.text }}
-                >
-                  {displayName}
-                </div>
-
-                <div
-                  className="mt-1 text-xs flex items-center gap-1.5 flex-wrap"
-                  style={{ color: T.textSubtle }}
-                >
-                  {post.anonymous && (
-                    <>
-                      <span className="inline-flex items-center gap-1">
-                        <Lock size={10} strokeWidth={2.5} />
-                        anonymous
-                      </span>
-                      <span>·</span>
-                    </>
-                  )}
-
-                  <ClientTimeAgo date={post.created_at} />
-
-                  {post.edited && (
-                    <>
-                      <span>·</span>
-                      <span>edited</span>
-                    </>
-                  )}
-                </div>
+            <div className="min-w-0 flex-1">
+              <div
+                className="text-[15px] font-bold leading-tight truncate"
+                style={{ color: T.text }}
+              >
+                {displayName}
               </div>
 
-              <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
-                <Badge tone={cat.tone}>{cat.label}</Badge>
+              <div
+                className="mt-1 text-xs flex items-center gap-1.5 flex-wrap"
+                style={{ color: T.textSubtle }}
+              >
+                {post.anonymous && (
+                  <>
+                    <span className="inline-flex items-center gap-1">
+                      <Lock size={10} strokeWidth={2.5} />
+                      anonymous
+                    </span>
+                    <span>·</span>
+                  </>
+                )}
 
-                {isReported && (
-                  <Badge tone="red" icon={ShieldAlert}>
-                    Under review
-                  </Badge>
+                <ClientTimeAgo date={post.created_at} />
+
+                {post.edited && (
+                  <>
+                    <span>·</span>
+                    <span>edited</span>
+                  </>
                 )}
               </div>
             </div>
+          </div>
 
-            <div
-              className="mt-3 rounded-[18px] border px-4 py-3.5"
-              style={{
-                background:
-                  "linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(244,248,253,0.78) 100%)",
-                borderColor: T.borderSoft,
-              }}
-            >
-              {post.title ? (
-                <h3
-                  className="text-[20px] md:text-[22px] leading-tight font-bold tracking-tight"
-                  style={{ color: T.text }}
-                >
-                  {post.title}
-                </h3>
-              ) : null}
+          <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+            <Badge tone={cat.tone}>{cat.label}</Badge>
 
-              {post.body ? (
-                <div className={post.title ? "mt-2" : ""}>
-                  <ExpandableText
-                    text={post.body || ""}
-                    previewLength={POST_PREVIEW_LENGTH}
-                    className="text-[15px] md:text-[16px] leading-7 whitespace-pre-wrap"
-                    style={{ color: T.textMuted }}
-                    buttonSize="sm"
-                  />
-                </div>
-              ) : null}
-            </div>
+            {isReported && (
+              <Badge tone="red" icon={ShieldAlert}>
+                Under review
+              </Badge>
+            )}
           </div>
         </div>
 
-        <div
-          className="mt-3 flex items-center justify-between gap-3 text-sm"
-          style={{ color: T.textSubtle }}
-        >
-          <span>
-            {upvoteCount} upvote{upvoteCount === 1 ? "" : "s"}
-          </span>
+        {/* Full-focus text post area: no inner box/container */}
+        <div className="mt-5 md:mt-6">
+          {post.title ? (
+            <h3
+              className="text-[25px] md:text-[32px] leading-[1.12] font-extrabold tracking-[-0.025em]"
+              style={{ color: T.text }}
+            >
+              {post.title}
+            </h3>
+          ) : null}
 
-          <button type="button" onClick={toggleComments} className="hover:underline">
-            {commentCount} repl{commentCount === 1 ? "y" : "ies"}
-          </button>
+          {post.body ? (
+            <div className={post.title ? "mt-4" : ""}>
+              <ExpandableText
+                text={post.body || ""}
+                previewLength={POST_PREVIEW_LENGTH}
+                className="text-[16px] md:text-[17px] leading-8 whitespace-pre-wrap max-w-none"
+                style={{ color: T.text }}
+                buttonSize="sm"
+              />
+            </div>
+          ) : null}
         </div>
 
+        {/* Action row only. Counts live inside buttons. */}
         <div
-          className="mt-3 rounded-[18px] border p-1.5 flex items-center gap-1.5"
+          className="mt-5 rounded-[18px] border p-1.5 flex items-center gap-1.5"
           style={{
             backgroundColor: T.surface,
             borderColor: T.borderSoft,
@@ -365,7 +346,7 @@ export default function PostCard({ post }) {
             className="w-10 h-10 rounded-full inline-flex items-center justify-center transition-all shrink-0 hover:-translate-y-0.5"
             style={{
               color: userReported ? T.red : T.textMuted,
-              backgroundColor: userReported ? T.redBg : "rgba(255,255,255,0.70)",
+              backgroundColor: userReported ? T.redBg : "rgba(255,255,255,0.76)",
               border: `1px solid ${userReported ? T.redBg : T.borderSoft}`,
             }}
             aria-label={userReported ? "Reported" : "Report"}
