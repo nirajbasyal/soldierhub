@@ -71,8 +71,11 @@ export default function HomePage() {
             <PostComposer />
 
             <div
-              className="sticky top-0 z-20 -mx-4 md:mx-0 px-4 md:px-0 py-2 md:py-3"
-              style={{ backgroundColor: T.bg }}
+              className="sticky top-[73px] z-20 -mx-4 md:mx-0 px-4 md:px-0 py-2 md:py-3 backdrop-blur-xl"
+              style={{
+                background:
+                  "linear-gradient(180deg, rgba(234,240,248,0.96) 0%, rgba(234,240,248,0.72) 100%)",
+              }}
             >
               <CategoryStrip
                 selected={category}
@@ -89,7 +92,7 @@ export default function HomePage() {
               </div>
             ) : filtered.length === 0 ? (
               <div
-                className="rounded-2xl border p-8"
+                className="rounded-[24px] border p-8 sh-card-premium"
                 style={{ backgroundColor: T.card, borderColor: T.border }}
               >
                 <EmptyState
@@ -115,7 +118,7 @@ export default function HomePage() {
           </div>
 
           {/* Desktop sidebar only */}
-          <aside className="hidden lg:flex flex-col gap-4 sticky top-6 self-start">
+          <aside className="hidden lg:flex flex-col gap-4 sticky top-24 self-start">
             <MobileWeatherStrip />
             <BAHCard />
             <GateHoursCard />
