@@ -28,7 +28,7 @@ function normalizePostRow(row = {}) {
  * Fallback path: safe view `posts_with_meta`.
  * This prevents the feed from going empty if an RPC parameter/return shape changes.
  */
-export async function listPosts({ limit = 50 } = {}) {
+export async function listPosts({ limit = 30 } = {}) {
   const supabase = createClient();
   if (!supabase) return { data: [], error: null };
 
@@ -57,7 +57,7 @@ export async function listPosts({ limit = 50 } = {}) {
   };
 }
 
-export async function listMyPosts(userId) {
+export async function listMyPosts(userId, { limit = 30 } = {}) {
   const supabase = createClient();
   if (!supabase) return { data: [], error: null };
 
@@ -65,7 +65,8 @@ export async function listMyPosts(userId) {
     .from("my_posts_with_meta")
     .select("*")
     .eq("author_id", userId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(limit);
 
   return { data: (data || []).map(normalizePostRow), error };
 }
@@ -78,7 +79,8 @@ export async function listReportedPosts() {
     .from("my_posts_with_meta")
     .select("*")
     .eq("status", "reported")
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(50);
 
   return { data: (data || []).map(normalizePostRow), error };
 }
@@ -108,13 +110,22 @@ export async function createPost({
     payload.id = id;
   }
 
-  const { data, error } = await supabase
-    .from("posts")
-    .insert([payload])
-    .select()
-    .single();
+  const { error } = await supabase.from("posts").insert([payload]);
 
-  return { data, error };
+  if (error) return { data: null, error };
+
+  // Avoid an extra round trip from `.select().single()`.
+  // AppContext already performs optimistic UI and realtime/server refresh.
+  return {
+    data: normalizePostRow({
+      ...payload,
+      created_at: new Date().toISOString(),
+      status: "active",
+      upvote_count: 0,
+      comment_count: 0,
+    }),
+    error: null,
+  };
 }
 
 export async function updateMyPost(postId, updates) {
