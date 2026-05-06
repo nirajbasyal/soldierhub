@@ -39,52 +39,95 @@ function msToMph(value) {
   return Math.round(value * 2.23694);
 }
 
-function getPtUniform(tempF) {
+function getPtUniformRule(tempF) {
   if (typeof tempF !== "number") {
     return {
+      key: "unavailable",
       title: "PT Uniform",
       detail: "Weather unavailable — follow local guidance.",
+      range: "Weather unavailable",
     };
   }
 
   if (tempF >= 61) {
     return {
+      key: "summer-apfu",
       title: "Summer APFU",
       detail: "Short sleeve shirt and shorts.",
+      range: "61°F and above",
     };
   }
 
   if (tempF >= 50) {
     return {
+      key: "long-sleeve-shorts",
       title: "Long sleeve shirt and shorts",
-      detail: "Recommended for 50–60°F.",
+      detail: "Wear long sleeve shirt and shorts.",
+      range: "50–60°F",
     };
   }
 
   if (tempF >= 40) {
     return {
+      key: "jacket-shorts",
       title: "Jacket and shorts",
-      detail: "Recommended for 40–49°F.",
+      detail: "Wear jacket and shorts.",
+      range: "40–49°F",
     };
   }
 
   if (tempF >= 33) {
     return {
+      key: "jacket-pants",
       title: "Jacket and pants",
-      detail: "Recommended for 33–39°F.",
-    };
-  }
-
-  if (tempF >= 10) {
-    return {
-      title: "Jacket, pants, gloves, and fleece cap",
-      detail: "Recommended for 10–32°F.",
+      detail: "Wear jacket and pants.",
+      range: "33–39°F",
     };
   }
 
   return {
-    title: "Extreme cold",
-    detail: "Follow command guidance before outdoor PT.",
+    key: "jacket-pants-cold-accessories",
+    title: "Jacket, pants, gloves, and fleece cap",
+    detail: "Wear jacket, pants, gloves, and fleece cap.",
+    range: "Below 33°F",
+  };
+}
+
+function getPtUniform(tempF) {
+  const current = getPtUniformRule(tempF);
+
+  if (typeof tempF !== "number") {
+    return current;
+  }
+
+  const warmer = getPtUniformRule(tempF + 10);
+  const colder = getPtUniformRule(tempF - 10);
+  const recommendations = [];
+
+  if (warmer.key !== current.key) {
+    recommendations.push({
+      type: "warmer",
+      label: `If temperature reaches ${tempF + 10}°F or warmer`,
+      title: warmer.title,
+      detail: warmer.detail,
+      range: warmer.range,
+    });
+  }
+
+  if (colder.key !== current.key) {
+    recommendations.push({
+      type: "colder",
+      label: `If temperature drops near ${tempF - 10}°F`,
+      title: colder.title,
+      detail: colder.detail,
+      range: colder.range,
+    });
+  }
+
+  return {
+    ...current,
+    label: "Current PT Uniform",
+    recommendations,
   };
 }
 
@@ -151,6 +194,7 @@ export async function GET() {
           ptUniform: {
             title: "PT Uniform",
             detail: "Weather unavailable — follow local guidance.",
+            recommendations: [],
           },
         },
         {
@@ -203,6 +247,7 @@ export async function GET() {
         ptUniform: {
           title: "PT Uniform",
           detail: "Weather unavailable — follow local guidance.",
+          recommendations: [],
         },
       },
       {
