@@ -169,3 +169,42 @@ export async function resendSignupConfirmation(email) {
 
   return { data, error };
 }
+
+export async function resetPasswordForEmail(email) {
+  const supabase = createClient();
+
+  if (!supabase) {
+    return {
+      data: null,
+      error: { message: "Supabase not configured" },
+    };
+  }
+
+  const cleanEmail = email?.trim().toLowerCase() || "";
+
+  const { data, error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+    redirectTo:
+      typeof window !== "undefined"
+        ? `${window.location.origin}/auth/callback?next=/reset-password`
+        : undefined,
+  });
+
+  return { data, error };
+}
+
+export async function updatePassword(newPassword) {
+  const supabase = createClient();
+
+  if (!supabase) {
+    return {
+      data: null,
+      error: { message: "Supabase not configured" },
+    };
+  }
+
+  const { data, error } = await supabase.auth.updateUser({
+    password: newPassword,
+  });
+
+  return { data, error };
+}
