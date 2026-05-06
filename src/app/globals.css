@@ -1,17 +1,59 @@
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Geist:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Geist:wght@300;400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --sh-navy: #071B33;
+  --sh-navy-2: #102E52;
+  --sh-blue: #1E4E8C;
+  --sh-red: #B31942;
+  --sh-red-soft: #FDECF0;
+  --sh-bg: #EAF0F8;
+  --sh-card: #FDFEFF;
+  --sh-border: #CFDAE8;
+}
+
 html, body {
+  min-height: 100%;
   -webkit-font-smoothing: antialiased;
   font-family: 'Geist', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(179, 25, 66, 0.10), transparent 30%),
+    radial-gradient(circle at 88% 8%, rgba(30, 78, 140, 0.14), transparent 34%),
+    linear-gradient(180deg, #F7FAFE 0%, var(--sh-bg) 42%, #F4F7FB 100%);
+  color: #081827;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background-image:
+    linear-gradient(rgba(7, 27, 51, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(7, 27, 51, 0.03) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: linear-gradient(to bottom, rgba(0,0,0,0.85), transparent 70%);
+}
+
+::selection {
+  background: rgba(179, 25, 66, 0.18);
 }
 
 /* Hide scrollbar on horizontal category strips while keeping scroll behavior */
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
+
+.sh-card-premium {
+  box-shadow: 0 18px 45px rgba(7, 27, 51, 0.08);
+}
+
+.sh-flag-glow {
+  box-shadow: 0 14px 30px rgba(179, 25, 66, 0.18), 0 8px 18px rgba(7, 27, 51, 0.10);
+}
 
 /* Animations referenced by Modal, ToastHost, MobileMenu, ScrollToTop */
 @keyframes modalIn {
