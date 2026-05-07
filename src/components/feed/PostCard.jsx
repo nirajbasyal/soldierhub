@@ -244,7 +244,7 @@ export default function PostCard({ post }) {
         <div className="mt-3 border-t pt-1" style={{ borderColor: T.borderSoft }}>
           <div className="grid grid-cols-3 gap-1">
             <FeedActionButton icon={ArrowBigUp} label="Upvote" count={upvoteCount} active={userUpvoted} fillWhenActive onClick={() => guard(() => upvotePost(post.id))} />
-            <FeedActionButton icon={MessageCircle} label="Reply" count={commentCount} active={showComments} onClick={toggleComments} />
+            <FeedActionButton icon={MessageCircle} label="Reply" count={commentCount} active={showComments} fillWhenActive onClick={toggleComments} />
             <FeedActionButton icon={Share2} label="Share" onClick={() => shareOrCopy(post, pushToast)} />
           </div>
         </div>
