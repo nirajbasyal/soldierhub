@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Bell } from "lucide-react";
 import { T } from "@/lib/theme";
@@ -11,6 +11,51 @@ import Button from "@/components/ui/Button";
 import EmptyState from "@/components/ui/EmptyState";
 import NotificationItem from "@/components/notifications/NotificationItem";
 
+const NOTIFICATION_CACHE_PREFIX = "soldierhub_notifications_cache_";
+const NOTIFICATION_LAST_CACHE_KEY = "soldierhub_notifications_cache_last";
+
+function getNotificationCacheKey(userId) {
+  return `${NOTIFICATION_CACHE_PREFIX}${userId || "guest"}`;
+}
+
+function readNotificationCacheByKey(key) {
+  if (typeof window === "undefined" || !key) return [];
+
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return [];
+
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed?.notifications) ? parsed.notifications : [];
+  } catch {
+    return [];
+  }
+}
+
+function readCachedNotifications(userId) {
+  if (!userId) return readNotificationCacheByKey(NOTIFICATION_LAST_CACHE_KEY);
+  return readNotificationCacheByKey(getNotificationCacheKey(userId));
+}
+
+function saveCachedNotifications(userId, notifications) {
+  if (typeof window === "undefined" || !Array.isArray(notifications)) return;
+
+  const payload = JSON.stringify({
+    savedAt: Date.now(),
+    notifications: notifications.slice(0, 30),
+  });
+
+  try {
+    window.localStorage.setItem(NOTIFICATION_LAST_CACHE_KEY, payload);
+
+    if (userId) {
+      window.localStorage.setItem(getNotificationCacheKey(userId), payload);
+    }
+  } catch {
+    // Browser storage can fail in private mode or when full. Notifications still load normally.
+  }
+}
+
 export default function NotificationsPage() {
   const router = useRouter();
   const {
@@ -20,6 +65,21 @@ export default function NotificationsPage() {
     setAuthModal,
     markNotificationsRead,
   } = useApp();
+
+  const [cachedNotifications, setCachedNotifications] = useState(() => readCachedNotifications(null));
+
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    setCachedNotifications(readCachedNotifications(currentUser.id));
+  }, [currentUser?.id]);
+
+  useEffect(() => {
+    if (!currentUser?.id || notifications.length === 0) return;
+
+    const freshNotifications = notifications.slice(0, 30);
+    setCachedNotifications(freshNotifications);
+    saveCachedNotifications(currentUser.id, freshNotifications);
+  }, [currentUser?.id, notifications]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -33,11 +93,15 @@ export default function NotificationsPage() {
     markNotificationsRead();
   }, [authLoading, currentUser, router, setAuthModal, markNotificationsRead]);
 
-  if (authLoading) {
+  const displayNotifications = useMemo(() => {
+    return notifications.length > 0 ? notifications : cachedNotifications;
+  }, [cachedNotifications, notifications]);
+
+  if (authLoading && displayNotifications.length === 0) {
     return <NotificationsLoadingState />;
   }
 
-  if (!currentUser) {
+  if (!authLoading && !currentUser) {
     return <NotificationsLoadingState />;
   }
 
@@ -69,7 +133,7 @@ export default function NotificationsPage() {
             </div>
           </section>
 
-          {notifications.length === 0 ? (
+          {displayNotifications.length === 0 ? (
             <div className="rounded-[28px] border border-white/80 bg-white/80 p-8 shadow-sm backdrop-blur">
               <EmptyState
                 icon={Bell}
@@ -79,7 +143,7 @@ export default function NotificationsPage() {
             </div>
           ) : (
             <div className="flex flex-col gap-3">
-              {notifications.map((notification) => (
+              {displayNotifications.map((notification) => (
                 <NotificationItem key={notification.id} notification={notification} />
               ))}
             </div>
