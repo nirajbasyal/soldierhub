@@ -20,24 +20,29 @@ import Button from "@/components/ui/Button";
 export default function TopNav() {
   const router = useRouter();
 
+  const app = useApp() || {};
   const {
     currentUser,
-    search,
-    setSearch,
-    setAuthModal,
-    setMobileMenu,
-  } = useApp();
+    search = "",
+    setSearch = () => {},
+    setAuthModal = () => {},
+    setMobileMenu = () => {},
+  } = app;
 
-  const unreadCount = useUnreadNotificationCount(currentUser);
+  const safeUser = currentUser || null;
+  const displayName = safeUser?.full_name || safeUser?.email || "SoldierHub user";
+  const displayEmail = safeUser?.email || safeUser?.personal_email || "";
+  const firstName = displayName.split(" ")[0] || "Profile";
+  const userStatus = safeUser?.status || safeUser?.verification_status || "pending";
+
+  const unreadCount = useUnreadNotificationCount(safeUser);
 
   const goProfile = () => {
-    if (!currentUser) return setAuthModal("login");
+    if (!safeUser) return setAuthModal("login");
 
-    if (currentUser.status !== "verified") {
+    if (userStatus !== "verified") {
       return router.push(
-        `/pending-review?email=${encodeURIComponent(
-          currentUser.email
-        )}&name=${encodeURIComponent(currentUser.full_name)}&found=1`
+        `/pending-review?email=${encodeURIComponent(displayEmail)}&name=${encodeURIComponent(displayName)}&found=1`
       );
     }
 
@@ -45,7 +50,14 @@ export default function TopNav() {
   };
 
   const goNotifications = () => {
-    if (!currentUser) return setAuthModal("login");
+    if (!safeUser) return setAuthModal("login");
+
+    if (userStatus !== "verified") {
+      return router.push(
+        `/pending-review?email=${encodeURIComponent(displayEmail)}&name=${encodeURIComponent(displayName)}&found=1`
+      );
+    }
+
     router.push("/notifications");
   };
 
@@ -61,7 +73,6 @@ export default function TopNav() {
       <div className="h-1 w-full bg-gradient-to-r from-[#B31942] via-[#FDFEFF] to-[#1E4E8C]" />
 
       <div className="max-w-6xl mx-auto px-4 md:px-6 h-[72px] flex items-center gap-3 md:gap-5">
-        {/* Brand - same logo for mobile and desktop */}
         <Link href="/" className="flex items-center shrink-0 min-w-0">
           <Image
             src="/brand/soldierhub-logo.png"
@@ -73,7 +84,6 @@ export default function TopNav() {
           />
         </Link>
 
-        {/* Desktop search */}
         <div className="hidden md:flex flex-1 max-w-lg">
           <div className="relative w-full group">
             <Search
@@ -117,7 +127,6 @@ export default function TopNav() {
 
         <div className="flex-1 md:flex-none" />
 
-        {/* Desktop actions */}
         <div className="hidden md:flex items-center gap-2">
           <Link
             href="/resources"
@@ -128,7 +137,7 @@ export default function TopNav() {
             Resources
           </Link>
 
-          {currentUser ? (
+          {safeUser ? (
             <>
               <button
                 type="button"
@@ -153,7 +162,7 @@ export default function TopNav() {
                 )}
               </button>
 
-              {currentUser.role === "admin" && (
+              {safeUser.role === "admin" && (
                 <Button
                   variant="secondary"
                   icon={Shield}
@@ -174,13 +183,13 @@ export default function TopNav() {
                 }}
               >
                 <Avatar
-                  name={currentUser.full_name}
-                  color={currentUser.avatar_color}
+                  name={displayName}
+                  color={safeUser.avatar_color}
                   size={34}
                 />
 
                 <span className="text-sm font-semibold" style={{ color: T.text }}>
-                  {currentUser.full_name?.split(" ")[0]}
+                  {firstName}
                 </span>
               </button>
             </>
@@ -201,7 +210,6 @@ export default function TopNav() {
           )}
         </div>
 
-        {/* Mobile menu toggle */}
         <button
           type="button"
           onClick={() => setMobileMenu(true)}
@@ -217,7 +225,6 @@ export default function TopNav() {
         </button>
       </div>
 
-      {/* Mobile search */}
       <div className="md:hidden px-4 pb-3">
         <div className="relative">
           <Search
