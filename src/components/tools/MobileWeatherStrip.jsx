@@ -4,13 +4,52 @@ import { useEffect, useMemo, useState } from "react";
 import { CloudSun, Clock3, MapPin, Shirt } from "lucide-react";
 import { T } from "@/lib/theme";
 
-const WEATHER_CACHE_KEY = "soldierhub_fort_bliss_weather_v8";
+const WEATHER_CACHE_KEY = "soldierhub_fort_bliss_weather_v9";
 const OLD_WEATHER_CACHE_KEYS = [
   "soldierhub_fort_bliss_weather_v6",
   "soldierhub_fort_bliss_weather_v7",
+  "soldierhub_fort_bliss_weather_v8",
 ];
 const WEATHER_CACHE_MAX_AGE = 60 * 1000;          // refresh interval: 1 min
 const WEATHER_CACHE_STALE_AFTER = 10 * 60 * 1000; // hard expiry: 10 min
+
+const PT_UNIFORM_RULES = [
+  {
+    key: "summer-apfu",
+    min: 61,
+    max: Infinity,
+    title: "Summer APFU",
+    detail: "Short sleeve shirt and shorts.",
+  },
+  {
+    key: "long-sleeve-shorts",
+    min: 50,
+    max: 60,
+    title: "Long sleeve shirt and shorts",
+    detail: "Wear long sleeve shirt and shorts.",
+  },
+  {
+    key: "jacket-shorts",
+    min: 40,
+    max: 49,
+    title: "Jacket and shorts",
+    detail: "Wear jacket and shorts.",
+  },
+  {
+    key: "jacket-pants",
+    min: 33,
+    max: 39,
+    title: "Jacket and pants",
+    detail: "Wear jacket and pants.",
+  },
+  {
+    key: "jacket-pants-cold-accessories",
+    min: -Infinity,
+    max: 32,
+    title: "Jacket, pants, gloves, and fleece cap",
+    detail: "Wear jacket, pants, gloves, and fleece cap.",
+  },
+];
 
 function formatElPasoTime(date) {
   if (!date) return "--:--";
@@ -31,6 +70,59 @@ function formatElPasoDate(date) {
     month: "short",
     day: "numeric",
   }).format(date);
+}
+
+function getPtUniformRule(tempF) {
+  if (typeof tempF !== "number") return null;
+
+  return PT_UNIFORM_RULES.find(
+    (rule) => tempF >= rule.min && tempF <= rule.max
+  );
+}
+
+function getClientPtUniform(tempF, fallback) {
+  const current = getPtUniformRule(tempF);
+
+  if (!current) {
+    return fallback;
+  }
+
+  const currentIndex = PT_UNIFORM_RULES.findIndex(
+    (rule) => rule.key === current.key
+  );
+
+  const warmer = currentIndex > 0 ? PT_UNIFORM_RULES[currentIndex - 1] : null;
+  const colder =
+    currentIndex >= 0 && currentIndex < PT_UNIFORM_RULES.length - 1
+      ? PT_UNIFORM_RULES[currentIndex + 1]
+      : null;
+
+  const recommendations = [];
+
+  if (warmer && warmer.min - tempF <= 10) {
+    recommendations.push({
+      type: "warmer",
+      label: `If phone or formation temp is ${warmer.min}°F or above`,
+      title: warmer.title,
+      detail: warmer.detail,
+    });
+  }
+
+  if (colder && tempF - colder.max <= 10) {
+    recommendations.push({
+      type: "colder",
+      label: `If phone or formation temp is ${colder.max}°F or lower`,
+      title: colder.title,
+      detail: colder.detail,
+    });
+  }
+
+  return {
+    label: "Current PT Uniform",
+    title: current.title,
+    detail: current.detail,
+    recommendations,
+  };
 }
 
 function clearOldWeatherCache() {
@@ -211,7 +303,7 @@ export default function MobileWeatherStrip() {
   const conditionText =
     weather?.condition && status !== "error" ? weather.condition : "";
 
-  const ptUniform = weather?.ptUniform || {
+  const fallbackPtUniform = weather?.ptUniform || {
     label: "Current PT Uniform",
     title: status === "error" ? "PT Uniform" : "Checking PT guidance",
     detail:
@@ -220,6 +312,8 @@ export default function MobileWeatherStrip() {
         : "Loading current Fort Bliss temperature.",
     recommendations: [],
   };
+
+  const ptUniform = getClientPtUniform(weather?.tempF, fallbackPtUniform);
 
   const recommendations = Array.isArray(ptUniform.recommendations)
     ? ptUniform.recommendations
@@ -337,6 +431,13 @@ export default function MobileWeatherStrip() {
 
             {recommendations.length > 0 ? (
               <div className="mt-3 space-y-2 border-t pt-3" style={{ borderColor: "rgba(63,95,125,0.18)" }}>
+                <div
+                  className="text-[10px] font-semibold uppercase tracking-[0.12em]"
+                  style={{ color: T.blue }}
+                >
+                  Phone weather check
+                </div>
+
                 {recommendations.map((item) => (
                   <div key={`${item.type}-${item.title}`}>
                     <div
