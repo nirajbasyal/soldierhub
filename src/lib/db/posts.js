@@ -198,6 +198,37 @@ export async function deletePost(postId) {
   const supabase = createClient();
   if (!supabase) return { data: null, error: null, deleted: false };
 
+  if (!postId) {
+    return {
+      data: null,
+      error: { message: "Post was not identified. Please refresh and try again." },
+      deleted: false,
+    };
+  }
+
+  // Preferred path: secure database function. This bypasses view/RLS edge cases
+  // but still checks auth.uid() against posts.author_id inside Supabase.
+  const rpcResult = await supabase.rpc("delete_own_post", {
+    p_post_id: postId,
+  });
+
+  if (!rpcResult.error) {
+    if (rpcResult.data === true) {
+      return { data: { id: postId }, error: null, deleted: true };
+    }
+
+    return {
+      data: null,
+      error: {
+        message:
+          "Post was not deleted. This account is not matching the original post owner.",
+      },
+      deleted: false,
+    };
+  }
+
+  // Fallback path: direct table delete. This only works if the posts DELETE RLS
+  // policy is correctly configured in Supabase.
   const { data, error } = await supabase
     .from("posts")
     .delete()
@@ -213,7 +244,7 @@ export async function deletePost(postId) {
       data: null,
       error: {
         message:
-          "Post was not deleted. You may not be the owner of this post, or the delete policy is blocking it.",
+          "Post was not deleted. Please add the delete_own_post SQL function in Supabase.",
       },
       deleted: false,
     };
