@@ -71,38 +71,18 @@ async function listPostsFromRpc(supabase, limit) {
   return { data: [], error: lastError };
 }
 
-/**
- * Fetch public feed posts.
- * Production-ready behavior:
- * 1. Use the safe public view first because it reflects the actual feed shape.
- * 2. Fall back to RPC if the view fails.
- * 3. If either path returns posts, normalize the row shape for the UI.
- *
- * This prevents the feed from going empty when the RPC parameter name changes
- * or when an old RPC returns an empty array while posts still exist in the view.
- */
 export async function listPosts({ limit = 30 } = {}) {
   const supabase = createClient();
   if (!supabase) return { data: [], error: null };
 
   const viewResult = await listPostsFromView(supabase, limit);
-
-  if (!viewResult.error && viewResult.data.length > 0) {
-    return viewResult;
-  }
+  if (!viewResult.error && viewResult.data.length > 0) return viewResult;
 
   const rpcResult = await listPostsFromRpc(supabase, limit);
+  if (!rpcResult.error && rpcResult.data.length > 0) return rpcResult;
 
-  if (!rpcResult.error && rpcResult.data.length > 0) {
-    return rpcResult;
-  }
+  if (!viewResult.error && !rpcResult.error) return { data: [], error: null };
 
-  // If both succeeded but both are empty, return empty without a false error.
-  if (!viewResult.error && !rpcResult.error) {
-    return { data: [], error: null };
-  }
-
-  // Prefer the view error because the feed is primarily powered by the public view.
   return {
     data: viewResult.data.length ? viewResult.data : rpcResult.data,
     error: viewResult.error || rpcResult.error,
@@ -148,26 +128,12 @@ export async function createPost({
   const supabase = createClient();
   if (!supabase) return { data: null, error: null };
 
-  const payload = {
-    author_id,
-    category,
-    title,
-    body,
-    anonymous,
-  };
-
-  // This lets the composer create the post ID before publishing.
-  // That keeps AnonymousXXXX the same while typing and after publishing.
-  if (id) {
-    payload.id = id;
-  }
+  const payload = { author_id, category, title, body, anonymous };
+  if (id) payload.id = id;
 
   const { error } = await supabase.from("posts").insert([payload]);
-
   if (error) return { data: null, error };
 
-  // Avoid an extra round trip from `.select().single()`.
-  // AppContext already performs optimistic UI and realtime/server refresh.
   return {
     data: normalizePostRow({
       ...payload,
@@ -217,17 +183,13 @@ export async function deletePost(postId) {
     };
   }
 
-  // Preferred path: secure database function. This bypasses view/RLS edge cases
-  // but still checks auth.uid() against posts.author_id inside Supabase.
-  const rpcResult = await supabase.rpc("delete_own_post", {
-    p_post_id: postId,
-  });
+  const rpcResult = await supabase.rpc("delete_own_post", { p_post_id: postId });
 
-  if (!rpcResult.error) {
-    if (rpcResult.data === true) {
-      return { data: { id: postId }, error: null, deleted: true };
-    }
+  if (!rpcResult.error && rpcResult.data === true) {
+    return { data: { id: postId }, error: null, deleted: true };
+  }
 
+  if (!rpcResult.error && rpcResult.data !== true) {
     return {
       data: null,
       error: {
@@ -238,17 +200,13 @@ export async function deletePost(postId) {
     };
   }
 
-  // Fallback path: direct table delete. This only works if the posts DELETE RLS
-  // policy is correctly configured in Supabase.
   const { data, error } = await supabase
     .from("posts")
     .delete()
     .eq("id", postId)
     .select("id");
 
-  if (error) {
-    return { data: null, error, deleted: false };
-  }
+  if (error) return { data: null, error, deleted: false };
 
   if (!Array.isArray(data) || data.length === 0) {
     return {
@@ -264,10 +222,6 @@ export async function deletePost(postId) {
   return { data, error: null, deleted: true };
 }
 
-/**
- * Admin restore.
- * Uses RPC so both signed-in reports and visitor reports are cleared.
- */
 export async function restoreReportedPost(postId) {
   const supabase = createClient();
   if (!supabase) return { error: null };
@@ -278,8 +232,6 @@ export async function restoreReportedPost(postId) {
 
   return { data, error };
 }
-
-// ─── Upvotes ─────────────────────────────────────────────────────────────
 
 export async function listMyUpvotedPostIds(userId) {
   const supabase = createClient();
@@ -311,8 +263,6 @@ export async function removeUpvote(postId, userId) {
     .eq("user_id", userId);
 }
 
-// ─── Reports ─────────────────────────────────────────────────────────────
-
 export async function listMyReportedPostIds(userId) {
   const supabase = createClient();
   if (!supabase) return { data: [], error: null };
@@ -325,10 +275,6 @@ export async function listMyReportedPostIds(userId) {
   return { data: (data || []).map((r) => r.post_id), error };
 }
 
-/**
- * Creates/stores one stable visitor key in browser localStorage.
- * Supabase stores only the hash of this value through the RPC function.
- */
 function getVisitorKey() {
   if (typeof window === "undefined") return null;
 
@@ -347,11 +293,6 @@ function getVisitorKey() {
   return visitorKey;
 }
 
-/**
- * Report post.
- * - Signed-in verified users report through `reports`.
- * - Logged-out visitors report through `create_visitor_report` RPC.
- */
 export async function reportPost(postId, userId, reason = "") {
   const supabase = createClient();
   if (!supabase) return { data: null, error: null };
