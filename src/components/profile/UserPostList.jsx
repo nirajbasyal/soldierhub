@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowUp,
   Edit3,
@@ -19,6 +19,38 @@ import ClientTimeAgo from "@/components/ui/ClientTimeAgo";
 import EditPostModal from "./EditPostModal";
 
 const PROFILE_POST_PREVIEW_LENGTH = 260;
+const PROFILE_POST_CACHE_PREFIX = "soldierhub_profile_posts_cache_";
+
+function getProfilePostCacheKey(userId) {
+  return `${PROFILE_POST_CACHE_PREFIX}${userId || "guest"}`;
+}
+
+function readCachedProfilePosts(userId) {
+  if (typeof window === "undefined" || !userId) return [];
+
+  try {
+    const raw = window.localStorage.getItem(getProfilePostCacheKey(userId));
+    if (!raw) return [];
+
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed?.posts) ? parsed.posts : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveCachedProfilePosts(userId, posts) {
+  if (typeof window === "undefined" || !userId || !Array.isArray(posts)) return;
+
+  try {
+    window.localStorage.setItem(
+      getProfilePostCacheKey(userId),
+      JSON.stringify({ savedAt: Date.now(), posts: posts.slice(0, 50) })
+    );
+  } catch {
+    // Browser storage can fail in private mode or when full. Profile posts still work normally.
+  }
+}
 
 function StatMini({ icon: Icon, value, label }) {
   return (
@@ -57,14 +89,28 @@ export default function UserPostList() {
     deleteMyPost,
   } = useApp();
 
-  const visiblePosts = useMemo(() => {
+  const [cachedProfilePosts, setCachedProfilePosts] = useState([]);
+  const [editingId, setEditingId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+
+  useEffect(() => {
+    setCachedProfilePosts(readCachedProfilePosts(currentUser?.id));
+  }, [currentUser?.id]);
+
+  const liveProfilePosts = useMemo(() => {
     if (userPosts.length > 0) return userPosts;
 
     return posts.filter((post) => postBelongsToCurrentUser(post, currentUser));
   }, [currentUser, posts, userPosts]);
 
-  const [editingId, setEditingId] = useState(null);
-  const [deletingId, setDeletingId] = useState(null);
+  useEffect(() => {
+    if (!currentUser?.id || liveProfilePosts.length === 0) return;
+
+    setCachedProfilePosts(liveProfilePosts);
+    saveCachedProfilePosts(currentUser.id, liveProfilePosts);
+  }, [currentUser?.id, liveProfilePosts]);
+
+  const visiblePosts = liveProfilePosts.length > 0 ? liveProfilePosts : cachedProfilePosts;
 
   const editingPost = visiblePosts.find((p) => p.id === editingId);
 
@@ -228,6 +274,11 @@ export default function UserPostList() {
             const result = await editMyPost(editingId, updates);
 
             if (result?.ok !== false) {
+              setCachedProfilePosts((items) => {
+                const updated = items.map((item) => item.id === editingId ? { ...item, ...updates, edited: true } : item);
+                saveCachedProfilePosts(currentUser?.id, updated);
+                return updated;
+              });
               setEditingId(null);
             }
 
@@ -244,6 +295,11 @@ export default function UserPostList() {
         danger
         onConfirm={() => {
           deleteMyPost(deletingId);
+          setCachedProfilePosts((items) => {
+            const updated = items.filter((item) => item.id !== deletingId);
+            saveCachedProfilePosts(currentUser?.id, updated);
+            return updated;
+          });
           setDeletingId(null);
         }}
         onCancel={() => setDeletingId(null)}
