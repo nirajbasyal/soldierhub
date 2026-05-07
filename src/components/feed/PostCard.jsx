@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowBigUp,
   Edit3,
@@ -23,9 +23,11 @@ import ClientTimeAgo from "@/components/ui/ClientTimeAgo";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import EditPostModal from "@/components/profile/EditPostModal";
 
-const POST_PREVIEW_LENGTH = 360;
-const COMMENT_PREVIEW_LENGTH = 120;
 const COMMENT_CACHE_PREFIX = "soldierhub_comments_cache_";
+
+function getPostId(post) {
+  return post?.id || post?.post_id || post?.postId || post?.post?.id || null;
+}
 
 function getCommentCacheKey(postId) {
   return `${COMMENT_CACHE_PREFIX}${postId}`;
@@ -37,7 +39,6 @@ function readCachedComments(postId) {
   try {
     const raw = window.localStorage.getItem(getCommentCacheKey(postId));
     if (!raw) return [];
-
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed?.comments) ? parsed.comments : [];
   } catch {
@@ -67,27 +68,28 @@ function getAnonymousDisplayName(postId) {
 
 function getCommentAuthorId(comment) {
   return (
-    comment.author_id ||
-    comment.user_id ||
-    comment.profile_id ||
-    comment.commenter_id ||
-    comment.created_by ||
-    comment.created_by_id ||
-    comment.author_user_id ||
-    comment.author?.id ||
-    comment.user?.id ||
-    comment.profile?.id ||
+    comment?.author_id ||
+    comment?.user_id ||
+    comment?.profile_id ||
+    comment?.commenter_id ||
+    comment?.created_by ||
+    comment?.created_by_id ||
+    comment?.author_user_id ||
+    comment?.author?.id ||
+    comment?.user?.id ||
+    comment?.profile?.id ||
     null
   );
 }
 
 function getSafeCommentAuthor({ comment, post }) {
-  const anonymousName = getAnonymousDisplayName(post.id);
+  const postId = getPostId(post);
+  const anonymousName = getAnonymousDisplayName(postId);
   const authorId = getCommentAuthorId(comment);
+  const postAuthorId = post?.author_id || post?.user_id || post?.profile_id || null;
   const isAnonymousPostAuthorComment =
-    post.anonymous &&
-    (comment.is_anonymous_author === true ||
-      (authorId && post.author_id && authorId === post.author_id));
+    post?.anonymous &&
+    (comment?.is_anonymous_author === true || (authorId && postAuthorId && authorId === postAuthorId));
 
   if (isAnonymousPostAuthorComment) {
     return { name: anonymousName, color: "#5C6470", anonymous: true, authorId: null };
@@ -95,18 +97,18 @@ function getSafeCommentAuthor({ comment, post }) {
 
   return {
     name:
-      comment.author_name_cached ||
-      comment.author?.full_name ||
-      comment.profile?.full_name ||
-      comment.user?.full_name ||
-      comment.author_name ||
+      comment?.author_name_cached ||
+      comment?.author?.full_name ||
+      comment?.profile?.full_name ||
+      comment?.user?.full_name ||
+      comment?.author_name ||
       "Member",
     color:
-      comment.author_color_cached ||
-      comment.author?.avatar_color ||
-      comment.profile?.avatar_color ||
-      comment.user?.avatar_color ||
-      comment.author_color ||
+      comment?.author_color_cached ||
+      comment?.author?.avatar_color ||
+      comment?.profile?.avatar_color ||
+      comment?.user?.avatar_color ||
+      comment?.author_color ||
       "#314A66",
     anonymous: false,
     authorId,
@@ -116,17 +118,15 @@ function getSafeCommentAuthor({ comment, post }) {
 function ProfileIdentity({ href, name, color, size = 42, children }) {
   if (!href) return children || <Avatar name={name} color={color} size={size} />;
 
-  const isTextLink = Boolean(children);
-
   return (
     <Link
       href={href}
       className={
-        isTextLink
+        children
           ? "inline-flex min-w-0 rounded-md outline-none focus-visible:underline"
           : "inline-flex min-w-0 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2"
       }
-      style={isTextLink ? undefined : { "--tw-ring-color": T.blue }}
+      style={children ? undefined : { "--tw-ring-color": T.blue }}
     >
       {children || <Avatar name={name} color={color} size={size} />}
     </Link>
@@ -143,10 +143,7 @@ function FeedActionButton({ icon: Icon, label, count, active = false, onClick, f
       type="button"
       onClick={onClick}
       className={`min-w-0 h-10 rounded-xl text-xs md:text-sm transition-all inline-flex items-center justify-center gap-1.5 px-2 md:px-3 active:scale-[0.98] ${active ? "font-extrabold" : "font-semibold"}`}
-      style={{
-        color: active ? activeColor : inactiveColor,
-        backgroundColor: "transparent",
-      }}
+      style={{ color: active ? activeColor : inactiveColor, backgroundColor: "transparent" }}
     >
       <Icon
         size={18}
@@ -156,10 +153,7 @@ function FeedActionButton({ icon: Icon, label, count, active = false, onClick, f
       />
       <span className="min-w-0 truncate">{label}</span>
       {typeof count === "number" && count > 0 ? (
-        <span
-          className={`shrink-0 text-[11px] leading-none ${active ? "font-extrabold" : "font-bold"}`}
-          style={{ color: active ? activeColor : T.textSubtle }}
-        >
+        <span className={`shrink-0 text-[11px] leading-none ${active ? "font-extrabold" : "font-bold"}`} style={{ color: active ? activeColor : T.textSubtle }}>
           {countLabel}
         </span>
       ) : null}
@@ -207,9 +201,12 @@ export default function PostCard({ post }) {
     loadCommentsForPost,
   } = useApp();
 
+  const postId = getPostId(post);
+  const safePost = useMemo(() => ({ ...post, id: postId }), [post, postId]);
+
   const [showComments, setShowComments] = useState(false);
   const [commentsLoading, setCommentsLoading] = useState(false);
-  const [cachedComments, setCachedComments] = useState(() => readCachedComments(post.id));
+  const [cachedComments, setCachedComments] = useState(() => readCachedComments(postId));
   const [comment, setComment] = useState("");
   const [commentError, setCommentError] = useState("");
   const [commentSubmitting, setCommentSubmitting] = useState(false);
@@ -218,31 +215,36 @@ export default function PostCard({ post }) {
   const [deletingOpen, setDeletingOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const cat = CATEGORIES.find((c) => c.key === post.category) || CATEGORIES[0];
-  const userUpvoted = Boolean(currentUser && myUpvotes?.has?.(post.id));
-  const userReported = Boolean(myReports?.has?.(post.id));
-  const isReported = post.status === "reported";
-  const anonymousDisplayName = getAnonymousDisplayName(post.id);
-  const displayName = post.anonymous ? anonymousDisplayName : post.author_name || "Member";
-  const displayColor = post.anonymous ? "#5C6470" : post.author_color || colorFromString(post.author_name || "Member");
-  const authorProfileHref = !post.anonymous && post.author_id ? `/users/${post.author_id}` : null;
+  const cat = CATEGORIES.find((c) => c.key === post?.category) || CATEGORIES[0];
+  const userUpvoted = Boolean(currentUser && postId && myUpvotes?.has?.(postId));
+  const userReported = Boolean(postId && myReports?.has?.(postId));
+  const isReported = post?.status === "reported";
+  const anonymousDisplayName = getAnonymousDisplayName(postId);
+  const displayName = post?.anonymous ? anonymousDisplayName : post?.author_name || "Member";
+  const displayColor = post?.anonymous ? "#5C6470" : post?.author_color || colorFromString(post?.author_name || "Member");
+  const authorId = post?.author_id || post?.user_id || post?.profile_id || null;
+  const authorProfileHref = !post?.anonymous && authorId ? `/users/${authorId}` : null;
 
-  const comments = postComments[post.id] || [];
+  const comments = postId ? postComments[postId] || [] : [];
   const displayComments = comments.length > 0 ? comments : cachedComments;
-  const commentCount = post.comment_count ?? displayComments.length;
-  const upvoteCount = post.upvote_count ?? 0;
+  const commentCount = post?.comment_count ?? displayComments.length;
+  const upvoteCount = post?.upvote_count ?? 0;
 
   useEffect(() => {
-    if (!comments.length) return;
+    if (!comments.length || !postId) return;
     setCachedComments(comments);
-    saveCachedComments(post.id, comments);
-  }, [comments, post.id]);
+    saveCachedComments(postId, comments);
+  }, [comments, postId]);
 
-  const ownsPostBySafeViewerFlag = post.viewer_is_author === true;
-  const ownsPostByVisibleAuthorId = currentUser?.id && post.author_id && post.author_id === currentUser.id;
-  const ownsPostByMyPosts = currentUser?.id && Array.isArray(myPosts) && myPosts.some((myPost) => myPost.id === post.id);
+  const ownsPostBySafeViewerFlag = post?.viewer_is_author === true;
+  const ownsPostByVisibleAuthorId = currentUser?.id && authorId && authorId === currentUser.id;
+  const ownsPostByMyPosts =
+    currentUser?.id &&
+    postId &&
+    Array.isArray(myPosts) &&
+    myPosts.some((myPost) => getPostId(myPost) === postId);
   const ownsPost = Boolean(ownsPostBySafeViewerFlag || ownsPostByVisibleAuthorId || ownsPostByMyPosts);
-  const currentUserIsAnonymousPostAuthor = Boolean(post.anonymous) && ownsPost;
+  const currentUserIsAnonymousPostAuthor = Boolean(post?.anonymous) && ownsPost;
 
   const replyAvatarName = currentUserIsAnonymousPostAuthor ? anonymousDisplayName : currentUser?.full_name || "Member";
   const replyAvatarColor = currentUserIsAnonymousPostAuthor ? "#5C6470" : currentUser?.avatar_color || colorFromString(currentUser?.full_name || "Member");
@@ -255,20 +257,18 @@ export default function PostCard({ post }) {
   const toggleComments = async () => {
     const next = !showComments;
     setShowComments(next);
-    if (!next) return;
+    if (!next || !postId) return;
 
     if (comments.length > 0) return;
 
     if (cachedComments.length > 0) {
-      loadCommentsForPost(post.id).catch((error) => {
-        console.error("Failed to refresh cached replies:", error);
-      });
+      loadCommentsForPost?.(postId).catch((error) => console.error("Failed to refresh cached replies:", error));
       return;
     }
 
     setCommentsLoading(true);
     try {
-      await loadCommentsForPost(post.id);
+      await loadCommentsForPost?.(postId);
     } finally {
       setCommentsLoading(false);
     }
@@ -277,7 +277,8 @@ export default function PostCard({ post }) {
   const handleReport = async () => {
     setMenuOpen(false);
     if (!requireAuth()) return;
-    await reportPost(post.id);
+    if (!postId) return pushToast?.("Post was not identified. Please refresh and try again.", "error");
+    await reportPost?.(postId);
   };
 
   const handleEditClick = () => {
@@ -292,13 +293,19 @@ export default function PostCard({ post }) {
 
   const handleDeleteConfirm = async () => {
     if (deleting) return;
+
+    if (!postId) {
+      pushToast?.("Post was not identified. Please refresh and try again.", "error");
+      return;
+    }
+
     setDeleting(true);
 
     try {
-      const result = await deleteMyPost?.(post.id);
+      const result = await deleteMyPost?.(postId);
 
-      if (result?.ok === false) {
-        pushToast?.(result.error || "Could not delete post.", "error");
+      if (result?.ok !== true) {
+        pushToast?.(result?.error || "Could not delete post.", "error");
         return;
       }
 
@@ -315,6 +322,12 @@ export default function PostCard({ post }) {
   const submitComment = async () => {
     if (commentSubmitting) return;
     setCommentError("");
+
+    if (!postId) {
+      setCommentError("Post was not identified. Please refresh and try again.");
+      return;
+    }
+
     const cleanedComment = comment.trim();
     if (!cleanedComment) return;
 
@@ -325,11 +338,13 @@ export default function PostCard({ post }) {
         setCommentError(mod.reason || "Comment could not be posted.");
         return;
       }
-      const result = await commentOnPost(post.id, cleanedComment);
+
+      const result = await commentOnPost?.(postId, cleanedComment);
       if (result?.ok === false) {
         setCommentError(result.error || "Could not post comment.");
         return;
       }
+
       setComment("");
     } catch (error) {
       console.error("Failed to submit comment:", error);
@@ -337,6 +352,25 @@ export default function PostCard({ post }) {
     } finally {
       setCommentSubmitting(false);
     }
+  };
+
+  const handleEditSave = async (updates) => {
+    if (!postId) return { ok: false, error: "Post was not identified. Please refresh and try again." };
+
+    const result = await editMyPost?.(postId, updates);
+    if (result?.ok !== false) setEditingOpen(false);
+    return result;
+  };
+
+  const handleShare = async () => {
+    if (!postId) return pushToast?.("Post link is not ready. Please refresh and try again.", "error");
+
+    await shareOrCopy({
+      title: post?.title || "SoldierHub post",
+      text: post?.title || "SoldierHub post",
+      url: `${window.location.origin}/?post=${encodeURIComponent(postId)}`,
+      onCopied: () => pushToast?.("Post link copied.", "success"),
+    });
   };
 
   return (
@@ -351,148 +385,121 @@ export default function PostCard({ post }) {
                   <div className="text-[15px] font-bold leading-tight truncate hover:underline" style={{ color: T.text }}>{displayName}</div>
                 </ProfileIdentity>
                 <div className="mt-1 text-xs flex items-center gap-1.5 flex-wrap" style={{ color: T.textSubtle }}>
-                  {post.anonymous && <><span className="inline-flex items-center gap-1"><Lock size={10} strokeWidth={2.5} />anonymous</span><span>·</span></>}
-                  <ClientTimeAgo date={post.created_at} />
-                  {post.edited && <><span>·</span><span>edited</span></>}
-                  {cat?.label && cat.key !== "All" ? <><span>·</span><span>{cat.label}</span></> : null}
+                  {post?.anonymous && <span>Anonymous</span>}
+                  {isReported && <span className="font-bold" style={{ color: "#B31942" }}>Post under review</span>}
+                  <span>{cat?.label}</span>
+                  <span>·</span>
+                  <ClientTimeAgo value={post?.created_at} />
                 </div>
               </div>
             </div>
 
-            <div className="relative shrink-0" onBlur={() => setTimeout(() => setMenuOpen(false), 120)}>
-              <button type="button" onClick={() => setMenuOpen((open) => !open)} className="h-9 w-9 rounded-full inline-flex items-center justify-center transition-all active:scale-95" style={{ color: T.textSubtle, backgroundColor: menuOpen ? T.surface : "transparent" }} aria-label="Post options" aria-expanded={menuOpen}>
-                <MoreHorizontal size={20} strokeWidth={2.4} />
+            <div className="relative shrink-0">
+              <button
+                type="button"
+                onClick={() => setMenuOpen((value) => !value)}
+                className="h-9 w-9 rounded-full flex items-center justify-center hover:bg-black/[0.04]"
+                style={{ color: T.textMuted }}
+                aria-label="Post actions"
+              >
+                <MoreHorizontal size={18} />
               </button>
 
-              {menuOpen ? (
-                <div className="absolute right-0 top-10 z-30 w-44 overflow-hidden rounded-2xl border shadow-lg" style={{ backgroundColor: T.card, borderColor: T.border, boxShadow: "0 16px 35px rgba(11,28,44,0.14)" }}>
-                  {ownsPost ? (
-                    <>
-                      <MenuButton icon={Edit3} onClick={handleEditClick}>Edit post</MenuButton>
-                      <MenuButton icon={Trash2} danger onClick={handleDeleteClick}>Delete post</MenuButton>
-                    </>
-                  ) : (
-                    <MenuButton muted={userReported} onClick={handleReport}>
-                      {userReported ? "Reported" : "Report post"}
-                    </MenuButton>
-                  )}
+              {menuOpen && (
+                <div className="absolute right-0 top-10 z-20 w-52 overflow-hidden rounded-2xl border" style={{ backgroundColor: T.card, borderColor: T.border, boxShadow: "0 18px 45px rgba(7,27,51,0.16)" }}>
+                  <MenuButton icon={Share2} onClick={() => { setMenuOpen(false); handleShare(); }}>Share</MenuButton>
+                  {ownsPost ? <MenuButton icon={Edit3} onClick={handleEditClick}>Edit</MenuButton> : null}
+                  {ownsPost ? <MenuButton icon={Trash2} danger onClick={handleDeleteClick}>Delete</MenuButton> : null}
+                  {!ownsPost ? <MenuButton icon={Lock} muted onClick={handleReport}>{userReported ? "Reported" : "Report"}</MenuButton> : null}
                 </div>
-              ) : null}
+              )}
             </div>
           </div>
 
-          <div className="mt-3.5">
-            {post.title ? <h3 className="text-[18px] md:text-[21px] leading-snug font-bold tracking-[-0.015em]" style={{ color: T.text }}>{post.title}</h3> : null}
-            {post.body ? <div className={post.title ? "mt-2" : ""}><ExpandableText text={post.body || ""} previewLength={POST_PREVIEW_LENGTH} className="text-[14px] md:text-[15px] leading-7 whitespace-pre-wrap max-w-none" style={{ color: T.text }} buttonSize="sm" /></div> : null}
-          </div>
-
-          {isReported ? <div className="mt-2.5 text-[11px] leading-4 font-semibold" style={{ color: T.textSubtle }}>Reported post under review.</div> : null}
-
-          <div className="mt-3 border-t pt-1" style={{ borderColor: T.borderSoft }}>
-            <div className="grid grid-cols-3 gap-1">
-              <FeedActionButton icon={ArrowBigUp} label="Upvote" count={upvoteCount} active={userUpvoted} fillWhenActive onClick={() => guard(() => upvotePost(post.id))} />
-              <FeedActionButton icon={MessageCircle} label="Reply" count={commentCount} active={showComments} fillWhenActive onClick={toggleComments} />
-              <FeedActionButton icon={Share2} label="Share" onClick={() => shareOrCopy(post, pushToast)} />
+          <div className="mt-3">
+            <h3 className="text-[17px] md:text-[18px] font-extrabold leading-snug" style={{ color: T.navy }}>{post?.title}</h3>
+            <div className="mt-2 text-[15px] leading-7" style={{ color: T.text }}>
+              <ExpandableText text={post?.body || ""} />
             </div>
           </div>
         </div>
 
+        <div className="px-2 md:px-3 pb-2 flex items-center justify-between border-t" style={{ borderColor: "rgba(213,226,242,0.65)" }}>
+          <FeedActionButton icon={ArrowBigUp} label="Upvote" count={upvoteCount} active={userUpvoted} fillWhenActive onClick={() => guard(() => upvotePost?.(postId))} />
+          <FeedActionButton icon={MessageCircle} label="Reply" count={commentCount} active={showComments} onClick={toggleComments} />
+          <FeedActionButton icon={Share2} label="Share" onClick={handleShare} />
+        </div>
+
         {showComments && (
-          <div className="px-4 md:px-5 py-4" style={{ backgroundColor: T.surface, borderTop: `1px solid ${T.borderSoft}` }}>
-            <div className="flex flex-col gap-3">
-              {commentsLoading && displayComments.length === 0 && <LoadingReplies />}
+          <div className="px-4 md:px-5 pb-4 border-t" style={{ borderColor: "rgba(213,226,242,0.65)" }}>
+            {commentsLoading ? <LoadingReplies /> : null}
 
-              {!commentsLoading && displayComments.length === 0 && (
-                <div className="text-sm text-center py-2" style={{ color: T.textSubtle }}>
-                  No comments yet. Start the conversation.
-                </div>
-              )}
-
-              {displayComments.map((c) => {
-                const safeAuthor = getSafeCommentAuthor({ comment: c, post });
-                const text = c.body ?? c.text ?? "";
-                const commentHref = !safeAuthor.anonymous && safeAuthor.authorId ? `/users/${safeAuthor.authorId}` : null;
+            <div className="mt-3 space-y-3">
+              {displayComments.map((item) => {
+                const author = getSafeCommentAuthor({ comment: item, post: safePost });
+                const href = author.authorId ? `/users/${author.authorId}` : null;
 
                 return (
-                  <div key={c.id} className="flex gap-2.5">
-                    <ProfileIdentity href={commentHref} name={safeAuthor.name} color={safeAuthor.color} size={32} />
-                    <div className="flex-1 rounded-2xl px-3.5 py-2.5" style={{ backgroundColor: T.card }}>
-                      <ProfileIdentity href={commentHref} name={safeAuthor.name} color={safeAuthor.color}>
-                        <div className="text-[13px] font-bold hover:underline inline-flex items-center gap-1" style={{ color: T.text }}>
-                          {safeAuthor.anonymous && <Lock size={11} />}
-                          {safeAuthor.name}
-                        </div>
+                  <div key={item.id} className="flex items-start gap-2.5">
+                    <ProfileIdentity href={href} name={author.name} color={author.color} size={32} />
+                    <div className="min-w-0 flex-1 rounded-2xl px-3 py-2" style={{ backgroundColor: "rgba(244,248,253,0.95)" }}>
+                      <ProfileIdentity href={href} name={author.name} color={author.color}>
+                        <div className="text-xs font-bold truncate hover:underline" style={{ color: T.text }}>{author.name}</div>
                       </ProfileIdentity>
-                      <ExpandableText text={text} previewLength={COMMENT_PREVIEW_LENGTH} className="mt-1 text-sm leading-6 whitespace-pre-wrap" style={{ color: T.text }} buttonSize="xs" />
+                      <p className="text-sm leading-6 whitespace-pre-wrap" style={{ color: T.text }}>{item.body}</p>
                     </div>
                   </div>
                 );
               })}
             </div>
 
-            <div className="mt-4 flex items-start gap-2.5">
-              <Avatar name={replyAvatarName} color={replyAvatarColor} size={32} />
-              <div className="flex-1 min-w-0">
-                <div className="rounded-2xl border px-3 py-2" style={{ backgroundColor: T.card, borderColor: T.border }}>
+            {currentUser ? (
+              <div className="mt-3 flex items-start gap-2.5">
+                <Avatar name={replyAvatarName} color={replyAvatarColor} size={34} />
+                <div className="min-w-0 flex-1">
                   <textarea
                     value={comment}
-                    onChange={(e) => setComment(e.target.value)}
-                    onFocus={() => {
-                      if (!currentUser) requireAuth();
-                    }}
+                    onChange={(event) => setComment(event.target.value)}
                     placeholder={replyPlaceholder}
                     rows={2}
-                    className="w-full resize-none bg-transparent outline-none text-sm leading-6"
-                    style={{ color: T.text }}
-                    disabled={commentSubmitting}
+                    className="w-full resize-none rounded-2xl border px-3 py-2 text-sm outline-none"
+                    style={{ borderColor: T.border, color: T.text }}
                   />
+                  {commentError ? <div className="mt-1 text-xs font-semibold" style={{ color: "#B31942" }}>{commentError}</div> : null}
                 </div>
-                {commentError ? <div className="mt-1.5 text-xs font-semibold text-[#B31942]">{commentError}</div> : null}
+                <button
+                  type="button"
+                  onClick={submitComment}
+                  disabled={commentSubmitting || !comment.trim()}
+                  className="h-10 w-10 rounded-2xl flex items-center justify-center disabled:opacity-50"
+                  style={{ backgroundColor: T.navy, color: "#fff" }}
+                  aria-label="Send reply"
+                >
+                  <Send size={17} />
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => guard(submitComment)}
-                disabled={commentSubmitting || !comment.trim()}
-                className="h-10 w-10 rounded-full inline-flex items-center justify-center transition active:scale-95 disabled:opacity-45 disabled:cursor-not-allowed"
-                style={{ backgroundColor: T.navy, color: "white" }}
-                aria-label="Send reply"
-              >
-                <Send size={17} />
+            ) : (
+              <button type="button" onClick={() => requireAuth()} className="mt-3 text-sm font-bold" style={{ color: T.blue }}>
+                Sign in to reply
               </button>
-            </div>
+            )}
           </div>
         )}
       </article>
 
-      {editingOpen ? (
-        <EditPostModal
-          post={post}
-          onClose={() => setEditingOpen(false)}
-          onSave={async (updates) => {
-            const result = await editMyPost?.(post.id, updates);
-
-            if (result?.ok === false) {
-              return result;
-            }
-
-            setEditingOpen(false);
-            pushToast?.("Post updated.", "success");
-            return result;
-          }}
-        />
-      ) : null}
-
       <ConfirmDialog
         open={deletingOpen}
-        title="Delete this post?"
-        body="This permanently removes the post and all its comments. This action cannot be undone."
-        confirmText={deleting ? "Deleting..." : "Delete post"}
+        title="Delete post?"
+        body="This will permanently remove this post. This action cannot be undone."
+        confirmText={deleting ? "Deleting…" : "Delete"}
         danger
+        onCancel={() => (deleting ? null : setDeletingOpen(false))}
         onConfirm={handleDeleteConfirm}
-        onCancel={() => {
-          if (!deleting) setDeletingOpen(false);
-        }}
       />
+
+      {editingOpen ? (
+        <EditPostModal post={safePost} onClose={() => setEditingOpen(false)} onSave={handleEditSave} />
+      ) : null}
     </>
   );
 }
