@@ -36,11 +36,16 @@ const COLOR_OPTIONS = [
 function InfoPill({ icon: Icon, label, value }) {
   return (
     <div
-      className="rounded-2xl border px-3 py-2 flex items-start gap-2 min-w-0"
-      style={{ backgroundColor: "rgba(255,255,255,0.72)", borderColor: "#D5E2F2" }}
+      className="rounded-2xl border px-3 py-2.5 flex items-center gap-2.5 min-w-0"
+      style={{ backgroundColor: "rgba(255,255,255,0.76)", borderColor: "#D5E2F2" }}
     >
-      <Icon size={15} className="mt-0.5 shrink-0" style={{ color: T.blue }} />
-      <div className="min-w-0">
+      <div
+        className="h-8 w-8 rounded-xl flex items-center justify-center shrink-0"
+        style={{ backgroundColor: "rgba(220,232,247,0.92)", color: T.blue }}
+      >
+        <Icon size={15} />
+      </div>
+      <div className="min-w-0 text-left">
         <div className="text-[10px] md:text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: T.textSubtle }}>
           {label}
         </div>
@@ -258,9 +263,8 @@ export default function ProfileHeader() {
                     )}
                   </div>
 
-                  <div className="mt-3 md:mt-4 grid sm:grid-cols-2 gap-2 max-w-xl mx-auto md:mx-0">
+                  <div className="mt-3 md:mt-4 max-w-xl mx-auto md:mx-0">
                     <InfoPill icon={Mail} label="Email" value={currentUser.email || currentUser.personal_email || "Verified email"} />
-                    <InfoPill icon={ShieldCheck} label="Status" value="Verified email cannot be changed" />
                   </div>
                 </>
               ) : (
