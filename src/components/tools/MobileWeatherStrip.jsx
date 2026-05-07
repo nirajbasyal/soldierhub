@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CloudSun, Clock3, MapPin, Shirt } from "lucide-react";
 import { T } from "@/lib/theme";
 
-const WEATHER_CACHE_KEY = "soldierhub_fort_bliss_weather_v13";
+const WEATHER_CACHE_KEY = "soldierhub_fort_bliss_weather_v14";
 const OLD_WEATHER_CACHE_KEYS = [
   "soldierhub_fort_bliss_weather_v6",
   "soldierhub_fort_bliss_weather_v7",
@@ -13,6 +13,7 @@ const OLD_WEATHER_CACHE_KEYS = [
   "soldierhub_fort_bliss_weather_v10",
   "soldierhub_fort_bliss_weather_v11",
   "soldierhub_fort_bliss_weather_v12",
+  "soldierhub_fort_bliss_weather_v13",
 ];
 
 const WEATHER_CACHE_MAX_AGE = 60 * 1000;
@@ -104,7 +105,7 @@ function getPtGuidance(tempF, fallback) {
   if (warmer) {
     recommendations.push({
       type: "warmer",
-      label: `${warmer.min}°F+`,
+      label: `${warmer.min}°F or warmer`,
       title: warmer.title,
       detail: warmer.detail,
     });
@@ -113,7 +114,7 @@ function getPtGuidance(tempF, fallback) {
   if (colder) {
     recommendations.push({
       type: "colder",
-      label: `≤${colder.max}°F`,
+      label: `${colder.max}°F or colder`,
       title: colder.title,
       detail: colder.detail,
     });
@@ -344,6 +345,8 @@ export default function MobileWeatherStrip() {
             <span style={{ color: T.textSubtle }}>{date}</span>
             <span style={{ color: T.textSubtle }}>•</span>
             <span style={{ color: T.textMuted }}>{checkedLabel}</span>
+            <span style={{ color: T.textSubtle }}>•</span>
+            <span style={{ color: T.textMuted }}>Source: NWS</span>
           </div>
         </div>
       </div>
