@@ -196,9 +196,30 @@ export async function updateMyPost(postId, updates) {
 
 export async function deletePost(postId) {
   const supabase = createClient();
-  if (!supabase) return { error: null };
+  if (!supabase) return { data: null, error: null, deleted: false };
 
-  return supabase.from("posts").delete().eq("id", postId);
+  const { data, error } = await supabase
+    .from("posts")
+    .delete()
+    .eq("id", postId)
+    .select("id");
+
+  if (error) {
+    return { data: null, error, deleted: false };
+  }
+
+  if (!Array.isArray(data) || data.length === 0) {
+    return {
+      data: null,
+      error: {
+        message:
+          "Post was not deleted. You may not be the owner of this post, or the delete policy is blocking it.",
+      },
+      deleted: false,
+    };
+  }
+
+  return { data, error: null, deleted: true };
 }
 
 /**
