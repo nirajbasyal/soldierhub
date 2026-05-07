@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowUp, Lock, MessageCircle, MoreHorizontal, Send, Share2 } from "lucide-react";
+import { ArrowBigUp, Lock, MessageCircle, MoreHorizontal, Send, Share2 } from "lucide-react";
 import { CATEGORIES } from "@/lib/constants";
 import { T } from "@/lib/theme";
 import { colorFromString, shareOrCopy } from "@/lib/helpers";
@@ -79,23 +79,30 @@ function ProfileIdentity({ href, name, color, size = 42, children }) {
   );
 }
 
-function FeedActionButton({ icon: Icon, label, count, active = false, onClick }) {
+function FeedActionButton({ icon: Icon, label, count, active = false, onClick, fillWhenActive = false }) {
   const countLabel = typeof count === "number" && count > 99 ? "99+" : count;
+  const activeColor = "#4B5563";
+  const inactiveColor = T.textMuted;
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className="min-w-0 h-10 rounded-xl text-xs md:text-sm font-semibold transition-all inline-flex items-center justify-center gap-1.5 px-2 md:px-3 active:scale-[0.98]"
+      className={`min-w-0 h-10 rounded-xl text-xs md:text-sm transition-all inline-flex items-center justify-center gap-1.5 px-2 md:px-3 active:scale-[0.98] ${active ? "font-extrabold" : "font-semibold"}`}
       style={{
-        color: active ? T.blue : T.textMuted,
-        backgroundColor: active ? "rgba(63,95,125,0.12)" : "transparent",
+        color: active ? activeColor : inactiveColor,
+        backgroundColor: "transparent",
       }}
     >
-      <Icon size={17} className="shrink-0" strokeWidth={active ? 2.8 : 2.25} />
+      <Icon
+        size={18}
+        className="shrink-0"
+        strokeWidth={active ? 2.8 : 2.25}
+        fill={active && fillWhenActive ? "currentColor" : "none"}
+      />
       <span className="min-w-0 truncate">{label}</span>
       {typeof count === "number" && count > 0 ? (
-        <span className="shrink-0 text-[11px] font-bold leading-none" style={{ color: active ? T.blue : T.textSubtle }}>
+        <span className={`shrink-0 text-[11px] leading-none ${active ? "font-extrabold" : "font-bold"}`} style={{ color: active ? activeColor : T.textSubtle }}>
           {countLabel}
         </span>
       ) : null}
@@ -232,11 +239,11 @@ export default function PostCard({ post }) {
           {post.body ? <div className={post.title ? "mt-2" : ""}><ExpandableText text={post.body || ""} previewLength={POST_PREVIEW_LENGTH} className="text-[14px] md:text-[15px] leading-7 whitespace-pre-wrap max-w-none" style={{ color: T.text }} buttonSize="sm" /></div> : null}
         </div>
 
-        {isReported ? <div className="mt-2.5 text-[11px] leading-4 font-medium" style={{ color: T.textSubtle }}>Reported to admins for review.</div> : null}
+        {isReported ? <div className="mt-2.5 text-[11px] leading-4 font-semibold" style={{ color: T.textSubtle }}>Reported post under review.</div> : null}
 
         <div className="mt-3 border-t pt-1" style={{ borderColor: T.borderSoft }}>
           <div className="grid grid-cols-3 gap-1">
-            <FeedActionButton icon={ArrowUp} label="Upvote" count={upvoteCount} active={userUpvoted} onClick={() => guard(() => upvotePost(post.id))} />
+            <FeedActionButton icon={ArrowBigUp} label="Upvote" count={upvoteCount} active={userUpvoted} fillWhenActive onClick={() => guard(() => upvotePost(post.id))} />
             <FeedActionButton icon={MessageCircle} label="Reply" count={commentCount} active={showComments} onClick={toggleComments} />
             <FeedActionButton icon={Share2} label="Share" onClick={() => shareOrCopy(post, pushToast)} />
           </div>
