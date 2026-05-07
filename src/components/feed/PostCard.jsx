@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowBigUp, Lock, MessageCircle, MoreHorizontal, Send, Share2 } from "lucide-react";
 import { CATEGORIES } from "@/lib/constants";
 import { T } from "@/lib/theme";
@@ -15,6 +15,38 @@ import ClientTimeAgo from "@/components/ui/ClientTimeAgo";
 
 const POST_PREVIEW_LENGTH = 360;
 const COMMENT_PREVIEW_LENGTH = 120;
+const COMMENT_CACHE_PREFIX = "soldierhub_comments_cache_";
+
+function getCommentCacheKey(postId) {
+  return `${COMMENT_CACHE_PREFIX}${postId}`;
+}
+
+function readCachedComments(postId) {
+  if (typeof window === "undefined" || !postId) return [];
+
+  try {
+    const raw = window.localStorage.getItem(getCommentCacheKey(postId));
+    if (!raw) return [];
+
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed?.comments) ? parsed.comments : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveCachedComments(postId, comments) {
+  if (typeof window === "undefined" || !postId || !Array.isArray(comments)) return;
+
+  try {
+    window.localStorage.setItem(
+      getCommentCacheKey(postId),
+      JSON.stringify({ savedAt: Date.now(), comments: comments.slice(-40) })
+    );
+  } catch {
+    // Browser storage can fail in private mode or when full. Replies still work normally.
+  }
+}
 
 function getAnonymousDisplayName(postId) {
   const source = String(postId || "anonymous");
@@ -123,6 +155,7 @@ export default function PostCard({ post }) {
   const { currentUser, requireAuth, pushToast, upvotePost, reportPost, commentOnPost, myUpvotes, myReports, myPosts, postComments, loadCommentsForPost } = useApp();
   const [showComments, setShowComments] = useState(false);
   const [commentsLoading, setCommentsLoading] = useState(false);
+  const [cachedComments, setCachedComments] = useState(() => readCachedComments(post.id));
   const [comment, setComment] = useState("");
   const [commentError, setCommentError] = useState("");
   const [commentSubmitting, setCommentSubmitting] = useState(false);
@@ -138,8 +171,15 @@ export default function PostCard({ post }) {
   const authorProfileHref = !post.anonymous && post.author_id ? `/users/${post.author_id}` : null;
 
   const comments = postComments[post.id] || [];
-  const commentCount = post.comment_count ?? comments.length;
+  const displayComments = comments.length > 0 ? comments : cachedComments;
+  const commentCount = post.comment_count ?? displayComments.length;
   const upvoteCount = post.upvote_count ?? 0;
+
+  useEffect(() => {
+    if (!comments.length) return;
+    setCachedComments(comments);
+    saveCachedComments(post.id, comments);
+  }, [comments, post.id]);
 
   const ownsPostBySafeViewerFlag = post.viewer_is_author === true;
   const ownsPostByVisibleAuthorId = currentUser?.id && post.author_id && post.author_id === currentUser.id;
@@ -158,6 +198,15 @@ export default function PostCard({ post }) {
     const next = !showComments;
     setShowComments(next);
     if (!next) return;
+
+    if (comments.length > 0) return;
+
+    if (cachedComments.length > 0) {
+      loadCommentsForPost(post.id).catch((error) => {
+        console.error("Failed to refresh cached replies:", error);
+      });
+      return;
+    }
 
     setCommentsLoading(true);
     try {
@@ -253,11 +302,11 @@ export default function PostCard({ post }) {
       {showComments && (
         <div className="px-4 md:px-5 py-4" style={{ backgroundColor: T.surface, borderTop: `1px solid ${T.borderSoft}` }}>
           <div className="flex flex-col gap-3">
-            {commentsLoading && <LoadingReplies />}
+            {commentsLoading && displayComments.length === 0 && <LoadingReplies />}
 
-            {!commentsLoading && comments.length === 0 && <div className="text-sm text-center py-2" style={{ color: T.textSubtle }}>No comments yet. Start the conversation.</div>}
+            {!commentsLoading && displayComments.length === 0 && <div className="text-sm text-center py-2" style={{ color: T.textSubtle }}>No comments yet. Start the conversation.</div>}
 
-            {!commentsLoading && comments.map((c) => {
+            {displayComments.map((c) => {
               const safeAuthor = getSafeCommentAuthor({ comment: c, post });
               const text = c.body ?? c.text ?? "";
               const commentHref = !safeAuthor.anonymous && safeAuthor.authorId ? `/users/${safeAuthor.authorId}` : null;
