@@ -4,7 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import { CloudSun, Clock3, MapPin, Shirt } from "lucide-react";
 import { T } from "@/lib/theme";
 
-const WEATHER_CACHE_KEY = "soldierhub_fort_bliss_weather_v7";
+const WEATHER_CACHE_KEY = "soldierhub_fort_bliss_weather_v8";
+const OLD_WEATHER_CACHE_KEYS = [
+  "soldierhub_fort_bliss_weather_v6",
+  "soldierhub_fort_bliss_weather_v7",
+];
 const WEATHER_CACHE_MAX_AGE = 60 * 1000;          // refresh interval: 1 min
 const WEATHER_CACHE_STALE_AFTER = 10 * 60 * 1000; // hard expiry: 10 min
 
@@ -29,9 +33,23 @@ function formatElPasoDate(date) {
   }).format(date);
 }
 
+function clearOldWeatherCache() {
+  try {
+    if (typeof window === "undefined") return;
+
+    OLD_WEATHER_CACHE_KEYS.forEach((key) => {
+      window.localStorage.removeItem(key);
+    });
+  } catch {
+    // Ignore localStorage errors.
+  }
+}
+
 function getCachedWeather() {
   try {
     if (typeof window === "undefined") return null;
+
+    clearOldWeatherCache();
 
     const cached = window.localStorage.getItem(WEATHER_CACHE_KEY);
     if (!cached) return null;
