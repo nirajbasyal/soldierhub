@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   Check,
@@ -57,29 +57,38 @@ function InfoPill({ icon: Icon, label, value }) {
   );
 }
 
-function postBelongsToCurrentUser(post, currentUser) {
-  if (!post || !currentUser?.id) return false;
+function postBelongsToCurrentUser(post, user) {
+  if (!post || !user?.id) return false;
 
   return (
-    post.author_id === currentUser.id ||
-    post.user_id === currentUser.id ||
-    post.profile_id === currentUser.id ||
+    post.author_id === user.id ||
+    post.user_id === user.id ||
+    post.profile_id === user.id ||
     post.viewer_is_author === true
   );
 }
 
 export default function ProfileHeader() {
+  const app = useApp() || {};
   const {
     currentUser,
     updateProfile,
     posts = [],
     myPosts = [],
-  } = useApp();
+  } = app;
+
+  const safeUser = currentUser || {};
+  const displayName = safeUser.full_name || safeUser.email || "SoldierHub user";
+  const displayEmail = safeUser.email || safeUser.personal_email || "Verified email";
+  const displayBio = safeUser.bio || "";
+  const displayColor = safeUser.avatar_color || "#1E4E8C";
+  const userStatus = safeUser.status || safeUser.verification_status || "pending";
+  const isVerified = userStatus === "verified";
 
   const [editing, setEditing] = useState(false);
-  const [name, setName] = useState(currentUser.full_name || "");
-  const [bio, setBio] = useState(currentUser.bio || "");
-  const [color, setColor] = useState(currentUser.avatar_color || "#1E4E8C");
+  const [name, setName] = useState(displayName);
+  const [bio, setBio] = useState(displayBio);
+  const [color, setColor] = useState(displayColor);
 
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -89,7 +98,15 @@ export default function ProfileHeader() {
   const [passwordSuccess, setPasswordSuccess] = useState("");
   const [passwordSaving, setPasswordSaving] = useState(false);
 
+  useEffect(() => {
+    if (!currentUser) return;
+    setName(currentUser.full_name || currentUser.email || "SoldierHub user");
+    setBio(currentUser.bio || "");
+    setColor(currentUser.avatar_color || "#1E4E8C");
+  }, [currentUser]);
+
   const visiblePosts = useMemo(() => {
+    if (!currentUser?.id) return [];
     if (myPosts.length > 0) return myPosts;
     return posts.filter((post) => postBelongsToCurrentUser(post, currentUser));
   }, [currentUser, myPosts, posts]);
@@ -106,14 +123,15 @@ export default function ProfileHeader() {
   };
 
   const save = () => {
-    updateProfile({ full_name: name.trim() || currentUser.full_name, bio, avatar_color: color });
+    if (!currentUser?.id) return;
+    updateProfile?.({ full_name: name.trim() || displayName, bio, avatar_color: color });
     setEditing(false);
   };
 
   const cancel = () => {
-    setName(currentUser.full_name || "");
-    setBio(currentUser.bio || "");
-    setColor(currentUser.avatar_color || "#1E4E8C");
+    setName(displayName);
+    setBio(displayBio);
+    setColor(displayColor);
     resetPasswordForm();
     setShowPasswordForm(false);
     setEditing(false);
@@ -132,6 +150,11 @@ export default function ProfileHeader() {
   const changePassword = async () => {
     setPasswordError("");
     setPasswordSuccess("");
+
+    if (!displayEmail || displayEmail === "Verified email") {
+      setPasswordError("Could not find your verified email. Please refresh and try again.");
+      return;
+    }
 
     if (!currentPassword || !newPassword || !confirmPassword) {
       setPasswordError("Enter your current password, new password, and confirmation password.");
@@ -155,8 +178,7 @@ export default function ProfileHeader() {
 
     setPasswordSaving(true);
 
-    const email = currentUser.email || currentUser.personal_email || "";
-    const verify = await Auth.signIn({ email, password: currentPassword });
+    const verify = await Auth.signIn({ email: displayEmail, password: currentPassword });
 
     if (verify.error) {
       setPasswordSaving(false);
@@ -201,18 +223,10 @@ export default function ProfileHeader() {
                 style={{ backgroundColor: "rgba(255,255,255,0.65)", borderColor: "#D5E2F2" }}
               >
                 <div className="md:hidden">
-                  <Avatar
-                    name={editing ? name : currentUser.full_name}
-                    color={editing ? color : currentUser.avatar_color}
-                    size={68}
-                  />
+                  <Avatar name={editing ? name : displayName} color={editing ? color : displayColor} size={68} />
                 </div>
                 <div className="hidden md:block">
-                  <Avatar
-                    name={editing ? name : currentUser.full_name}
-                    color={editing ? color : currentUser.avatar_color}
-                    size={92}
-                  />
+                  <Avatar name={editing ? name : displayName} color={editing ? color : displayColor} size={92} />
                 </div>
               </div>
 
@@ -249,24 +263,26 @@ export default function ProfileHeader() {
 
                   <div className="mt-3 md:mt-4 flex items-center justify-center md:justify-start gap-2 flex-wrap">
                     <h1 className="text-[2rem] sm:text-4xl md:text-5xl font-extrabold tracking-[-0.04em] leading-[0.95]" style={{ color: T.navy }}>
-                      {currentUser.full_name}
+                      {displayName}
                     </h1>
 
-                    {currentUser.role === "admin" && (
+                    {safeUser.role === "admin" && (
                       <Badge tone="amber" icon={Shield}>
                         Admin
                       </Badge>
                     )}
 
-                    <Badge tone="blue" icon={ShieldCheck}>
-                      Verified
-                    </Badge>
+                    {isVerified && (
+                      <Badge tone="blue" icon={ShieldCheck}>
+                        Verified
+                      </Badge>
+                    )}
                   </div>
 
                   <div className="mt-2 md:mt-3 max-w-xl mx-auto md:mx-0">
-                    {currentUser.bio ? (
+                    {displayBio ? (
                       <p className="text-sm md:text-base leading-6 md:leading-7" style={{ color: T.text }}>
-                        {currentUser.bio}
+                        {displayBio}
                       </p>
                     ) : (
                       <p className="text-sm md:text-base leading-6 md:leading-7" style={{ color: T.textMuted }}>
@@ -276,7 +292,7 @@ export default function ProfileHeader() {
                   </div>
 
                   <div className="mt-3 md:mt-4 max-w-xl mx-auto md:mx-0">
-                    <InfoPill icon={Mail} label="Email" value={currentUser.email || currentUser.personal_email || "Verified email"} />
+                    <InfoPill icon={Mail} label="Email" value={displayEmail} />
                   </div>
                 </>
               ) : (
@@ -308,7 +324,7 @@ export default function ProfileHeader() {
                     <TextInput label="Display name" value={name} onChange={(e) => setName(e.target.value)} />
                     <TextArea label="Bio" value={bio} onChange={(e) => setBio(e.target.value)} />
                     <div className="rounded-2xl border px-3 py-2 text-xs" style={{ backgroundColor: "rgba(244,248,253,0.95)", borderColor: "#D5E2F2", color: T.textSubtle }}>
-                      Verified email: {currentUser.email} · email cannot be changed after verification.
+                      Verified email: {displayEmail} · email cannot be changed after verification.
                     </div>
                   </div>
 
@@ -370,27 +386,9 @@ export default function ProfileHeader() {
                       </div>
 
                       <div className="grid gap-3">
-                        <TextInput
-                          label="Current password"
-                          type="password"
-                          value={currentPassword}
-                          onChange={(e) => setCurrentPassword(e.target.value)}
-                          autoComplete="current-password"
-                        />
-                        <TextInput
-                          label="New password"
-                          type="password"
-                          value={newPassword}
-                          onChange={(e) => setNewPassword(e.target.value)}
-                          autoComplete="new-password"
-                        />
-                        <TextInput
-                          label="Confirm new password"
-                          type="password"
-                          value={confirmPassword}
-                          onChange={(e) => setConfirmPassword(e.target.value)}
-                          autoComplete="new-password"
-                        />
+                        <TextInput label="Current password" type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} autoComplete="current-password" />
+                        <TextInput label="New password" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} autoComplete="new-password" />
+                        <TextInput label="Confirm new password" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} autoComplete="new-password" />
                       </div>
 
                       {passwordError && (
@@ -414,12 +412,7 @@ export default function ProfileHeader() {
                       )}
 
                       <div className="mt-3 flex flex-col sm:flex-row gap-2">
-                        <Button
-                          variant="ghost"
-                          onClick={changePassword}
-                          icon={KeyRound}
-                          disabled={passwordSaving}
-                        >
+                        <Button variant="ghost" onClick={changePassword} icon={KeyRound} disabled={passwordSaving}>
                           {passwordSaving ? "Updating password…" : "Update password"}
                         </Button>
                         <Button variant="ghost" onClick={closePasswordForm}>
