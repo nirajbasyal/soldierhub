@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CloudSun, Clock3, MapPin, Shirt } from "lucide-react";
 import { T } from "@/lib/theme";
 
-const WEATHER_CACHE_KEY = "soldierhub_fort_bliss_weather_v14";
+const WEATHER_CACHE_KEY = "soldierhub_fort_bliss_weather_v15";
 const OLD_WEATHER_CACHE_KEYS = [
   "soldierhub_fort_bliss_weather_v6",
   "soldierhub_fort_bliss_weather_v7",
@@ -14,6 +14,7 @@ const OLD_WEATHER_CACHE_KEYS = [
   "soldierhub_fort_bliss_weather_v11",
   "soldierhub_fort_bliss_weather_v12",
   "soldierhub_fort_bliss_weather_v13",
+  "soldierhub_fort_bliss_weather_v14",
 ];
 
 const WEATHER_CACHE_MAX_AGE = 60 * 1000;
@@ -229,7 +230,7 @@ export default function MobileWeatherStrip() {
         const weatherWithMeta = {
           ...data,
           checkedAt: new Date().toISOString(),
-          sourceName: "NWS",
+          sourceName: "National Weather Service",
           sourceLabel: "Weather.gov",
         };
 
@@ -253,7 +254,7 @@ export default function MobileWeatherStrip() {
       setWeather({
         ...cached.data,
         checkedAt: cached.data.checkedAt || new Date(cached.savedAt).toISOString(),
-        sourceName: cached.data.sourceName || "NWS",
+        sourceName: cached.data.sourceName || "National Weather Service",
         sourceLabel: cached.data.sourceLabel || "Weather.gov",
       });
       setStatus("ready");
@@ -346,7 +347,15 @@ export default function MobileWeatherStrip() {
             <span style={{ color: T.textSubtle }}>•</span>
             <span style={{ color: T.textMuted }}>{checkedLabel}</span>
             <span style={{ color: T.textSubtle }}>•</span>
-            <span style={{ color: T.textMuted }}>Source: NWS</span>
+            <a
+              href="https://www.weather.gov/epz/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium underline underline-offset-2"
+              style={{ color: T.textMuted }}
+            >
+              National Weather Service
+            </a>
           </div>
         </div>
       </div>
