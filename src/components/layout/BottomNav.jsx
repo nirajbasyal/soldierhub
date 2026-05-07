@@ -4,6 +4,7 @@ import { Bell, Home, Menu } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { T } from "@/lib/theme";
 import { useApp } from "@/store/AppContext";
+import useUnreadNotificationCount from "@/hooks/useUnreadNotificationCount";
 
 export default function BottomNav() {
   const router = useRouter();
@@ -11,10 +12,11 @@ export default function BottomNav() {
 
   const {
     currentUser,
-    unreadCount,
     setAuthModal,
     setMobileMenu,
   } = useApp();
+
+  const unreadCount = useUnreadNotificationCount(currentUser);
 
   const goNotifications = () => {
     if (!currentUser) {
