@@ -4,35 +4,31 @@ import { Bell, Home, Menu } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { T } from "@/lib/theme";
 import { useApp } from "@/store/AppContext";
-import useUnreadNotificationCount from "@/hooks/useUnreadNotificationCount";
 
 export default function BottomNav() {
   const router = useRouter();
   const pathname = usePathname();
 
+  const app = useApp() || {};
   const {
     currentUser,
-    setAuthModal,
-    setMobileMenu,
-  } = useApp();
+    setAuthModal = () => {},
+    setMobileMenu = () => {},
+  } = app;
 
-  const unreadCount = useUnreadNotificationCount(currentUser);
+  const safeUser = currentUser || null;
+  const displayName = safeUser?.full_name || safeUser?.email || "SoldierHub user";
+  const displayEmail = safeUser?.email || safeUser?.personal_email || "";
+  const userStatus = safeUser?.status || safeUser?.verification_status || "pending";
 
   const goNotifications = () => {
-    if (!currentUser) {
+    if (!safeUser) {
       return setAuthModal("login");
     }
 
-    const userStatus =
-      currentUser?.status || currentUser?.verification_status || "pending";
-
     if (userStatus !== "verified") {
       return router.push(
-        `/pending-review?email=${encodeURIComponent(
-          currentUser?.email || ""
-        )}&name=${encodeURIComponent(
-          currentUser?.full_name || "SoldierHub user"
-        )}&found=1`
+        `/pending-review?email=${encodeURIComponent(displayEmail)}&name=${encodeURIComponent(displayName)}&found=1`
       );
     }
 
@@ -62,7 +58,6 @@ export default function BottomNav() {
       icon: Bell,
       active: pathname === "/notifications",
       onClick: goNotifications,
-      count: unreadCount,
     },
     {
       k: "menu",
@@ -85,7 +80,6 @@ export default function BottomNav() {
       <div className="grid grid-cols-3">
         {tabs.map((t) => {
           const Icon = t.icon;
-          const safeCount = Number(t.count || 0);
 
           return (
             <button
@@ -100,20 +94,6 @@ export default function BottomNav() {
                   strokeWidth={t.active ? 2.5 : 2}
                   style={{ color: t.active ? T.gold : T.textMuted }}
                 />
-
-                {safeCount > 0 && (
-                  <span
-                    className="absolute -top-2 -right-2.5 min-w-[18px] h-[18px] rounded-full text-[10px] font-extrabold flex items-center justify-center px-1 shadow-sm ring-2 ring-white"
-                    style={{
-                      backgroundColor: "#B31942",
-                      color: "#FFFFFF",
-                      lineHeight: 1,
-                    }}
-                    aria-label={`${safeCount} unread notifications`}
-                  >
-                    {safeCount > 9 ? "9+" : safeCount}
-                  </span>
-                )}
               </div>
 
               <span
