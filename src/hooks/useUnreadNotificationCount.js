@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import * as NotificationsDB from "@/lib/db/notifications";
 import { subscribeToMyNotifications } from "@/lib/db/realtime";
@@ -55,18 +55,8 @@ export default function useUnreadNotificationCount(currentUser) {
   const isVerified = Boolean(userId && userStatus === "verified");
   const isNotificationsPage = pathname?.startsWith("/notifications");
 
-  useEffect(() => {
-    if (!isVerified) {
-      setCount(0);
-      return;
-    }
-
-    const cachedCount = readUnreadCache(userId);
-    setCount(cachedCount);
-  }, [isVerified, userId]);
-
-  useEffect(() => {
-    if (!isVerified) return;
+  const refreshUnreadCount = useCallback(async () => {
+    if (!isVerified || !userId) return;
 
     if (isNotificationsPage) {
       setCount(0);
@@ -74,14 +64,40 @@ export default function useUnreadNotificationCount(currentUser) {
       return;
     }
 
+    const { count: freshCount } = await NotificationsDB.getUnreadCount(userId);
+    const safeCount = freshCount || 0;
+
+    setCount(safeCount);
+    saveUnreadCache(userId, safeCount);
+  }, [isVerified, isNotificationsPage, userId]);
+
+  useEffect(() => {
+    if (!isVerified) {
+      setCount(0);
+      return;
+    }
+
+    setCount(readUnreadCache(userId));
+  }, [isVerified, userId]);
+
+  useEffect(() => {
     let cancelled = false;
+
+    if (!isVerified) return undefined;
+
+    if (isNotificationsPage) {
+      setCount(0);
+      saveUnreadCache(userId, 0);
+      return undefined;
+    }
 
     (async () => {
       const { count: freshCount } = await NotificationsDB.getUnreadCount(userId);
       if (cancelled) return;
 
-      setCount(freshCount || 0);
-      saveUnreadCache(userId, freshCount || 0);
+      const safeCount = freshCount || 0;
+      setCount(safeCount);
+      saveUnreadCache(userId, safeCount);
     })();
 
     return () => {
@@ -90,22 +106,14 @@ export default function useUnreadNotificationCount(currentUser) {
   }, [isVerified, isNotificationsPage, userId]);
 
   useEffect(() => {
-    if (!isVerified) return;
+    if (!isVerified) return undefined;
 
-    const unsubscribe = subscribeToMyNotifications(userId, (notification) => {
-      if (isNotificationsPage) return;
-
-      if (notification?.read === false || notification?.read === undefined) {
-        setCount((previousCount) => {
-          const nextCount = previousCount + 1;
-          saveUnreadCache(userId, nextCount);
-          return nextCount;
-        });
-      }
+    const unsubscribe = subscribeToMyNotifications(userId, async () => {
+      await refreshUnreadCount();
     });
 
     return () => unsubscribe();
-  }, [isVerified, isNotificationsPage, userId]);
+  }, [isVerified, refreshUnreadCount, userId]);
 
   return isNotificationsPage ? 0 : count;
 }
