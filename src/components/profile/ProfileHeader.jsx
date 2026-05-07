@@ -41,10 +41,10 @@ function InfoPill({ icon: Icon, label, value }) {
     >
       <Icon size={15} className="mt-0.5 shrink-0" style={{ color: T.blue }} />
       <div className="min-w-0">
-        <div className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: T.textSubtle }}>
+        <div className="text-[10px] md:text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: T.textSubtle }}>
           {label}
         </div>
-        <div className="text-sm font-semibold truncate" style={{ color: T.navy }}>
+        <div className="text-xs md:text-sm font-semibold truncate" style={{ color: T.navy }}>
           {value}
         </div>
       </div>
@@ -164,7 +164,7 @@ export default function ProfileHeader() {
 
   return (
     <section
-      className="rounded-[32px] border overflow-hidden relative"
+      className="rounded-[26px] md:rounded-[32px] border overflow-hidden relative"
       style={{
         borderColor: "#BCD0EA",
         background:
@@ -172,22 +172,31 @@ export default function ProfileHeader() {
         boxShadow: "0 22px 60px rgba(7,27,51,0.08)",
       }}
     >
-      <div className="absolute left-0 top-0 h-full w-2 bg-[#B31942]" />
-      <div className="absolute right-0 top-0 h-full w-2 bg-[#1E4E8C]" />
+      <div className="absolute left-0 top-0 h-full w-1.5 md:w-2 bg-[#B31942]" />
+      <div className="absolute right-0 top-0 h-full w-1.5 md:w-2 bg-[#1E4E8C]" />
 
-      <div className="p-6 md:p-8">
-        <div className="flex flex-col lg:flex-row gap-6 lg:items-start lg:justify-between">
-          <div className="flex flex-col md:flex-row gap-5 md:items-start min-w-0">
-            <div className="flex flex-col items-center md:items-start gap-3 shrink-0">
+      <div className="px-4 py-5 md:p-8">
+        <div className="flex flex-col lg:flex-row gap-4 md:gap-6 lg:items-start lg:justify-between">
+          <div className="flex flex-col md:flex-row gap-3 md:gap-5 md:items-start min-w-0">
+            <div className="flex flex-col items-center md:items-start gap-2 md:gap-3 shrink-0">
               <div
-                className="rounded-[28px] p-2 border"
+                className="rounded-[22px] md:rounded-[28px] p-1.5 md:p-2 border"
                 style={{ backgroundColor: "rgba(255,255,255,0.65)", borderColor: "#D5E2F2" }}
               >
-                <Avatar
-                  name={editing ? name : currentUser.full_name}
-                  color={editing ? color : currentUser.avatar_color}
-                  size={92}
-                />
+                <div className="md:hidden">
+                  <Avatar
+                    name={editing ? name : currentUser.full_name}
+                    color={editing ? color : currentUser.avatar_color}
+                    size={68}
+                  />
+                </div>
+                <div className="hidden md:block">
+                  <Avatar
+                    name={editing ? name : currentUser.full_name}
+                    color={editing ? color : currentUser.avatar_color}
+                    size={92}
+                  />
+                </div>
               </div>
 
               {editing && (
@@ -214,15 +223,15 @@ export default function ProfileHeader() {
               {!editing ? (
                 <>
                   <div
-                    className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold uppercase tracking-[0.12em]"
+                    className="inline-flex items-center gap-1.5 md:gap-2 rounded-full border px-2.5 md:px-3 py-1 md:py-1.5 text-[10px] md:text-xs font-bold uppercase tracking-[0.12em]"
                     style={{ backgroundColor: "rgba(255,255,255,0.72)", borderColor: "#D5E2F2", color: T.blue }}
                   >
-                    <UserRound size={14} />
+                    <UserRound size={13} />
                     My Profile
                   </div>
 
-                  <div className="mt-4 flex items-center justify-center md:justify-start gap-2 flex-wrap">
-                    <h1 className="text-4xl md:text-5xl font-extrabold tracking-[-0.04em] leading-[0.95]" style={{ color: T.navy }}>
+                  <div className="mt-3 md:mt-4 flex items-center justify-center md:justify-start gap-2 flex-wrap">
+                    <h1 className="text-[2rem] sm:text-4xl md:text-5xl font-extrabold tracking-[-0.04em] leading-[0.95]" style={{ color: T.navy }}>
                       {currentUser.full_name}
                     </h1>
 
@@ -237,19 +246,19 @@ export default function ProfileHeader() {
                     </Badge>
                   </div>
 
-                  <div className="mt-3 max-w-xl mx-auto md:mx-0">
+                  <div className="mt-2 md:mt-3 max-w-xl mx-auto md:mx-0">
                     {currentUser.bio ? (
-                      <p className="text-[15px] md:text-base leading-7" style={{ color: T.text }}>
+                      <p className="text-sm md:text-base leading-6 md:leading-7" style={{ color: T.text }}>
                         {currentUser.bio}
                       </p>
                     ) : (
-                      <p className="text-[15px] md:text-base leading-7" style={{ color: T.textMuted }}>
+                      <p className="text-sm md:text-base leading-6 md:leading-7" style={{ color: T.textMuted }}>
                         Add a short bio so other verified community members know who you are.
                       </p>
                     )}
                   </div>
 
-                  <div className="mt-4 grid sm:grid-cols-2 gap-2 max-w-xl mx-auto md:mx-0">
+                  <div className="mt-3 md:mt-4 grid sm:grid-cols-2 gap-2 max-w-xl mx-auto md:mx-0">
                     <InfoPill icon={Mail} label="Email" value={currentUser.email || currentUser.personal_email || "Verified email"} />
                     <InfoPill icon={ShieldCheck} label="Status" value="Verified email cannot be changed" />
                   </div>
@@ -392,13 +401,13 @@ export default function ProfileHeader() {
               ].map(([label, value]) => (
                 <div
                   key={label}
-                  className="rounded-2xl border p-3 text-center lg:text-left"
+                  className="rounded-2xl border px-2 py-2.5 md:p-3 text-center lg:text-left"
                   style={{ backgroundColor: "rgba(255,255,255,0.72)", borderColor: "#D5E2F2" }}
                 >
-                  <div className="text-2xl font-extrabold tabular-nums" style={{ color: T.navy }}>
+                  <div className="text-xl md:text-2xl font-extrabold tabular-nums" style={{ color: T.navy }}>
                     {value}
                   </div>
-                  <div className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: T.textSubtle }}>
+                  <div className="text-[10px] md:text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: T.textSubtle }}>
                     {label}
                   </div>
                 </div>
@@ -408,7 +417,7 @@ export default function ProfileHeader() {
         </div>
 
         {!editing && (
-          <div className="mt-5 flex justify-center md:justify-start">
+          <div className="mt-4 md:mt-5 flex justify-center md:justify-start">
             <button
               type="button"
               onClick={() => setEditing(true)}
