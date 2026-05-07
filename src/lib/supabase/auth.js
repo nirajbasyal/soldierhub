@@ -102,16 +102,20 @@ export async function getCurrentUser() {
     };
   }
 
+  // Faster first paint: getSession reads the local Supabase session instead of
+  // making a full auth validation request before the profile query.
   const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession();
 
-  if (userError || !user) {
+  const user = session?.user || null;
+
+  if (sessionError || !user) {
     return {
       user: null,
       profile: null,
-      error: userError,
+      error: sessionError || null,
     };
   }
 
