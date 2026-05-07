@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import { T } from "@/lib/theme";
 import { useApp } from "@/store/AppContext";
-import useUnreadNotificationCount from "@/hooks/useUnreadNotificationCount";
 import Avatar from "@/components/ui/Avatar";
 import Button from "@/components/ui/Button";
 
@@ -34,8 +33,6 @@ export default function TopNav() {
   const displayEmail = safeUser?.email || safeUser?.personal_email || "";
   const firstName = displayName.split(" ")[0] || "Profile";
   const userStatus = safeUser?.status || safeUser?.verification_status || "pending";
-
-  const unreadCount = useUnreadNotificationCount(safeUser);
 
   const goProfile = () => {
     if (!safeUser) return setAuthModal("login");
@@ -151,15 +148,6 @@ export default function TopNav() {
                 aria-label="Open notifications"
               >
                 <Bell size={17} />
-
-                {unreadCount > 0 && (
-                  <span
-                    className="absolute -top-1 -right-1 min-w-[19px] h-[19px] rounded-full text-[10px] font-bold flex items-center justify-center px-1 ring-2 ring-white"
-                    style={{ backgroundColor: T.red, color: "#fff" }}
-                  >
-                    {unreadCount > 9 ? "9+" : unreadCount}
-                  </span>
-                )}
               </button>
 
               {safeUser.role === "admin" && (
