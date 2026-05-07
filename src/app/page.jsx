@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Inbox } from "lucide-react";
 import { CATEGORIES } from "@/lib/constants";
 import { T } from "@/lib/theme";
@@ -17,6 +17,22 @@ import BAHCard from "@/components/tools/BAHCard";
 import GateHoursCard from "@/components/tools/GateHoursCard";
 import SiteInfoCard from "@/components/tools/SiteInfoCard";
 
+const FEED_CACHE_KEY = "soldierhub_feed_cache_v1";
+
+function readCachedFeed() {
+  if (typeof window === "undefined") return [];
+
+  try {
+    const raw = window.localStorage.getItem(FEED_CACHE_KEY);
+    if (!raw) return [];
+
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed?.posts) ? parsed.posts : [];
+  } catch {
+    return [];
+  }
+}
+
 export default function HomePage() {
   const {
     posts,
@@ -27,33 +43,54 @@ export default function HomePage() {
     postsLoading,
   } = useApp();
 
+  const [cachedPosts, setCachedPosts] = useState(readCachedFeed);
+
+  useEffect(() => {
+    if (!posts.length || typeof window === "undefined") return;
+
+    const postsToCache = posts.slice(0, 30);
+    setCachedPosts(postsToCache);
+
+    try {
+      window.localStorage.setItem(
+        FEED_CACHE_KEY,
+        JSON.stringify({ savedAt: Date.now(), posts: postsToCache })
+      );
+    } catch {
+      // Browser storage can fail in private mode or when full. Feed still works normally.
+    }
+  }, [posts]);
+
+  const feedPosts = posts.length ? posts : cachedPosts;
+  const showInitialSkeleton = postsLoading && feedPosts.length === 0;
+
   const counts = useMemo(() => {
-    const c = { All: posts.length };
+    const c = { All: feedPosts.length };
 
     CATEGORIES.forEach((cat) => {
       if (cat.key !== "All") {
-        c[cat.key] = posts.filter((p) => p.category === cat.key).length;
+        c[cat.key] = feedPosts.filter((p) => p.category === cat.key).length;
       }
     });
 
     return c;
-  }, [posts]);
+  }, [feedPosts]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
 
-    return posts.filter((p) => {
+    return feedPosts.filter((p) => {
       if (category !== "All" && p.category !== category) return false;
 
       if (!q) return true;
 
       return (
-        p.title.toLowerCase().includes(q) ||
+        (p.title || "").toLowerCase().includes(q) ||
         (p.body || "").toLowerCase().includes(q) ||
         (p.author_name || "").toLowerCase().includes(q)
       );
     });
-  }, [posts, category, search]);
+  }, [feedPosts, category, search]);
 
   return (
     <AppShell>
@@ -65,7 +102,7 @@ export default function HomePage() {
               <MobileWeatherStrip />
             </div>
 
-            <FeedHero currentUser={currentUser} postCount={posts.length} />
+            <FeedHero currentUser={currentUser} postCount={feedPosts.length} />
 
             <PostComposer />
 
@@ -83,7 +120,7 @@ export default function HomePage() {
               />
             </div>
 
-            {postsLoading ? (
+            {showInitialSkeleton ? (
               <div className="flex flex-col gap-3">
                 <PostSkeleton />
                 <PostSkeleton />
