@@ -4,14 +4,15 @@ import { useEffect, useMemo, useState } from "react";
 import { CloudSun, Clock3, MapPin, Shirt } from "lucide-react";
 import { T } from "@/lib/theme";
 
-const WEATHER_CACHE_KEY = "soldierhub_fort_bliss_weather_v9";
+const WEATHER_CACHE_KEY = "soldierhub_fort_bliss_weather_v10";
 const OLD_WEATHER_CACHE_KEYS = [
   "soldierhub_fort_bliss_weather_v6",
   "soldierhub_fort_bliss_weather_v7",
   "soldierhub_fort_bliss_weather_v8",
+  "soldierhub_fort_bliss_weather_v9",
 ];
-const WEATHER_CACHE_MAX_AGE = 60 * 1000;          // refresh interval: 1 min
-const WEATHER_CACHE_STALE_AFTER = 10 * 60 * 1000; // hard expiry: 10 min
+const WEATHER_CACHE_MAX_AGE = 60 * 1000;
+const WEATHER_CACHE_STALE_AFTER = 10 * 60 * 1000;
 
 const PT_UNIFORM_RULES = [
   {
@@ -99,7 +100,7 @@ function getClientPtUniform(tempF, fallback) {
 
   const recommendations = [];
 
-  if (warmer && warmer.min - tempF <= 10) {
+  if (warmer) {
     recommendations.push({
       type: "warmer",
       label: `If phone or formation temp is ${warmer.min}°F or above`,
@@ -108,7 +109,7 @@ function getClientPtUniform(tempF, fallback) {
     });
   }
 
-  if (colder && tempF - colder.max <= 10) {
+  if (colder) {
     recommendations.push({
       type: "colder",
       label: `If phone or formation temp is ${colder.max}°F or lower`,
@@ -150,7 +151,6 @@ function getCachedWeather() {
 
     if (!parsed?.data || !parsed?.savedAt) return null;
 
-    // Don't trust cache older than the hard expiry window.
     if (Date.now() - parsed.savedAt > WEATHER_CACHE_STALE_AFTER) {
       window.localStorage.removeItem(WEATHER_CACHE_KEY);
       return null;
@@ -225,7 +225,6 @@ export default function MobileWeatherStrip() {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 7000);
 
-        // Cache-busting query param ensures no intermediate cache returns stale data.
         const res = await fetch(`/api/weather/fort-bliss?t=${Date.now()}`, {
           signal: controller.signal,
           cache: "no-store",
@@ -272,8 +271,6 @@ export default function MobileWeatherStrip() {
 
       setWeather(cachedWeatherWithMeta);
       setStatus("ready");
-
-      // Show saved weather instantly, then refresh silently right away.
       loadWeather({ silent: true });
     } else {
       loadWeather();
@@ -314,7 +311,6 @@ export default function MobileWeatherStrip() {
   };
 
   const ptUniform = getClientPtUniform(weather?.tempF, fallbackPtUniform);
-
   const recommendations = Array.isArray(ptUniform.recommendations)
     ? ptUniform.recommendations
     : [];
@@ -363,7 +359,6 @@ export default function MobileWeatherStrip() {
             </span>
 
             <span style={{ color: T.textSubtle }}>•</span>
-
             <span className="font-medium">{tempText}</span>
 
             {conditionText ? (
@@ -376,13 +371,9 @@ export default function MobileWeatherStrip() {
 
           <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
             <span style={{ color: T.textSubtle }}>{date}</span>
-
             <span style={{ color: T.textSubtle }}>•</span>
-
             <span style={{ color: T.textMuted }}>{checkedLabel}</span>
-
             <span style={{ color: T.textSubtle }}>•</span>
-
             <span style={{ color: T.textMuted }}>Weather by National Weather Service</span>
           </div>
         </div>
