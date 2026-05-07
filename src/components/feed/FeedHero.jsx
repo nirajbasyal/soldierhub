@@ -40,12 +40,12 @@ export default function FeedHero({ currentUser, postCount = 0 }) {
 
       <div className="relative grid md:grid-cols-[1fr_280px] gap-7 items-center">
         <div>
-          <div className="inline-flex items-center gap-2 rounded-2xl border border-white/45 bg-[#F8F7F4] px-3.5 py-2 text-sm font-semibold text-[#0B1C2C] shadow-sm mb-5">
-            <MapPin size={14} className="text-[#E8A020]" />
-            <span className="rounded-full bg-white px-2 py-0.5 text-xs font-extrabold uppercase tracking-[0.16em] text-[#3F5F7D] shadow-sm">
+          <div className="inline-flex items-center gap-2 rounded-2xl border border-[#F3C7D1]/70 bg-[#FDECF0]/95 px-3.5 py-2 text-sm font-semibold shadow-sm mb-5 backdrop-blur-md">
+            <MapPin size={14} className="text-[#B31942]" />
+            <span className="rounded-full bg-[#B31942] px-2 py-0.5 text-xs font-extrabold uppercase tracking-[0.16em] text-white shadow-sm">
               Fort Bliss
             </span>
-            <span className="text-xs font-bold uppercase tracking-[0.14em] text-[#6B7B8D]">
+            <span className="text-xs font-bold uppercase tracking-[0.14em] text-[#7A2338]">
               El Paso, TX
             </span>
           </div>
