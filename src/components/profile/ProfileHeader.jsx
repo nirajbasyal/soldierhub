@@ -81,6 +81,7 @@ export default function ProfileHeader() {
   const [bio, setBio] = useState(currentUser.bio || "");
   const [color, setColor] = useState(currentUser.avatar_color || "#1E4E8C");
 
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -114,7 +115,18 @@ export default function ProfileHeader() {
     setBio(currentUser.bio || "");
     setColor(currentUser.avatar_color || "#1E4E8C");
     resetPasswordForm();
+    setShowPasswordForm(false);
     setEditing(false);
+  };
+
+  const openPasswordForm = () => {
+    resetPasswordForm();
+    setShowPasswordForm(true);
+  };
+
+  const closePasswordForm = () => {
+    resetPasswordForm();
+    setShowPasswordForm(false);
   };
 
   const changePassword = async () => {
@@ -278,7 +290,7 @@ export default function ProfileHeader() {
                         Edit profile
                       </h2>
                       <p className="text-sm mt-1" style={{ color: T.textMuted }}>
-                        Update your display name, bio, avatar color, and password.
+                        Update your display name, bio, and avatar color.
                       </p>
                     </div>
 
@@ -300,40 +312,71 @@ export default function ProfileHeader() {
                     </div>
                   </div>
 
-                  <div
-                    className="mt-4 rounded-3xl border p-4"
-                    style={{
-                      background:
-                        "linear-gradient(135deg, rgba(244,248,253,0.96), rgba(255,255,255,0.96))",
-                      borderColor: "#D5E2F2",
-                    }}
-                  >
-                    <div className="flex items-start gap-3 mb-3">
-                      <div
-                        className="h-10 w-10 rounded-2xl flex items-center justify-center shrink-0"
-                        style={{ backgroundColor: "rgba(220,232,247,0.95)", color: T.blue }}
-                      >
-                        <KeyRound size={18} />
-                      </div>
-                      <div>
-                        <h3 className="text-base font-extrabold" style={{ color: T.navy }}>
-                          Change password
-                        </h3>
-                        <p className="text-xs leading-5 mt-0.5" style={{ color: T.textMuted }}>
-                          Enter your current password first, then choose a new password.
-                        </p>
-                      </div>
-                    </div>
+                  <div className="flex flex-col sm:flex-row gap-2 mt-4">
+                    <Button variant="primary" onClick={save} icon={Check}>
+                      Save profile changes
+                    </Button>
+                    <Button variant="ghost" onClick={cancel}>
+                      Cancel
+                    </Button>
+                  </div>
 
-                    <div className="grid gap-3">
-                      <TextInput
-                        label="Current password"
-                        type="password"
-                        value={currentPassword}
-                        onChange={(e) => setCurrentPassword(e.target.value)}
-                        autoComplete="current-password"
-                      />
-                      <div className="grid sm:grid-cols-2 gap-3">
+                  {!showPasswordForm ? (
+                    <button
+                      type="button"
+                      onClick={openPasswordForm}
+                      className="mt-4 inline-flex items-center gap-2 rounded-full px-1 py-1 text-sm font-bold transition hover:translate-x-0.5"
+                      style={{ color: "#B31942" }}
+                    >
+                      <KeyRound size={15} />
+                      Change current password
+                    </button>
+                  ) : (
+                    <div
+                      className="mt-4 rounded-3xl border p-4"
+                      style={{
+                        background:
+                          "linear-gradient(135deg, rgba(244,248,253,0.96), rgba(255,255,255,0.96))",
+                        borderColor: "#D5E2F2",
+                      }}
+                    >
+                      <div className="flex items-start justify-between gap-3 mb-3">
+                        <div className="flex items-start gap-3">
+                          <div
+                            className="h-10 w-10 rounded-2xl flex items-center justify-center shrink-0"
+                            style={{ backgroundColor: "rgba(220,232,247,0.95)", color: T.blue }}
+                          >
+                            <KeyRound size={18} />
+                          </div>
+                          <div>
+                            <h3 className="text-base font-extrabold" style={{ color: T.navy }}>
+                              Change password
+                            </h3>
+                            <p className="text-xs leading-5 mt-0.5" style={{ color: T.textMuted }}>
+                              Enter your current password first, then choose a new password.
+                            </p>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={closePasswordForm}
+                          className="h-8 w-8 rounded-full border flex items-center justify-center shrink-0"
+                          style={{ backgroundColor: T.card, borderColor: "#D5E2F2", color: T.textMuted }}
+                          aria-label="Close password form"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+
+                      <div className="grid gap-3">
+                        <TextInput
+                          label="Current password"
+                          type="password"
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                          autoComplete="current-password"
+                        />
                         <TextInput
                           label="New password"
                           type="password"
@@ -349,48 +392,42 @@ export default function ProfileHeader() {
                           autoComplete="new-password"
                         />
                       </div>
-                    </div>
 
-                    {passwordError && (
-                      <div
-                        className="text-xs px-3 py-2 rounded-2xl flex items-start gap-2 mt-3 border"
-                        style={{ backgroundColor: "rgba(253,236,240,0.95)", borderColor: "#F3C7D1", color: "#B31942" }}
-                      >
-                        <AlertTriangle size={14} className="shrink-0 mt-0.5" />
-                        {passwordError}
+                      {passwordError && (
+                        <div
+                          className="text-xs px-3 py-2 rounded-2xl flex items-start gap-2 mt-3 border"
+                          style={{ backgroundColor: "rgba(253,236,240,0.95)", borderColor: "#F3C7D1", color: "#B31942" }}
+                        >
+                          <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+                          {passwordError}
+                        </div>
+                      )}
+
+                      {passwordSuccess && (
+                        <div
+                          className="text-xs px-3 py-2 rounded-2xl flex items-start gap-2 mt-3 border"
+                          style={{ backgroundColor: "rgba(220,232,247,0.95)", borderColor: "#BCD0EA", color: T.blue }}
+                        >
+                          <Check size={14} className="shrink-0 mt-0.5" />
+                          {passwordSuccess}
+                        </div>
+                      )}
+
+                      <div className="mt-3 flex flex-col sm:flex-row gap-2">
+                        <Button
+                          variant="ghost"
+                          onClick={changePassword}
+                          icon={KeyRound}
+                          disabled={passwordSaving}
+                        >
+                          {passwordSaving ? "Updating password…" : "Update password"}
+                        </Button>
+                        <Button variant="ghost" onClick={closePasswordForm}>
+                          Cancel
+                        </Button>
                       </div>
-                    )}
-
-                    {passwordSuccess && (
-                      <div
-                        className="text-xs px-3 py-2 rounded-2xl flex items-start gap-2 mt-3 border"
-                        style={{ backgroundColor: "rgba(220,232,247,0.95)", borderColor: "#BCD0EA", color: T.blue }}
-                      >
-                        <Check size={14} className="shrink-0 mt-0.5" />
-                        {passwordSuccess}
-                      </div>
-                    )}
-
-                    <div className="mt-3 flex justify-start">
-                      <Button
-                        variant="ghost"
-                        onClick={changePassword}
-                        icon={KeyRound}
-                        disabled={passwordSaving}
-                      >
-                        {passwordSaving ? "Updating password…" : "Update password"}
-                      </Button>
                     </div>
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row gap-2 mt-4">
-                    <Button variant="primary" onClick={save} icon={Check}>
-                      Save profile changes
-                    </Button>
-                    <Button variant="ghost" onClick={cancel}>
-                      Cancel
-                    </Button>
-                  </div>
+                  )}
                 </div>
               )}
             </div>
