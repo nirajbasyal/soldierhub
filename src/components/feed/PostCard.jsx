@@ -2,14 +2,13 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowUp, Flag, Lock, MessageCircle, Send, Share2, ShieldAlert } from "lucide-react";
+import { ArrowUp, Lock, MessageCircle, MoreHorizontal, Send, Share2 } from "lucide-react";
 import { CATEGORIES } from "@/lib/constants";
 import { T } from "@/lib/theme";
 import { colorFromString, shareOrCopy } from "@/lib/helpers";
 import { moderateAsync } from "@/lib/moderation-client";
 import { useApp } from "@/store/AppContext";
 import Avatar from "@/components/ui/Avatar";
-import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import ExpandableText from "@/components/ui/ExpandableText";
 import ClientTimeAgo from "@/components/ui/ClientTimeAgo";
@@ -61,9 +60,7 @@ function getSafeCommentAuthor({ comment, post }) {
 }
 
 function ProfileIdentity({ href, name, color, size = 42, children }) {
-  if (!href) {
-    return children || <Avatar name={name} color={color} size={size} />;
-  }
+  if (!href) return children || <Avatar name={name} color={color} size={size} />;
 
   const isTextLink = Boolean(children);
 
@@ -84,22 +81,21 @@ function ProfileIdentity({ href, name, color, size = 42, children }) {
 
 function FeedActionButton({ icon: Icon, label, count, active = false, onClick }) {
   const countLabel = typeof count === "number" && count > 99 ? "99+" : count;
+
   return (
     <button
       type="button"
       onClick={onClick}
-      className="min-w-0 h-9 md:h-10 rounded-full text-xs md:text-sm font-semibold transition-all inline-flex items-center justify-center gap-1 md:gap-2 px-2 md:px-3 hover:-translate-y-0.5"
+      className="min-w-0 h-10 rounded-xl text-xs md:text-sm font-semibold transition-all inline-flex items-center justify-center gap-1.5 px-2 md:px-3 active:scale-[0.98]"
       style={{
-        color: active ? "#FFFFFF" : T.textMuted,
-        background: active ? "linear-gradient(135deg, #071B33 0%, #1E4E8C 100%)" : "rgba(255,255,255,0.76)",
-        border: `1px solid ${active ? "rgba(7,27,51,0.18)" : T.borderSoft}`,
-        boxShadow: active ? "0 8px 18px rgba(7,27,51,0.14)" : "none",
+        color: active ? T.blue : T.textMuted,
+        backgroundColor: active ? "rgba(63,95,125,0.12)" : "transparent",
       }}
     >
-      <Icon size={16} className="shrink-0 md:w-[17px] md:h-[17px]" strokeWidth={2.25} />
+      <Icon size={17} className="shrink-0" strokeWidth={active ? 2.8 : 2.25} />
       <span className="min-w-0 truncate">{label}</span>
       {typeof count === "number" && count > 0 ? (
-        <span className="shrink-0 min-w-[18px] h-[18px] md:min-w-[20px] md:h-5 px-1 rounded-full text-[10px] md:text-[11px] font-bold inline-flex items-center justify-center leading-none" style={{ backgroundColor: active ? "rgba(255,255,255,0.18)" : T.surface, color: active ? "#FFFFFF" : T.textSubtle }}>
+        <span className="shrink-0 text-[11px] font-bold leading-none" style={{ color: active ? T.blue : T.textSubtle }}>
           {countLabel}
         </span>
       ) : null}
@@ -123,6 +119,7 @@ export default function PostCard({ post }) {
   const [comment, setComment] = useState("");
   const [commentError, setCommentError] = useState("");
   const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const cat = CATEGORIES.find((c) => c.key === post.category) || CATEGORIES[0];
   const userUpvoted = Boolean(currentUser && myUpvotes.has(post.id));
@@ -146,12 +143,13 @@ export default function PostCard({ post }) {
   const replyAvatarColor = currentUserIsAnonymousPostAuthor ? "#5C6470" : currentUser?.avatar_color || colorFromString(currentUser?.full_name || "Member");
   const replyPlaceholder = currentUserIsAnonymousPostAuthor ? `Reply as ${anonymousDisplayName}…` : "Write a reply...";
 
-  const guard = (fn) => { if (requireAuth()) fn(); };
+  const guard = (fn) => {
+    if (requireAuth()) fn();
+  };
 
   const toggleComments = async () => {
     const next = !showComments;
     setShowComments(next);
-
     if (!next) return;
 
     setCommentsLoading(true);
@@ -162,11 +160,18 @@ export default function PostCard({ post }) {
     }
   };
 
+  const handleReport = async () => {
+    setMenuOpen(false);
+    if (!requireAuth()) return;
+    await reportPost(post.id);
+  };
+
   const submitComment = async () => {
     if (commentSubmitting) return;
     setCommentError("");
     const cleanedComment = comment.trim();
     if (!cleanedComment) return;
+
     setCommentSubmitting(true);
     try {
       const mod = await moderateAsync(cleanedComment);
@@ -189,15 +194,11 @@ export default function PostCard({ post }) {
   };
 
   return (
-    <article className="group overflow-hidden rounded-[18px] border shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg" style={{ backgroundColor: T.card, borderColor: T.border }}>
-      <div className="h-1.5 w-full bg-gradient-to-r from-[#B31942] via-[#FDFEFF] to-[#1E4E8C]" />
-      <div className="px-4 md:px-6 pt-4 pb-3">
+    <article className="group overflow-visible rounded-none border-x-0 border-t border-b-0 shadow-none transition-colors duration-200 md:border-x md:first:rounded-t-[18px] md:last:rounded-b-[18px]" style={{ backgroundColor: T.card, borderColor: T.border }}>
+      <div className="px-4 md:px-5 pt-4 pb-2.5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3 min-w-0 flex-1">
-            <div className="relative shrink-0">
-              <ProfileIdentity href={authorProfileHref} name={displayName} color={displayColor} size={42} />
-              <div className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2" style={{ backgroundColor: T.green, borderColor: T.card }} />
-            </div>
+            <ProfileIdentity href={authorProfileHref} name={displayName} color={displayColor} size={42} />
             <div className="min-w-0 flex-1">
               <ProfileIdentity href={authorProfileHref} name={displayName} color={displayColor}>
                 <div className="text-[15px] font-bold leading-tight truncate hover:underline" style={{ color: T.text }}>{displayName}</div>
@@ -206,29 +207,39 @@ export default function PostCard({ post }) {
                 {post.anonymous && <><span className="inline-flex items-center gap-1"><Lock size={10} strokeWidth={2.5} />anonymous</span><span>·</span></>}
                 <ClientTimeAgo date={post.created_at} />
                 {post.edited && <><span>·</span><span>edited</span></>}
+                {cat?.label && cat.key !== "All" ? <><span>·</span><span>{cat.label}</span></> : null}
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
-            <Badge tone={cat.tone}>{cat.label}</Badge>
-            {isReported && <Badge tone="red" icon={ShieldAlert}>Under review</Badge>}
+
+          <div className="relative shrink-0" onBlur={() => setTimeout(() => setMenuOpen(false), 120)}>
+            <button type="button" onClick={() => setMenuOpen((open) => !open)} className="h-9 w-9 rounded-full inline-flex items-center justify-center transition-all active:scale-95" style={{ color: T.textSubtle, backgroundColor: menuOpen ? T.surface : "transparent" }} aria-label="Post options" aria-expanded={menuOpen}>
+              <MoreHorizontal size={20} strokeWidth={2.4} />
+            </button>
+
+            {menuOpen ? (
+              <div className="absolute right-0 top-10 z-30 w-44 overflow-hidden rounded-2xl border shadow-lg" style={{ backgroundColor: T.card, borderColor: T.border, boxShadow: "0 16px 35px rgba(11,28,44,0.14)" }}>
+                <button type="button" onClick={handleReport} className="w-full px-4 py-3 text-left text-sm font-semibold transition-colors" style={{ color: userReported ? T.textSubtle : T.text }}>
+                  {userReported ? "Reported" : "Report post"}
+                </button>
+              </div>
+            ) : null}
           </div>
         </div>
 
-        <div className="mt-4">
-          {post.title ? <h3 className="text-[20px] md:text-[23px] leading-snug font-bold tracking-[-0.015em]" style={{ color: T.text }}>{post.title}</h3> : null}
-          {post.body ? <div className={post.title ? "mt-2.5" : ""}><ExpandableText text={post.body || ""} previewLength={POST_PREVIEW_LENGTH} className="text-[14px] md:text-[15px] leading-7 whitespace-pre-wrap max-w-none" style={{ color: T.text }} buttonSize="sm" /></div> : null}
+        <div className="mt-3.5">
+          {post.title ? <h3 className="text-[18px] md:text-[21px] leading-snug font-bold tracking-[-0.015em]" style={{ color: T.text }}>{post.title}</h3> : null}
+          {post.body ? <div className={post.title ? "mt-2" : ""}><ExpandableText text={post.body || ""} previewLength={POST_PREVIEW_LENGTH} className="text-[14px] md:text-[15px] leading-7 whitespace-pre-wrap max-w-none" style={{ color: T.text }} buttonSize="sm" /></div> : null}
         </div>
 
-        <div className="mt-4 rounded-[18px] border p-1 flex items-center gap-1" style={{ backgroundColor: T.surface, borderColor: T.borderSoft }}>
-          <div className="grid grid-cols-3 gap-1 flex-1 min-w-0">
+        {isReported ? <div className="mt-2.5 text-[11px] leading-4 font-medium" style={{ color: T.textSubtle }}>Reported to admins for review.</div> : null}
+
+        <div className="mt-3 border-t pt-1" style={{ borderColor: T.borderSoft }}>
+          <div className="grid grid-cols-3 gap-1">
             <FeedActionButton icon={ArrowUp} label="Upvote" count={upvoteCount} active={userUpvoted} onClick={() => guard(() => upvotePost(post.id))} />
             <FeedActionButton icon={MessageCircle} label="Reply" count={commentCount} active={showComments} onClick={toggleComments} />
             <FeedActionButton icon={Share2} label="Share" onClick={() => shareOrCopy(post, pushToast)} />
           </div>
-          <button type="button" onClick={() => guard(() => reportPost(post.id))} className="w-9 h-9 md:w-10 md:h-10 rounded-full inline-flex items-center justify-center transition-all shrink-0 hover:-translate-y-0.5" style={{ color: userReported ? T.red : T.textMuted, backgroundColor: userReported ? T.redBg : "rgba(255,255,255,0.76)", border: `1px solid ${userReported ? T.redBg : T.borderSoft}` }} aria-label={userReported ? "Reported" : "Report"}>
-            <Flag size={17} strokeWidth={2.2} />
-          </button>
         </div>
       </div>
 
@@ -237,11 +248,7 @@ export default function PostCard({ post }) {
           <div className="flex flex-col gap-3">
             {commentsLoading && <LoadingReplies />}
 
-            {!commentsLoading && comments.length === 0 && (
-              <div className="text-sm text-center py-2" style={{ color: T.textSubtle }}>
-                No comments yet. Start the conversation.
-              </div>
-            )}
+            {!commentsLoading && comments.length === 0 && <div className="text-sm text-center py-2" style={{ color: T.textSubtle }}>No comments yet. Start the conversation.</div>}
 
             {!commentsLoading && comments.map((c) => {
               const safeAuthor = getSafeCommentAuthor({ comment: c, post });
@@ -252,16 +259,14 @@ export default function PostCard({ post }) {
                   <ProfileIdentity href={commentHref} name={safeAuthor.name} color={safeAuthor.color} size={32} />
                   <div className="flex-1 rounded-2xl px-3.5 py-2.5" style={{ backgroundColor: T.card }}>
                     <ProfileIdentity href={commentHref} name={safeAuthor.name} color={safeAuthor.color}>
-                      <div className="text-[13px] font-bold hover:underline inline-flex items-center gap-1" style={{ color: T.text }}>
-                        {safeAuthor.anonymous && <Lock size={11} />}
-                        {safeAuthor.name}
-                      </div>
+                      <div className="text-[13px] font-bold hover:underline inline-flex items-center gap-1" style={{ color: T.text }}>{safeAuthor.anonymous && <Lock size={11} />}{safeAuthor.name}</div>
                     </ProfileIdentity>
                     <ExpandableText text={text} previewLength={COMMENT_PREVIEW_LENGTH} className="text-sm leading-6 whitespace-pre-wrap mt-1" style={{ color: T.textMuted }} buttonSize="xs" />
                   </div>
                 </div>
               );
             })}
+
             <div className="flex gap-2.5 pt-1">
               <Avatar name={replyAvatarName} color={replyAvatarColor} size={32} />
               <div className="flex-1 min-w-0">
