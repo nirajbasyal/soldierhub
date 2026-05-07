@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { T } from "@/lib/theme";
 import { useApp } from "@/store/AppContext";
+import useUnreadNotificationCount from "@/hooks/useUnreadNotificationCount";
 import Avatar from "@/components/ui/Avatar";
 import Button from "@/components/ui/Button";
 
@@ -21,12 +22,13 @@ export default function TopNav() {
 
   const {
     currentUser,
-    unreadCount,
     search,
     setSearch,
     setAuthModal,
     setMobileMenu,
   } = useApp();
+
+  const unreadCount = useUnreadNotificationCount(currentUser);
 
   const goProfile = () => {
     if (!currentUser) return setAuthModal("login");
