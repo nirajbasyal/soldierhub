@@ -4,13 +4,16 @@ import { useEffect, useMemo, useState } from "react";
 import { CloudSun, Clock3, MapPin, Shirt } from "lucide-react";
 import { T } from "@/lib/theme";
 
-const WEATHER_CACHE_KEY = "soldierhub_fort_bliss_weather_v10";
+const WEATHER_CACHE_KEY = "soldierhub_fort_bliss_weather_v12";
 const OLD_WEATHER_CACHE_KEYS = [
   "soldierhub_fort_bliss_weather_v6",
   "soldierhub_fort_bliss_weather_v7",
   "soldierhub_fort_bliss_weather_v8",
   "soldierhub_fort_bliss_weather_v9",
+  "soldierhub_fort_bliss_weather_v10",
+  "soldierhub_fort_bliss_weather_v11",
 ];
+
 const WEATHER_CACHE_MAX_AGE = 60 * 1000;
 const WEATHER_CACHE_STALE_AFTER = 10 * 60 * 1000;
 
@@ -81,12 +84,10 @@ function getPtUniformRule(tempF) {
   );
 }
 
-function getClientPtUniform(tempF, fallback) {
+function getPtGuidance(tempF, fallback) {
   const current = getPtUniformRule(tempF);
 
-  if (!current) {
-    return fallback;
-  }
+  if (!current) return fallback;
 
   const currentIndex = PT_UNIFORM_RULES.findIndex(
     (rule) => rule.key === current.key
@@ -103,7 +104,7 @@ function getClientPtUniform(tempF, fallback) {
   if (warmer) {
     recommendations.push({
       type: "warmer",
-      label: `If phone or formation temp is ${warmer.min}°F or above`,
+      label: `${warmer.min}°F or above`,
       title: warmer.title,
       detail: warmer.detail,
     });
@@ -112,7 +113,7 @@ function getClientPtUniform(tempF, fallback) {
   if (colder) {
     recommendations.push({
       type: "colder",
-      label: `If phone or formation temp is ${colder.max}°F or lower`,
+      label: `${colder.max}°F or lower`,
       title: colder.title,
       detail: colder.detail,
     });
@@ -148,7 +149,6 @@ function getCachedWeather() {
     if (!cached) return null;
 
     const parsed = JSON.parse(cached);
-
     if (!parsed?.data || !parsed?.savedAt) return null;
 
     if (Date.now() - parsed.savedAt > WEATHER_CACHE_STALE_AFTER) {
@@ -168,10 +168,7 @@ function saveWeatherToCache(data) {
 
     window.localStorage.setItem(
       WEATHER_CACHE_KEY,
-      JSON.stringify({
-        data,
-        savedAt: Date.now(),
-      })
+      JSON.stringify({ data, savedAt: Date.now() })
     );
   } catch {
     // Ignore localStorage errors.
@@ -180,15 +177,12 @@ function saveWeatherToCache(data) {
 
 function getCheckedLabel(weather) {
   const checkedAt = weather?.checkedAt;
-
   if (!checkedAt) return "Checking now";
 
   const checkedTime = new Date(checkedAt).getTime();
-
   if (!Number.isFinite(checkedTime)) return "Checking now";
 
-  const diffMs = Date.now() - checkedTime;
-  const diffSeconds = Math.max(0, Math.floor(diffMs / 1000));
+  const diffSeconds = Math.max(0, Math.floor((Date.now() - checkedTime) / 1000));
   const diffMinutes = Math.floor(diffSeconds / 60);
 
   if (diffSeconds < 20) return "Updated just now";
@@ -205,11 +199,9 @@ export default function MobileWeatherStrip() {
 
   useEffect(() => {
     const updateTime = () => setNow(new Date());
-
     updateTime();
 
     const timer = setInterval(updateTime, 30 * 1000);
-
     return () => clearInterval(timer);
   }, []);
 
@@ -218,9 +210,7 @@ export default function MobileWeatherStrip() {
 
     async function loadWeather({ silent = false } = {}) {
       try {
-        if (!silent && !weather) {
-          setStatus("loading");
-        }
+        if (!silent && !weather) setStatus("loading");
 
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 7000);
@@ -232,12 +222,9 @@ export default function MobileWeatherStrip() {
 
         clearTimeout(timeout);
 
-        if (!res.ok) {
-          throw new Error("Weather request failed");
-        }
+        if (!res.ok) throw new Error("Weather request failed");
 
         const data = await res.json();
-
         const weatherWithMeta = {
           ...data,
           checkedAt: new Date().toISOString(),
@@ -262,14 +249,12 @@ export default function MobileWeatherStrip() {
     const cached = getCachedWeather();
 
     if (cached?.data) {
-      const cachedWeatherWithMeta = {
+      setWeather({
         ...cached.data,
         checkedAt: cached.data.checkedAt || new Date(cached.savedAt).toISOString(),
         sourceName: cached.data.sourceName || "NWS",
         sourceLabel: cached.data.sourceLabel || "Weather.gov",
-      };
-
-      setWeather(cachedWeatherWithMeta);
+      });
       setStatus("ready");
       loadWeather({ silent: true });
     } else {
@@ -310,7 +295,7 @@ export default function MobileWeatherStrip() {
     recommendations: [],
   };
 
-  const ptUniform = getClientPtUniform(weather?.tempF, fallbackPtUniform);
+  const ptUniform = getPtGuidance(weather?.tempF, fallbackPtUniform);
   const recommendations = Array.isArray(ptUniform.recommendations)
     ? ptUniform.recommendations
     : [];
@@ -318,10 +303,7 @@ export default function MobileWeatherStrip() {
   return (
     <div
       className="rounded-2xl border p-4"
-      style={{
-        backgroundColor: T.card,
-        borderColor: T.border,
-      }}
+      style={{ backgroundColor: T.card, borderColor: T.border }}
     >
       <div className="flex items-start gap-3">
         <div
@@ -333,26 +315,17 @@ export default function MobileWeatherStrip() {
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <span
-              className="text-lg font-semibold leading-none"
-              style={{ color: T.navy }}
-            >
+            <span className="text-lg font-semibold leading-none" style={{ color: T.navy }}>
               Fort Bliss
             </span>
 
-            <span
-              className="inline-flex items-center gap-1 text-sm"
-              style={{ color: T.textSubtle }}
-            >
+            <span className="inline-flex items-center gap-1 text-sm" style={{ color: T.textSubtle }}>
               <MapPin size={13} />
               El Paso, TX
             </span>
           </div>
 
-          <div
-            className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm"
-            style={{ color: T.text }}
-          >
+          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm" style={{ color: T.text }}>
             <span className="inline-flex items-center gap-1 font-medium tabular-nums">
               <Clock3 size={13} />
               {time}
@@ -399,48 +372,45 @@ export default function MobileWeatherStrip() {
           </div>
 
           <div className="min-w-0 flex-1">
-            <div
-              className="text-[11px] font-semibold uppercase tracking-[0.12em]"
-              style={{ color: T.blue }}
-            >
-              {ptUniform.label || "Current PT Uniform"}
-            </div>
+            <div className="rounded-2xl border bg-white/90 p-3 shadow-sm" style={{ borderColor: "rgba(232,160,32,0.55)" }}>
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.12em]" style={{ color: T.blue }}>
+                  {ptUniform.label || "Current PT Uniform"}
+                </div>
 
-            <div
-              className="mt-0.5 text-base font-semibold leading-snug"
-              style={{ color: T.navy }}
-            >
-              {ptUniform.title}
-            </div>
+                <span
+                  className="rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em]"
+                  style={{ backgroundColor: T.goldBg, color: T.gold }}
+                >
+                  Recommended now
+                </span>
+              </div>
 
-            <div
-              className="mt-1 text-sm leading-relaxed"
-              style={{ color: T.textMuted }}
-            >
-              {ptUniform.detail}
+              <div className="mt-1 text-lg font-bold leading-snug" style={{ color: T.navy }}>
+                {ptUniform.title}
+              </div>
+
+              <div className="mt-1 text-sm font-medium leading-relaxed" style={{ color: T.text }}>
+                {ptUniform.detail}
+              </div>
             </div>
 
             {recommendations.length > 0 ? (
               <div className="mt-3 space-y-2 border-t pt-3" style={{ borderColor: "rgba(63,95,125,0.18)" }}>
-                <div
-                  className="text-[10px] font-semibold uppercase tracking-[0.12em]"
-                  style={{ color: T.blue }}
-                >
-                  Phone weather check
+                <div className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: T.blue }}>
+                  Note
+                </div>
+
+                <div className="text-xs leading-relaxed" style={{ color: T.textMuted }}>
+                  If the temperature used for PT is near another range, use the matching uniform below.
                 </div>
 
                 {recommendations.map((item) => (
-                  <div key={`${item.type}-${item.title}`}>
-                    <div
-                      className="text-[10px] font-semibold uppercase tracking-[0.12em]"
-                      style={{ color: T.textSubtle }}
-                    >
+                  <div key={`${item.type}-${item.title}`} className="rounded-xl bg-white/55 px-3 py-2">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: T.textSubtle }}>
                       {item.label}
                     </div>
-                    <div
-                      className="mt-0.5 text-sm font-semibold leading-snug"
-                      style={{ color: T.navy }}
-                    >
+                    <div className="mt-0.5 text-sm font-semibold leading-snug" style={{ color: T.navy }}>
                       {item.title}
                     </div>
                     <div className="mt-0.5 text-xs leading-relaxed" style={{ color: T.textMuted }}>
