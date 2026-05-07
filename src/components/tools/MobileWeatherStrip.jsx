@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CloudSun, Clock3, MapPin, Shirt } from "lucide-react";
 import { T } from "@/lib/theme";
 
-const WEATHER_CACHE_KEY = "soldierhub_fort_bliss_weather_v20";
+const WEATHER_CACHE_KEY = "soldierhub_fort_bliss_weather_v21";
 const OLD_WEATHER_CACHE_KEYS = [
   "soldierhub_fort_bliss_weather_v6",
   "soldierhub_fort_bliss_weather_v7",
@@ -20,52 +20,22 @@ const OLD_WEATHER_CACHE_KEYS = [
   "soldierhub_fort_bliss_weather_v17",
   "soldierhub_fort_bliss_weather_v18",
   "soldierhub_fort_bliss_weather_v19",
+  "soldierhub_fort_bliss_weather_v20",
 ];
 
 const WEATHER_CACHE_MAX_AGE = 60 * 1000;
 const WEATHER_CACHE_STALE_AFTER = 10 * 60 * 1000;
 
 const PT_UNIFORM_RULES = [
-  {
-    key: "summer-apfu",
-    min: 61,
-    max: Infinity,
-    title: "Summer APFU",
-    detail: "Short sleeve + shorts",
-  },
-  {
-    key: "long-sleeve-shorts",
-    min: 50,
-    max: 60,
-    title: "Long sleeve + shorts",
-    detail: "Long sleeve shirt + shorts",
-  },
-  {
-    key: "jacket-shorts",
-    min: 40,
-    max: 49,
-    title: "Jacket + shorts",
-    detail: "Jacket + shorts",
-  },
-  {
-    key: "jacket-pants",
-    min: 33,
-    max: 39,
-    title: "Jacket + pants",
-    detail: "Jacket + pants",
-  },
-  {
-    key: "jacket-pants-cold-accessories",
-    min: -Infinity,
-    max: 32,
-    title: "Jacket + pants + cold gear",
-    detail: "Jacket, pants, gloves + fleece cap",
-  },
+  { key: "summer-apfu", min: 61, max: Infinity, title: "Summer APFU", detail: "Short sleeve + shorts" },
+  { key: "long-sleeve-shorts", min: 50, max: 60, title: "Long sleeve + shorts", detail: "Long sleeve shirt + shorts" },
+  { key: "jacket-shorts", min: 40, max: 49, title: "Jacket + shorts", detail: "Jacket + shorts" },
+  { key: "jacket-pants", min: 33, max: 39, title: "Jacket + pants", detail: "Jacket + pants" },
+  { key: "jacket-pants-cold-accessories", min: -Infinity, max: 32, title: "Jacket + pants + cold gear", detail: "Jacket, pants, gloves + fleece cap" },
 ];
 
 function formatElPasoTime(date) {
   if (!date) return "--:--";
-
   return new Intl.DateTimeFormat("en-US", {
     timeZone: "America/Denver",
     hour: "numeric",
@@ -75,7 +45,6 @@ function formatElPasoTime(date) {
 
 function formatElPasoDate(date) {
   if (!date) return "";
-
   return new Intl.DateTimeFormat("en-US", {
     timeZone: "America/Denver",
     weekday: "short",
@@ -86,61 +55,34 @@ function formatElPasoDate(date) {
 
 function getPtUniformRule(tempF) {
   if (typeof tempF !== "number") return null;
-
-  return PT_UNIFORM_RULES.find(
-    (rule) => tempF >= rule.min && tempF <= rule.max
-  );
+  return PT_UNIFORM_RULES.find((rule) => tempF >= rule.min && tempF <= rule.max);
 }
 
 function getPtGuidance(tempF, fallback) {
   const current = getPtUniformRule(tempF);
   if (!current) return fallback;
 
-  const currentIndex = PT_UNIFORM_RULES.findIndex(
-    (rule) => rule.key === current.key
-  );
-
+  const currentIndex = PT_UNIFORM_RULES.findIndex((rule) => rule.key === current.key);
   const warmer = currentIndex > 0 ? PT_UNIFORM_RULES[currentIndex - 1] : null;
-  const colder =
-    currentIndex >= 0 && currentIndex < PT_UNIFORM_RULES.length - 1
-      ? PT_UNIFORM_RULES[currentIndex + 1]
-      : null;
+  const colder = currentIndex >= 0 && currentIndex < PT_UNIFORM_RULES.length - 1 ? PT_UNIFORM_RULES[currentIndex + 1] : null;
 
   const recommendations = [];
 
   if (warmer) {
-    recommendations.push({
-      type: "warmer",
-      label: `${warmer.min}°F or warmer`,
-      title: warmer.title,
-      detail: warmer.detail,
-    });
+    recommendations.push({ type: "warmer", label: `${warmer.min}°F or warmer`, title: warmer.title, detail: warmer.detail });
   }
 
   if (colder) {
-    recommendations.push({
-      type: "colder",
-      label: `${colder.max}°F or colder`,
-      title: colder.title,
-      detail: colder.detail,
-    });
+    recommendations.push({ type: "colder", label: `${colder.max}°F or colder`, title: colder.title, detail: colder.detail });
   }
 
-  return {
-    label: "Current PT Uniform",
-    title: current.title,
-    detail: current.detail,
-    recommendations,
-  };
+  return { label: "Current PT Uniform", title: current.title, detail: current.detail, recommendations };
 }
 
 function clearOldWeatherCache() {
   try {
     if (typeof window === "undefined") return;
-
-    OLD_WEATHER_CACHE_KEYS.forEach((key) => {
-      window.localStorage.removeItem(key);
-    });
+    OLD_WEATHER_CACHE_KEYS.forEach((key) => window.localStorage.removeItem(key));
   } catch {
     // Ignore localStorage errors.
   }
@@ -149,7 +91,6 @@ function clearOldWeatherCache() {
 function getCachedWeather() {
   try {
     if (typeof window === "undefined") return null;
-
     clearOldWeatherCache();
 
     const cached = window.localStorage.getItem(WEATHER_CACHE_KEY);
@@ -172,11 +113,7 @@ function getCachedWeather() {
 function saveWeatherToCache(data) {
   try {
     if (typeof window === "undefined") return;
-
-    window.localStorage.setItem(
-      WEATHER_CACHE_KEY,
-      JSON.stringify({ data, savedAt: Date.now() })
-    );
+    window.localStorage.setItem(WEATHER_CACHE_KEY, JSON.stringify({ data, savedAt: Date.now() }));
   } catch {
     // Ignore localStorage errors.
   }
@@ -195,7 +132,6 @@ function getCheckedLabel(weather) {
   if (diffSeconds < 20) return "Updated now";
   if (diffSeconds < 60) return `Updated ${diffSeconds}s ago`;
   if (diffMinutes === 1) return "Updated 1 min ago";
-
   return `Updated ${diffMinutes} min ago`;
 }
 
@@ -207,7 +143,6 @@ export default function MobileWeatherStrip() {
   useEffect(() => {
     const updateTime = () => setNow(new Date());
     updateTime();
-
     const timer = setInterval(updateTime, 30 * 1000);
     return () => clearInterval(timer);
   }, []);
@@ -243,11 +178,7 @@ export default function MobileWeatherStrip() {
           saveWeatherToCache(weatherWithMeta);
         }
       } catch {
-        if (alive) {
-          setStatus((currentStatus) =>
-            currentStatus === "ready" ? "ready" : "error"
-          );
-        }
+        if (alive) setStatus((currentStatus) => (currentStatus === "ready" ? "ready" : "error"));
       }
     }
 
@@ -265,10 +196,7 @@ export default function MobileWeatherStrip() {
       loadWeather();
     }
 
-    const refreshTimer = setInterval(() => {
-      loadWeather({ silent: true });
-    }, WEATHER_CACHE_MAX_AGE);
-
+    const refreshTimer = setInterval(() => loadWeather({ silent: true }), WEATHER_CACHE_MAX_AGE);
     return () => {
       alive = false;
       clearInterval(refreshTimer);
@@ -279,30 +207,18 @@ export default function MobileWeatherStrip() {
   const date = useMemo(() => formatElPasoDate(now), [now]);
   const checkedLabel = useMemo(() => getCheckedLabel(weather), [weather, now]);
 
-  const tempText =
-    typeof weather?.tempF === "number"
-      ? `${weather.tempF}°F`
-      : status === "error"
-      ? "Weather unavailable"
-      : "Checking weather";
-
-  const conditionText =
-    weather?.condition && status !== "error" ? weather.condition : "";
+  const tempText = typeof weather?.tempF === "number" ? `${weather.tempF}°F` : status === "error" ? "Weather unavailable" : "Checking weather";
+  const conditionText = weather?.condition && status !== "error" ? weather.condition : "";
 
   const fallbackPtUniform = weather?.ptUniform || {
     label: "Current PT Uniform",
     title: status === "error" ? "PT Uniform" : "Checking PT guidance",
-    detail:
-      status === "error"
-        ? "Weather unavailable — follow local guidance."
-        : "Loading current Fort Bliss temperature.",
+    detail: status === "error" ? "Weather unavailable — follow local guidance." : "Loading current Fort Bliss temperature.",
     recommendations: [],
   };
 
   const ptUniform = getPtGuidance(weather?.tempF, fallbackPtUniform);
-  const recommendations = Array.isArray(ptUniform.recommendations)
-    ? ptUniform.recommendations
-    : [];
+  const recommendations = Array.isArray(ptUniform.recommendations) ? ptUniform.recommendations : [];
 
   return (
     <div className="rounded-2xl border p-3" style={{ backgroundColor: T.card, borderColor: T.border }}>
@@ -340,16 +256,18 @@ export default function MobileWeatherStrip() {
             <span style={{ color: T.textSubtle }}>•</span>
             <span style={{ color: T.textMuted }}>{checkedLabel}</span>
             <span style={{ color: T.textSubtle }}>•</span>
-            <span style={{ color: T.textMuted }}>Powered by</span>
-            <a
-              href="https://www.weather.gov/epz/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-semibold underline underline-offset-2"
-              style={{ color: T.blue }}
-            >
-              National Weather Service
-            </a>
+            <span className="inline-flex shrink-0 whitespace-nowrap items-center gap-1">
+              <span style={{ color: T.textMuted }}>Powered by</span>
+              <a
+                href="https://www.weather.gov/epz/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold underline underline-offset-2"
+                style={{ color: T.blue }}
+              >
+                National Weather Service
+              </a>
+            </span>
           </div>
         </div>
       </div>
