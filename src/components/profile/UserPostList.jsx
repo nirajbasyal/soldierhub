@@ -12,7 +12,57 @@ function getProfilePostCacheKey(userId) {
   return `${PROFILE_POST_CACHE_PREFIX}${userId || "guest"}`;
 }
 
-function readCachedProfilePosts(userId) {
+function getPostId(post) {
+  return post?.id || post?.post_id || post?.postId || post?.post?.id || null;
+}
+
+function normalizeProfilePost(post, currentUser) {
+  const id = getPostId(post);
+
+  return {
+    ...post,
+    id,
+    post_id: post?.post_id || id,
+    author_id:
+      post?.author_id ||
+      post?.user_id ||
+      post?.profile_id ||
+      post?.created_by ||
+      post?.author_user_id ||
+      currentUser?.id ||
+      null,
+    author_name:
+      post?.author_name ||
+      post?.author_name_cached ||
+      post?.full_name ||
+      post?.profile_full_name ||
+      currentUser?.full_name ||
+      "Member",
+    author_color:
+      post?.author_color ||
+      post?.author_color_cached ||
+      post?.avatar_color ||
+      post?.profile_avatar_color ||
+      currentUser?.avatar_color ||
+      "#314A66",
+    viewer_is_author: true,
+  };
+}
+
+function dedupePosts(posts, currentUser) {
+  const seen = new Set();
+
+  return (posts || [])
+    .map((post) => normalizeProfilePost(post, currentUser))
+    .filter((post) => {
+      if (!post.id || seen.has(post.id)) return false;
+      seen.add(post.id);
+      return true;
+    })
+    .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+}
+
+function readCachedProfilePosts(userId, currentUser) {
   if (typeof window === "undefined" || !userId) return [];
 
   try {
@@ -20,7 +70,7 @@ function readCachedProfilePosts(userId) {
     if (!raw) return [];
 
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed?.posts) ? parsed.posts : [];
+    return dedupePosts(Array.isArray(parsed?.posts) ? parsed.posts : [], currentUser);
   } catch {
     return [];
   }
@@ -43,30 +93,32 @@ function postBelongsToCurrentUser(post, currentUser) {
   if (!post || !currentUser?.id) return false;
 
   return (
+    post.viewer_is_author === true ||
     post.author_id === currentUser.id ||
     post.user_id === currentUser.id ||
     post.profile_id === currentUser.id ||
-    post.viewer_is_author === true
+    post.created_by === currentUser.id ||
+    post.author_user_id === currentUser.id
   );
 }
 
 export default function UserPostList() {
-  const {
-    currentUser,
-    posts = [],
-    myPosts: userPosts = [],
-  } = useApp();
-
+  const { currentUser, posts = [], myPosts: userPosts = [] } = useApp();
   const [cachedProfilePosts, setCachedProfilePosts] = useState([]);
 
   useEffect(() => {
-    setCachedProfilePosts(readCachedProfilePosts(currentUser?.id));
+    setCachedProfilePosts(readCachedProfilePosts(currentUser?.id, currentUser));
   }, [currentUser?.id]);
 
   const liveProfilePosts = useMemo(() => {
-    if (userPosts.length > 0) return userPosts;
+    if (!currentUser?.id) return [];
 
-    return posts.filter((post) => postBelongsToCurrentUser(post, currentUser));
+    const combined = [
+      ...(Array.isArray(userPosts) ? userPosts : []),
+      ...(Array.isArray(posts) ? posts.filter((post) => postBelongsToCurrentUser(post, currentUser)) : []),
+    ];
+
+    return dedupePosts(combined, currentUser);
   }, [currentUser, posts, userPosts]);
 
   useEffect(() => {
@@ -118,7 +170,7 @@ export default function UserPostList() {
         )}
 
         {visiblePosts.map((post) => (
-          <PostCard key={post.id} post={{ ...post, viewer_is_author: true }} />
+          <PostCard key={post.id} post={post} />
         ))}
       </div>
     </section>
