@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CloudSun, Clock3, MapPin, Shirt } from "lucide-react";
 import { T } from "@/lib/theme";
 
-const WEATHER_CACHE_KEY = "soldierhub_fort_bliss_weather_v15";
+const WEATHER_CACHE_KEY = "soldierhub_fort_bliss_weather_v20";
 const OLD_WEATHER_CACHE_KEYS = [
   "soldierhub_fort_bliss_weather_v6",
   "soldierhub_fort_bliss_weather_v7",
@@ -15,6 +15,11 @@ const OLD_WEATHER_CACHE_KEYS = [
   "soldierhub_fort_bliss_weather_v12",
   "soldierhub_fort_bliss_weather_v13",
   "soldierhub_fort_bliss_weather_v14",
+  "soldierhub_fort_bliss_weather_v15",
+  "soldierhub_fort_bliss_weather_v16",
+  "soldierhub_fort_bliss_weather_v17",
+  "soldierhub_fort_bliss_weather_v18",
+  "soldierhub_fort_bliss_weather_v19",
 ];
 
 const WEATHER_CACHE_MAX_AGE = 60 * 1000;
@@ -216,12 +221,10 @@ export default function MobileWeatherStrip() {
 
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 7000);
-
         const res = await fetch(`/api/weather/fort-bliss?t=${Date.now()}`, {
           signal: controller.signal,
           cache: "no-store",
         });
-
         clearTimeout(timeout);
 
         if (!res.ok) throw new Error("Weather request failed");
@@ -249,7 +252,6 @@ export default function MobileWeatherStrip() {
     }
 
     const cached = getCachedWeather();
-
     if (cached?.data) {
       setWeather({
         ...cached.data,
@@ -303,15 +305,9 @@ export default function MobileWeatherStrip() {
     : [];
 
   return (
-    <div
-      className="rounded-2xl border p-3"
-      style={{ backgroundColor: T.card, borderColor: T.border }}
-    >
+    <div className="rounded-2xl border p-3" style={{ backgroundColor: T.card, borderColor: T.border }}>
       <div className="flex items-start gap-2.5">
-        <div
-          className="h-9 w-9 rounded-full flex items-center justify-center shrink-0"
-          style={{ backgroundColor: T.goldBg }}
-        >
+        <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: T.goldBg }}>
           <CloudSun size={18} style={{ color: T.gold }} strokeWidth={2.1} />
         </div>
 
@@ -320,17 +316,14 @@ export default function MobileWeatherStrip() {
             <span className="text-base font-semibold leading-none" style={{ color: T.navy }}>
               Fort Bliss
             </span>
-
             <span className="inline-flex items-center gap-1 text-xs" style={{ color: T.textSubtle }}>
-              <MapPin size={12} />
-              El Paso, TX
+              <MapPin size={12} /> El Paso, TX
             </span>
           </div>
 
           <div className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs" style={{ color: T.text }}>
             <span className="inline-flex items-center gap-1 font-medium tabular-nums">
-              <Clock3 size={12} />
-              {time}
+              <Clock3 size={12} /> {time}
             </span>
             <span style={{ color: T.textSubtle }}>•</span>
             <span className="font-semibold">{tempText}</span>
@@ -347,12 +340,13 @@ export default function MobileWeatherStrip() {
             <span style={{ color: T.textSubtle }}>•</span>
             <span style={{ color: T.textMuted }}>{checkedLabel}</span>
             <span style={{ color: T.textSubtle }}>•</span>
+            <span style={{ color: T.textMuted }}>Powered by</span>
             <a
               href="https://www.weather.gov/epz/"
               target="_blank"
               rel="noopener noreferrer"
-              className="font-medium underline underline-offset-2"
-              style={{ color: T.textMuted }}
+              className="font-semibold underline underline-offset-2"
+              style={{ color: T.blue }}
             >
               National Weather Service
             </a>
@@ -363,8 +357,7 @@ export default function MobileWeatherStrip() {
       <div
         className="mt-3 rounded-xl border px-2.5 py-2 relative overflow-hidden"
         style={{
-          background:
-            "linear-gradient(135deg, rgba(220,232,247,0.9) 0%, rgba(255,255,255,0.94) 60%, rgba(253,236,240,0.75) 100%)",
+          background: "linear-gradient(135deg, rgba(220,232,247,0.9) 0%, rgba(255,255,255,0.94) 60%, rgba(253,236,240,0.75) 100%)",
           borderColor: "#BCD0EA",
         }}
       >
@@ -372,10 +365,7 @@ export default function MobileWeatherStrip() {
         <div className="absolute right-0 top-0 h-full w-1 bg-[#1E4E8C]" />
 
         <div className="flex items-start gap-2 pl-1.5">
-          <div
-            className="mt-0.5 shrink-0 h-7 w-7 rounded-lg flex items-center justify-center"
-            style={{ backgroundColor: "rgba(7,27,51,0.08)" }}
-          >
+          <div className="mt-0.5 shrink-0 h-7 w-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: "rgba(7,27,51,0.08)" }}>
             <Shirt size={14} style={{ color: T.navy }} strokeWidth={2.2} />
           </div>
 
@@ -385,10 +375,7 @@ export default function MobileWeatherStrip() {
                 <div className="text-[10px] font-semibold uppercase tracking-[0.11em]" style={{ color: T.blue }}>
                   Current PT Uniform
                 </div>
-                <span
-                  className="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em]"
-                  style={{ backgroundColor: T.goldBg, color: T.gold }}
-                >
+                <span className="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em]" style={{ backgroundColor: T.goldBg, color: T.gold }}>
                   Now
                 </span>
               </div>
