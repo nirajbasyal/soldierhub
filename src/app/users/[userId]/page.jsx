@@ -14,6 +14,48 @@ import Button from "@/components/ui/Button";
 import VisitorPostList from "@/components/profile/VisitorPostList";
 import { getPublicProfile, listPublicPostsByAuthor } from "@/lib/db/visitorProfiles";
 
+const VISITOR_PROFILE_CACHE_PREFIX = "soldierhub_visitor_profile_cache_";
+
+function getVisitorProfileCacheKey(userId) {
+  return `${VISITOR_PROFILE_CACHE_PREFIX}${userId || "unknown"}`;
+}
+
+function readCachedVisitorProfile(userId) {
+  if (typeof window === "undefined" || !userId) {
+    return { profile: null, posts: [] };
+  }
+
+  try {
+    const raw = window.localStorage.getItem(getVisitorProfileCacheKey(userId));
+    if (!raw) return { profile: null, posts: [] };
+
+    const parsed = JSON.parse(raw);
+    return {
+      profile: parsed?.profile || null,
+      posts: Array.isArray(parsed?.posts) ? parsed.posts : [],
+    };
+  } catch {
+    return { profile: null, posts: [] };
+  }
+}
+
+function saveCachedVisitorProfile(userId, profile, posts) {
+  if (typeof window === "undefined" || !userId || !profile) return;
+
+  try {
+    window.localStorage.setItem(
+      getVisitorProfileCacheKey(userId),
+      JSON.stringify({
+        savedAt: Date.now(),
+        profile,
+        posts: Array.isArray(posts) ? posts.slice(0, 50) : [],
+      })
+    );
+  } catch {
+    // Browser storage can fail in private mode or when full. Live loading still works normally.
+  }
+}
+
 function VisitorStatusCard({ icon: Icon, title, body, action }) {
   return (
     <AppShell hideNav>
@@ -52,33 +94,56 @@ export default function VisitorProfilePage() {
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
+    if (!userId) return;
+
+    const cached = readCachedVisitorProfile(userId);
+    if (cached.profile) {
+      setProfile(cached.profile);
+      setPosts(cached.posts);
+      setLoading(false);
+      setNotFound(false);
+    }
+  }, [userId]);
+
+  useEffect(() => {
     let cancelled = false;
 
     async function loadVisitorProfile() {
       if (!userId) return;
 
-      setLoading(true);
+      const cached = readCachedVisitorProfile(userId);
+      const hasCachedProfile = Boolean(cached.profile);
+
+      if (!hasCachedProfile) {
+        setLoading(true);
+      }
       setNotFound(false);
 
-      const profileResult = await getPublicProfile(userId);
+      const [profileResult, postsResult] = await Promise.all([
+        getPublicProfile(userId),
+        listPublicPostsByAuthor(userId),
+      ]);
 
       if (cancelled) return;
 
       if (profileResult.error || !profileResult.data) {
-        setProfile(null);
-        setPosts([]);
-        setNotFound(true);
+        if (!hasCachedProfile) {
+          setProfile(null);
+          setPosts([]);
+          setNotFound(true);
+        }
         setLoading(false);
         return;
       }
 
-      const postsResult = await listPublicPostsByAuthor(userId);
+      const freshProfile = profileResult.data;
+      const freshPosts = postsResult.data || [];
 
-      if (cancelled) return;
-
-      setProfile(profileResult.data);
-      setPosts(postsResult.data || []);
+      setProfile(freshProfile);
+      setPosts(freshPosts);
+      setNotFound(false);
       setLoading(false);
+      saveCachedVisitorProfile(userId, freshProfile, freshPosts);
     }
 
     loadVisitorProfile();
@@ -105,7 +170,7 @@ export default function VisitorProfilePage() {
     );
   }, [posts]);
 
-  if (loading || authLoading) {
+  if (loading && !profile) {
     return <VisitorStatusCard icon={UserRound} title="Loading profile" body="Getting this member profile ready." />;
   }
 
@@ -129,49 +194,49 @@ export default function VisitorProfilePage() {
             Back to feed
           </Link>
 
-          <section className="mt-6 rounded-[32px] border overflow-hidden relative" style={{ borderColor: "#BCD0EA", background: "linear-gradient(135deg, rgba(220,232,247,0.96) 0%, rgba(253,254,255,0.98) 52%, rgba(253,236,240,0.9) 100%)", boxShadow: "0 22px 60px rgba(7,27,51,0.08)" }}>
-            <div className="absolute left-0 top-0 h-full w-2 bg-[#B31942]" />
-            <div className="absolute right-0 top-0 h-full w-2 bg-[#1E4E8C]" />
+          <section className="mt-6 rounded-[26px] md:rounded-[32px] border overflow-hidden relative" style={{ borderColor: "#BCD0EA", background: "linear-gradient(135deg, rgba(220,232,247,0.96) 0%, rgba(253,254,255,0.98) 52%, rgba(253,236,240,0.9) 100%)", boxShadow: "0 22px 60px rgba(7,27,51,0.08)" }}>
+            <div className="absolute left-0 top-0 h-full w-1.5 md:w-2 bg-[#B31942]" />
+            <div className="absolute right-0 top-0 h-full w-1.5 md:w-2 bg-[#1E4E8C]" />
 
-            <div className="p-6 md:p-8">
-              <div className="flex flex-col lg:flex-row gap-6 lg:items-start lg:justify-between">
-                <div className="flex flex-col md:flex-row gap-5 md:items-start min-w-0">
-                  <div className="rounded-[28px] p-2 border shrink-0 mx-auto md:mx-0" style={{ backgroundColor: "rgba(255,255,255,0.65)", borderColor: "#D5E2F2" }}>
-                    <Avatar name={profile.full_name} color={profile.avatar_color} src={profile.avatar_url} size={92} />
+            <div className="px-4 py-5 md:p-8">
+              <div className="flex flex-col lg:flex-row gap-4 md:gap-6 lg:items-start lg:justify-between">
+                <div className="flex flex-col md:flex-row gap-3 md:gap-5 md:items-start min-w-0">
+                  <div className="rounded-[22px] md:rounded-[28px] p-1.5 md:p-2 border shrink-0 mx-auto md:mx-0" style={{ backgroundColor: "rgba(255,255,255,0.65)", borderColor: "#D5E2F2" }}>
+                    <div className="md:hidden">
+                      <Avatar name={profile.full_name} color={profile.avatar_color} src={profile.avatar_url} size={68} />
+                    </div>
+                    <div className="hidden md:block">
+                      <Avatar name={profile.full_name} color={profile.avatar_color} src={profile.avatar_url} size={92} />
+                    </div>
                   </div>
 
                   <div className="flex-1 min-w-0 text-center md:text-left">
-                    <div className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold uppercase tracking-[0.12em]" style={{ backgroundColor: "rgba(255,255,255,0.72)", borderColor: "#D5E2F2", color: T.blue }}>
-                      <UserRound size={14} />
+                    <div className="inline-flex items-center gap-1.5 md:gap-2 rounded-full border px-2.5 md:px-3 py-1 md:py-1.5 text-[10px] md:text-xs font-bold uppercase tracking-[0.12em]" style={{ backgroundColor: "rgba(255,255,255,0.72)", borderColor: "#D5E2F2", color: T.blue }}>
+                      <UserRound size={13} />
                       Member Profile
                     </div>
 
-                    <div className="mt-4 flex items-center justify-center md:justify-start gap-2 flex-wrap">
-                      <h1 className="text-4xl md:text-5xl font-extrabold tracking-[-0.04em] leading-[0.95]" style={{ color: T.navy }}>{profile.full_name || "SoldierHub member"}</h1>
+                    <div className="mt-3 md:mt-4 flex items-center justify-center md:justify-start gap-2 flex-wrap">
+                      <h1 className="text-[2rem] sm:text-4xl md:text-5xl font-extrabold tracking-[-0.04em] leading-[0.95]" style={{ color: T.navy }}>{profile.full_name || "SoldierHub member"}</h1>
                       <Badge tone="blue" icon={ShieldCheck}>Verified</Badge>
                     </div>
 
-                    <div className="mt-3 max-w-xl mx-auto md:mx-0">
+                    <div className="mt-2 md:mt-3 max-w-xl mx-auto md:mx-0">
                       {profile.bio ? (
-                        <p className="text-[15px] md:text-base leading-7" style={{ color: T.text }}>{profile.bio}</p>
+                        <p className="text-sm md:text-base leading-6 md:leading-7" style={{ color: T.text }}>{profile.bio}</p>
                       ) : (
-                        <p className="text-[15px] md:text-base leading-7" style={{ color: T.textMuted }}>This member has not added a bio yet.</p>
+                        <p className="text-sm md:text-base leading-6 md:leading-7" style={{ color: T.textMuted }}>This member has not added a bio yet.</p>
                       )}
                     </div>
 
-                    <div className="mt-4 grid sm:grid-cols-2 gap-2 max-w-xl mx-auto md:mx-0">
-                      <div className="rounded-2xl border px-3 py-2 flex items-start gap-2 min-w-0" style={{ backgroundColor: "rgba(255,255,255,0.72)", borderColor: "#D5E2F2" }}>
-                        <CalendarDays size={15} className="mt-0.5 shrink-0" style={{ color: T.blue }} />
-                        <div>
-                          <div className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: T.textSubtle }}>Joined</div>
-                          <div className="text-sm font-semibold" style={{ color: T.navy }}>{formatJoinDate(profile.created_at)}</div>
+                    <div className="mt-3 md:mt-4 max-w-xl mx-auto md:mx-0">
+                      <div className="rounded-2xl border px-3 py-2.5 flex items-center gap-2.5 min-w-0" style={{ backgroundColor: "rgba(255,255,255,0.76)", borderColor: "#D5E2F2" }}>
+                        <div className="h-8 w-8 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: "rgba(220,232,247,0.92)", color: T.blue }}>
+                          <CalendarDays size={15} />
                         </div>
-                      </div>
-                      <div className="rounded-2xl border px-3 py-2 flex items-start gap-2 min-w-0" style={{ backgroundColor: "rgba(255,255,255,0.72)", borderColor: "#D5E2F2" }}>
-                        <ShieldCheck size={15} className="mt-0.5 shrink-0" style={{ color: T.blue }} />
-                        <div>
-                          <div className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: T.textSubtle }}>Status</div>
-                          <div className="text-sm font-semibold" style={{ color: T.navy }}>Verified community member</div>
+                        <div className="min-w-0 text-left">
+                          <div className="text-[10px] md:text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: T.textSubtle }}>Joined</div>
+                          <div className="text-xs md:text-sm font-semibold truncate" style={{ color: T.navy }}>{formatJoinDate(profile.created_at)}</div>
                         </div>
                       </div>
                     </div>
@@ -180,9 +245,9 @@ export default function VisitorProfilePage() {
 
                 <div className="grid grid-cols-3 lg:grid-cols-1 gap-2 lg:min-w-[150px]">
                   {[["Posts", posts.length], ["Upvotes", totals.upvotes], ["Replies", totals.replies]].map(([label, value]) => (
-                    <div key={label} className="rounded-2xl border p-3 text-center lg:text-left" style={{ backgroundColor: "rgba(255,255,255,0.72)", borderColor: "#D5E2F2" }}>
-                      <div className="text-2xl font-extrabold tabular-nums" style={{ color: T.navy }}>{value}</div>
-                      <div className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: T.textSubtle }}>{label}</div>
+                    <div key={label} className="rounded-2xl border px-2 py-2.5 md:p-3 text-center lg:text-left" style={{ backgroundColor: "rgba(255,255,255,0.72)", borderColor: "#D5E2F2" }}>
+                      <div className="text-xl md:text-2xl font-extrabold tabular-nums" style={{ color: T.navy }}>{value}</div>
+                      <div className="text-[10px] md:text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: T.textSubtle }}>{label}</div>
                     </div>
                   ))}
                 </div>
