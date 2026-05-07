@@ -3,8 +3,19 @@
 import { createClient } from "@/lib/supabase/client";
 
 function normalizePostRow(row = {}) {
+  const postId = row.id || row.post_id || row.postId || row.post?.id || null;
+
   return {
     ...row,
+    id: postId,
+    post_id: row.post_id || postId,
+    author_id:
+      row.author_id ||
+      row.user_id ||
+      row.profile_id ||
+      row.created_by ||
+      row.author_user_id ||
+      null,
     author_name:
       row.author_name ||
       row.author_name_cached ||
