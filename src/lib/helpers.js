@@ -32,10 +32,10 @@ export function colorFromString(str) {
 export function shareOrCopy(post, onToast) {
   if (typeof window === "undefined") return;
   const url = `${window.location.origin}/post/${post.id}`;
-  const data = { title: post.title, text: post.body?.slice(0, 100), url };
+  const data = { title: "SoldierHub", url };
   if (navigator.share) {
     navigator.share(data)
-      .then(() => onToast("Post shared successfully", "success"))
+      .then(() => onToast("Post link shared", "success"))
       .catch(() => onToast("Share canceled", "info"));
   } else if (navigator.clipboard) {
     navigator.clipboard.writeText(url)
