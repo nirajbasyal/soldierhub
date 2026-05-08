@@ -146,9 +146,31 @@ export async function createPost({
   };
 }
 
-export async function updateMyPost(postId, updates) {
+export async function updateMyPost(postId, updates = {}) {
   const supabase = createClient();
   if (!supabase) return { data: null, error: null };
+
+  const resolvedPostId =
+    typeof postId === "object" ? postId?.id || postId?.post_id : postId;
+
+  if (!resolvedPostId) {
+    return {
+      data: null,
+      error: { message: "Post was not identified. Please refresh and try again." },
+    };
+  }
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    return {
+      data: null,
+      error: { message: "Please log in again before editing your post." },
+    };
+  }
 
   const allowed = {
     title: updates.title,
@@ -157,18 +179,39 @@ export async function updateMyPost(postId, updates) {
     edited: true,
   };
 
-  Object.keys(allowed).forEach((k) => {
-    if (allowed[k] === undefined) delete allowed[k];
+  Object.keys(allowed).forEach((key) => {
+    if (allowed[key] === undefined) delete allowed[key];
   });
 
-  const { data, error } = await supabase
+  const { error, count } = await supabase
     .from("posts")
-    .update(allowed)
-    .eq("id", postId)
-    .select()
-    .single();
+    .update(allowed, { count: "exact" })
+    .eq("id", resolvedPostId)
+    .eq("author_id", user.id);
 
-  return { data, error };
+  if (error) {
+    return { data: null, error };
+  }
+
+  if (count === 0) {
+    return {
+      data: null,
+      error: {
+        message:
+          "Post was not updated. This post may not belong to your account, or the update policy is missing in Supabase.",
+      },
+    };
+  }
+
+  return {
+    data: {
+      id: resolvedPostId,
+      post_id: resolvedPostId,
+      author_id: user.id,
+      ...allowed,
+    },
+    error: null,
+  };
 }
 
 export async function deletePost(postId) {
