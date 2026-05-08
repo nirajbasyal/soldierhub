@@ -3,15 +3,14 @@
 import { createClient } from "@/lib/supabase/client";
 
 function normalizePostRow(row = {}) {
-  // Some Supabase views can return both `id` and `post_id`.
-  // Always prefer the real post id first so edit/delete actions target posts.id,
-  // not a joined profile/user id from the view.
-  const postId = row.post_id || row.postId || row.post?.id || row.id || null;
+  // IMPORTANT: `id` must be the real public.posts.id.
+  // Upvotes, reports, comments, edit, and delete all target public.posts.id.
+  const postId = row.id || row.post_id || row.postId || row.post?.id || null;
 
   return {
     ...row,
     id: postId,
-    post_id: row.post_id || postId,
+    post_id: postId,
     author_id:
       row.author_id ||
       row.user_id ||
@@ -34,6 +33,16 @@ function normalizePostRow(row = {}) {
     upvote_count: row.upvote_count ?? row.upvotes_count ?? 0,
     comment_count: row.comment_count ?? row.comments_count ?? row.reply_count ?? 0,
   };
+}
+
+function resolvePostId(input) {
+  if (!input) return null;
+
+  if (typeof input === "object") {
+    return input.id || input.post_id || input.postId || input.post?.id || null;
+  }
+
+  return input;
 }
 
 async function listPostsFromView(supabase, limit) {
@@ -129,12 +138,9 @@ export async function listMyPosts(userId, { limit = 30 } = {}) {
 
   if (!userId) return { data: [], error: null };
 
-  // Prefer the real posts table for the profile list. This avoids bugs where a
-  // helper view uses different aliases and the profile page appears empty.
   const tableResult = await listMyPostsFromTable(supabase, userId, limit);
   if (!tableResult.error) return tableResult;
 
-  // Fallback for projects where direct posts SELECT is blocked but the view is allowed.
   return listMyPostsFromView(supabase, userId, limit);
 }
 
@@ -166,17 +172,26 @@ export async function createPost({
   const payload = { author_id, category, title, body, anonymous };
   if (id) payload.id = id;
 
-  const { error } = await supabase.from("posts").insert([payload]);
+  const { data, error } = await supabase
+    .from("posts")
+    .insert([payload])
+    .select(
+      "id, author_id, category, title, body, anonymous, status, edited, created_at, updated_at"
+    )
+    .maybeSingle();
+
   if (error) return { data: null, error };
 
   return {
-    data: normalizePostRow({
-      ...payload,
-      created_at: new Date().toISOString(),
-      status: "active",
-      upvote_count: 0,
-      comment_count: 0,
-    }),
+    data: normalizePostRow(
+      data || {
+        ...payload,
+        created_at: new Date().toISOString(),
+        status: "active",
+        upvote_count: 0,
+        comment_count: 0,
+      }
+    ),
     error: null,
   };
 }
@@ -185,8 +200,7 @@ export async function updateMyPost(postId, updates = {}) {
   const supabase = createClient();
   if (!supabase) return { data: null, error: null };
 
-  const resolvedPostId =
-    typeof postId === "object" ? postId?.post_id || postId?.id : postId;
+  const resolvedPostId = resolvePostId(postId);
 
   if (!resolvedPostId) {
     return {
@@ -233,7 +247,7 @@ export async function updateMyPost(postId, updates = {}) {
       data: null,
       error: {
         message:
-          "Post was not updated. This post may not belong to your account, or the post id coming from the feed view does not match posts.id.",
+          "Post was not updated. This post may not belong to your account, or the post id coming from the UI does not match posts.id.",
       },
     };
   }
@@ -253,8 +267,7 @@ export async function deletePost(postId) {
   const supabase = createClient();
   if (!supabase) return { data: null, error: null, deleted: false };
 
-  const resolvedPostId =
-    typeof postId === "object" ? postId?.post_id || postId?.id : postId;
+  const resolvedPostId = resolvePostId(postId);
 
   if (!resolvedPostId) {
     return {
@@ -309,8 +322,7 @@ export async function restoreReportedPost(postId) {
   const supabase = createClient();
   if (!supabase) return { error: null };
 
-  const resolvedPostId =
-    typeof postId === "object" ? postId?.post_id || postId?.id : postId;
+  const resolvedPostId = resolvePostId(postId);
 
   const { data, error } = await supabase.rpc("restore_reported_post", {
     p_post_id: resolvedPostId,
@@ -335,8 +347,7 @@ export async function addUpvote(postId, userId) {
   const supabase = createClient();
   if (!supabase) return { error: null };
 
-  const resolvedPostId =
-    typeof postId === "object" ? postId?.post_id || postId?.id : postId;
+  const resolvedPostId = resolvePostId(postId);
 
   return supabase
     .from("upvotes")
@@ -347,8 +358,7 @@ export async function removeUpvote(postId, userId) {
   const supabase = createClient();
   if (!supabase) return { error: null };
 
-  const resolvedPostId =
-    typeof postId === "object" ? postId?.post_id || postId?.id : postId;
+  const resolvedPostId = resolvePostId(postId);
 
   return supabase
     .from("upvotes")
@@ -391,8 +401,7 @@ export async function reportPost(postId, userId, reason = "") {
   const supabase = createClient();
   if (!supabase) return { data: null, error: null };
 
-  const resolvedPostId =
-    typeof postId === "object" ? postId?.post_id || postId?.id : postId;
+  const resolvedPostId = resolvePostId(postId);
 
   if (userId) {
     const { data, error } = await supabase
