@@ -6,6 +6,7 @@ function normalizePostRow(row = {}) {
   // IMPORTANT: `id` must be the real public.posts.id.
   // Upvotes, reports, comments, edit, and delete all target public.posts.id.
   const postId = row.id || row.post_id || row.postId || row.post?.id || null;
+  const profile = row.profile || row.profiles || row.author || null;
 
   return {
     ...row,
@@ -17,18 +18,21 @@ function normalizePostRow(row = {}) {
       row.profile_id ||
       row.created_by ||
       row.author_user_id ||
+      profile?.id ||
       null,
     author_name:
       row.author_name ||
       row.author_name_cached ||
       row.full_name ||
       row.profile_full_name ||
+      profile?.full_name ||
       "Member",
     author_color:
       row.author_color ||
       row.author_color_cached ||
       row.avatar_color ||
       row.profile_avatar_color ||
+      profile?.avatar_color ||
       "#314A66",
     upvote_count: row.upvote_count ?? row.upvotes_count ?? 0,
     comment_count: row.comment_count ?? row.comments_count ?? row.reply_count ?? 0,
@@ -49,6 +53,21 @@ async function listPostsFromView(supabase, limit) {
   const result = await supabase
     .from("posts_with_meta")
     .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  return {
+    data: (result.data || []).map(normalizePostRow),
+    error: result.error,
+  };
+}
+
+async function listPostsFromTable(supabase, limit) {
+  const result = await supabase
+    .from("posts")
+    .select(
+      "id, author_id, category, title, body, anonymous, status, edited, created_at, updated_at"
+    )
     .order("created_at", { ascending: false })
     .limit(limit);
 
@@ -90,14 +109,23 @@ export async function listPosts({ limit = 30 } = {}) {
   const viewResult = await listPostsFromView(supabase, limit);
   if (!viewResult.error && viewResult.data.length > 0) return viewResult;
 
+  const tableResult = await listPostsFromTable(supabase, limit);
+  if (!tableResult.error && tableResult.data.length > 0) return tableResult;
+
   const rpcResult = await listPostsFromRpc(supabase, limit);
   if (!rpcResult.error && rpcResult.data.length > 0) return rpcResult;
 
-  if (!viewResult.error && !rpcResult.error) return { data: [], error: null };
+  if (!viewResult.error && !tableResult.error && !rpcResult.error) {
+    return { data: [], error: null };
+  }
 
   return {
-    data: viewResult.data.length ? viewResult.data : rpcResult.data,
-    error: viewResult.error || rpcResult.error,
+    data: viewResult.data.length
+      ? viewResult.data
+      : tableResult.data.length
+        ? tableResult.data
+        : rpcResult.data,
+    error: viewResult.error || tableResult.error || rpcResult.error,
   };
 }
 
