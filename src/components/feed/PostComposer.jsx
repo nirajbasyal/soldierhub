@@ -20,16 +20,8 @@ import Button from "@/components/ui/Button";
 const SAFETY_MESSAGE =
   "This content may violate SoldierHub community safety rules. Please revise it and try again.";
 
-function createDraftPostId() {
-  if (typeof crypto !== "undefined" && crypto.randomUUID) {
-    return crypto.randomUUID();
-  }
-
-  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-function getAnonymousDisplayName(postId) {
-  const source = String(postId || "anonymous");
+function getAnonymousDisplayName(seed) {
+  const source = String(seed || "anonymous");
   let total = 0;
 
   for (let i = 0; i < source.length; i += 1) {
@@ -49,7 +41,6 @@ export default function PostComposer() {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [anonymous, setAnonymous] = useState(false);
-  const [draftPostId, setDraftPostId] = useState(() => createDraftPostId());
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -90,7 +81,6 @@ export default function PostComposer() {
     setTitle("");
     setBody("");
     setAnonymous(false);
-    setDraftPostId(createDraftPostId());
     setError("");
     setOpen(false);
   };
@@ -118,7 +108,6 @@ export default function PostComposer() {
       }
 
       const result = await createPost({
-        id: draftPostId,
         title: cleanedTitle,
         body: cleanedBody,
         category,
@@ -225,7 +214,7 @@ export default function PostComposer() {
   }
 
   const composerDisplayName = anonymous
-    ? getAnonymousDisplayName(draftPostId)
+    ? getAnonymousDisplayName(currentUser.id)
     : currentUser.full_name;
 
   const composerDisplayColor = anonymous ? "#5C6470" : currentUser.avatar_color;
