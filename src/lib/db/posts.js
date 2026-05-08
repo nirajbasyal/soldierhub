@@ -49,6 +49,28 @@ function resolvePostId(input) {
   return input;
 }
 
+async function attachProfilesToPosts(supabase, rows = []) {
+  if (!Array.isArray(rows) || rows.length === 0) return [];
+
+  const authorIds = [...new Set(rows.map((row) => row.author_id).filter(Boolean))];
+
+  if (authorIds.length === 0) return rows.map(normalizePostRow);
+
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, full_name, avatar_color")
+    .in("id", authorIds);
+
+  const profileById = new Map((profiles || []).map((profile) => [profile.id, profile]));
+
+  return rows.map((row) =>
+    normalizePostRow({
+      ...row,
+      profile: profileById.get(row.author_id) || null,
+    })
+  );
+}
+
 async function listPostsFromView(supabase, limit) {
   const result = await supabase
     .from("posts_with_meta")
@@ -72,7 +94,7 @@ async function listPostsFromTable(supabase, limit) {
     .limit(limit);
 
   return {
-    data: (result.data || []).map(normalizePostRow),
+    data: await attachProfilesToPosts(supabase, result.data || []),
     error: result.error,
   };
 }
@@ -140,7 +162,7 @@ async function listMyPostsFromTable(supabase, userId, limit) {
     .limit(limit);
 
   return {
-    data: (result.data || []).map(normalizePostRow),
+    data: await attachProfilesToPosts(supabase, result.data || []),
     error: result.error,
   };
 }
@@ -210,16 +232,18 @@ export async function createPost({
 
   if (error) return { data: null, error };
 
+  const normalized = await attachProfilesToPosts(supabase, [
+    data || {
+      ...payload,
+      created_at: new Date().toISOString(),
+      status: "active",
+      upvote_count: 0,
+      comment_count: 0,
+    },
+  ]);
+
   return {
-    data: normalizePostRow(
-      data || {
-        ...payload,
-        created_at: new Date().toISOString(),
-        status: "active",
-        upvote_count: 0,
-        comment_count: 0,
-      }
-    ),
+    data: normalized[0] || null,
     error: null,
   };
 }
@@ -313,17 +337,6 @@ export async function deletePost(postId) {
     return { data: { id: resolvedPostId }, error: null, deleted: true };
   }
 
-  if (!rpcResult.error && rpcResult.data !== true) {
-    return {
-      data: null,
-      error: {
-        message:
-          "Post was not deleted. This account is not matching the original post owner.",
-      },
-      deleted: false,
-    };
-  }
-
   const { data, error } = await supabase
     .from("posts")
     .delete()
@@ -337,7 +350,7 @@ export async function deletePost(postId) {
       data: null,
       error: {
         message:
-          "Post was not deleted. Please add the delete_own_post SQL function in Supabase.",
+          "Post was not deleted. This account is not matching the original post owner, or the delete policy is missing in Supabase.",
       },
       deleted: false,
     };
