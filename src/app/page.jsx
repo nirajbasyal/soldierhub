@@ -19,6 +19,20 @@ import SiteInfoCard from "@/components/tools/SiteInfoCard";
 
 const FEED_CACHE_KEY = "soldierhub_feed_cache_v1";
 
+function getRealPostId(post) {
+  return post?.post_id || post?.postId || post?.post?.id || post?.id || null;
+}
+
+function normalizeFeedPostForCard(post) {
+  const postId = getRealPostId(post);
+
+  return {
+    ...post,
+    id: postId,
+    post_id: post?.post_id || postId,
+  };
+}
+
 function readCachedFeed() {
   if (typeof window === "undefined") return [];
 
@@ -48,7 +62,7 @@ export default function HomePage() {
   useEffect(() => {
     if (!posts.length || typeof window === "undefined") return;
 
-    const postsToCache = posts.slice(0, 30);
+    const postsToCache = posts.slice(0, 30).map(normalizeFeedPostForCard);
     setCachedPosts(postsToCache);
 
     try {
@@ -61,7 +75,11 @@ export default function HomePage() {
     }
   }, [posts]);
 
-  const feedPosts = posts.length ? posts : cachedPosts;
+  const feedPosts = useMemo(() => {
+    const source = posts.length ? posts : cachedPosts;
+    return source.map(normalizeFeedPostForCard);
+  }, [posts, cachedPosts]);
+
   const showInitialSkeleton = postsLoading && feedPosts.length === 0;
 
   const counts = useMemo(() => {
@@ -143,9 +161,10 @@ export default function HomePage() {
               </div>
             ) : (
               <div className="-mx-4 md:mx-0 flex flex-col gap-2.5 sh-feed-post-list">
-                {filtered.map((post) => (
-                  <PostCard key={post.id} post={post} />
-                ))}
+                {filtered.map((post) => {
+                  const normalizedPost = normalizeFeedPostForCard(post);
+                  return <PostCard key={normalizedPost.id} post={normalizedPost} />;
+                })}
               </div>
             )}
           </div>
