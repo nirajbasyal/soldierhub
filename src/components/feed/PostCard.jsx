@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ArrowBigUp,
   Edit3,
+  Flag,
   Lock,
   MessageCircle,
   MoreHorizontal,
@@ -26,7 +27,7 @@ import EditPostModal from "@/components/profile/EditPostModal";
 const COMMENT_CACHE_PREFIX = "soldierhub_comments_cache_";
 
 function getPostId(post) {
-  return post?.id || post?.post_id || post?.postId || post?.post?.id || null;
+  return post?.post_id || post?.postId || post?.post?.id || post?.id || null;
 }
 
 function getCommentCacheKey(postId) {
@@ -89,7 +90,8 @@ function getSafeCommentAuthor({ comment, post }) {
   const postAuthorId = post?.author_id || post?.user_id || post?.profile_id || null;
   const isAnonymousPostAuthorComment =
     post?.anonymous &&
-    (comment?.is_anonymous_author === true || (authorId && postAuthorId && authorId === postAuthorId));
+    (comment?.is_anonymous_author === true ||
+      (authorId && postAuthorId && authorId === postAuthorId));
 
   if (isAnonymousPostAuthorComment) {
     return { name: anonymousName, color: "#5C6470", anonymous: true, authorId: null };
@@ -153,7 +155,10 @@ function FeedActionButton({ icon: Icon, label, count, active = false, onClick, f
       />
       <span className="min-w-0 truncate">{label}</span>
       {typeof count === "number" && count > 0 ? (
-        <span className={`shrink-0 text-[11px] leading-none ${active ? "font-extrabold" : "font-bold"}`} style={{ color: active ? activeColor : T.textSubtle }}>
+        <span
+          className={`shrink-0 text-[11px] leading-none ${active ? "font-extrabold" : "font-bold"}`}
+          style={{ color: active ? activeColor : T.textSubtle }}
+        >
           {countLabel}
         </span>
       ) : null}
@@ -202,7 +207,10 @@ export default function PostCard({ post }) {
   } = useApp();
 
   const postId = getPostId(post);
-  const safePost = useMemo(() => ({ ...post, id: postId }), [post, postId]);
+  const safePost = useMemo(
+    () => ({ ...post, id: postId, post_id: post?.post_id || postId }),
+    [post, postId]
+  );
 
   const [showComments, setShowComments] = useState(false);
   const [commentsLoading, setCommentsLoading] = useState(false);
@@ -221,7 +229,9 @@ export default function PostCard({ post }) {
   const isReported = post?.status === "reported";
   const anonymousDisplayName = getAnonymousDisplayName(postId);
   const displayName = post?.anonymous ? anonymousDisplayName : post?.author_name || "Member";
-  const displayColor = post?.anonymous ? "#5C6470" : post?.author_color || colorFromString(post?.author_name || "Member");
+  const displayColor = post?.anonymous
+    ? "#5C6470"
+    : post?.author_color || colorFromString(post?.author_name || "Member");
   const authorId = post?.author_id || post?.user_id || post?.profile_id || null;
   const authorProfileHref = !post?.anonymous && authorId ? `/users/${authorId}` : null;
 
@@ -236,6 +246,19 @@ export default function PostCard({ post }) {
     saveCachedComments(postId, comments);
   }, [comments, postId]);
 
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+
+    const closeMenu = () => setMenuOpen(false);
+    window.addEventListener("click", closeMenu);
+    window.addEventListener("scroll", closeMenu, true);
+
+    return () => {
+      window.removeEventListener("click", closeMenu);
+      window.removeEventListener("scroll", closeMenu, true);
+    };
+  }, [menuOpen]);
+
   const ownsPostBySafeViewerFlag = post?.viewer_is_author === true;
   const ownsPostByVisibleAuthorId = currentUser?.id && authorId && authorId === currentUser.id;
   const ownsPostByMyPosts =
@@ -247,8 +270,12 @@ export default function PostCard({ post }) {
   const currentUserIsAnonymousPostAuthor = Boolean(post?.anonymous) && ownsPost;
 
   const replyAvatarName = currentUserIsAnonymousPostAuthor ? anonymousDisplayName : currentUser?.full_name || "Member";
-  const replyAvatarColor = currentUserIsAnonymousPostAuthor ? "#5C6470" : currentUser?.avatar_color || colorFromString(currentUser?.full_name || "Member");
-  const replyPlaceholder = currentUserIsAnonymousPostAuthor ? `Reply as ${anonymousDisplayName}…` : "Write a reply...";
+  const replyAvatarColor = currentUserIsAnonymousPostAuthor
+    ? "#5C6470"
+    : currentUser?.avatar_color || colorFromString(currentUser?.full_name || "Member");
+  const replyPlaceholder = currentUserIsAnonymousPostAuthor
+    ? `Reply as ${anonymousDisplayName}…`
+    : "Write a reply...";
 
   const guard = (fn) => {
     if (requireAuth()) fn();
@@ -278,16 +305,20 @@ export default function PostCard({ post }) {
     setMenuOpen(false);
     if (!requireAuth()) return;
     if (!postId) return pushToast?.("Post was not identified. Please refresh and try again.", "error");
+    if (ownsPost) return pushToast?.("You cannot report your own post.", "info");
+    if (userReported) return pushToast?.("You already reported this post.", "info");
     await reportPost?.(postId);
   };
 
   const handleEditClick = () => {
     setMenuOpen(false);
+    if (!ownsPost) return pushToast?.("You can only edit your own post.", "error");
     setEditingOpen(true);
   };
 
   const handleDeleteClick = () => {
     setMenuOpen(false);
+    if (!ownsPost) return pushToast?.("You can only delete your own post.", "error");
     setDeletingOpen(true);
   };
 
@@ -346,6 +377,7 @@ export default function PostCard({ post }) {
       }
 
       setComment("");
+      await loadCommentsForPost?.(postId);
     } catch (error) {
       console.error("Failed to submit comment:", error);
       setCommentError("Could not post comment. Please try again.");
@@ -375,130 +407,210 @@ export default function PostCard({ post }) {
 
   return (
     <>
-      <article className="group overflow-visible rounded-none border-x-0 border-t border-b-0 shadow-none transition-colors duration-200 md:border-x md:first:rounded-t-[18px] md:last:rounded-b-[18px]" style={{ backgroundColor: T.card, borderColor: T.border }}>
+      <article
+        className="group overflow-visible rounded-none border-x-0 border-t border-b-0 shadow-none transition-colors duration-200 md:border-x md:first:rounded-t-[18px] md:last:rounded-b-[18px]"
+        style={{ backgroundColor: T.card, borderColor: T.border }}
+      >
         <div className="px-4 md:px-5 pt-4 pb-2.5">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-3 min-w-0 flex-1">
               <ProfileIdentity href={authorProfileHref} name={displayName} color={displayColor} size={42} />
+
               <div className="min-w-0 flex-1">
                 <ProfileIdentity href={authorProfileHref} name={displayName} color={displayColor}>
-                  <div className="text-[15px] font-bold leading-tight truncate hover:underline" style={{ color: T.text }}>{displayName}</div>
+                  <div className="text-[15px] font-bold leading-tight truncate hover:underline" style={{ color: T.text }}>
+                    {displayName}
+                  </div>
                 </ProfileIdentity>
+
                 <div className="mt-1 text-xs flex items-center gap-1.5 flex-wrap" style={{ color: T.textSubtle }}>
-                  {post?.anonymous && <span>Anonymous</span>}
-                  {isReported && <span className="font-bold" style={{ color: "#B31942" }}>Post under review</span>}
+                  {post?.anonymous ? <span>Anonymous</span> : null}
+                  {isReported ? <span className="font-bold" style={{ color: "#B31942" }}>Post under review</span> : null}
                   <span>{cat?.label}</span>
                   <span>·</span>
-                  <ClientTimeAgo value={post?.created_at} />
+                  <ClientTimeAgo date={post?.created_at} />
+                  {post?.edited ? (
+                    <>
+                      <span>·</span>
+                      <span>Edited</span>
+                    </>
+                  ) : null}
                 </div>
               </div>
             </div>
 
-            <div className="relative shrink-0">
+            <div className="relative shrink-0" onClick={(event) => event.stopPropagation()}>
               <button
                 type="button"
                 onClick={() => setMenuOpen((value) => !value)}
-                className="h-9 w-9 rounded-full flex items-center justify-center hover:bg-black/[0.04]"
+                className="h-9 w-9 rounded-full flex items-center justify-center transition hover:bg-black/[0.04] active:scale-95"
+                aria-label="Open post menu"
                 style={{ color: T.textMuted }}
-                aria-label="Post actions"
               >
-                <MoreHorizontal size={18} />
+                <MoreHorizontal size={20} />
               </button>
 
-              {menuOpen && (
-                <div className="absolute right-0 top-10 z-20 w-52 overflow-hidden rounded-2xl border" style={{ backgroundColor: T.card, borderColor: T.border, boxShadow: "0 18px 45px rgba(7,27,51,0.16)" }}>
-                  <MenuButton icon={Share2} onClick={() => { setMenuOpen(false); handleShare(); }}>Share</MenuButton>
-                  {ownsPost ? <MenuButton icon={Edit3} onClick={handleEditClick}>Edit</MenuButton> : null}
-                  {ownsPost ? <MenuButton icon={Trash2} danger onClick={handleDeleteClick}>Delete</MenuButton> : null}
-                  {!ownsPost ? <MenuButton icon={Lock} muted onClick={handleReport}>{userReported ? "Reported" : "Report"}</MenuButton> : null}
+              {menuOpen ? (
+                <div
+                  className="absolute right-0 top-10 z-40 w-44 overflow-hidden rounded-2xl border shadow-lg"
+                  style={{ backgroundColor: T.card, borderColor: T.border }}
+                >
+                  {ownsPost ? (
+                    <>
+                      <MenuButton icon={Edit3} onClick={handleEditClick}>Edit</MenuButton>
+                      <MenuButton icon={Trash2} danger onClick={handleDeleteClick}>Delete</MenuButton>
+                    </>
+                  ) : (
+                    <MenuButton icon={Flag} danger={!userReported} muted={userReported} onClick={handleReport}>
+                      {userReported ? "Reported" : "Report"}
+                    </MenuButton>
+                  )}
                 </div>
-              )}
+              ) : null}
             </div>
           </div>
 
-          <div className="mt-3">
-            <h3 className="text-[17px] md:text-[18px] font-extrabold leading-snug" style={{ color: T.navy }}>{post?.title}</h3>
-            <div className="mt-2 text-[15px] leading-7" style={{ color: T.text }}>
-              <ExpandableText text={post?.body || ""} />
-            </div>
+          <div className="mt-3 pl-0 md:pl-[54px]">
+            {post?.title ? (
+              <h3 className="text-[17px] md:text-lg font-extrabold tracking-[-0.02em]" style={{ color: T.text }}>
+                {post.title}
+              </h3>
+            ) : null}
+
+            <ExpandableText
+              text={post?.body || ""}
+              previewLength={280}
+              className="mt-1 text-[15px] leading-7 whitespace-pre-wrap"
+              style={{ color: T.textMuted }}
+            />
           </div>
         </div>
 
-        <div className="px-2 md:px-3 pb-2 flex items-center justify-between border-t" style={{ borderColor: "rgba(213,226,242,0.65)" }}>
-          <FeedActionButton icon={ArrowBigUp} label="Upvote" count={upvoteCount} active={userUpvoted} fillWhenActive onClick={() => guard(() => upvotePost?.(postId))} />
-          <FeedActionButton icon={MessageCircle} label="Reply" count={commentCount} active={showComments} onClick={toggleComments} />
-          <FeedActionButton icon={Share2} label="Share" onClick={handleShare} />
+        <div className="px-2 md:px-[70px] border-t" style={{ borderColor: T.border }}>
+          <div className="grid grid-cols-4 gap-1 py-1">
+            <FeedActionButton
+              icon={ArrowBigUp}
+              label="Upvote"
+              count={upvoteCount}
+              active={userUpvoted}
+              fillWhenActive
+              onClick={() => guard(() => upvotePost?.(postId))}
+            />
+            <FeedActionButton
+              icon={MessageCircle}
+              label="Reply"
+              count={commentCount}
+              active={showComments}
+              onClick={toggleComments}
+            />
+            <FeedActionButton icon={Share2} label="Share" onClick={handleShare} />
+            <FeedActionButton
+              icon={Flag}
+              label={userReported ? "Reported" : "Report"}
+              active={userReported}
+              onClick={() => guard(handleReport)}
+            />
+          </div>
         </div>
 
-        {showComments && (
-          <div className="px-4 md:px-5 pb-4 border-t" style={{ borderColor: "rgba(213,226,242,0.65)" }}>
-            {commentsLoading ? <LoadingReplies /> : null}
+        {showComments ? (
+          <div className="px-4 md:px-5 pb-4 border-t" style={{ borderColor: T.border }}>
+            <div className="md:pl-[54px] pt-3 space-y-3">
+              {commentsLoading ? <LoadingReplies /> : null}
 
-            <div className="mt-3 space-y-3">
               {displayComments.map((item) => {
-                const author = getSafeCommentAuthor({ comment: item, post: safePost });
-                const href = author.authorId ? `/users/${author.authorId}` : null;
+                const commentAuthor = getSafeCommentAuthor({ comment: item, post: safePost });
+                const commentKey = item?.id || item?.comment_id || `${postId}-${item?.created_at || item?.body}`;
 
                 return (
-                  <div key={item.id} className="flex items-start gap-2.5">
-                    <ProfileIdentity href={href} name={author.name} color={author.color} size={32} />
-                    <div className="min-w-0 flex-1 rounded-2xl px-3 py-2" style={{ backgroundColor: "rgba(244,248,253,0.95)" }}>
-                      <ProfileIdentity href={href} name={author.name} color={author.color}>
-                        <div className="text-xs font-bold truncate hover:underline" style={{ color: T.text }}>{author.name}</div>
-                      </ProfileIdentity>
-                      <p className="text-sm leading-6 whitespace-pre-wrap" style={{ color: T.text }}>{item.body}</p>
+                  <div key={commentKey} className="flex items-start gap-2.5">
+                    <Avatar name={commentAuthor.name} color={commentAuthor.color} size={32} />
+                    <div className="min-w-0 flex-1 rounded-2xl px-3 py-2" style={{ backgroundColor: "#F4F7FA" }}>
+                      <div className="flex items-center gap-1.5 flex-wrap text-xs font-semibold" style={{ color: T.text }}>
+                        <span>{commentAuthor.name}</span>
+                        <span style={{ color: T.textSubtle }}>·</span>
+                        <span style={{ color: T.textSubtle }}>
+                          <ClientTimeAgo date={item?.created_at} />
+                        </span>
+                      </div>
+                      <p className="mt-0.5 text-sm leading-6 whitespace-pre-wrap" style={{ color: T.textMuted }}>
+                        {item?.body || item?.content || ""}
+                      </p>
                     </div>
                   </div>
                 );
               })}
-            </div>
 
-            {currentUser ? (
-              <div className="mt-3 flex items-start gap-2.5">
-                <Avatar name={replyAvatarName} color={replyAvatarColor} size={34} />
-                <div className="min-w-0 flex-1">
-                  <textarea
-                    value={comment}
-                    onChange={(event) => setComment(event.target.value)}
-                    placeholder={replyPlaceholder}
-                    rows={2}
-                    className="w-full resize-none rounded-2xl border px-3 py-2 text-sm outline-none"
-                    style={{ borderColor: T.border, color: T.text }}
-                  />
-                  {commentError ? <div className="mt-1 text-xs font-semibold" style={{ color: "#B31942" }}>{commentError}</div> : null}
+              {displayComments.length === 0 && !commentsLoading ? (
+                <p className="text-sm" style={{ color: T.textSubtle }}>No replies yet. Be the first to reply.</p>
+              ) : null}
+
+              {currentUser ? (
+                <div className="flex items-start gap-2.5 pt-1">
+                  <Avatar name={replyAvatarName} color={replyAvatarColor} size={34} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 rounded-2xl border px-3 py-2" style={{ borderColor: T.border, backgroundColor: "#F8FAFC" }}>
+                      <input
+                        value={comment}
+                        onChange={(event) => setComment(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" && !event.shiftKey) {
+                            event.preventDefault();
+                            submitComment();
+                          }
+                        }}
+                        placeholder={replyPlaceholder}
+                        className="min-w-0 flex-1 bg-transparent text-sm outline-none"
+                        style={{ color: T.text }}
+                      />
+                      <button
+                        type="button"
+                        onClick={submitComment}
+                        disabled={commentSubmitting || !comment.trim()}
+                        className="h-8 w-8 rounded-full flex items-center justify-center transition disabled:opacity-40"
+                        style={{ backgroundColor: T.navy, color: "white" }}
+                        aria-label="Post reply"
+                      >
+                        <Send size={15} />
+                      </button>
+                    </div>
+                    {commentError ? (
+                      <p className="mt-1 text-xs font-semibold" style={{ color: "#B31942" }}>{commentError}</p>
+                    ) : null}
+                  </div>
                 </div>
+              ) : (
                 <button
                   type="button"
-                  onClick={submitComment}
-                  disabled={commentSubmitting || !comment.trim()}
-                  className="h-10 w-10 rounded-2xl flex items-center justify-center disabled:opacity-50"
-                  style={{ backgroundColor: T.navy, color: "#fff" }}
-                  aria-label="Send reply"
+                  onClick={() => requireAuth()}
+                  className="w-full rounded-2xl border px-4 py-3 text-sm font-semibold flex items-center justify-center gap-2"
+                  style={{ borderColor: T.border, color: T.textMuted, backgroundColor: "#F8FAFC" }}
                 >
-                  <Send size={17} />
+                  <Lock size={15} />
+                  Sign in to reply
                 </button>
-              </div>
-            ) : (
-              <button type="button" onClick={() => requireAuth()} className="mt-3 text-sm font-bold" style={{ color: T.blue }}>
-                Sign in to reply
-              </button>
-            )}
+              )}
+            </div>
           </div>
-        )}
+        ) : null}
       </article>
-
-      <ConfirmDialog
-        open={deletingOpen}
-        title="Delete post?"
-        body="This will permanently remove this post. This action cannot be undone."
-        confirmText={deleting ? "Deleting…" : "Delete"}
-        danger
-        onCancel={() => (deleting ? null : setDeletingOpen(false))}
-        onConfirm={handleDeleteConfirm}
-      />
 
       {editingOpen ? (
         <EditPostModal post={safePost} onClose={() => setEditingOpen(false)} onSave={handleEditSave} />
+      ) : null}
+
+      {deletingOpen ? (
+        <ConfirmDialog
+          open={deletingOpen}
+          title="Delete post?"
+          body="This will permanently delete this post and its related activity from SoldierHub. This action cannot be undone."
+          confirmText={deleting ? "Deleting..." : "Delete"}
+          danger
+          onConfirm={handleDeleteConfirm}
+          onCancel={() => {
+            if (!deleting) setDeletingOpen(false);
+          }}
+        />
       ) : null}
     </>
   );
