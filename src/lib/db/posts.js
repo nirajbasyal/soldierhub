@@ -2,11 +2,14 @@
 
 import { createClient } from "@/lib/supabase/client";
 
+const POST_SELECT =
+  "id, author_id, author_name_cached, author_color_cached, category, title, body, anonymous, status, edited, created_at, updated_at";
+
 function normalizePostRow(row = {}) {
-  // IMPORTANT: `id` must be the real public.posts.id.
+  // IMPORTANT: id and post_id must both point to the real public.posts.id.
   // Upvotes, reports, comments, edit, and delete all target public.posts.id.
-  const postId = row.id || row.post_id || row.postId || row.post?.id || null;
   const profile = row.profile || row.profiles || row.author || null;
+  const postId = row.id || row.post_id || row.postId || row.post?.id || null;
 
   return {
     ...row,
@@ -49,26 +52,118 @@ function resolvePostId(input) {
   return input;
 }
 
+function getProfileStatus(profile) {
+  return profile?.status || profile?.verification_status || "pending";
+}
+
+async function getAuthUserAndProfile(supabase) {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    return {
+      user: null,
+      profile: null,
+      error: userError || { message: "Please log in again." },
+    };
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("id, full_name, email, avatar_color, status, verification_status")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profileError) {
+    return { user, profile: null, error: profileError };
+  }
+
+  return { user, profile, error: null };
+}
+
 async function attachProfilesToPosts(supabase, rows = []) {
   if (!Array.isArray(rows) || rows.length === 0) return [];
 
-  const authorIds = [...new Set(rows.map((row) => row.author_id).filter(Boolean))];
+  const normalizedRows = rows.map(normalizePostRow);
+  const missingProfileRows = normalizedRows.filter(
+    (row) => row.author_id && (!row.author_name || row.author_name === "Member")
+  );
 
-  if (authorIds.length === 0) return rows.map(normalizePostRow);
+  if (missingProfileRows.length === 0) return normalizedRows;
 
-  const { data: profiles } = await supabase
+  const authorIds = [...new Set(missingProfileRows.map((row) => row.author_id))];
+
+  const { data: profiles, error } = await supabase
     .from("profiles")
     .select("id, full_name, avatar_color")
     .in("id", authorIds);
 
+  if (error) {
+    console.error("Could not attach post profiles:", error);
+    return normalizedRows;
+  }
+
   const profileById = new Map((profiles || []).map((profile) => [profile.id, profile]));
 
-  return rows.map((row) =>
+  return normalizedRows.map((row) =>
     normalizePostRow({
       ...row,
       profile: profileById.get(row.author_id) || null,
     })
   );
+}
+
+async function attachCountsToPosts(supabase, rows = []) {
+  if (!Array.isArray(rows) || rows.length === 0) return [];
+
+  const postIds = [...new Set(rows.map((row) => row.id).filter(Boolean))];
+  if (postIds.length === 0) return rows;
+
+  const [{ data: upvotes, error: upvoteError }, { data: comments, error: commentError }] =
+    await Promise.all([
+      supabase.from("upvotes").select("post_id").in("post_id", postIds),
+      supabase.from("comments").select("post_id").in("post_id", postIds),
+    ]);
+
+  if (upvoteError) console.error("Could not load post upvote counts:", upvoteError);
+  if (commentError) console.error("Could not load post comment counts:", commentError);
+
+  const upvoteCounts = new Map();
+  const commentCounts = new Map();
+
+  (upvotes || []).forEach((row) => {
+    upvoteCounts.set(row.post_id, (upvoteCounts.get(row.post_id) || 0) + 1);
+  });
+
+  (comments || []).forEach((row) => {
+    commentCounts.set(row.post_id, (commentCounts.get(row.post_id) || 0) + 1);
+  });
+
+  return rows.map((row) => ({
+    ...row,
+    upvote_count: upvoteCounts.get(row.id) || row.upvote_count || 0,
+    comment_count: commentCounts.get(row.id) || row.comment_count || 0,
+  }));
+}
+
+async function hydrateTablePosts(supabase, rows = []) {
+  const withProfiles = await attachProfilesToPosts(supabase, rows || []);
+  return attachCountsToPosts(supabase, withProfiles);
+}
+
+async function listPostsFromTable(supabase, limit) {
+  const result = await supabase
+    .from("posts")
+    .select(POST_SELECT)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  return {
+    data: await hydrateTablePosts(supabase, result.data || []),
+    error: result.error,
+  };
 }
 
 async function listPostsFromView(supabase, limit) {
@@ -80,21 +175,6 @@ async function listPostsFromView(supabase, limit) {
 
   return {
     data: (result.data || []).map(normalizePostRow),
-    error: result.error,
-  };
-}
-
-async function listPostsFromTable(supabase, limit) {
-  const result = await supabase
-    .from("posts")
-    .select(
-      "id, author_id, category, title, body, anonymous, status, edited, created_at, updated_at"
-    )
-    .order("created_at", { ascending: false })
-    .limit(limit);
-
-  return {
-    data: await attachProfilesToPosts(supabase, result.data || []),
     error: result.error,
   };
 }
@@ -128,41 +208,40 @@ export async function listPosts({ limit = 30 } = {}) {
   const supabase = createClient();
   if (!supabase) return { data: [], error: null };
 
-  const viewResult = await listPostsFromView(supabase, limit);
-  if (!viewResult.error && viewResult.data.length > 0) return viewResult;
-
+  // Always trust public.posts first because it guarantees the real public.posts.id.
   const tableResult = await listPostsFromTable(supabase, limit);
   if (!tableResult.error && tableResult.data.length > 0) return tableResult;
+
+  const viewResult = await listPostsFromView(supabase, limit);
+  if (!viewResult.error && viewResult.data.length > 0) return viewResult;
 
   const rpcResult = await listPostsFromRpc(supabase, limit);
   if (!rpcResult.error && rpcResult.data.length > 0) return rpcResult;
 
-  if (!viewResult.error && !tableResult.error && !rpcResult.error) {
+  if (!tableResult.error && !viewResult.error && !rpcResult.error) {
     return { data: [], error: null };
   }
 
   return {
-    data: viewResult.data.length
-      ? viewResult.data
-      : tableResult.data.length
-        ? tableResult.data
+    data: tableResult.data.length
+      ? tableResult.data
+      : viewResult.data.length
+        ? viewResult.data
         : rpcResult.data,
-    error: viewResult.error || tableResult.error || rpcResult.error,
+    error: tableResult.error || viewResult.error || rpcResult.error,
   };
 }
 
 async function listMyPostsFromTable(supabase, userId, limit) {
   const result = await supabase
     .from("posts")
-    .select(
-      "id, author_id, category, title, body, anonymous, status, edited, created_at, updated_at"
-    )
+    .select(POST_SELECT)
     .eq("author_id", userId)
     .order("created_at", { ascending: false })
     .limit(limit);
 
   return {
-    data: await attachProfilesToPosts(supabase, result.data || []),
+    data: await hydrateTablePosts(supabase, result.data || []),
     error: result.error,
   };
 }
@@ -199,48 +278,62 @@ export async function listReportedPosts() {
   if (!supabase) return { data: [], error: null };
 
   const { data, error } = await supabase
-    .from("my_posts_with_meta")
-    .select("*")
+    .from("posts")
+    .select(POST_SELECT)
     .eq("status", "reported")
     .order("created_at", { ascending: false })
     .limit(50);
 
-  return { data: (data || []).map(normalizePostRow), error };
+  return { data: await hydrateTablePosts(supabase, data || []), error };
 }
 
-export async function createPost({
-  id,
-  author_id,
-  category,
-  title,
-  body,
-  anonymous,
-}) {
+export async function createPost({ category, title, body, anonymous }) {
   const supabase = createClient();
   if (!supabase) return { data: null, error: null };
 
-  const payload = { author_id, category, title, body, anonymous };
-  if (id) payload.id = id;
+  const { user, profile, error: authError } = await getAuthUserAndProfile(supabase);
+
+  if (authError || !user) {
+    console.error("Create post auth error:", authError);
+    return {
+      data: null,
+      error: authError || { message: "Please log in again before posting." },
+    };
+  }
+
+  const profileStatus = getProfileStatus(profile);
+
+  if (!profile || profileStatus !== "verified") {
+    return {
+      data: null,
+      error: { message: "Your profile must be verified before you can post." },
+    };
+  }
+
+  const payload = {
+    author_id: user.id,
+    author_name_cached: profile.full_name || user.email || "Member",
+    author_color_cached: profile.avatar_color || "#314A66",
+    category: category || "General Q&A",
+    title: title?.trim() || "Untitled post",
+    body: body?.trim() || "",
+    anonymous: Boolean(anonymous),
+    status: "active",
+    edited: false,
+  };
 
   const { data, error } = await supabase
     .from("posts")
-    .insert([payload])
-    .select(
-      "id, author_id, category, title, body, anonymous, status, edited, created_at, updated_at"
-    )
-    .maybeSingle();
+    .insert(payload)
+    .select(POST_SELECT)
+    .single();
 
-  if (error) return { data: null, error };
+  if (error) {
+    console.error("Create post failed:", error, payload);
+    return { data: null, error };
+  }
 
-  const normalized = await attachProfilesToPosts(supabase, [
-    data || {
-      ...payload,
-      created_at: new Date().toISOString(),
-      status: "active",
-      upvote_count: 0,
-      comment_count: 0,
-    },
-  ]);
+  const normalized = await hydrateTablePosts(supabase, [data]);
 
   return {
     data: normalized[0] || null,
@@ -261,15 +354,12 @@ export async function updateMyPost(postId, updates = {}) {
     };
   }
 
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
+  const { user, error: authError } = await getAuthUserAndProfile(supabase);
 
-  if (userError || !user) {
+  if (authError || !user) {
     return {
       data: null,
-      error: { message: "Please log in again before editing your post." },
+      error: authError || { message: "Please log in again before editing your post." },
     };
   }
 
@@ -284,17 +374,20 @@ export async function updateMyPost(postId, updates = {}) {
     if (allowed[key] === undefined) delete allowed[key];
   });
 
-  const { error, count } = await supabase
+  const { data, error } = await supabase
     .from("posts")
-    .update(allowed, { count: "exact" })
+    .update(allowed)
     .eq("id", resolvedPostId)
-    .eq("author_id", user.id);
+    .eq("author_id", user.id)
+    .select(POST_SELECT)
+    .maybeSingle();
 
   if (error) {
+    console.error("Update post failed:", error);
     return { data: null, error };
   }
 
-  if (count === 0) {
+  if (!data) {
     return {
       data: null,
       error: {
@@ -304,13 +397,10 @@ export async function updateMyPost(postId, updates = {}) {
     };
   }
 
+  const normalized = await hydrateTablePosts(supabase, [data]);
+
   return {
-    data: {
-      id: resolvedPostId,
-      post_id: resolvedPostId,
-      author_id: user.id,
-      ...allowed,
-    },
+    data: normalized[0] || null,
     error: null,
   };
 }
@@ -329,6 +419,16 @@ export async function deletePost(postId) {
     };
   }
 
+  const { user, error: authError } = await getAuthUserAndProfile(supabase);
+
+  if (authError || !user) {
+    return {
+      data: null,
+      error: authError || { message: "Please log in again before deleting your post." },
+      deleted: false,
+    };
+  }
+
   const rpcResult = await supabase.rpc("delete_own_post", {
     p_post_id: resolvedPostId,
   });
@@ -341,9 +441,13 @@ export async function deletePost(postId) {
     .from("posts")
     .delete()
     .eq("id", resolvedPostId)
+    .eq("author_id", user.id)
     .select("id");
 
-  if (error) return { data: null, error, deleted: false };
+  if (error) {
+    console.error("Delete post failed:", error);
+    return { data: null, error, deleted: false };
+  }
 
   if (!Array.isArray(data) || data.length === 0) {
     return {
@@ -369,6 +473,8 @@ export async function restoreReportedPost(postId) {
     p_post_id: resolvedPostId,
   });
 
+  if (error) console.error("Restore reported post failed:", error);
+
   return { data, error };
 }
 
@@ -381,18 +487,26 @@ export async function listMyUpvotedPostIds(userId) {
     .select("post_id")
     .eq("user_id", userId);
 
+  if (error) console.error("List my upvotes failed:", error);
+
   return { data: (data || []).map((r) => r.post_id), error };
 }
 
 export async function addUpvote(postId, userId) {
   const supabase = createClient();
-  if (!supabase) return { error: null };
+  if (!supabase) return { data: null, error: null };
 
   const resolvedPostId = resolvePostId(postId);
 
-  return supabase
+  const { data, error } = await supabase
     .from("upvotes")
-    .insert([{ post_id: resolvedPostId, user_id: userId }]);
+    .insert([{ post_id: resolvedPostId, user_id: userId }])
+    .select("post_id, user_id")
+    .maybeSingle();
+
+  if (error) console.error("Add upvote failed:", error);
+
+  return { data, error };
 }
 
 export async function removeUpvote(postId, userId) {
@@ -401,11 +515,15 @@ export async function removeUpvote(postId, userId) {
 
   const resolvedPostId = resolvePostId(postId);
 
-  return supabase
+  const { error } = await supabase
     .from("upvotes")
     .delete()
     .eq("post_id", resolvedPostId)
     .eq("user_id", userId);
+
+  if (error) console.error("Remove upvote failed:", error);
+
+  return { error };
 }
 
 export async function listMyReportedPostIds(userId) {
@@ -416,6 +534,8 @@ export async function listMyReportedPostIds(userId) {
     .from("reports")
     .select("post_id")
     .eq("user_id", userId);
+
+  if (error) console.error("List my reports failed:", error);
 
   return { data: (data || []).map((r) => r.post_id), error };
 }
@@ -451,6 +571,8 @@ export async function reportPost(postId, userId, reason = "") {
       .select()
       .maybeSingle();
 
+    if (error) console.error("Report post failed:", error);
+
     return { data, error };
   }
 
@@ -461,6 +583,8 @@ export async function reportPost(postId, userId, reason = "") {
     p_visitor_key: visitorKey,
     p_reason: reason,
   });
+
+  if (error) console.error("Visitor report post failed:", error);
 
   return { data, error };
 }
