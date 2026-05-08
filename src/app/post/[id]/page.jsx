@@ -6,6 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import { T } from "@/lib/theme";
 import { useApp } from "@/store/AppContext";
 import { createClient } from "@/lib/supabase/client";
+import { normalizePostRow } from "@/lib/db/posts";
 import AppShell from "@/components/layout/AppShell";
 import Footer from "@/components/layout/Footer";
 import Button from "@/components/ui/Button";
@@ -51,7 +52,7 @@ export default function PostDetailPage() {
           .select("*")
           .eq("id", id)
           .maybeSingle();
-        setPost(data || null);
+        setPost(data ? normalizePostRow(data) : null);
         setLoading(false);
       })();
     } else {
