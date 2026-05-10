@@ -253,6 +253,7 @@ export function AppProvider({ children }) {
       // Environment
       SUPA,
       supabaseEnabled: SUPA,
+      isLiveMode: SUPA,
 
       // Data
       users,
