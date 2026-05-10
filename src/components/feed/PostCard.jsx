@@ -167,9 +167,8 @@ export default function PostCard({ post }) {
     setDeleting(true);
     try {
       const result = await deleteMyPost?.(postId);
-      if (result?.ok !== true) return pushToast?.(result?.error || "Could not delete post.", "error");
+      if (result?.ok === false) return pushToast?.(result?.error || "Could not delete post.", "error");
       setDeletingOpen(false);
-      pushToast?.("Post deleted.", "success");
     } finally {
       setDeleting(false);
     }
