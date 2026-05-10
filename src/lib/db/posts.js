@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 const POST_SELECT =
   "id, author_id, author_name_cached, author_color_cached, category, title, body, anonymous, status, edited, created_at, updated_at";
 
-function normalizePostRow(row = {}) {
+export function normalizePostRow(row = {}) {
   // IMPORTANT: id and post_id must both point to the real public.posts.id.
   // Upvotes, reports, comments, edit, and delete all target public.posts.id.
   const profile = row.profile || row.profiles || row.author || null;
