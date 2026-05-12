@@ -3,10 +3,7 @@ import * as Auth from "@/lib/supabase/auth";
 import * as ProfilesDB from "@/lib/db/profiles";
 import * as PostsDB from "@/lib/db/posts";
 import * as NotificationsDB from "@/lib/db/notifications";
-import {
-  subscribeToMyNotifications,
-  subscribeToPosts,
-} from "@/lib/db/realtime";
+import { subscribeToMyNotifications } from "@/lib/db/realtime";
 import { getProfileStatus, sanitizePosts } from "../utils/appHelpers";
 
 const NOTIFICATION_REALTIME_DEBOUNCE_MS = 800;
@@ -336,18 +333,6 @@ export function useDataLoader({
   useEffect(() => {
     if (SUPA) reloadPosts();
   }, [SUPA, reloadPosts]);
-
-  useEffect(() => {
-    if (!SUPA) return;
-
-    const unsubscribe = subscribeToPosts(() => {
-      setHasNewFeedItems(true);
-    });
-
-    return () => {
-      unsubscribe();
-    };
-  }, [SUPA, setHasNewFeedItems]);
 
   useEffect(() => {
     if (!SUPA || !currentUser) return;
