@@ -33,33 +33,37 @@ function getAnonymousDisplayName(seed) {
   return `Anonymous${number}`;
 }
 
+function createTitleFromBody(body) {
+  const firstLine = body
+    .split("\n")
+    .map((line) => line.trim())
+    .find(Boolean);
+
+  if (!firstLine) return "Community post";
+  return firstLine.length > 90 ? `${firstLine.slice(0, 87)}...` : firstLine;
+}
+
 export default function PostComposer() {
   const { currentUser, requireAuth, createPost } = useApp();
 
   const [open, setOpen] = useState(false);
   const [category, setCategory] = useState("General Q&A");
-  const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [anonymous, setAnonymous] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const titleRef = useRef(null);
   const bodyRef = useRef(null);
-  const lastFocusedFieldRef = useRef("title");
 
   useEffect(() => {
-    if (open && titleRef.current) {
-      titleRef.current.focus();
+    if (open && bodyRef.current) {
+      bodyRef.current.focus();
     }
   }, [open]);
 
-  const focusLastComposerField = () => {
-    const target =
-      lastFocusedFieldRef.current === "body" ? bodyRef.current : titleRef.current;
-
+  const focusComposerField = () => {
     window.requestAnimationFrame(() => {
-      target?.focus({ preventScroll: true });
+      bodyRef.current?.focus({ preventScroll: true });
     });
   };
 
@@ -67,7 +71,7 @@ export default function PostComposer() {
     if (submitting) return;
 
     setCategory(nextCategory);
-    focusLastComposerField();
+    focusComposerField();
   };
 
   const closeComposer = () => {
@@ -78,7 +82,6 @@ export default function PostComposer() {
   };
 
   const resetComposer = () => {
-    setTitle("");
     setBody("");
     setAnonymous(false);
     setError("");
@@ -90,17 +93,16 @@ export default function PostComposer() {
 
     setError("");
 
-    const cleanedTitle = title.trim();
     const cleanedBody = body.trim();
 
-    if (!cleanedTitle) {
-      return setError("Add a title for your post.");
+    if (!cleanedBody) {
+      return setError("Write something before publishing.");
     }
 
     try {
       setSubmitting(true);
 
-      const mod = await moderateAsync(`${cleanedTitle}\n\n${cleanedBody}`);
+      const mod = await moderateAsync(cleanedBody);
 
       if (!mod.allowed) {
         setSubmitting(false);
@@ -108,7 +110,7 @@ export default function PostComposer() {
       }
 
       const result = await createPost({
-        title: cleanedTitle,
+        title: createTitleFromBody(cleanedBody),
         body: cleanedBody,
         category,
         anonymous,
@@ -133,7 +135,7 @@ export default function PostComposer() {
       <button
         type="button"
         onClick={requireAuth}
-        className="w-full rounded-2xl border p-5 flex items-center gap-3 text-left transition-shadow hover:shadow-sm"
+        className="w-full rounded-[24px] border p-5 flex items-center gap-3 text-left transition-shadow hover:shadow-sm"
         style={{ backgroundColor: T.card, borderColor: T.border }}
       >
         <div
@@ -175,7 +177,7 @@ export default function PostComposer() {
             openComposer();
           }
         }}
-        className="w-full rounded-2xl border p-5 flex items-center gap-3 text-left transition-shadow hover:shadow-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2"
+        className="w-full rounded-[24px] border p-4 md:p-5 flex items-center gap-3 text-left transition-all hover:shadow-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2"
         style={{
           backgroundColor: T.card,
           borderColor: T.border,
@@ -185,16 +187,15 @@ export default function PostComposer() {
         <Avatar
           name={currentUser.full_name}
           color={currentUser.avatar_color}
-          size={40}
+          size={42}
         />
 
-        <div className="flex-1 min-w-0">
+        <div
+          className="flex-1 min-w-0 rounded-full border px-4 py-3"
+          style={{ backgroundColor: "#F4F8FD", borderColor: T.borderSoft || T.border }}
+        >
           <div className="text-[15px] truncate" style={{ color: T.textMuted }}>
-            What&apos;s on your mind,{" "}
-            <span style={{ color: T.text }}>
-              {currentUser.full_name?.split(" ")[0]}
-            </span>
-            ?
+            What do you want to ask or share?
           </div>
         </div>
 
@@ -207,7 +208,7 @@ export default function PostComposer() {
             openComposer();
           }}
         >
-          New post
+          Post
         </Button>
       </div>
     );
@@ -221,11 +222,11 @@ export default function PostComposer() {
 
   return (
     <div
-      className="rounded-2xl border p-5"
+      className="rounded-[26px] border p-4 md:p-5 shadow-sm"
       style={{ backgroundColor: T.card, borderColor: T.border }}
     >
       <div className="flex items-center gap-3 mb-4">
-        <Avatar name={composerDisplayName} color={composerDisplayColor} size={36} />
+        <Avatar name={composerDisplayName} color={composerDisplayColor} size={38} />
 
         <div className="flex-1 min-w-0">
           <div
@@ -247,11 +248,11 @@ export default function PostComposer() {
           type="button"
           onClick={closeComposer}
           disabled={submitting}
-          className="w-8 h-8 rounded-lg flex items-center justify-center disabled:opacity-50"
+          className="w-9 h-9 rounded-full flex items-center justify-center disabled:opacity-50 transition hover:bg-black/[0.04]"
           style={{ color: T.textMuted }}
           aria-label="Close post composer"
         >
-          <X size={16} />
+          <X size={17} />
         </button>
       </div>
 
@@ -293,42 +294,23 @@ export default function PostComposer() {
         </div>
       </div>
 
-      <input
-        ref={titleRef}
-        value={title}
-        onFocus={() => {
-          lastFocusedFieldRef.current = "title";
-        }}
-        onChange={(e) => {
-          setTitle(e.target.value);
-          setError("");
-        }}
-        disabled={submitting}
-        placeholder="Title — what do you want to ask or share?"
-        className="w-full text-lg font-semibold mb-2 outline-none border-0 bg-transparent placeholder:text-[#A8ABB2] disabled:opacity-70"
-        style={{ color: T.text }}
-      />
-
       <textarea
         ref={bodyRef}
         value={body}
-        onFocus={() => {
-          lastFocusedFieldRef.current = "body";
-        }}
         onChange={(e) => {
           setBody(e.target.value);
           setError("");
         }}
         disabled={submitting}
-        placeholder="Add the details people will need to actually help…"
-        rows={4}
-        className="w-full resize-none outline-none text-[15px] leading-relaxed border-0 bg-transparent placeholder:text-[#A8ABB2] disabled:opacity-70"
+        placeholder="Ask a question, share an update, or help the Fort Bliss community..."
+        rows={5}
+        className="w-full resize-none outline-none text-[17px] md:text-[18px] leading-8 border-0 bg-transparent placeholder:text-[#A8ABB2] disabled:opacity-70"
         style={{ color: T.text }}
       />
 
       {anonymous && (
         <div
-          className="text-xs px-3 py-2 rounded-lg flex items-start gap-2 my-3"
+          className="text-xs px-3 py-2 rounded-xl flex items-start gap-2 my-3"
           style={{ backgroundColor: T.goldBg, color: T.gold }}
         >
           <Lock size={14} className="shrink-0 mt-0.5" />
@@ -341,7 +323,7 @@ export default function PostComposer() {
 
       {error && (
         <div
-          className="text-xs px-3 py-2 rounded-lg flex items-start gap-2 my-3"
+          className="text-xs px-3 py-2 rounded-xl flex items-start gap-2 my-3"
           style={{ backgroundColor: T.redBg, color: T.red }}
         >
           <AlertTriangle size={14} className="shrink-0 mt-0.5" />
@@ -376,7 +358,7 @@ export default function PostComposer() {
             variant="primary"
             onClick={submit}
             icon={Send}
-            disabled={submitting || !title.trim()}
+            disabled={submitting || !body.trim()}
           >
             {submitting ? "Checking…" : "Publish"}
           </Button>
