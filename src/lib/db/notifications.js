@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/client";
 
 const NOTIFICATION_SELECT =
-  "id, recipient_user_id, actor_user_id, actor_name_cached, type, post_id, post_title_cached, comment_id, read, created_at";
+  "id, recipient_user_id, actor_user_id, actor_name_cached, type, post_id, comment_id, read, created_at";
 
 let unreadCountClientCache = {
   userId: null,
