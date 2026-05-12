@@ -39,7 +39,7 @@ function getAuthorId(post) {
 
 function isValidFeedPost(post) {
   if (!getRealPostId(post)) return false;
-  if (!getAuthorId(post)) return false;
+  if (!getAuthorId(post) && !post?.anonymous) return false;
   if (post?.status === "deleted" || post?.status === "removed") return false;
   return true;
 }
@@ -147,7 +147,6 @@ export default function HomePage() {
     <AppShell>
       <main className="max-w-6xl mx-auto px-4 md:px-6 py-5 md:py-8 pb-24 md:pb-12">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5">
-          {/* Main column */}
           <div className="flex flex-col gap-3 min-w-0">
             <div className="block lg:hidden">
               <MobileWeatherStrip />
@@ -202,7 +201,6 @@ export default function HomePage() {
             )}
           </div>
 
-          {/* Desktop sidebar */}
           <aside className="hidden lg:flex flex-col gap-4 sticky top-24 self-start">
             <MobileWeatherStrip />
             <BAHCard />
