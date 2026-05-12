@@ -33,16 +33,6 @@ function getAnonymousDisplayName(seed) {
   return `Anonymous${number}`;
 }
 
-function createTitleFromBody(body) {
-  const firstLine = body
-    .split("\n")
-    .map((line) => line.trim())
-    .find(Boolean);
-
-  if (!firstLine) return "Community post";
-  return firstLine.length > 90 ? `${firstLine.slice(0, 87)}...` : firstLine;
-}
-
 export default function PostComposer() {
   const { currentUser, requireAuth, createPost } = useApp();
 
@@ -110,7 +100,6 @@ export default function PostComposer() {
       }
 
       const result = await createPost({
-        title: createTitleFromBody(cleanedBody),
         body: cleanedBody,
         category,
         anonymous,
