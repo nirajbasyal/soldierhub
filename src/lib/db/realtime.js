@@ -3,26 +3,30 @@
 import { createClient } from "@/lib/supabase/client";
 
 /**
- * Subscribe to realtime updates on the posts table. Returns an unsubscribe fn.
+ * Subscribe to new active feed posts only.
  *
- * Usage in a component:
- *   useEffect(() => {
- *     const unsub = subscribeToPosts(({ event, post }) => { ... });
- *     return () => unsub();
- *   }, []);
+ * Production note:
+ * Do not listen to every UPDATE/DELETE on the posts table from every client.
+ * At scale, a broad `event: "*"` listener causes unnecessary websocket traffic
+ * and can trigger too many feed reloads across all connected users.
  */
 export function subscribeToPosts(callback) {
   const supabase = createClient();
   if (!supabase) return () => {};
 
   const channel = supabase
-    .channel("posts-feed")
+    .channel("posts-feed-active-inserts")
     .on(
       "postgres_changes",
-      { event: "*", schema: "public", table: "posts" },
+      {
+        event: "INSERT",
+        schema: "public",
+        table: "posts",
+        filter: "status=eq.active",
+      },
       (payload) => {
         callback({
-          event: payload.eventType, // 'INSERT' | 'UPDATE' | 'DELETE'
+          event: payload.eventType,
           post: payload.new || payload.old,
         });
       }
