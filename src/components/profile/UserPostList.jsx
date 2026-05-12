@@ -13,6 +13,10 @@ function getPostId(post) {
 function normalizeProfilePost(post, currentUser) {
   const id = getPostId(post);
 
+  const commentCount =
+    post?.comment_count ?? post?.comments_count ?? post?.reply_count ?? 0;
+  const upvoteCount = post?.upvote_count ?? post?.upvotes_count ?? post?.upvotes ?? 0;
+
   return {
     ...post,
     id,
@@ -39,21 +43,45 @@ function normalizeProfilePost(post, currentUser) {
       post?.profile_avatar_color ||
       currentUser?.avatar_color ||
       "#314A66",
+    upvote_count: upvoteCount,
+    comment_count: commentCount,
+    reply_count: commentCount,
     viewer_is_author: true,
   };
 }
 
-function dedupePosts(posts, currentUser) {
-  const seen = new Set();
+function isNewerPost(candidate, current) {
+  const candidateUpdated = new Date(
+    candidate?.updated_at || candidate?.created_at || 0
+  ).getTime();
+  const currentUpdated = new Date(
+    current?.updated_at || current?.created_at || 0
+  ).getTime();
 
-  return (posts || [])
-    .map((post) => normalizeProfilePost(post, currentUser))
-    .filter((post) => {
-      if (!post.id || seen.has(post.id)) return false;
-      seen.add(post.id);
-      return true;
-    })
-    .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+  if (candidateUpdated !== currentUpdated) return candidateUpdated > currentUpdated;
+
+  const candidateTotal = (candidate?.upvote_count || 0) + (candidate?.comment_count || 0);
+  const currentTotal = (current?.upvote_count || 0) + (current?.comment_count || 0);
+
+  return candidateTotal >= currentTotal;
+}
+
+function dedupePosts(posts, currentUser) {
+  const byId = new Map();
+
+  (posts || []).forEach((rawPost) => {
+    const post = normalizeProfilePost(rawPost, currentUser);
+    if (!post.id) return;
+
+    const existing = byId.get(post.id);
+    if (!existing || isNewerPost(post, existing)) {
+      byId.set(post.id, post);
+    }
+  });
+
+  return [...byId.values()].sort(
+    (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)
+  );
 }
 
 function postBelongsToCurrentUser(post, currentUser) {
@@ -75,6 +103,8 @@ export default function UserPostList() {
   const visiblePosts = useMemo(() => {
     if (!currentUser?.id) return [];
 
+    // Put home feed posts last so their live upvote/reply counts can win
+    // over an older myPosts copy when both contain the same post id.
     const combined = [
       ...(Array.isArray(userPosts) ? userPosts : []),
       ...(Array.isArray(posts)
