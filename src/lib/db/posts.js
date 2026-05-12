@@ -302,10 +302,7 @@ export async function listReportedPosts() {
   return { data: await hydrateTablePosts(supabase, data || []), error };
 }
 
-export async function createPost({ category, title, body, anonymous }) {
-  const supabase = createClient();
-  if (!supabase) return { data: null, error: null };
-
+async function getAccessTokenForApi(supabase, fallbackMessage) {
   const {
     data: { session },
     error: sessionError,
@@ -313,18 +310,22 @@ export async function createPost({ category, title, body, anonymous }) {
 
   if (sessionError || !session?.access_token) {
     return {
-      data: null,
-      error: sessionError || { message: "Please log in again before posting." },
+      accessToken: null,
+      error: sessionError || { message: fallbackMessage },
     };
   }
 
-  const response = await fetch("/api/posts/create", {
+  return { accessToken: session.access_token, error: null };
+}
+
+async function postJsonToApi(path, accessToken, payload, fallbackMessage) {
+  const response = await fetch(path, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${session.access_token}`,
+      Authorization: `Bearer ${accessToken}`,
     },
-    body: JSON.stringify({ category, title, body, anonymous }),
+    body: JSON.stringify(payload),
   });
 
   let result = null;
@@ -342,14 +343,37 @@ export async function createPost({ category, title, body, anonymous }) {
         message:
           result?.error ||
           (response.status === 429
-            ? "You are posting too quickly. Please try again shortly."
-            : "Could not create post."),
+            ? "You are doing that too quickly. Please try again shortly."
+            : fallbackMessage),
       },
     };
   }
 
+  return { data: result, error: null };
+}
+
+export async function createPost({ category, title, body, anonymous }) {
+  const supabase = createClient();
+  if (!supabase) return { data: null, error: null };
+
+  const { accessToken, error } = await getAccessTokenForApi(
+    supabase,
+    "Please log in again before posting."
+  );
+
+  if (error || !accessToken) return { data: null, error };
+
+  const result = await postJsonToApi(
+    "/api/posts/create",
+    accessToken,
+    { category, title, body, anonymous },
+    "Could not create post."
+  );
+
+  if (result.error) return result;
+
   return {
-    data: normalizePostRow(result?.post || {}),
+    data: normalizePostRow(result.data?.post || {}),
     error: null,
   };
 }
@@ -505,38 +529,48 @@ export async function listMyUpvotedPostIds(userId) {
   return { data: (data || []).map((r) => r.post_id), error };
 }
 
-export async function addUpvote(postId, userId) {
+export async function addUpvote(postId) {
   const supabase = createClient();
   if (!supabase) return { data: null, error: null };
 
   const resolvedPostId = resolvePostId(postId);
 
-  const { data, error } = await supabase
-    .from("upvotes")
-    .insert([{ post_id: resolvedPostId, user_id: userId }])
-    .select("post_id, user_id")
-    .maybeSingle();
+  const { accessToken, error } = await getAccessTokenForApi(
+    supabase,
+    "Please log in again before voting."
+  );
 
-  if (error) console.error("Add upvote failed:", error);
+  if (error || !accessToken) return { data: null, error };
 
-  return { data, error };
+  return postJsonToApi(
+    "/api/posts/upvote",
+    accessToken,
+    { post_id: resolvedPostId, action: "add" },
+    "Could not add vote."
+  );
 }
 
-export async function removeUpvote(postId, userId) {
+export async function removeUpvote(postId) {
   const supabase = createClient();
   if (!supabase) return { error: null };
 
   const resolvedPostId = resolvePostId(postId);
 
-  const { error } = await supabase
-    .from("upvotes")
-    .delete()
-    .eq("post_id", resolvedPostId)
-    .eq("user_id", userId);
+  const { accessToken, error } = await getAccessTokenForApi(
+    supabase,
+    "Please log in again before voting."
+  );
 
-  if (error) console.error("Remove upvote failed:", error);
+  if (error || !accessToken) return { error };
 
-  return { error };
+  const result = await postJsonToApi(
+    "/api/posts/upvote",
+    accessToken,
+    { post_id: resolvedPostId, action: "remove" },
+    "Could not remove vote."
+  );
+
+  return { error: result.error };
 }
 
 export async function listMyReportedPostIds(userId) {
@@ -566,50 +600,17 @@ export async function reportPost(postId, userId, reason = "") {
     };
   }
 
-  const {
-    data: { session },
-    error: sessionError,
-  } = await supabase.auth.getSession();
+  const { accessToken, error } = await getAccessTokenForApi(
+    supabase,
+    "Please log in again before reporting a post."
+  );
 
-  if (sessionError || !session?.access_token) {
-    return {
-      data: null,
-      error: sessionError || { message: "Please log in again before reporting a post." },
-    };
-  }
+  if (error || !accessToken) return { data: null, error };
 
-  const response = await fetch("/api/posts/report", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${session.access_token}`,
-    },
-    body: JSON.stringify({ post_id: resolvedPostId, reason }),
-  });
-
-  let result = null;
-
-  try {
-    result = await response.json();
-  } catch {
-    result = null;
-  }
-
-  if (!response.ok) {
-    return {
-      data: null,
-      error: {
-        message:
-          result?.error ||
-          (response.status === 429
-            ? "You are reporting too quickly. Please try again shortly."
-            : "Could not report post."),
-      },
-    };
-  }
-
-  return {
-    data: result || null,
-    error: null,
-  };
+  return postJsonToApi(
+    "/api/posts/report",
+    accessToken,
+    { post_id: resolvedPostId, reason },
+    "Could not report post."
+  );
 }
