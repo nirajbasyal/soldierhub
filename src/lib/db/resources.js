@@ -77,17 +77,29 @@ async function runAdminResourceAction(payload, fallbackMessage) {
 }
 
 export async function listResources() {
-  const supabase = createClient();
-  if (!supabase) return { data: [], error: null };
+  const response = await fetch("/api/resources", {
+    method: "GET",
+    headers: { Accept: "application/json" },
+  });
 
-  const { data, error } = await supabase
-    .from("resources")
-    .select("*")
-    .order("section", { ascending: true })
-    .order("display_order", { ascending: true })
-    .order("created_at", { ascending: false });
+  let result = null;
 
-  return { data: data || [], error };
+  try {
+    result = await response.json();
+  } catch {
+    result = null;
+  }
+
+  if (!response.ok) {
+    return {
+      data: [],
+      error: {
+        message: result?.error || "Could not load resources.",
+      },
+    };
+  }
+
+  return { data: result?.data || [], error: null };
 }
 
 export async function adminCreateResource({
