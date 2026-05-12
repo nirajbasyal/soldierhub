@@ -78,6 +78,9 @@ export default function HomePage() {
     category,
     setCategory,
     postsLoading,
+    hasMorePosts,
+    loadingMorePosts,
+    loadMorePosts,
   } = useApp();
 
   const [cachedPosts, setCachedPosts] = useState(readCachedFeed);
@@ -114,6 +117,7 @@ export default function HomePage() {
   }, [posts, cachedPosts]);
 
   const showInitialSkeleton = postsLoading && feedPosts.length === 0;
+  const showLoadMore = !search.trim() && category === "All" && hasMorePosts && feedPosts.length > 0;
 
   const counts = useMemo(() => {
     const c = { All: feedPosts.length };
@@ -192,12 +196,32 @@ export default function HomePage() {
                 />
               </div>
             ) : (
-              <div className="-mx-4 md:mx-0 flex flex-col gap-2.5 sh-feed-post-list">
-                {filtered.map((post) => {
-                  const normalizedPost = normalizeFeedPostForCard(post);
-                  return <PostCard key={normalizedPost.id} post={normalizedPost} />;
-                })}
-              </div>
+              <>
+                <div className="-mx-4 md:mx-0 flex flex-col gap-2.5 sh-feed-post-list">
+                  {filtered.map((post) => {
+                    const normalizedPost = normalizeFeedPostForCard(post);
+                    return <PostCard key={normalizedPost.id} post={normalizedPost} />;
+                  })}
+                </div>
+
+                {showLoadMore ? (
+                  <div className="flex justify-center pt-2">
+                    <button
+                      type="button"
+                      onClick={loadMorePosts}
+                      disabled={loadingMorePosts}
+                      className="rounded-full border px-5 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
+                      style={{
+                        backgroundColor: T.card,
+                        borderColor: T.border,
+                        color: T.ink,
+                      }}
+                    >
+                      {loadingMorePosts ? "Loading..." : "Load more posts"}
+                    </button>
+                  </div>
+                ) : null}
+              </>
             )}
           </div>
 
