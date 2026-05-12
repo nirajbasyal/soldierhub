@@ -179,10 +179,18 @@ async function listPostsFromView(supabase, limit) {
   };
 }
 
-async function listPostsFromRpc(supabase, limit) {
+async function listPostsFromRpc(
+  supabase,
+  { limit = 30, cursorCreatedAt = null, cursorId = null } = {}
+) {
   const attempts = [
+    () =>
+      supabase.rpc("get_public_posts", {
+        limit_count: limit,
+        cursor_created_at: cursorCreatedAt,
+        cursor_id: cursorId,
+      }),
     () => supabase.rpc("get_public_posts", { limit_count: limit }),
-    () => supabase.rpc("get_public_posts", { p_limit: limit }),
     () => supabase.rpc("get_public_posts"),
   ];
 
@@ -204,16 +212,28 @@ async function listPostsFromRpc(supabase, limit) {
   return { data: [], error: lastError };
 }
 
-export async function listPosts({ limit = 30 } = {}) {
+export async function listPosts({
+  limit = 30,
+  cursorCreatedAt = null,
+  cursorId = null,
+} = {}) {
   const supabase = createClient();
   if (!supabase) return { data: [], error: null };
 
   // Production-safe order:
-  // 1. Public RPC masks anonymous authors and works for logged-out users.
-  // 2. Safe view fallback.
+  // 1. Public RPC masks anonymous authors and supports cursor pagination.
+  // 2. Safe view fallback for first-page loads.
   // 3. Raw table only as final fallback for admin/author access.
-  const rpcResult = await listPostsFromRpc(supabase, limit);
+  const rpcResult = await listPostsFromRpc(supabase, {
+    limit,
+    cursorCreatedAt,
+    cursorId,
+  });
   if (!rpcResult.error) return rpcResult;
+
+  // Fallbacks are only safe for first-page loads. Cursor pagination depends on
+  // the RPC because the public raw table is intentionally protected by RLS.
+  if (cursorCreatedAt || cursorId) return rpcResult;
 
   const viewResult = await listPostsFromView(supabase, limit);
   if (!viewResult.error) return viewResult;
