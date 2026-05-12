@@ -8,6 +8,66 @@ const SELF_PROFILE_FIELDS =
 const ADMIN_PROFILE_FIELDS =
   "id, full_name, email, personal_email, military_email, phone, bio, avatar_color, avatar_url, role, status, verification_status, base, created_at, updated_at";
 
+async function getAccessTokenForApi(supabase, fallbackMessage) {
+  const {
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession();
+
+  if (sessionError || !session?.access_token) {
+    return {
+      accessToken: null,
+      error: sessionError || { message: fallbackMessage },
+    };
+  }
+
+  return { accessToken: session.access_token, error: null };
+}
+
+async function postJsonToApi(path, accessToken, payload, fallbackMessage) {
+  const response = await fetch(path, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  let result = null;
+
+  try {
+    result = await response.json();
+  } catch {
+    result = null;
+  }
+
+  if (!response.ok) {
+    return {
+      data: null,
+      error: {
+        message:
+          result?.error ||
+          (response.status === 429
+            ? "You are doing that too quickly. Please try again shortly."
+            : fallbackMessage),
+      },
+    };
+  }
+
+  return { data: result?.data || null, error: null };
+}
+
+async function runAdminProfileAction(payload, fallbackMessage) {
+  const supabase = createClient();
+  if (!supabase) return { data: null, error: { message: "Supabase is not configured." } };
+
+  const { accessToken, error } = await getAccessTokenForApi(supabase, fallbackMessage);
+  if (error || !accessToken) return { data: null, error };
+
+  return postJsonToApi("/api/admin/profiles/action", accessToken, payload, fallbackMessage);
+}
+
 export async function getProfile(userId) {
   const supabase = createClient();
   if (!supabase) return { data: null, error: null };
@@ -74,40 +134,24 @@ export async function updateMyProfile(userId, updates) {
 }
 
 export async function adminVerifyProfile(profileId) {
-  const supabase = createClient();
-  if (!supabase) return { error: null };
-
-  const { error } = await supabase
-    .from("profiles")
-    .update({
-      status: "verified",
-      verification_status: "verified",
-    })
-    .eq("id", profileId);
-
-  return { error };
+  return runAdminProfileAction(
+    { action: "verify", profileId },
+    "Could not verify profile."
+  );
 }
 
 export async function adminRejectProfile(profileId) {
-  const supabase = createClient();
-  if (!supabase) return { error: null };
-
-  const { error } = await supabase.rpc("admin_reject_profile", {
-    p_profile_id: profileId,
-  });
-
-  return { error };
+  return runAdminProfileAction(
+    { action: "reject", profileId },
+    "Could not reject profile."
+  );
 }
 
 export async function adminRemoveProfile(profileId) {
-  const supabase = createClient();
-  if (!supabase) return { error: null };
-
-  const { error } = await supabase.rpc("admin_revoke_profile", {
-    p_profile_id: profileId,
-  });
-
-  return { error };
+  return runAdminProfileAction(
+    { action: "revoke", profileId },
+    "Could not revoke profile."
+  );
 }
 
 export async function requestProfileRereview({ militaryEmail, phone }) {
@@ -123,19 +167,10 @@ export async function requestProfileRereview({ militaryEmail, phone }) {
 }
 
 export async function adminVerifyProfileByEmail(email) {
-  const supabase = createClient();
-  if (!supabase) return { data: null, error: null };
-
-  const cleanEmail = email?.trim().toLowerCase() || "";
-
-  const { data, error } = await supabase.rpc("admin_verify_profile_by_email", {
-    p_email: cleanEmail,
-  });
-
-  return {
-    data: data?.[0] || null,
-    error,
-  };
+  return runAdminProfileAction(
+    { action: "verify_by_email", email },
+    "Could not verify profile by email."
+  );
 }
 
 export async function listBlockedProfiles() {
@@ -152,17 +187,8 @@ export async function listBlockedProfiles() {
 }
 
 export async function adminRevokeProfileByEmail(email) {
-  const supabase = createClient();
-  if (!supabase) return { data: null, error: null };
-
-  const cleanEmail = email?.trim().toLowerCase() || "";
-
-  const { data, error } = await supabase.rpc("admin_revoke_profile_by_email", {
-    p_email: cleanEmail,
-  });
-
-  return {
-    data: data?.[0] || null,
-    error,
-  };
+  return runAdminProfileAction(
+    { action: "revoke_by_email", email },
+    "Could not revoke profile by email."
+  );
 }
