@@ -2,39 +2,54 @@
 
 import { createClient } from "@/lib/supabase/client";
 
+const DEFAULT_COMMENT_LIMIT = 50;
+
 // Comments are read through safe RPC functions.
 // This prevents anonymous post authors from leaking their real name
 // when commenting under their own anonymous post.
 
-export async function listCommentsForPost(postId) {
+export async function listCommentsForPost(postId, { limit = DEFAULT_COMMENT_LIMIT } = {}) {
   const supabase = createClient();
   if (!supabase) return { data: [], error: null };
 
-  // The updated Supabase function uses `target_post_id`.
-  // Keep a fallback to the older `p_post_id` name so local/staging DBs do not break.
+  // The updated Supabase function uses `target_post_id` and `limit_count`.
+  // Keep fallbacks so local/staging DBs do not break if they lag behind production.
   let result = await supabase.rpc("get_public_comments_for_post", {
     target_post_id: postId,
+    limit_count: limit,
   });
 
   if (result.error) {
-    const fallback = await supabase.rpc("get_public_comments_for_post", {
+    const fallbackWithoutLimit = await supabase.rpc("get_public_comments_for_post", {
+      target_post_id: postId,
+    });
+
+    if (!fallbackWithoutLimit.error) {
+      result = fallbackWithoutLimit;
+    }
+  }
+
+  if (result.error) {
+    const olderFallback = await supabase.rpc("get_public_comments_for_post", {
       p_post_id: postId,
     });
 
-    if (!fallback.error) {
-      result = fallback;
+    if (!olderFallback.error) {
+      result = olderFallback;
     }
   }
 
   return { data: result.data || [], error: result.error };
 }
 
-export async function listCommentsForPosts(postIds) {
+export async function listCommentsForPosts(postIds, { limit = DEFAULT_COMMENT_LIMIT } = {}) {
   const supabase = createClient();
   if (!supabase || postIds.length === 0) return { data: [], error: null };
 
+  const uniquePostIds = [...new Set(postIds.filter(Boolean))];
+
   const results = await Promise.all(
-    postIds.map((postId) => listCommentsForPost(postId))
+    uniquePostIds.map((postId) => listCommentsForPost(postId, { limit }))
   );
 
   const data = results.flatMap((result) => result.data || []);
