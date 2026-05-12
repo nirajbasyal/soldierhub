@@ -5,6 +5,12 @@ import { createClient } from "@/lib/supabase/client";
 const NOTIFICATION_SELECT =
   "id, recipient_user_id, actor_user_id, actor_name_cached, type, post_id, post_title_cached, comment_id, read, created_at";
 
+let unreadCountClientCache = {
+  userId: null,
+  count: 0,
+  expiresAt: 0,
+};
+
 async function getAccessTokenForApi(supabase, fallbackMessage) {
   const {
     data: { session },
@@ -55,6 +61,63 @@ async function postJsonToApi(path, accessToken, payload, fallbackMessage) {
   return { data: result || null, error: null };
 }
 
+async function getJsonFromApi(path, accessToken, fallbackMessage) {
+  const response = await fetch(path, {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  let result = null;
+
+  try {
+    result = await response.json();
+  } catch {
+    result = null;
+  }
+
+  if (!response.ok) {
+    return {
+      data: null,
+      error: {
+        message:
+          result?.error ||
+          (response.status === 429
+            ? "You are checking notifications too quickly. Please try again shortly."
+            : fallbackMessage),
+      },
+    };
+  }
+
+  return { data: result || null, error: null };
+}
+
+function getCachedUnreadCount(userId) {
+  if (!userId) return null;
+  if (unreadCountClientCache.userId !== userId) return null;
+  if (Date.now() > unreadCountClientCache.expiresAt) return null;
+
+  return unreadCountClientCache.count;
+}
+
+function setCachedUnreadCount(userId, count) {
+  unreadCountClientCache = {
+    userId,
+    count: count || 0,
+    expiresAt: Date.now() + 20 * 1000,
+  };
+}
+
+export function clearUnreadCountCache() {
+  unreadCountClientCache = {
+    userId: null,
+    count: 0,
+    expiresAt: 0,
+  };
+}
+
 export async function listMyNotifications(
   userId,
   { limit = 30, cursorCreatedAt = null, cursorId = null } = {}
@@ -92,23 +155,42 @@ export async function markAllNotificationsRead() {
 
   if (error || !accessToken) return { data: null, error };
 
-  return postJsonToApi(
+  const result = await postJsonToApi(
     "/api/notifications/mark-read",
     accessToken,
     {},
     "Could not update notifications."
   );
+
+  if (!result.error) clearUnreadCountCache();
+
+  return result;
 }
 
 export async function getUnreadCount(userId) {
+  const cachedCount = getCachedUnreadCount(userId);
+  if (cachedCount !== null) return { count: cachedCount, error: null };
+
   const supabase = createClient();
   if (!supabase) return { count: 0, error: null };
 
-  const { count, error } = await supabase
-    .from("notifications")
-    .select("id", { count: "estimated", head: true })
-    .eq("recipient_user_id", userId)
-    .eq("read", false);
+  const { accessToken, error } = await getAccessTokenForApi(
+    supabase,
+    "Please log in again before loading notifications."
+  );
 
-  return { count: count || 0, error };
+  if (error || !accessToken) return { count: 0, error };
+
+  const result = await getJsonFromApi(
+    "/api/notifications/unread-count",
+    accessToken,
+    "Could not load unread count."
+  );
+
+  if (result.error) return { count: 0, error: result.error };
+
+  const count = result.data?.count || 0;
+  setCachedUnreadCount(userId, count);
+
+  return { count, error: null };
 }
