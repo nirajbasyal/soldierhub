@@ -62,6 +62,9 @@ export default function NotificationsPage() {
     currentUser,
     authLoading,
     notifications = [],
+    hasMoreNotifications,
+    loadingMoreNotifications,
+    loadMoreNotifications,
     setAuthModal,
     markNotificationsRead,
   } = useApp();
@@ -142,11 +145,33 @@ export default function NotificationsPage() {
               />
             </div>
           ) : (
-            <div className="flex flex-col gap-3">
-              {displayNotifications.map((notification) => (
-                <NotificationItem key={notification.id} notification={notification} />
-              ))}
-            </div>
+            <>
+              <div className="flex flex-col gap-3">
+                {displayNotifications.map((notification) => (
+                  <NotificationItem key={notification.id} notification={notification} />
+                ))}
+              </div>
+
+              {hasMoreNotifications ? (
+                <div className="mt-5 flex justify-center">
+                  <button
+                    type="button"
+                    onClick={loadMoreNotifications}
+                    disabled={loadingMoreNotifications}
+                    className="rounded-full border px-5 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
+                    style={{
+                      backgroundColor: T.card,
+                      borderColor: T.border,
+                      color: T.ink,
+                    }}
+                  >
+                    {loadingMoreNotifications
+                      ? "Loading..."
+                      : "Load more notifications"}
+                  </button>
+                </div>
+              ) : null}
+            </>
           )}
 
           <Footer />
