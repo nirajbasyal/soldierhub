@@ -22,11 +22,23 @@ export function getPostAuthorId(post = {}) {
   );
 }
 
+export function isAnonymousPublicPost(post = {}) {
+  return Boolean(post.anonymous) && !getPostAuthorId(post);
+}
+
 export function isIdentifiedPost(post, expectedAuthorId = null) {
   const postId = getPostId(post);
   const authorId = getPostAuthorId(post);
 
-  if (!postId || !authorId) return false;
+  if (!postId) return false;
+
+  // Public feed RPC intentionally masks author_id for anonymous posts.
+  // Those posts are still valid public feed items, but they must not pass
+  // expectedAuthorId checks for owner-only/profile views.
+  if (!authorId) {
+    return !expectedAuthorId && isAnonymousPublicPost(post);
+  }
+
   if (expectedAuthorId && authorId !== expectedAuthorId) return false;
 
   return true;
