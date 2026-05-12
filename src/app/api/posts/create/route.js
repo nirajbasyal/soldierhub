@@ -6,9 +6,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const POST_SELECT =
-  "id, author_id, author_name_cached, author_color_cached, category, title, body, anonymous, status, edited, created_at, updated_at";
+  "id, author_id, author_name_cached, author_color_cached, category, body, anonymous, status, edited, created_at, updated_at";
 
-const MAX_TITLE_LENGTH = 160;
 const MAX_BODY_LENGTH = 5000;
 
 function getBearerToken(request) {
@@ -24,15 +23,8 @@ function createAuthedSupabaseClient(accessToken) {
   if (!url || !anonKey) return null;
 
   return createClient(url, anonKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-    global: {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    },
+    auth: { autoRefreshToken: false, persistSession: false },
+    global: { headers: { Authorization: `Bearer ${accessToken}` } },
   });
 }
 
@@ -45,19 +37,9 @@ function cleanText(value, fallback = "") {
   return value.trim();
 }
 
-function validatePostInput({ title, body }) {
-  if (!title) {
-    return "Please add a post title.";
-  }
-
-  if (title.length > MAX_TITLE_LENGTH) {
-    return `Post title must be ${MAX_TITLE_LENGTH} characters or less.`;
-  }
-
-  if (body.length > MAX_BODY_LENGTH) {
-    return `Post body must be ${MAX_BODY_LENGTH} characters or less.`;
-  }
-
+function validatePostInput({ body }) {
+  if (!body) return "Please write something before posting.";
+  if (body.length > MAX_BODY_LENGTH) return `Post body must be ${MAX_BODY_LENGTH} characters or less.`;
   return null;
 }
 
@@ -81,9 +63,7 @@ export async function POST(request) {
     windowMs: 60 * 1000,
   });
 
-  if (!ipRateLimit.allowed) {
-    return rateLimitResponse(ipRateLimit);
-  }
+  if (!ipRateLimit.allowed) return rateLimitResponse(ipRateLimit);
 
   const accessToken = getBearerToken(request);
 
@@ -103,10 +83,7 @@ export async function POST(request) {
     );
   }
 
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser(accessToken);
+  const { data: { user }, error: userError } = await supabase.auth.getUser(accessToken);
 
   if (userError || !user) {
     return NextResponse.json(
@@ -121,12 +98,9 @@ export async function POST(request) {
     windowMs: 10 * 60 * 1000,
   });
 
-  if (!userRateLimit.allowed) {
-    return rateLimitResponse(userRateLimit);
-  }
+  if (!userRateLimit.allowed) return rateLimitResponse(userRateLimit);
 
   let bodyJson;
-
   try {
     bodyJson = await request.json();
   } catch {
@@ -136,12 +110,11 @@ export async function POST(request) {
     );
   }
 
-  const title = cleanText(bodyJson?.title);
   const body = cleanText(bodyJson?.body);
   const category = cleanText(bodyJson?.category, "General Q&A") || "General Q&A";
   const anonymous = Boolean(bodyJson?.anonymous);
 
-  const validationError = validatePostInput({ title, body });
+  const validationError = validatePostInput({ body });
 
   if (validationError) {
     return NextResponse.json(
@@ -176,7 +149,6 @@ export async function POST(request) {
     author_name_cached: profile.full_name || user.email || "Member",
     author_color_cached: profile.avatar_color || "#314A66",
     category,
-    title,
     body,
     anonymous,
     status: "active",
