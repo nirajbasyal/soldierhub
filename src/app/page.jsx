@@ -23,6 +23,27 @@ function getRealPostId(post) {
   return post?.post_id || post?.postId || post?.post?.id || post?.id || null;
 }
 
+function getAuthorId(post) {
+  return (
+    post?.author_id ||
+    post?.user_id ||
+    post?.profile_id ||
+    post?.created_by ||
+    post?.author_user_id ||
+    post?.profile?.id ||
+    post?.profiles?.id ||
+    post?.author?.id ||
+    null
+  );
+}
+
+function isValidFeedPost(post) {
+  if (!getRealPostId(post)) return false;
+  if (!getAuthorId(post)) return false;
+  if (post?.status === "deleted" || post?.status === "removed") return false;
+  return true;
+}
+
 function normalizeFeedPostForCard(post) {
   const postId = getRealPostId(post);
 
@@ -41,8 +62,10 @@ function readCachedFeed() {
     if (!raw) return [];
 
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed?.posts) ? parsed.posts : [];
+    const posts = Array.isArray(parsed?.posts) ? parsed.posts : [];
+    return posts.filter(isValidFeedPost).map(normalizeFeedPostForCard);
   } catch {
+    window.localStorage.removeItem(FEED_CACHE_KEY);
     return [];
   }
 }
@@ -60,9 +83,19 @@ export default function HomePage() {
   const [cachedPosts, setCachedPosts] = useState(readCachedFeed);
 
   useEffect(() => {
-    if (!posts.length || typeof window === "undefined") return;
+    if (typeof window === "undefined") return;
 
-    const postsToCache = posts.slice(0, 30).map(normalizeFeedPostForCard);
+    if (!posts.length) {
+      window.localStorage.removeItem(FEED_CACHE_KEY);
+      setCachedPosts([]);
+      return;
+    }
+
+    const postsToCache = posts
+      .filter(isValidFeedPost)
+      .slice(0, 30)
+      .map(normalizeFeedPostForCard);
+
     setCachedPosts(postsToCache);
 
     try {
@@ -71,13 +104,13 @@ export default function HomePage() {
         JSON.stringify({ savedAt: Date.now(), posts: postsToCache })
       );
     } catch {
-      // Browser storage can fail in private mode or when full. Feed still works normally.
+      window.localStorage.removeItem(FEED_CACHE_KEY);
     }
   }, [posts]);
 
   const feedPosts = useMemo(() => {
     const source = posts.length ? posts : cachedPosts;
-    return source.map(normalizeFeedPostForCard);
+    return source.filter(isValidFeedPost).map(normalizeFeedPostForCard);
   }, [posts, cachedPosts]);
 
   const showInitialSkeleton = postsLoading && feedPosts.length === 0;
