@@ -22,6 +22,7 @@ export default function TopNav() {
   const app = useApp() || {};
   const {
     currentUser,
+    unreadCount = 0,
     search = "",
     setSearch = () => {},
     setAuthModal = () => {},
@@ -33,6 +34,11 @@ export default function TopNav() {
   const displayEmail = safeUser?.email || safeUser?.personal_email || "";
   const firstName = displayName.split(" ")[0] || "Profile";
   const userStatus = safeUser?.status || safeUser?.verification_status || "pending";
+  const notificationCount = Math.max(0, Number(unreadCount) || 0);
+  const showNotificationBadge =
+    Boolean(safeUser) && userStatus === "verified" && notificationCount > 0;
+  const notificationBadgeText =
+    notificationCount > 99 ? "99+" : String(notificationCount);
 
   const goProfile = () => {
     if (!safeUser) return setAuthModal("login");
@@ -145,9 +151,26 @@ export default function TopNav() {
                   backgroundColor: "rgba(253,254,255,0.92)",
                   color: T.navy,
                 }}
-                aria-label="Open notifications"
+                aria-label={
+                  showNotificationBadge
+                    ? `Open notifications, ${notificationCount} unread`
+                    : "Open notifications"
+                }
               >
                 <Bell size={17} />
+
+                {showNotificationBadge && (
+                  <span
+                    className="absolute -right-1.5 -top-1.5 min-w-[19px] h-[19px] px-1 rounded-full border flex items-center justify-center text-[10px] font-bold leading-none shadow-sm"
+                    style={{
+                      backgroundColor: "#B31942",
+                      borderColor: "rgba(255,255,255,0.95)",
+                      color: "#FFFFFF",
+                    }}
+                  >
+                    {notificationBadgeText}
+                  </span>
+                )}
               </button>
 
               {safeUser.role === "admin" && (
