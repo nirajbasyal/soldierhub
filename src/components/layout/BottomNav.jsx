@@ -12,6 +12,7 @@ export default function BottomNav() {
   const app = useApp() || {};
   const {
     currentUser,
+    unreadCount = 0,
     setAuthModal = () => {},
     setMobileMenu = () => {},
   } = app;
@@ -20,6 +21,11 @@ export default function BottomNav() {
   const displayName = safeUser?.full_name || safeUser?.email || "SoldierHub user";
   const displayEmail = safeUser?.email || safeUser?.personal_email || "";
   const userStatus = safeUser?.status || safeUser?.verification_status || "pending";
+  const notificationCount = Math.max(0, Number(unreadCount) || 0);
+  const showNotificationBadge =
+    Boolean(safeUser) && userStatus === "verified" && notificationCount > 0;
+  const notificationBadgeText =
+    notificationCount > 99 ? "99+" : String(notificationCount);
 
   const goNotifications = () => {
     if (!safeUser) {
@@ -58,6 +64,10 @@ export default function BottomNav() {
       icon: Bell,
       active: pathname === "/notifications",
       onClick: goNotifications,
+      badge: showNotificationBadge ? notificationBadgeText : "",
+      ariaLabel: showNotificationBadge
+        ? `Notifications, ${notificationCount} unread`
+        : "Notifications",
     },
     {
       k: "menu",
@@ -87,6 +97,7 @@ export default function BottomNav() {
               type="button"
               onClick={t.onClick}
               className="flex flex-col items-center justify-center py-2.5 px-1 gap-1 relative min-w-0"
+              aria-label={t.ariaLabel || t.label}
             >
               <div className="relative">
                 <Icon
@@ -94,6 +105,19 @@ export default function BottomNav() {
                   strokeWidth={t.active ? 2.5 : 2}
                   style={{ color: t.active ? T.gold : T.textMuted }}
                 />
+
+                {t.badge && (
+                  <span
+                    className="absolute -right-2.5 -top-2.5 min-w-[18px] h-[18px] px-1 rounded-full border flex items-center justify-center text-[9px] font-bold leading-none shadow-sm"
+                    style={{
+                      backgroundColor: "#B31942",
+                      borderColor: T.card,
+                      color: "#FFFFFF",
+                    }}
+                  >
+                    {t.badge}
+                  </span>
+                )}
               </div>
 
               <span
