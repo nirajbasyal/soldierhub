@@ -28,10 +28,9 @@ export default function NotificationItem({ notification }) {
     notification.actor_name ||
     "Someone";
 
-  const postTitle =
-    notification.post_title_cached ||
-    notification.post?.title ||
-    posts.find((p) => p.id === notification.post_id)?.title ||
+  const postPreview =
+    notification.post?.body ||
+    posts.find((p) => p.id === notification.post_id)?.body ||
     "your post";
 
   const openNotification = () => {
@@ -96,7 +95,7 @@ export default function NotificationItem({ notification }) {
             </div>
 
             <div
-              className="mt-2 rounded-2xl border px-3 py-2 text-sm leading-relaxed line-clamp-2"
+              className="mt-2 rounded-2xl border px-3 py-2 text-sm leading-relaxed line-clamp-2 whitespace-pre-wrap"
               style={{
                 background:
                   "linear-gradient(135deg, rgba(244,248,253,0.95), rgba(253,254,255,0.95))",
@@ -104,7 +103,7 @@ export default function NotificationItem({ notification }) {
                 color: T.textMuted,
               }}
             >
-              {postTitle}
+              {postPreview}
             </div>
 
             <div
