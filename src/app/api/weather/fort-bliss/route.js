@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { checkRateLimit, rateLimitResponse } from "@/lib/server/rateLimit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -169,7 +170,17 @@ function cleanCondition(value) {
   return trimmed;
 }
 
-export async function GET() {
+export async function GET(request) {
+  const rateLimit = checkRateLimit(request, {
+    keyPrefix: "weather:fort-bliss",
+    limit: 90,
+    windowMs: 60 * 1000,
+  });
+
+  if (!rateLimit.allowed) {
+    return rateLimitResponse(rateLimit);
+  }
+
   try {
     const [observationResult, hourlyResult] = await Promise.allSettled([
       fetchNws(`${NWS_BASE}/stations/${STATION_ID}/observations/latest`),
@@ -226,6 +237,7 @@ export async function GET() {
         {
           status: 503,
           headers: {
+            ...rateLimit.headers,
             "Cache-Control": "no-store",
           },
         }
@@ -249,6 +261,7 @@ export async function GET() {
       },
       {
         headers: {
+          ...rateLimit.headers,
           "Cache-Control": "public, max-age=0, s-maxage=30, must-revalidate",
         },
       }
@@ -279,6 +292,7 @@ export async function GET() {
       {
         status: 503,
         headers: {
+          ...rateLimit.headers,
           "Cache-Control": "no-store",
         },
       }
