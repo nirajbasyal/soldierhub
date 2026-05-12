@@ -10,6 +10,31 @@ import {
 import { getProfileStatus, sanitizePosts } from "../utils/appHelpers";
 
 const FEED_REALTIME_DEBOUNCE_MS = 1200;
+const FEED_PAGE_SIZE = 30;
+
+function getNextCursor(posts = []) {
+  const lastPost = posts[posts.length - 1];
+
+  if (!lastPost?.created_at || !lastPost?.id) {
+    return null;
+  }
+
+  return {
+    createdAt: lastPost.created_at,
+    id: lastPost.id,
+  };
+}
+
+function mergeUniquePosts(existingPosts = [], nextPosts = []) {
+  const seen = new Set();
+
+  return [...existingPosts, ...nextPosts].filter((post) => {
+    const id = post?.id || post?.post_id;
+    if (!id || seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+}
 
 export function useDataLoader({
   SUPA,
@@ -25,6 +50,9 @@ export function useDataLoader({
   setPendingUsers,
   setUsers,
   setBlockedUsers,
+  setPostsCursor,
+  setHasMorePosts,
+  setLoadingMorePosts,
   sendToPendingReview,
 }) {
   const feedReloadTimerRef = useRef(null);
@@ -36,12 +64,56 @@ export function useDataLoader({
     setPostsLoading(true);
 
     try {
-      const { data } = await PostsDB.listPosts();
-      setPosts(sanitizePosts(data || []));
+      const { data } = await PostsDB.listPosts({ limit: FEED_PAGE_SIZE });
+      const cleanPosts = sanitizePosts(data || []);
+      setPosts(cleanPosts);
+      setPostsCursor(getNextCursor(cleanPosts));
+      setHasMorePosts(cleanPosts.length === FEED_PAGE_SIZE);
     } finally {
       setPostsLoading(false);
     }
-  }, [SUPA, setPosts, setPostsLoading]);
+  }, [SUPA, setHasMorePosts, setPosts, setPostsCursor, setPostsLoading]);
+
+  const loadMorePosts = useCallback(async () => {
+    if (!SUPA) return { ok: false };
+
+    let cursorForRequest = null;
+
+    setPosts((currentPosts) => {
+      cursorForRequest = getNextCursor(currentPosts);
+      return currentPosts;
+    });
+
+    if (!cursorForRequest) {
+      setHasMorePosts(false);
+      return { ok: false };
+    }
+
+    setLoadingMorePosts(true);
+
+    try {
+      const { data, error } = await PostsDB.listPosts({
+        limit: FEED_PAGE_SIZE,
+        cursorCreatedAt: cursorForRequest.createdAt,
+        cursorId: cursorForRequest.id,
+      });
+
+      if (error) return { ok: false, error: error.message };
+
+      const cleanPosts = sanitizePosts(data || []);
+
+      setPosts((currentPosts) => {
+        const mergedPosts = mergeUniquePosts(currentPosts, cleanPosts);
+        setPostsCursor(getNextCursor(mergedPosts));
+        return mergedPosts;
+      });
+
+      setHasMorePosts(cleanPosts.length === FEED_PAGE_SIZE);
+      return { ok: true };
+    } finally {
+      setLoadingMorePosts(false);
+    }
+  }, [SUPA, setHasMorePosts, setLoadingMorePosts, setPosts, setPostsCursor]);
 
   const reloadPostsQuietly = useCallback(async () => {
     if (!SUPA) return;
@@ -54,8 +126,11 @@ export function useDataLoader({
     feedReloadInFlightRef.current = true;
 
     try {
-      const { data } = await PostsDB.listPosts();
-      setPosts(sanitizePosts(data || []));
+      const { data } = await PostsDB.listPosts({ limit: FEED_PAGE_SIZE });
+      const cleanPosts = sanitizePosts(data || []);
+      setPosts(cleanPosts);
+      setPostsCursor(getNextCursor(cleanPosts));
+      setHasMorePosts(cleanPosts.length === FEED_PAGE_SIZE);
     } finally {
       feedReloadInFlightRef.current = false;
 
@@ -67,7 +142,7 @@ export function useDataLoader({
         );
       }
     }
-  }, [SUPA, setPosts]);
+  }, [SUPA, setHasMorePosts, setPosts, setPostsCursor]);
 
   const scheduleRealtimeFeedReload = useCallback(() => {
     if (!SUPA || typeof window === "undefined") return;
@@ -263,6 +338,7 @@ export function useDataLoader({
 
   return {
     reloadPosts,
+    loadMorePosts,
     reloadMyPosts,
     reloadPendingUsers,
     reloadVerifiedUsers,
