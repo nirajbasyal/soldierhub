@@ -7,7 +7,7 @@ import {
   subscribeToMyNotifications,
   subscribeToPosts,
 } from "@/lib/db/realtime";
-import { getProfileStatus } from "../utils/appHelpers";
+import { getProfileStatus, sanitizePosts } from "../utils/appHelpers";
 
 export function useDataLoader({
   SUPA,
@@ -29,7 +29,7 @@ export function useDataLoader({
     if (!SUPA) return;
     setPostsLoading(true);
     const { data } = await PostsDB.listPosts();
-    setPosts(data || []);
+    setPosts(sanitizePosts(data || []));
     setPostsLoading(false);
   }, [SUPA, setPosts, setPostsLoading]);
 
@@ -37,7 +37,7 @@ export function useDataLoader({
     if (!SUPA || !currentUser) return;
     if (getProfileStatus(currentUser) !== "verified") return;
     const { data } = await PostsDB.listMyPosts(currentUser.id);
-    setMyPosts(data || []);
+    setMyPosts(sanitizePosts(data || [], currentUser.id));
   }, [SUPA, currentUser, setMyPosts]);
 
   const reloadPendingUsers = useCallback(async () => {
@@ -170,7 +170,7 @@ export function useDataLoader({
       setMyUpvotes(new Set(ups));
       setMyReports(new Set(reps));
       setNotifications(notifs || []);
-      setMyPosts(mine || []);
+      setMyPosts(sanitizePosts(mine || [], currentUser.id));
     })();
 
     return () => {
