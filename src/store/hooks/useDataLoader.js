@@ -12,25 +12,26 @@ import { getProfileStatus, sanitizePosts } from "../utils/appHelpers";
 const FEED_REALTIME_DEBOUNCE_MS = 1200;
 const NOTIFICATION_REALTIME_DEBOUNCE_MS = 800;
 const FEED_PAGE_SIZE = 30;
+const NOTIFICATION_PAGE_SIZE = 30;
 
-function getNextCursor(posts = []) {
-  const lastPost = posts[posts.length - 1];
+function getNextCursor(items = []) {
+  const lastItem = items[items.length - 1];
 
-  if (!lastPost?.created_at || !lastPost?.id) {
+  if (!lastItem?.created_at || !lastItem?.id) {
     return null;
   }
 
   return {
-    createdAt: lastPost.created_at,
-    id: lastPost.id,
+    createdAt: lastItem.created_at,
+    id: lastItem.id,
   };
 }
 
-function mergeUniquePosts(existingPosts = [], nextPosts = []) {
+function mergeUniqueItems(existingItems = [], nextItems = []) {
   const seen = new Set();
 
-  return [...existingPosts, ...nextPosts].filter((post) => {
-    const id = post?.id || post?.post_id;
+  return [...existingItems, ...nextItems].filter((item) => {
+    const id = item?.id || item?.post_id;
     if (!id || seen.has(id)) return false;
     seen.add(id);
     return true;
@@ -54,6 +55,9 @@ export function useDataLoader({
   setPostsCursor,
   setHasMorePosts,
   setLoadingMorePosts,
+  setNotificationsCursor,
+  setHasMoreNotifications,
+  setLoadingMoreNotifications,
   sendToPendingReview,
 }) {
   const feedReloadTimerRef = useRef(null);
@@ -107,7 +111,7 @@ export function useDataLoader({
       const cleanPosts = sanitizePosts(data || []);
 
       setPosts((currentPosts) => {
-        const mergedPosts = mergeUniquePosts(currentPosts, cleanPosts);
+        const mergedPosts = mergeUniqueItems(currentPosts, cleanPosts);
         setPostsCursor(getNextCursor(mergedPosts));
         return mergedPosts;
       });
@@ -173,8 +177,13 @@ export function useDataLoader({
       notificationReloadInFlightRef.current = true;
 
       try {
-        const { data } = await NotificationsDB.listMyNotifications(userId);
-        setNotifications(data || []);
+        const { data } = await NotificationsDB.listMyNotifications(userId, {
+          limit: NOTIFICATION_PAGE_SIZE,
+        });
+        const safeNotifications = data || [];
+        setNotifications(safeNotifications);
+        setNotificationsCursor(getNextCursor(safeNotifications));
+        setHasMoreNotifications(safeNotifications.length === NOTIFICATION_PAGE_SIZE);
       } finally {
         notificationReloadInFlightRef.current = false;
 
@@ -187,7 +196,7 @@ export function useDataLoader({
         }
       }
     },
-    [SUPA, setNotifications]
+    [SUPA, setHasMoreNotifications, setNotifications, setNotificationsCursor]
   );
 
   const scheduleNotificationReload = useCallback(
@@ -205,6 +214,57 @@ export function useDataLoader({
     },
     [SUPA, reloadNotificationsQuietly]
   );
+
+  const loadMoreNotifications = useCallback(async () => {
+    if (!SUPA || !currentUser?.id) return { ok: false };
+
+    let cursorForRequest = null;
+
+    setNotifications((currentNotifications) => {
+      cursorForRequest = getNextCursor(currentNotifications);
+      return currentNotifications;
+    });
+
+    if (!cursorForRequest) {
+      setHasMoreNotifications(false);
+      return { ok: false };
+    }
+
+    setLoadingMoreNotifications(true);
+
+    try {
+      const { data, error } = await NotificationsDB.listMyNotifications(currentUser.id, {
+        limit: NOTIFICATION_PAGE_SIZE,
+        cursorCreatedAt: cursorForRequest.createdAt,
+        cursorId: cursorForRequest.id,
+      });
+
+      if (error) return { ok: false, error: error.message };
+
+      const nextNotifications = data || [];
+
+      setNotifications((currentNotifications) => {
+        const mergedNotifications = mergeUniqueItems(
+          currentNotifications,
+          nextNotifications
+        );
+        setNotificationsCursor(getNextCursor(mergedNotifications));
+        return mergedNotifications;
+      });
+
+      setHasMoreNotifications(nextNotifications.length === NOTIFICATION_PAGE_SIZE);
+      return { ok: true };
+    } finally {
+      setLoadingMoreNotifications(false);
+    }
+  }, [
+    SUPA,
+    currentUser?.id,
+    setHasMoreNotifications,
+    setLoadingMoreNotifications,
+    setNotifications,
+    setNotificationsCursor,
+  ]);
 
   const reloadMyPosts = useCallback(async () => {
     if (!SUPA || !currentUser) return;
@@ -266,6 +326,8 @@ export function useDataLoader({
         setMyUpvotes(new Set());
         setMyReports(new Set());
         setNotifications([]);
+        setNotificationsCursor(null);
+        setHasMoreNotifications(false);
         return;
       }
 
@@ -277,6 +339,8 @@ export function useDataLoader({
         setMyUpvotes(new Set());
         setMyReports(new Set());
         setNotifications([]);
+        setNotificationsCursor(null);
+        setHasMoreNotifications(false);
         sendToPendingReview({
           email: profile?.email || user.email || "",
           name: profile?.full_name || "",
@@ -299,9 +363,11 @@ export function useDataLoader({
     sendToPendingReview,
     setAuthLoading,
     setCurrentUser,
+    setHasMoreNotifications,
     setMyReports,
     setMyUpvotes,
     setNotifications,
+    setNotificationsCursor,
   ]);
 
   useEffect(() => {
@@ -330,6 +396,8 @@ export function useDataLoader({
       setMyUpvotes(new Set());
       setMyReports(new Set());
       setNotifications([]);
+      setNotificationsCursor(null);
+      setHasMoreNotifications(false);
       setMyPosts([]);
       return;
     }
@@ -341,15 +409,21 @@ export function useDataLoader({
         await Promise.all([
           PostsDB.listMyUpvotedPostIds(currentUser.id),
           PostsDB.listMyReportedPostIds(currentUser.id),
-          NotificationsDB.listMyNotifications(currentUser.id),
+          NotificationsDB.listMyNotifications(currentUser.id, {
+            limit: NOTIFICATION_PAGE_SIZE,
+          }),
           PostsDB.listMyPosts(currentUser.id),
         ]);
 
       if (cancelled) return;
 
+      const safeNotifications = notifs || [];
+
       setMyUpvotes(new Set(ups));
       setMyReports(new Set(reps));
-      setNotifications(notifs || []);
+      setNotifications(safeNotifications);
+      setNotificationsCursor(getNextCursor(safeNotifications));
+      setHasMoreNotifications(safeNotifications.length === NOTIFICATION_PAGE_SIZE);
       setMyPosts(sanitizePosts(mine || [], currentUser.id));
     })();
 
@@ -359,10 +433,12 @@ export function useDataLoader({
   }, [
     SUPA,
     currentUser,
+    setHasMoreNotifications,
     setMyPosts,
     setMyReports,
     setMyUpvotes,
     setNotifications,
+    setNotificationsCursor,
   ]);
 
   useEffect(() => {
@@ -393,6 +469,7 @@ export function useDataLoader({
   return {
     reloadPosts,
     loadMorePosts,
+    loadMoreNotifications,
     reloadMyPosts,
     reloadPendingUsers,
     reloadVerifiedUsers,
