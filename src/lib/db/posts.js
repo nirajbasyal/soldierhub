@@ -52,37 +52,6 @@ function resolvePostId(input) {
   return input;
 }
 
-function getProfileStatus(profile) {
-  return profile?.status || profile?.verification_status || "pending";
-}
-
-async function getAuthUserAndProfile(supabase) {
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    return {
-      user: null,
-      profile: null,
-      error: userError || { message: "Please log in again." },
-    };
-  }
-
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("id, full_name, email, avatar_color, status, verification_status")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (profileError) {
-    return { user, profile: null, error: profileError };
-  }
-
-  return { user, profile, error: null };
-}
-
 async function attachProfilesToPosts(supabase, rows = []) {
   if (!Array.isArray(rows) || rows.length === 0) return [];
 
@@ -384,60 +353,24 @@ export async function updateMyPost(postId, updates = {}) {
 
   const resolvedPostId = resolvePostId(postId);
 
-  if (!resolvedPostId) {
-    return {
-      data: null,
-      error: { message: "Post was not identified. Please refresh and try again." },
-    };
-  }
+  const { accessToken, error } = await getAccessTokenForApi(
+    supabase,
+    "Please log in again before editing your post."
+  );
 
-  const { user, error: authError } = await getAuthUserAndProfile(supabase);
+  if (error || !accessToken) return { data: null, error };
 
-  if (authError || !user) {
-    return {
-      data: null,
-      error: authError || { message: "Please log in again before editing your post." },
-    };
-  }
+  const result = await postJsonToApi(
+    "/api/posts/manage",
+    accessToken,
+    { action: "update", post_id: resolvedPostId, updates },
+    "Could not update post."
+  );
 
-  const allowed = {
-    title: updates.title,
-    body: updates.body,
-    category: updates.category,
-    edited: true,
-  };
-
-  Object.keys(allowed).forEach((key) => {
-    if (allowed[key] === undefined) delete allowed[key];
-  });
-
-  const { data, error } = await supabase
-    .from("posts")
-    .update(allowed)
-    .eq("id", resolvedPostId)
-    .eq("author_id", user.id)
-    .select(POST_SELECT)
-    .maybeSingle();
-
-  if (error) {
-    console.error("Update post failed:", error);
-    return { data: null, error };
-  }
-
-  if (!data) {
-    return {
-      data: null,
-      error: {
-        message:
-          "Post was not updated. This post may not belong to your account, or the post id coming from the UI does not match posts.id.",
-      },
-    };
-  }
-
-  const normalized = await hydrateTablePosts(supabase, [data]);
+  if (result.error) return result;
 
   return {
-    data: normalized[0] || null,
+    data: normalizePostRow(result.data?.post || {}),
     error: null,
   };
 }
@@ -448,56 +381,31 @@ export async function deletePost(postId) {
 
   const resolvedPostId = resolvePostId(postId);
 
-  if (!resolvedPostId) {
-    return {
-      data: null,
-      error: { message: "Post was not identified. Please refresh and try again." },
-      deleted: false,
-    };
-  }
+  const { accessToken, error } = await getAccessTokenForApi(
+    supabase,
+    "Please log in again before deleting your post."
+  );
 
-  const { user, error: authError } = await getAuthUserAndProfile(supabase);
-
-  if (authError || !user) {
-    return {
-      data: null,
-      error: authError || { message: "Please log in again before deleting your post." },
-      deleted: false,
-    };
-  }
-
-  const rpcResult = await supabase.rpc("delete_own_post", {
-    p_post_id: resolvedPostId,
-  });
-
-  if (!rpcResult.error && rpcResult.data === true) {
-    return { data: { id: resolvedPostId }, error: null, deleted: true };
-  }
-
-  const { data, error } = await supabase
-    .from("posts")
-    .delete()
-    .eq("id", resolvedPostId)
-    .eq("author_id", user.id)
-    .select("id");
-
-  if (error) {
-    console.error("Delete post failed:", error);
+  if (error || !accessToken) {
     return { data: null, error, deleted: false };
   }
 
-  if (!Array.isArray(data) || data.length === 0) {
-    return {
-      data: null,
-      error: {
-        message:
-          "Post was not deleted. This account is not matching the original post owner, or the delete policy is missing in Supabase.",
-      },
-      deleted: false,
-    };
+  const result = await postJsonToApi(
+    "/api/posts/manage",
+    accessToken,
+    { action: "delete", post_id: resolvedPostId },
+    "Could not delete post."
+  );
+
+  if (result.error) {
+    return { data: null, error: result.error, deleted: false };
   }
 
-  return { data, error: null, deleted: true };
+  return {
+    data: result.data?.data || result.data?.post || { id: resolvedPostId },
+    error: null,
+    deleted: result.data?.deleted === true,
+  };
 }
 
 export async function restoreReportedPost(postId) {
