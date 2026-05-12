@@ -10,6 +10,7 @@ import {
 import { getProfileStatus, sanitizePosts } from "../utils/appHelpers";
 
 const FEED_REALTIME_DEBOUNCE_MS = 1200;
+const NOTIFICATION_REALTIME_DEBOUNCE_MS = 800;
 const FEED_PAGE_SIZE = 30;
 
 function getNextCursor(posts = []) {
@@ -58,6 +59,9 @@ export function useDataLoader({
   const feedReloadTimerRef = useRef(null);
   const feedReloadInFlightRef = useRef(false);
   const feedReloadQueuedRef = useRef(false);
+  const notificationReloadTimerRef = useRef(null);
+  const notificationReloadInFlightRef = useRef(false);
+  const notificationReloadQueuedRef = useRef(false);
 
   const reloadPosts = useCallback(async () => {
     if (!SUPA) return;
@@ -156,6 +160,51 @@ export function useDataLoader({
       FEED_REALTIME_DEBOUNCE_MS
     );
   }, [SUPA, reloadPostsQuietly]);
+
+  const reloadNotificationsQuietly = useCallback(
+    async (userId) => {
+      if (!SUPA || !userId) return;
+
+      if (notificationReloadInFlightRef.current) {
+        notificationReloadQueuedRef.current = true;
+        return;
+      }
+
+      notificationReloadInFlightRef.current = true;
+
+      try {
+        const { data } = await NotificationsDB.listMyNotifications(userId);
+        setNotifications(data || []);
+      } finally {
+        notificationReloadInFlightRef.current = false;
+
+        if (notificationReloadQueuedRef.current) {
+          notificationReloadQueuedRef.current = false;
+          notificationReloadTimerRef.current = window.setTimeout(
+            () => reloadNotificationsQuietly(userId),
+            NOTIFICATION_REALTIME_DEBOUNCE_MS
+          );
+        }
+      }
+    },
+    [SUPA, setNotifications]
+  );
+
+  const scheduleNotificationReload = useCallback(
+    (userId) => {
+      if (!SUPA || !userId || typeof window === "undefined") return;
+
+      if (notificationReloadTimerRef.current) {
+        window.clearTimeout(notificationReloadTimerRef.current);
+      }
+
+      notificationReloadTimerRef.current = window.setTimeout(
+        () => reloadNotificationsQuietly(userId),
+        NOTIFICATION_REALTIME_DEBOUNCE_MS
+      );
+    },
+    [SUPA, reloadNotificationsQuietly]
+  );
 
   const reloadMyPosts = useCallback(async () => {
     if (!SUPA || !currentUser) return;
@@ -320,13 +369,18 @@ export function useDataLoader({
     if (!SUPA || !currentUser) return;
     if (getProfileStatus(currentUser) !== "verified") return;
 
-    const unsubscribe = subscribeToMyNotifications(currentUser.id, async () => {
-      const { data } = await NotificationsDB.listMyNotifications(currentUser.id);
-      setNotifications(data || []);
+    const unsubscribe = subscribeToMyNotifications(currentUser.id, () => {
+      scheduleNotificationReload(currentUser.id);
     });
 
-    return () => unsubscribe();
-  }, [SUPA, currentUser, setNotifications]);
+    return () => {
+      unsubscribe();
+
+      if (notificationReloadTimerRef.current && typeof window !== "undefined") {
+        window.clearTimeout(notificationReloadTimerRef.current);
+      }
+    };
+  }, [SUPA, currentUser, scheduleNotificationReload]);
 
   useEffect(() => {
     if (SUPA && currentUser?.role === "admin") {
