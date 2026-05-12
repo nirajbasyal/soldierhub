@@ -9,7 +9,6 @@ import {
 } from "@/lib/db/realtime";
 import { getProfileStatus, sanitizePosts } from "../utils/appHelpers";
 
-const FEED_REALTIME_DEBOUNCE_MS = 1200;
 const NOTIFICATION_REALTIME_DEBOUNCE_MS = 800;
 const FEED_PAGE_SIZE = 30;
 const NOTIFICATION_PAGE_SIZE = 30;
@@ -58,11 +57,9 @@ export function useDataLoader({
   setNotificationsCursor,
   setHasMoreNotifications,
   setLoadingMoreNotifications,
+  setHasNewFeedItems,
   sendToPendingReview,
 }) {
-  const feedReloadTimerRef = useRef(null);
-  const feedReloadInFlightRef = useRef(false);
-  const feedReloadQueuedRef = useRef(false);
   const notificationReloadTimerRef = useRef(null);
   const notificationReloadInFlightRef = useRef(false);
   const notificationReloadQueuedRef = useRef(false);
@@ -77,10 +74,18 @@ export function useDataLoader({
       setPosts(cleanPosts);
       setPostsCursor(getNextCursor(cleanPosts));
       setHasMorePosts(cleanPosts.length === FEED_PAGE_SIZE);
+      setHasNewFeedItems(false);
     } finally {
       setPostsLoading(false);
     }
-  }, [SUPA, setHasMorePosts, setPosts, setPostsCursor, setPostsLoading]);
+  }, [
+    SUPA,
+    setHasMorePosts,
+    setHasNewFeedItems,
+    setPosts,
+    setPostsCursor,
+    setPostsLoading,
+  ]);
 
   const loadMorePosts = useCallback(async () => {
     if (!SUPA) return { ok: false };
@@ -122,48 +127,6 @@ export function useDataLoader({
       setLoadingMorePosts(false);
     }
   }, [SUPA, setHasMorePosts, setLoadingMorePosts, setPosts, setPostsCursor]);
-
-  const reloadPostsQuietly = useCallback(async () => {
-    if (!SUPA) return;
-
-    if (feedReloadInFlightRef.current) {
-      feedReloadQueuedRef.current = true;
-      return;
-    }
-
-    feedReloadInFlightRef.current = true;
-
-    try {
-      const { data } = await PostsDB.listPosts({ limit: FEED_PAGE_SIZE });
-      const cleanPosts = sanitizePosts(data || []);
-      setPosts(cleanPosts);
-      setPostsCursor(getNextCursor(cleanPosts));
-      setHasMorePosts(cleanPosts.length === FEED_PAGE_SIZE);
-    } finally {
-      feedReloadInFlightRef.current = false;
-
-      if (feedReloadQueuedRef.current) {
-        feedReloadQueuedRef.current = false;
-        feedReloadTimerRef.current = window.setTimeout(
-          () => reloadPostsQuietly(),
-          FEED_REALTIME_DEBOUNCE_MS
-        );
-      }
-    }
-  }, [SUPA, setHasMorePosts, setPosts, setPostsCursor]);
-
-  const scheduleRealtimeFeedReload = useCallback(() => {
-    if (!SUPA || typeof window === "undefined") return;
-
-    if (feedReloadTimerRef.current) {
-      window.clearTimeout(feedReloadTimerRef.current);
-    }
-
-    feedReloadTimerRef.current = window.setTimeout(
-      () => reloadPostsQuietly(),
-      FEED_REALTIME_DEBOUNCE_MS
-    );
-  }, [SUPA, reloadPostsQuietly]);
 
   const reloadNotificationsQuietly = useCallback(
     async (userId) => {
@@ -376,16 +339,15 @@ export function useDataLoader({
 
   useEffect(() => {
     if (!SUPA) return;
-    const unsubscribe = subscribeToPosts(() => scheduleRealtimeFeedReload());
+
+    const unsubscribe = subscribeToPosts(() => {
+      setHasNewFeedItems(true);
+    });
 
     return () => {
       unsubscribe();
-
-      if (feedReloadTimerRef.current && typeof window !== "undefined") {
-        window.clearTimeout(feedReloadTimerRef.current);
-      }
     };
-  }, [SUPA, scheduleRealtimeFeedReload]);
+  }, [SUPA, setHasNewFeedItems]);
 
   useEffect(() => {
     if (!SUPA || !currentUser) return;
