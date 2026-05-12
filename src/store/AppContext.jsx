@@ -110,6 +110,9 @@ export function AppProvider({ children }) {
   const [loadingMorePosts, setLoadingMorePosts] = useState(false);
   const [hasMorePosts, setHasMorePosts] = useState(SUPA);
   const [postsCursor, setPostsCursor] = useState(null);
+  const [loadingMoreNotifications, setLoadingMoreNotifications] = useState(false);
+  const [hasMoreNotifications, setHasMoreNotifications] = useState(false);
+  const [notificationsCursor, setNotificationsCursor] = useState(null);
 
   // UI state
   const [authModal, setAuthModal] = useState(null);
@@ -145,6 +148,7 @@ export function AppProvider({ children }) {
   const {
     reloadPosts,
     loadMorePosts,
+    loadMoreNotifications,
     reloadMyPosts,
     reloadPendingUsers,
     reloadVerifiedUsers,
@@ -166,6 +170,9 @@ export function AppProvider({ children }) {
     setPostsCursor,
     setHasMorePosts,
     setLoadingMorePosts,
+    setNotificationsCursor,
+    setHasMoreNotifications,
+    setLoadingMoreNotifications,
     sendToPendingReview,
   });
 
@@ -291,6 +298,8 @@ export function AppProvider({ children }) {
       counts: categoryCounts,
       postsCursor,
       hasMorePosts,
+      notificationsCursor,
+      hasMoreNotifications,
 
       // Session
       currentUser,
@@ -300,6 +309,7 @@ export function AppProvider({ children }) {
       authLoading,
       postsLoading,
       loadingMorePosts,
+      loadingMoreNotifications,
 
       // UI
       authModal,
@@ -317,6 +327,7 @@ export function AppProvider({ children }) {
       // Loaders
       reloadPosts,
       loadMorePosts,
+      loadMoreNotifications,
       reloadMyPosts,
       reloadPendingUsers,
       reloadVerifiedUsers,
@@ -358,6 +369,8 @@ export function AppProvider({ children }) {
       categoryCounts,
       postsCursor,
       hasMorePosts,
+      notificationsCursor,
+      hasMoreNotifications,
       currentUser,
       userStatus,
       isVerified,
@@ -365,6 +378,7 @@ export function AppProvider({ children }) {
       authLoading,
       postsLoading,
       loadingMorePosts,
+      loadingMoreNotifications,
       authModal,
       mobileMenu,
       search,
@@ -374,6 +388,7 @@ export function AppProvider({ children }) {
       dismissToast,
       reloadPosts,
       loadMorePosts,
+      loadMoreNotifications,
       reloadMyPosts,
       reloadPendingUsers,
       reloadVerifiedUsers,
