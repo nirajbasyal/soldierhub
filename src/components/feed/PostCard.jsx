@@ -234,11 +234,10 @@ export default function PostCard({ post }) {
   const handleShare = async () => {
     if (!ensurePostId()) return;
     const url = getPostUrl(postId);
-    const title = bodyText ? bodyText.slice(0, 80) : "SoldierHub post";
 
     try {
       if (navigator?.share) {
-        await navigator.share({ title: "SoldierHub", text: title, url });
+        await navigator.share({ url });
         return;
       }
 
