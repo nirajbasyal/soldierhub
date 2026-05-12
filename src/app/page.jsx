@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Inbox, RefreshCw } from "lucide-react";
 import { CATEGORIES } from "@/lib/constants";
 import { T } from "@/lib/theme";
+import { subscribeToPosts } from "@/lib/db/realtime";
 import { useApp } from "@/store/AppContext";
 import AppShell from "@/components/layout/AppShell";
 import FeedHero from "@/components/feed/FeedHero";
@@ -85,11 +86,53 @@ export default function HomePage() {
     loadMorePosts,
     reloadPosts,
     hasNewFeedItems,
+    setHasNewFeedItems,
   } = useApp();
 
   const [cachedPosts, setCachedPosts] = useState(readCachedFeed);
   const [renderLimit, setRenderLimit] = useState(INITIAL_RENDERED_POSTS);
   const [refreshingFeed, setRefreshingFeed] = useState(false);
+  const [feedRealtimeActive, setFeedRealtimeActive] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    let unsubscribe = null;
+
+    const stopFeedRealtime = () => {
+      if (unsubscribe) {
+        unsubscribe();
+        unsubscribe = null;
+      }
+      setFeedRealtimeActive(false);
+    };
+
+    const startFeedRealtime = () => {
+      if (document.hidden || unsubscribe) return;
+
+      unsubscribe = subscribeToPosts(() => {
+        setHasNewFeedItems(true);
+      });
+      setFeedRealtimeActive(true);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        stopFeedRealtime();
+        return;
+      }
+
+      startFeedRealtime();
+    };
+
+    startFeedRealtime();
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      stopFeedRealtime();
+    };
+  }, [setHasNewFeedItems]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -232,6 +275,7 @@ export default function HomePage() {
                   borderColor: "rgba(232,160,32,0.35)",
                   color: T.ink,
                 }}
+                aria-live="polite"
               >
                 <RefreshCw
                   size={16}
