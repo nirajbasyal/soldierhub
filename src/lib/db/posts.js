@@ -306,52 +306,50 @@ export async function createPost({ category, title, body, anonymous }) {
   const supabase = createClient();
   if (!supabase) return { data: null, error: null };
 
-  const { user, profile, error: authError } = await getAuthUserAndProfile(supabase);
+  const {
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession();
 
-  if (authError || !user) {
-    console.error("Create post auth error:", authError);
+  if (sessionError || !session?.access_token) {
     return {
       data: null,
-      error: authError || { message: "Please log in again before posting." },
+      error: sessionError || { message: "Please log in again before posting." },
     };
   }
 
-  const profileStatus = getProfileStatus(profile);
+  const response = await fetch("/api/posts/create", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({ category, title, body, anonymous }),
+  });
 
-  if (!profile || profileStatus !== "verified") {
+  let result = null;
+
+  try {
+    result = await response.json();
+  } catch {
+    result = null;
+  }
+
+  if (!response.ok) {
     return {
       data: null,
-      error: { message: "Your profile must be verified before you can post." },
+      error: {
+        message:
+          result?.error ||
+          (response.status === 429
+            ? "You are posting too quickly. Please try again shortly."
+            : "Could not create post."),
+      },
     };
   }
-
-  const payload = {
-    author_id: user.id,
-    author_name_cached: profile.full_name || user.email || "Member",
-    author_color_cached: profile.avatar_color || "#314A66",
-    category: category || "General Q&A",
-    title: title?.trim() || "Untitled post",
-    body: body?.trim() || "",
-    anonymous: Boolean(anonymous),
-    status: "active",
-    edited: false,
-  };
-
-  const { data, error } = await supabase
-    .from("posts")
-    .insert(payload)
-    .select(POST_SELECT)
-    .single();
-
-  if (error) {
-    console.error("Create post failed:", error, payload);
-    return { data: null, error };
-  }
-
-  const normalized = await hydrateTablePosts(supabase, [data]);
 
   return {
-    data: normalized[0] || null,
+    data: normalizePostRow(result?.post || {}),
     error: null,
   };
 }
