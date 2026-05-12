@@ -1,7 +1,17 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowBigUp, Edit3, Flag, Lock, MessageCircle, MoreHorizontal, Send, Trash2 } from "lucide-react";
+import {
+  ArrowBigUp,
+  Edit3,
+  Flag,
+  Lock,
+  MessageCircle,
+  MoreHorizontal,
+  Send,
+  Share2,
+  Trash2,
+} from "lucide-react";
 import { CATEGORIES } from "@/lib/constants";
 import { T } from "@/lib/theme";
 import { colorFromString } from "@/lib/helpers";
@@ -18,7 +28,17 @@ function getPostId(post) {
 }
 
 function getAuthorId(item) {
-  return item?.author_id || item?.user_id || item?.profile_id || item?.created_by || item?.author_user_id || item?.author?.id || item?.profile?.id || item?.user?.id || null;
+  return (
+    item?.author_id ||
+    item?.user_id ||
+    item?.profile_id ||
+    item?.created_by ||
+    item?.author_user_id ||
+    item?.author?.id ||
+    item?.profile?.id ||
+    item?.user?.id ||
+    null
+  );
 }
 
 function getAnonymousDisplayName(postId) {
@@ -28,19 +48,46 @@ function getAnonymousDisplayName(postId) {
   return `Anonymous${String(total % 10000).padStart(4, "0")}`;
 }
 
+function getPostUrl(postId) {
+  if (typeof window === "undefined") return "";
+  return `${window.location.origin}/?post=${encodeURIComponent(postId)}`;
+}
+
 function ActionButton({ icon: Icon, label, count, active = false, onClick, fillWhenActive = false }) {
   return (
-    <button type="button" onClick={onClick} className="h-10 min-w-0 rounded-xl px-2.5 md:px-3 text-xs md:text-sm font-semibold inline-flex items-center justify-center gap-1.5 transition active:scale-[0.98]" style={{ color: active ? "#4B5563" : T.textMuted, backgroundColor: "transparent" }}>
-      <Icon size={18} className="shrink-0" strokeWidth={active ? 2.8 : 2.25} fill={active && fillWhenActive ? "currentColor" : "none"} />
+    <button
+      type="button"
+      onClick={onClick}
+      className="h-10 min-w-0 rounded-full px-3 text-xs md:text-sm font-bold inline-flex items-center justify-center gap-1.5 transition active:scale-[0.98] hover:bg-black/[0.04]"
+      style={{
+        color: active ? T.navy : T.textMuted,
+        backgroundColor: active ? "rgba(11,28,44,0.07)" : "transparent",
+      }}
+    >
+      <Icon
+        size={18}
+        className="shrink-0"
+        strokeWidth={active ? 2.8 : 2.25}
+        fill={active && fillWhenActive ? "currentColor" : "none"}
+      />
       <span className="truncate">{label}</span>
-      {typeof count === "number" && count > 0 ? <span className="text-[11px] font-bold leading-none">{count > 99 ? "99+" : count}</span> : null}
+      {typeof count === "number" && count > 0 ? (
+        <span className="text-[11px] font-extrabold leading-none">
+          {count > 99 ? "99+" : count}
+        </span>
+      ) : null}
     </button>
   );
 }
 
 function MenuButton({ children, icon: Icon, danger = false, onClick }) {
   return (
-    <button type="button" onClick={onClick} className="w-full px-4 py-3 text-left text-sm font-semibold transition-colors flex items-center gap-2.5 hover:bg-black/[0.03]" style={{ color: danger ? "#B31942" : T.text }}>
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full px-4 py-3 text-left text-sm font-semibold transition-colors flex items-center gap-2.5 hover:bg-black/[0.035]"
+      style={{ color: danger ? "#B31942" : T.text }}
+    >
       {Icon ? <Icon size={15} /> : null}
       <span>{children}</span>
     </button>
@@ -52,28 +99,64 @@ function CommentRow({ comment, post, currentUser }) {
   const postAuthorId = getAuthorId(post);
   const commentAuthorId = getAuthorId(comment);
   const anonymousName = getAnonymousDisplayName(postId);
-  const anonymousAuthor = Boolean(post?.anonymous && commentAuthorId && postAuthorId && commentAuthorId === postAuthorId);
-  const name = anonymousAuthor ? anonymousName : comment?.author_name_cached || comment?.author_name || comment?.profile?.full_name || comment?.author?.full_name || comment?.user?.full_name || "Member";
-  const color = anonymousAuthor ? "#5C6470" : comment?.author_color_cached || comment?.author_color || comment?.profile?.avatar_color || comment?.author?.avatar_color || comment?.user?.avatar_color || colorFromString(name);
+  const anonymousAuthor = Boolean(
+    post?.anonymous && commentAuthorId && postAuthorId && commentAuthorId === postAuthorId
+  );
+  const name = anonymousAuthor
+    ? anonymousName
+    : comment?.author_name_cached ||
+      comment?.author_name ||
+      comment?.profile?.full_name ||
+      comment?.author?.full_name ||
+      comment?.user?.full_name ||
+      "Member";
+  const color = anonymousAuthor
+    ? "#5C6470"
+    : comment?.author_color_cached ||
+      comment?.author_color ||
+      comment?.profile?.avatar_color ||
+      comment?.author?.avatar_color ||
+      comment?.user?.avatar_color ||
+      colorFromString(name);
   const isMine = Boolean(currentUser?.id && commentAuthorId === currentUser.id);
 
   return (
     <div className="flex items-start gap-2.5">
       <Avatar name={name} color={color} size={30} />
-      <div className="min-w-0 flex-1 rounded-2xl px-3 py-2" style={{ backgroundColor: "rgba(244,248,253,0.95)" }}>
+      <div
+        className="min-w-0 flex-1 rounded-2xl px-3 py-2"
+        style={{ backgroundColor: "rgba(244,248,253,0.95)" }}
+      >
         <div className="flex items-center gap-1.5 text-xs font-bold" style={{ color: T.text }}>
           {anonymousAuthor ? <Lock size={11} /> : null}
           <span>{name}</span>
           {isMine ? <span style={{ color: T.textSubtle }}>(you)</span> : null}
         </div>
-        <p className="mt-1 whitespace-pre-wrap text-sm leading-6" style={{ color: T.textMuted }}>{comment?.body || comment?.content || comment?.text || ""}</p>
+        <p className="mt-1 whitespace-pre-wrap text-sm leading-6" style={{ color: T.textMuted }}>
+          {comment?.body || comment?.content || comment?.text || ""}
+        </p>
       </div>
     </div>
   );
 }
 
 export default function PostCard({ post }) {
-  const { currentUser, requireAuth, pushToast, upvotePost, reportPost, commentOnPost, editMyPost, deleteMyPost, myUpvotes = new Set(), myReports = new Set(), myPosts = [], postComments = {}, loadCommentsForPost } = useApp();
+  const {
+    currentUser,
+    requireAuth,
+    pushToast,
+    upvotePost,
+    reportPost,
+    commentOnPost,
+    editMyPost,
+    deleteMyPost,
+    myUpvotes = new Set(),
+    myReports = new Set(),
+    myPosts = [],
+    postComments = {},
+    loadCommentsForPost,
+  } = useApp();
+
   const postId = getPostId(post);
   const safePost = useMemo(() => ({ ...post, id: postId, post_id: postId }), [post, postId]);
   const [showComments, setShowComments] = useState(false);
@@ -89,17 +172,29 @@ export default function PostCard({ post }) {
   const category = CATEGORIES.find((c) => c.key === post?.category) || CATEGORIES[0];
   const authorId = getAuthorId(post);
   const anonymousName = getAnonymousDisplayName(postId);
-  const displayName = post?.anonymous ? anonymousName : post?.author_name || post?.author_name_cached || "Member";
-  const displayColor = post?.anonymous ? "#5C6470" : post?.author_color || post?.author_color_cached || colorFromString(displayName);
+  const displayName = post?.anonymous
+    ? anonymousName
+    : post?.author_name || post?.author_name_cached || "Member";
+  const displayColor = post?.anonymous
+    ? "#5C6470"
+    : post?.author_color || post?.author_color_cached || colorFromString(displayName);
   const comments = postId ? postComments?.[postId] || [] : [];
-  const commentCount = post?.comment_count ?? comments.length ?? 0;
+  const commentCount = post?.comment_count ?? post?.reply_count ?? comments.length ?? 0;
   const upvoteCount = post?.upvote_count ?? 0;
   const userUpvoted = Boolean(currentUser && postId && myUpvotes?.has?.(postId));
   const userReported = Boolean(postId && myReports?.has?.(postId));
   const isReported = post?.status === "reported";
-  const ownsPost = Boolean((currentUser?.id && authorId && currentUser.id === authorId) || post?.viewer_is_author === true || (currentUser?.id && postId && Array.isArray(myPosts) && myPosts.some((myPost) => getPostId(myPost) === postId)));
+  const ownsPost = Boolean(
+    (currentUser?.id && authorId && currentUser.id === authorId) ||
+      post?.viewer_is_author === true ||
+      (currentUser?.id &&
+        postId &&
+        Array.isArray(myPosts) &&
+        myPosts.some((myPost) => getPostId(myPost) === postId))
+  );
   const replyName = post?.anonymous && ownsPost ? anonymousName : currentUser?.full_name || "Member";
   const replyColor = post?.anonymous && ownsPost ? "#5C6470" : currentUser?.avatar_color || colorFromString(replyName);
+  const bodyText = post?.body || post?.content || post?.text || post?.title || "";
 
   useEffect(() => {
     if (!menuOpen) return undefined;
@@ -123,13 +218,35 @@ export default function PostCard({ post }) {
     setShowComments(next);
     if (!next || !postId || comments.length > 0) return;
     setCommentsLoading(true);
-    try { await loadCommentsForPost?.(postId); } finally { setCommentsLoading(false); }
+    try {
+      await loadCommentsForPost?.(postId);
+    } finally {
+      setCommentsLoading(false);
+    }
   };
 
   const handleUpvote = async () => {
     if (!requireAuth()) return;
     if (!ensurePostId()) return;
     await upvotePost?.(postId);
+  };
+
+  const handleShare = async () => {
+    if (!ensurePostId()) return;
+    const url = getPostUrl(postId);
+    const title = bodyText ? bodyText.slice(0, 80) : "SoldierHub post";
+
+    try {
+      if (navigator?.share) {
+        await navigator.share({ title: "SoldierHub", text: title, url });
+        return;
+      }
+
+      await navigator.clipboard.writeText(url);
+      pushToast?.("Post link copied", "success");
+    } catch {
+      pushToast?.("Could not share this post.", "error");
+    }
   };
 
   const handleReport = async () => {
@@ -199,59 +316,202 @@ export default function PostCard({ post }) {
 
   return (
     <>
-      <article className="group overflow-visible rounded-none border-x-0 border-t border-b-0 shadow-none transition-colors duration-200 md:border-x md:first:rounded-t-[18px] md:last:rounded-b-[18px]" style={{ backgroundColor: T.card, borderColor: T.border }}>
-        <div className="px-4 md:px-5 pt-4 pb-2.5">
+      <article
+        className="group overflow-visible rounded-none border-x-0 border-t border-b-0 shadow-none transition-colors duration-200 md:border md:rounded-[24px] md:shadow-sm"
+        style={{ backgroundColor: T.card, borderColor: T.border }}
+      >
+        <div className="px-4 md:px-5 pt-4 pb-3">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-3 min-w-0 flex-1">
               <Avatar name={displayName} color={displayColor} size={42} />
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-bold text-sm md:text-[15px] truncate" style={{ color: T.text }}>{displayName}</span>
+                  <span className="font-bold text-sm md:text-[15px] truncate" style={{ color: T.text }}>
+                    {displayName}
+                  </span>
                   {post?.anonymous ? <Lock size={13} style={{ color: T.textSubtle }} /> : null}
-                  <span className="text-xs" style={{ color: T.textSubtle }}><ClientTimeAgo value={post?.created_at} /></span>
+                  <span className="text-xs" style={{ color: T.textSubtle }}>
+                    <ClientTimeAgo value={post?.created_at} />
+                  </span>
                 </div>
                 <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                  <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-bold" style={{ backgroundColor: "rgba(244,248,253,0.95)", borderColor: T.border, color: T.textMuted }}>{category?.label || post?.category || "General"}</span>
-                  {isReported ? <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-bold" style={{ backgroundColor: T.goldBg, borderColor: "#F3D08A", color: T.gold }}>Post under review</span> : null}
+                  <span
+                    className="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-bold"
+                    style={{
+                      backgroundColor: "rgba(244,248,253,0.95)",
+                      borderColor: T.border,
+                      color: T.textMuted,
+                    }}
+                  >
+                    {category?.label || post?.category || "General"}
+                  </span>
+                  {isReported ? (
+                    <span
+                      className="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-bold"
+                      style={{ backgroundColor: T.goldBg, borderColor: "#F3D08A", color: T.gold }}
+                    >
+                      Post under review
+                    </span>
+                  ) : null}
                 </div>
               </div>
             </div>
+
             <div className="relative shrink-0">
-              <button type="button" onClick={(event) => { event.stopPropagation(); setMenuOpen((value) => !value); }} className="h-9 w-9 rounded-full flex items-center justify-center transition hover:bg-black/[0.04]" style={{ color: T.textMuted }} aria-label="Post options"><MoreHorizontal size={19} /></button>
-              {menuOpen ? <div onClick={(event) => event.stopPropagation()} className="absolute right-0 top-10 z-30 w-48 overflow-hidden rounded-2xl border shadow-xl" style={{ backgroundColor: T.card, borderColor: T.border }}>
-                {ownsPost ? <><MenuButton icon={Edit3} onClick={handleEditClick}>Edit post</MenuButton><MenuButton icon={Trash2} danger onClick={handleDeleteClick}>Delete post</MenuButton></> : <MenuButton icon={Flag} danger={userReported} onClick={handleReport}>{userReported ? "Reported" : "Report post"}</MenuButton>}
-              </div> : null}
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setMenuOpen((value) => !value);
+                }}
+                className="h-9 w-9 rounded-full flex items-center justify-center transition hover:bg-black/[0.04]"
+                style={{ color: T.textMuted }}
+                aria-label="Post options"
+              >
+                <MoreHorizontal size={19} />
+              </button>
+
+              {menuOpen ? (
+                <div
+                  onClick={(event) => event.stopPropagation()}
+                  className="absolute right-0 top-10 z-30 w-48 overflow-hidden rounded-2xl border shadow-xl"
+                  style={{ backgroundColor: T.card, borderColor: T.border }}
+                >
+                  {ownsPost ? (
+                    <>
+                      <MenuButton icon={Edit3} onClick={handleEditClick}>Edit post</MenuButton>
+                      <MenuButton icon={Trash2} danger onClick={handleDeleteClick}>Delete post</MenuButton>
+                    </>
+                  ) : (
+                    <MenuButton icon={Flag} danger={userReported} onClick={handleReport}>
+                      {userReported ? "Reported" : "Report post"}
+                    </MenuButton>
+                  )}
+                </div>
+              ) : null}
             </div>
           </div>
-          <div className="mt-3">
-            <h3 className="text-[17px] md:text-lg font-extrabold tracking-[-0.01em]" style={{ color: T.navy }}>{post?.title}</h3>
-            {post?.body ? <div className="mt-2 text-[15px] leading-7" style={{ color: T.textMuted }}><ExpandableText text={post.body} /></div> : null}
+
+          {bodyText ? (
+            <div className="mt-4 text-[16px] md:text-[17px] leading-8" style={{ color: T.text }}>
+              <ExpandableText text={bodyText} />
+            </div>
+          ) : null}
+        </div>
+
+        <div
+          className="mx-4 md:mx-5 border-t flex items-center justify-between gap-1 py-1.5"
+          style={{ borderColor: T.borderSoft || T.border }}
+        >
+          <ActionButton
+            icon={ArrowBigUp}
+            label="Upvote"
+            count={upvoteCount}
+            active={userUpvoted}
+            fillWhenActive
+            onClick={handleUpvote}
+          />
+          <ActionButton
+            icon={MessageCircle}
+            label="Replies"
+            count={commentCount}
+            active={showComments}
+            fillWhenActive
+            onClick={handleToggleComments}
+          />
+          <ActionButton
+            icon={Share2}
+            label="Share"
+            onClick={handleShare}
+          />
+        </div>
+
+        {showComments ? (
+          <div className="px-4 md:px-5 pb-4">
+            <div className="space-y-3 pt-2">
+              {commentsLoading ? (
+                <div className="py-3 text-center text-sm font-medium" style={{ color: T.textSubtle }}>
+                  Loading replies…
+                </div>
+              ) : null}
+              {!commentsLoading && comments.length === 0 ? (
+                <div className="py-2 text-sm" style={{ color: T.textSubtle }}>
+                  No replies yet. Be the first to help.
+                </div>
+              ) : null}
+              {comments.map((item) => (
+                <CommentRow
+                  key={item.id || `${postId}-${item.created_at}-${item.body}`}
+                  comment={item}
+                  post={safePost}
+                  currentUser={currentUser}
+                />
+              ))}
+            </div>
           </div>
-        </div>
-        <div className="mx-4 md:mx-5 border-t flex items-center justify-between gap-1 py-1" style={{ borderColor: T.borderSoft || T.border }}>
-          <ActionButton icon={ArrowBigUp} label="Upvote" count={upvoteCount} active={userUpvoted} fillWhenActive onClick={handleUpvote} />
-          <ActionButton icon={MessageCircle} label="Reply" count={commentCount} active={showComments} onClick={handleToggleComments} />
-        </div>
-        {showComments ? <div className="px-4 md:px-5 pb-4"><div className="space-y-3 pt-2">
-          {commentsLoading ? <div className="py-3 text-center text-sm font-medium" style={{ color: T.textSubtle }}>Loading replies…</div> : null}
-          {!commentsLoading && comments.length === 0 ? <div className="py-2 text-sm" style={{ color: T.textSubtle }}>No replies yet. Be the first to help.</div> : null}
-          {comments.map((item) => <CommentRow key={item.id || `${postId}-${item.created_at}-${item.body}`} comment={item} post={safePost} currentUser={currentUser} />)}
-        </div></div> : null}
+        ) : null}
+
         <div className="px-4 md:px-5 pb-4">
           <div className="flex items-start gap-2.5">
             <Avatar name={replyName} color={replyColor} size={32} />
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 rounded-2xl border px-3 py-2" style={{ borderColor: T.border, backgroundColor: "rgba(244,248,253,0.72)" }}>
-                <input value={comment} onChange={(event) => { setComment(event.target.value); setCommentError(""); }} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); submitComment(); } }} placeholder="Write a reply..." className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[#9AA4B2]" style={{ color: T.text }} disabled={commentSubmitting} />
-                <button type="button" onClick={submitComment} disabled={commentSubmitting || !comment.trim()} className="h-8 w-8 rounded-full flex items-center justify-center disabled:opacity-45" style={{ backgroundColor: T.navy, color: "white" }} aria-label="Send reply"><Send size={15} /></button>
+              <div
+                className="flex items-center gap-2 rounded-2xl border px-3 py-2"
+                style={{ borderColor: T.border, backgroundColor: "rgba(244,248,253,0.72)" }}
+              >
+                <input
+                  value={comment}
+                  onChange={(event) => {
+                    setComment(event.target.value);
+                    setCommentError("");
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && !event.shiftKey) {
+                      event.preventDefault();
+                      submitComment();
+                    }
+                  }}
+                  placeholder="Write a reply..."
+                  className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[#9AA4B2]"
+                  style={{ color: T.text }}
+                  disabled={commentSubmitting}
+                />
+                <button
+                  type="button"
+                  onClick={submitComment}
+                  disabled={commentSubmitting || !comment.trim()}
+                  className="h-8 w-8 rounded-full flex items-center justify-center disabled:opacity-45"
+                  style={{ backgroundColor: T.navy, color: "white" }}
+                  aria-label="Send reply"
+                >
+                  <Send size={15} />
+                </button>
               </div>
-              {commentError ? <div className="mt-2 text-xs font-medium" style={{ color: T.red }}>{commentError}</div> : null}
+              {commentError ? (
+                <div className="mt-2 text-xs font-medium" style={{ color: T.red }}>
+                  {commentError}
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
       </article>
-      {editingOpen ? <EditPostModal post={safePost} onClose={() => setEditingOpen(false)} onSave={handleEditSave} /> : null}
-      <ConfirmDialog open={deletingOpen} title="Delete this post?" body="This will remove this post from SoldierHub." confirmText={deleting ? "Deleting…" : "Delete post"} danger onConfirm={handleDeleteConfirm} onCancel={() => { if (!deleting) setDeletingOpen(false); }} />
+
+      {editingOpen ? (
+        <EditPostModal post={safePost} onClose={() => setEditingOpen(false)} onSave={handleEditSave} />
+      ) : null}
+
+      <ConfirmDialog
+        open={deletingOpen}
+        title="Delete this post?"
+        body="This will remove this post from SoldierHub."
+        confirmText={deleting ? "Deleting…" : "Delete post"}
+        danger
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => {
+          if (!deleting) setDeletingOpen(false);
+        }}
+      />
     </>
   );
 }
