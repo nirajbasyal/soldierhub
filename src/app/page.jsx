@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Inbox } from "lucide-react";
+import { Inbox, RefreshCw } from "lucide-react";
 import { CATEGORIES } from "@/lib/constants";
 import { T } from "@/lib/theme";
 import { useApp } from "@/store/AppContext";
@@ -83,10 +83,13 @@ export default function HomePage() {
     hasMorePosts,
     loadingMorePosts,
     loadMorePosts,
+    reloadPosts,
+    hasNewFeedItems,
   } = useApp();
 
   const [cachedPosts, setCachedPosts] = useState(readCachedFeed);
   const [renderLimit, setRenderLimit] = useState(INITIAL_RENDERED_POSTS);
+  const [refreshingFeed, setRefreshingFeed] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -170,6 +173,17 @@ export default function HomePage() {
   const canLoadFromServer = !search.trim() && category === "All" && hasMorePosts;
   const showLoadMore = feedPosts.length > 0 && (hasMoreRenderedPosts || canLoadFromServer);
 
+  const handleRefreshFeed = async () => {
+    setRefreshingFeed(true);
+
+    try {
+      await reloadPosts();
+      setRenderLimit(INITIAL_RENDERED_POSTS);
+    } finally {
+      setRefreshingFeed(false);
+    }
+  };
+
   const handleLoadMore = async () => {
     if (hasMoreRenderedPosts) {
       setRenderLimit((currentLimit) => currentLimit + RENDER_INCREMENT);
@@ -206,6 +220,28 @@ export default function HomePage() {
                 onSelect={setCategory}
               />
             </div>
+
+            {hasNewFeedItems ? (
+              <button
+                type="button"
+                onClick={handleRefreshFeed}
+                disabled={refreshingFeed || postsLoading}
+                className="mx-auto inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold shadow-sm transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                style={{
+                  backgroundColor: "#FFF7E6",
+                  borderColor: "rgba(232,160,32,0.35)",
+                  color: T.ink,
+                }}
+              >
+                <RefreshCw
+                  size={16}
+                  className={refreshingFeed || postsLoading ? "animate-spin" : ""}
+                />
+                {refreshingFeed || postsLoading
+                  ? "Refreshing feed..."
+                  : "New posts available — tap to refresh"}
+              </button>
+            ) : null}
 
             {showInitialSkeleton ? (
               <div className="flex flex-col gap-3">
