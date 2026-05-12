@@ -41,6 +41,17 @@ function getAuthorId(item) {
   );
 }
 
+function getPostCreatedAt(post) {
+  return (
+    post?.created_at ||
+    post?.createdAt ||
+    post?.inserted_at ||
+    post?.timestamp ||
+    post?.date ||
+    null
+  );
+}
+
 function getAnonymousDisplayName(postId) {
   const source = String(postId || "anonymous");
   let total = 0;
@@ -158,6 +169,7 @@ export default function PostCard({ post }) {
   } = useApp();
 
   const postId = getPostId(post);
+  const postCreatedAt = getPostCreatedAt(post);
   const safePost = useMemo(() => ({ ...post, id: postId, post_id: postId }), [post, postId]);
   const [showComments, setShowComments] = useState(false);
   const [commentsLoading, setCommentsLoading] = useState(false);
@@ -330,7 +342,7 @@ export default function PostCard({ post }) {
                   </span>
                   {post?.anonymous ? <Lock size={13} style={{ color: T.textSubtle }} /> : null}
                   <span className="text-xs" style={{ color: T.textSubtle }}>
-                    <ClientTimeAgo value={post?.created_at} />
+                    <ClientTimeAgo date={postCreatedAt} />
                   </span>
                 </div>
                 <div className="mt-1 flex flex-wrap items-center gap-1.5">
