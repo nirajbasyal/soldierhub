@@ -1,3 +1,4 @@
+import { createClient } from "@/lib/supabase/client";
 import * as ProfilesDB from "@/lib/db/profiles";
 import * as PostsDB from "@/lib/db/posts";
 
@@ -163,13 +164,29 @@ export function useAdminActions({
   };
 
   const adminDeletePost = async (postId) => {
+    if (!postId) {
+      pushToast("Post was not identified. Please refresh and try again.", "error");
+      return;
+    }
+
     if (SUPA) {
-      const { error } = await PostsDB.deletePost(postId);
+      const supabase = createClient();
+      if (!supabase) {
+        pushToast("Database connection is not available.", "error");
+        return;
+      }
+
+      const { error } = await supabase
+        .from("posts")
+        .delete()
+        .eq("id", postId);
+
       if (error) return pushToast(error.message, "error");
       pushToast("Post permanently deleted", "info");
       reloadPosts();
       return;
     }
+
     setPosts((arr) => arr.filter((p) => p.id !== postId));
     pushToast("Post permanently deleted", "info");
   };
