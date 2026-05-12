@@ -11,7 +11,7 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import EmptyState from "@/components/ui/EmptyState";
 import ExpandableText from "@/components/ui/ExpandableText";
 
-const REPORTED_POST_PREVIEW_LENGTH = 260;
+const REPORTED_POST_PREVIEW_LENGTH = 320;
 
 export default function ReportedPostsList() {
   const { posts, restoreReportedPost, adminDeletePost } = useApp();
@@ -45,10 +45,6 @@ export default function ReportedPostsList() {
                   </span>
                 </div>
               </div>
-
-              <h3 className="text-[18px] md:text-[20px] font-extrabold leading-snug tracking-[-0.01em]" style={{ color: T.navy }}>
-                {p.title}
-              </h3>
 
               <div className="mt-2">
                 <ExpandableText
