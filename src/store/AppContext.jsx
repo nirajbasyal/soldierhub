@@ -119,6 +119,7 @@ export function AppProvider({ children }) {
   const [mobileMenu, setMobileMenu] = useState(false);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
+  const [hasNewFeedItems, setHasNewFeedItems] = useState(false);
 
   const { toasts, pushToast, dismissToast } = useToasts();
 
@@ -173,6 +174,7 @@ export function AppProvider({ children }) {
     setNotificationsCursor,
     setHasMoreNotifications,
     setLoadingMoreNotifications,
+    setHasNewFeedItems,
     sendToPendingReview,
   });
 
@@ -320,6 +322,8 @@ export function AppProvider({ children }) {
       setSearch,
       category,
       setCategory,
+      hasNewFeedItems,
+      setHasNewFeedItems,
       toasts,
       pushToast,
       dismissToast,
@@ -383,6 +387,7 @@ export function AppProvider({ children }) {
       mobileMenu,
       search,
       category,
+      hasNewFeedItems,
       toasts,
       pushToast,
       dismissToast,
