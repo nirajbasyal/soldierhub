@@ -6,9 +6,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const POST_SELECT =
-  "id, author_id, author_name_cached, author_color_cached, category, title, body, anonymous, status, edited, created_at, updated_at";
+  "id, author_id, author_name_cached, author_color_cached, category, body, anonymous, status, edited, created_at, updated_at";
 
-const MAX_TITLE_LENGTH = 160;
 const MAX_BODY_LENGTH = 5000;
 const MAX_CATEGORY_LENGTH = 80;
 
@@ -48,31 +47,19 @@ function normalizePostRow(row = {}) {
   };
 }
 
-function validateUpdateInput({ title, body, category }) {
-  if (title !== undefined && !cleanText(title)) {
-    return "Please add a post title.";
-  }
-
-  if (title !== undefined && cleanText(title).length > MAX_TITLE_LENGTH) {
-    return `Post title must be ${MAX_TITLE_LENGTH} characters or less.`;
-  }
-
+function validateUpdateInput({ body, category }) {
+  if (body !== undefined && !cleanText(body)) return "Post body is required.";
   if (body !== undefined && cleanText(body).length > MAX_BODY_LENGTH) {
     return `Post body must be ${MAX_BODY_LENGTH} characters or less.`;
   }
-
   if (category !== undefined && cleanText(category).length > MAX_CATEGORY_LENGTH) {
     return `Post category must be ${MAX_CATEGORY_LENGTH} characters or less.`;
   }
-
   return null;
 }
 
 async function verifyUserAndProfile({ supabase, accessToken }) {
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser(accessToken);
+  const { data: { user }, error: userError } = await supabase.auth.getUser(accessToken);
 
   if (userError || !user) {
     return {
@@ -138,7 +125,6 @@ async function getOwnedPost({ supabase, postId, userId }) {
 
 async function updatePost({ supabase, postId, updates }) {
   const allowed = {
-    title: updates.title !== undefined ? cleanText(updates.title) : undefined,
     body: updates.body !== undefined ? cleanText(updates.body) : undefined,
     category: updates.category !== undefined ? cleanText(updates.category) : undefined,
     edited: true,
@@ -159,27 +145,17 @@ async function updatePost({ supabase, postId, updates }) {
 }
 
 async function deletePost({ supabase, postId }) {
-  const rpcResult = await supabase.rpc("delete_own_post", {
-    p_post_id: postId,
-  });
+  const rpcResult = await supabase.rpc("delete_own_post", { p_post_id: postId });
 
   if (!rpcResult.error && rpcResult.data === true) {
     return { data: { id: postId }, error: null, deleted: true };
   }
 
-  const { data, error } = await supabase
-    .from("posts")
-    .delete()
-    .eq("id", postId)
-    .select("id");
+  const { data, error } = await supabase.from("posts").delete().eq("id", postId).select("id");
 
   if (error) return { data: null, error, deleted: false };
 
-  return {
-    data,
-    error: null,
-    deleted: Array.isArray(data) && data.length > 0,
-  };
+  return { data, error: null, deleted: Array.isArray(data) && data.length > 0 };
 }
 
 export async function POST(request) {
@@ -209,10 +185,7 @@ export async function POST(request) {
     );
   }
 
-  const { user, response: authResponse } = await verifyUserAndProfile({
-    supabase,
-    accessToken,
-  });
+  const { user, response: authResponse } = await verifyUserAndProfile({ supabase, accessToken });
 
   if (authResponse) {
     const body = await authResponse.json();
