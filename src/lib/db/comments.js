@@ -62,14 +62,51 @@ export async function createComment({ post_id, body }) {
   const supabase = createClient();
   if (!supabase) return { data: null, error: null };
 
-  const { data, error } = await supabase.rpc("create_comment_safe", {
-    p_post_id: post_id,
-    p_body: body,
+  const {
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession();
+
+  if (sessionError || !session?.access_token) {
+    return {
+      data: null,
+      error: sessionError || { message: "Please log in again before commenting." },
+    };
+  }
+
+  const response = await fetch("/api/comments/create", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({ post_id, body }),
   });
 
+  let result = null;
+
+  try {
+    result = await response.json();
+  } catch {
+    result = null;
+  }
+
+  if (!response.ok) {
+    return {
+      data: null,
+      error: {
+        message:
+          result?.error ||
+          (response.status === 429
+            ? "You are commenting too quickly. Please try again shortly."
+            : "Could not create comment."),
+      },
+    };
+  }
+
   return {
-    data: data?.[0] || null,
-    error,
+    data: result?.comment || null,
+    error: null,
   };
 }
 
