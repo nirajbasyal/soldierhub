@@ -27,7 +27,9 @@ export function useNotificationActions({
     if (getProfileStatus(currentUser) !== "verified") return;
 
     if (SUPA) {
-      await NotificationsDB.markAllNotificationsRead(currentUser.id);
+      const { error } = await NotificationsDB.markAllNotificationsRead();
+      if (error) return;
+
       setNotifications((arr) => arr.map((n) => ({ ...n, read: true })));
       return;
     }
