@@ -18,6 +18,8 @@ import GateHoursCard from "@/components/tools/GateHoursCard";
 import SiteInfoCard from "@/components/tools/SiteInfoCard";
 
 const FEED_CACHE_KEY = "soldierhub_feed_cache_v1";
+const INITIAL_RENDERED_POSTS = 20;
+const RENDER_INCREMENT = 20;
 
 function getRealPostId(post) {
   return post?.post_id || post?.postId || post?.post?.id || post?.id || null;
@@ -84,6 +86,7 @@ export default function HomePage() {
   } = useApp();
 
   const [cachedPosts, setCachedPosts] = useState(readCachedFeed);
+  const [renderLimit, setRenderLimit] = useState(INITIAL_RENDERED_POSTS);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -117,7 +120,6 @@ export default function HomePage() {
   }, [posts, cachedPosts]);
 
   const showInitialSkeleton = postsLoading && feedPosts.length === 0;
-  const showLoadMore = !search.trim() && category === "All" && hasMorePosts && feedPosts.length > 0;
 
   const counts = useMemo(() => {
     const c = { All: feedPosts.length };
@@ -146,6 +148,37 @@ export default function HomePage() {
       );
     });
   }, [feedPosts, category, search]);
+
+  useEffect(() => {
+    setRenderLimit(INITIAL_RENDERED_POSTS);
+  }, [category, search]);
+
+  useEffect(() => {
+    setRenderLimit((currentLimit) =>
+      Math.min(
+        Math.max(currentLimit, INITIAL_RENDERED_POSTS),
+        Math.max(filtered.length, INITIAL_RENDERED_POSTS)
+      )
+    );
+  }, [filtered.length]);
+
+  const visibleFiltered = useMemo(() => {
+    return filtered.slice(0, renderLimit);
+  }, [filtered, renderLimit]);
+
+  const hasMoreRenderedPosts = visibleFiltered.length < filtered.length;
+  const canLoadFromServer = !search.trim() && category === "All" && hasMorePosts;
+  const showLoadMore = feedPosts.length > 0 && (hasMoreRenderedPosts || canLoadFromServer);
+
+  const handleLoadMore = async () => {
+    if (hasMoreRenderedPosts) {
+      setRenderLimit((currentLimit) => currentLimit + RENDER_INCREMENT);
+      return;
+    }
+
+    await loadMorePosts();
+    setRenderLimit((currentLimit) => currentLimit + RENDER_INCREMENT);
+  };
 
   return (
     <AppShell>
@@ -198,7 +231,7 @@ export default function HomePage() {
             ) : (
               <>
                 <div className="-mx-4 md:mx-0 flex flex-col gap-2.5 sh-feed-post-list">
-                  {filtered.map((post) => {
+                  {visibleFiltered.map((post) => {
                     const normalizedPost = normalizeFeedPostForCard(post);
                     return <PostCard key={normalizedPost.id} post={normalizedPost} />;
                   })}
@@ -208,7 +241,7 @@ export default function HomePage() {
                   <div className="flex justify-center pt-2">
                     <button
                       type="button"
-                      onClick={loadMorePosts}
+                      onClick={handleLoadMore}
                       disabled={loadingMorePosts}
                       className="rounded-full border px-5 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
                       style={{
