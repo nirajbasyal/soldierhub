@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect } from "react";
 import * as Auth from "@/lib/supabase/auth";
 import * as ProfilesDB from "@/lib/db/profiles";
 import * as PostsDB from "@/lib/db/posts";
@@ -6,7 +6,6 @@ import * as NotificationsDB from "@/lib/db/notifications";
 import { subscribeToMyNotifications } from "@/lib/db/realtime";
 import { getProfileStatus, sanitizePosts } from "../utils/appHelpers";
 
-const NOTIFICATION_REALTIME_DEBOUNCE_MS = 800;
 const FEED_PAGE_SIZE = 30;
 const NOTIFICATION_PAGE_SIZE = 30;
 
@@ -34,6 +33,17 @@ function mergeUniqueItems(existingItems = [], nextItems = []) {
   });
 }
 
+function prependRealtimeNotification(currentNotifications = [], notification) {
+  if (!notification?.id) return currentNotifications;
+
+  const alreadyExists = currentNotifications.some((item) => item.id === notification.id);
+  if (alreadyExists) return currentNotifications;
+
+  return [notification, ...currentNotifications].sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
+}
+
 export function useDataLoader({
   SUPA,
   currentUser,
@@ -57,10 +67,6 @@ export function useDataLoader({
   setHasNewFeedItems,
   sendToPendingReview,
 }) {
-  const notificationReloadTimerRef = useRef(null);
-  const notificationReloadInFlightRef = useRef(false);
-  const notificationReloadQueuedRef = useRef(false);
-
   const reloadPosts = useCallback(async () => {
     if (!SUPA) return;
     setPostsLoading(true);
@@ -124,56 +130,6 @@ export function useDataLoader({
       setLoadingMorePosts(false);
     }
   }, [SUPA, setHasMorePosts, setLoadingMorePosts, setPosts, setPostsCursor]);
-
-  const reloadNotificationsQuietly = useCallback(
-    async (userId) => {
-      if (!SUPA || !userId) return;
-
-      if (notificationReloadInFlightRef.current) {
-        notificationReloadQueuedRef.current = true;
-        return;
-      }
-
-      notificationReloadInFlightRef.current = true;
-
-      try {
-        const { data } = await NotificationsDB.listMyNotifications(userId, {
-          limit: NOTIFICATION_PAGE_SIZE,
-        });
-        const safeNotifications = data || [];
-        setNotifications(safeNotifications);
-        setNotificationsCursor(getNextCursor(safeNotifications));
-        setHasMoreNotifications(safeNotifications.length === NOTIFICATION_PAGE_SIZE);
-      } finally {
-        notificationReloadInFlightRef.current = false;
-
-        if (notificationReloadQueuedRef.current) {
-          notificationReloadQueuedRef.current = false;
-          notificationReloadTimerRef.current = window.setTimeout(
-            () => reloadNotificationsQuietly(userId),
-            NOTIFICATION_REALTIME_DEBOUNCE_MS
-          );
-        }
-      }
-    },
-    [SUPA, setHasMoreNotifications, setNotifications, setNotificationsCursor]
-  );
-
-  const scheduleNotificationReload = useCallback(
-    (userId) => {
-      if (!SUPA || !userId || typeof window === "undefined") return;
-
-      if (notificationReloadTimerRef.current) {
-        window.clearTimeout(notificationReloadTimerRef.current);
-      }
-
-      notificationReloadTimerRef.current = window.setTimeout(
-        () => reloadNotificationsQuietly(userId),
-        NOTIFICATION_REALTIME_DEBOUNCE_MS
-      );
-    },
-    [SUPA, reloadNotificationsQuietly]
-  );
 
   const loadMoreNotifications = useCallback(async () => {
     if (!SUPA || !currentUser?.id) return { ok: false };
@@ -392,18 +348,16 @@ export function useDataLoader({
     if (!SUPA || !currentUser) return;
     if (getProfileStatus(currentUser) !== "verified") return;
 
-    const unsubscribe = subscribeToMyNotifications(currentUser.id, () => {
-      scheduleNotificationReload(currentUser.id);
+    const unsubscribe = subscribeToMyNotifications(currentUser.id, (notification) => {
+      setNotifications((currentNotifications) =>
+        prependRealtimeNotification(currentNotifications, notification)
+      );
     });
 
     return () => {
       unsubscribe();
-
-      if (notificationReloadTimerRef.current && typeof window !== "undefined") {
-        window.clearTimeout(notificationReloadTimerRef.current);
-      }
     };
-  }, [SUPA, currentUser, scheduleNotificationReload]);
+  }, [SUPA, currentUser, setNotifications]);
 
   useEffect(() => {
     if (SUPA && currentUser?.role === "admin") {
