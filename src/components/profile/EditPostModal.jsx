@@ -7,12 +7,10 @@ import { T, TONE_STYLES } from "@/lib/theme";
 import { moderateAsync } from "@/lib/moderation-client";
 import Modal from "@/components/ui/Modal";
 import Button from "@/components/ui/Button";
-import TextInput from "@/components/ui/TextInput";
 import TextArea from "@/components/ui/TextArea";
 
 export default function EditPostModal({ post, onClose, onSave }) {
-  const [title, setTitle] = useState(post.title);
-  const [body, setBody] = useState(post.body);
+  const [body, setBody] = useState(post.body || "");
   const [category, setCategory] = useState(post.category);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -20,17 +18,17 @@ export default function EditPostModal({ post, onClose, onSave }) {
   const submit = async () => {
     setError("");
 
-    if (!title.trim()) return setError("Title is required.");
+    const cleanedBody = body.trim();
+    if (!cleanedBody) return setError("Post body is required.");
 
-    const m = await moderateAsync(`${title} ${body}`);
+    const m = await moderateAsync(cleanedBody);
 
     if (!m.allowed) return setError(m.reason);
 
     setSubmitting(true);
 
     const result = await onSave({
-      title: title.trim(),
-      body: body.trim(),
+      body: cleanedBody,
       category,
     });
 
@@ -43,25 +41,15 @@ export default function EditPostModal({ post, onClose, onSave }) {
 
   return (
     <Modal open onClose={onClose} maxWidth={640}>
-      <div
-        className="relative overflow-hidden rounded-[28px]"
-        style={{ backgroundColor: T.card }}
-      >
-        <div
-          className="absolute left-0 top-0 h-full w-1.5"
-          style={{ backgroundColor: "#B31942" }}
-        />
-        <div
-          className="absolute right-0 top-0 h-full w-1.5"
-          style={{ backgroundColor: "#1E4E8C" }}
-        />
+      <div className="relative overflow-hidden rounded-[28px]" style={{ backgroundColor: T.card }}>
+        <div className="absolute left-0 top-0 h-full w-1.5" style={{ backgroundColor: "#B31942" }} />
+        <div className="absolute right-0 top-0 h-full w-1.5" style={{ backgroundColor: "#1E4E8C" }} />
 
         <div className="p-5 md:p-6">
           <div
             className="rounded-3xl border p-4 mb-4"
             style={{
-              background:
-                "linear-gradient(135deg, rgba(220,232,247,0.95), rgba(253,254,255,0.98), rgba(253,236,240,0.72))",
+              background: "linear-gradient(135deg, rgba(220,232,247,0.95), rgba(253,254,255,0.98), rgba(253,236,240,0.72))",
               borderColor: "#D5E2F2",
             }}
           >
@@ -78,7 +66,7 @@ export default function EditPostModal({ post, onClose, onSave }) {
             </h3>
 
             <p className="mt-1 text-sm leading-6" style={{ color: T.textMuted }}>
-              Keep the title clear and the body helpful for the SoldierHub community.
+              Keep the post helpful and choose the best category.
             </p>
           </div>
 
@@ -106,8 +94,7 @@ export default function EditPostModal({ post, onClose, onSave }) {
           </div>
 
           <div className="grid gap-3">
-            <TextInput label="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
-            <TextArea label="Body" value={body} onChange={(e) => setBody(e.target.value)} rows={7} />
+            <TextArea label="Post" value={body} onChange={(e) => setBody(e.target.value)} rows={7} />
           </div>
 
           {error && (
