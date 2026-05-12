@@ -209,6 +209,13 @@ export default function PostCard({ post }) {
   const bodyText = post?.body || post?.content || post?.text || post?.title || "";
 
   useEffect(() => {
+    setShowComments(false);
+    setComment("");
+    setCommentError("");
+    setCommentsLoading(false);
+  }, [currentUser?.id, postId]);
+
+  useEffect(() => {
     if (!menuOpen) return undefined;
     const closeMenu = () => setMenuOpen(false);
     window.addEventListener("click", closeMenu);
