@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { T } from "@/lib/theme";
 import { resetPasswordForEmail } from "@/lib/supabase/auth";
+import { shouldStopAuthAction } from "@/lib/rateLimit/authActionLimiter";
 import { useApp } from "@/store/AppContext";
 import Modal from "@/components/ui/Modal";
 import Button from "@/components/ui/Button";
@@ -222,6 +223,10 @@ export default function AuthModal() {
       return setError("Please enter valid email address.");
     }
 
+    if (shouldStopAuthAction({ email: personalEmail, pushToast, onError: setError })) {
+      return;
+    }
+
     try {
       setSubmitting(true);
       const { error: resetError } = await resetPasswordForEmail(personalEmail);
@@ -302,6 +307,10 @@ export default function AuthModal() {
         return setError("An account with that email already exists.");
       }
 
+      if (shouldStopAuthAction({ email: personalEmail, pushToast, onError: setError })) {
+        return;
+      }
+
       try {
         setSubmitting(true);
 
@@ -337,6 +346,10 @@ export default function AuthModal() {
 
     if (!password) {
       return setError("Password is required.");
+    }
+
+    if (shouldStopAuthAction({ email: personalEmail, pushToast, onError: setError })) {
+      return;
     }
 
     try {
