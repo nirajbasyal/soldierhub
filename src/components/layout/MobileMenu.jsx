@@ -8,6 +8,7 @@ import {
   Calculator,
   ChevronRight,
   Compass,
+  Loader2,
   LogIn,
   LogOut,
   Shield,
@@ -23,6 +24,42 @@ import SiteInfoCard from "@/components/tools/SiteInfoCard";
 
 function getPathnameOnly(path = "") {
   return String(path || "").split("?")[0] || "/";
+}
+
+function PageLoadingScreen() {
+  return (
+    <div
+      className="fixed inset-0 z-[110] md:hidden flex items-center justify-center px-6"
+      style={{ backgroundColor: T.bg }}
+    >
+      <div className="w-full max-w-xs text-center">
+        <div className="flex justify-center mb-5">
+          <Image
+            src="/brand/soldierhub-logo.png"
+            alt="SoldierHub"
+            width={220}
+            height={72}
+            priority
+            className="h-14 w-auto object-contain"
+          />
+        </div>
+
+        <div
+          className="mx-auto h-12 w-12 rounded-2xl flex items-center justify-center border"
+          style={{ backgroundColor: T.card, borderColor: T.border }}
+        >
+          <Loader2 size={22} className="animate-spin" style={{ color: T.navy }} />
+        </div>
+
+        <p className="mt-4 text-sm font-semibold" style={{ color: T.text }}>
+          Opening page
+        </p>
+        <p className="mt-1 text-xs leading-5" style={{ color: T.textSubtle }}>
+          Loading SoldierHub content…
+        </p>
+      </div>
+    </div>
+  );
 }
 
 export default function MobileMenu() {
@@ -43,14 +80,20 @@ export default function MobileMenu() {
     [navigatingTo]
   );
 
+  const isNavigating = Boolean(navigatingTo);
+
   useEffect(() => {
-    if (!mobileMenu || !navigatingTo) return;
+    if (!navigatingTo) return;
 
     if (pathname === navigatingPathname) {
-      setNavigatingTo("");
-      setMobileMenu(false);
+      const timer = window.setTimeout(() => {
+        setNavigatingTo("");
+        setMobileMenu(false);
+      }, 120);
+
+      return () => window.clearTimeout(timer);
     }
-  }, [mobileMenu, navigatingTo, navigatingPathname, pathname, setMobileMenu]);
+  }, [navigatingTo, navigatingPathname, pathname, setMobileMenu]);
 
   useEffect(() => {
     if (!mobileMenu) return;
@@ -63,12 +106,13 @@ export default function MobileMenu() {
     router.prefetch?.("/admin");
   }, [mobileMenu, router]);
 
+  if (isNavigating) {
+    return <PageLoadingScreen />;
+  }
+
   if (!mobileMenu) return null;
 
-  const isNavigating = Boolean(navigatingTo);
-
   const close = () => {
-    if (isNavigating) return;
     setMobileMenu(false);
   };
 
@@ -76,17 +120,16 @@ export default function MobileMenu() {
     const nextPathname = getPathnameOnly(path);
 
     if (pathname === nextPathname) {
-      setNavigatingTo("");
       setMobileMenu(false);
       return;
     }
 
     setNavigatingTo(path);
+    setMobileMenu(false);
     router.push(path);
   };
 
   const openAuth = (mode) => {
-    if (isNavigating) return;
     setMobileMenu(false);
 
     window.setTimeout(() => {
@@ -117,7 +160,6 @@ export default function MobileMenu() {
   };
 
   const logout = async () => {
-    if (isNavigating) return;
     setMobileMenu(false);
 
     window.setTimeout(async () => {
@@ -158,8 +200,7 @@ export default function MobileMenu() {
           <button
             type="button"
             onClick={close}
-            disabled={isNavigating}
-            className="w-9 h-9 rounded-lg flex items-center justify-center disabled:opacity-45"
+            className="w-9 h-9 rounded-lg flex items-center justify-center"
             style={{
               backgroundColor: T.card,
               border: `1px solid ${T.border}`,
@@ -173,19 +214,6 @@ export default function MobileMenu() {
 
         {/* Body */}
         <div className="p-5 flex flex-col gap-4">
-          {isNavigating && (
-            <div
-              className="rounded-2xl border px-4 py-3 text-sm font-semibold"
-              style={{
-                backgroundColor: T.card,
-                borderColor: T.border,
-                color: T.textMuted,
-              }}
-            >
-              Opening page…
-            </div>
-          )}
-
           {!currentUser ? (
             <div className="flex flex-col gap-2">
               <Button
@@ -193,7 +221,6 @@ export default function MobileMenu() {
                 size="lg"
                 icon={LogIn}
                 onClick={() => openAuth("login")}
-                disabled={isNavigating}
               >
                 Sign in
               </Button>
@@ -203,7 +230,6 @@ export default function MobileMenu() {
                 size="lg"
                 icon={UserPlus}
                 onClick={() => openAuth("signup")}
-                disabled={isNavigating}
               >
                 Create account
               </Button>
@@ -212,8 +238,7 @@ export default function MobileMenu() {
             <button
               type="button"
               onClick={goProfile}
-              disabled={isNavigating}
-              className="rounded-xl border p-3.5 flex items-center gap-3 text-left transition-shadow hover:shadow-sm disabled:opacity-70"
+              className="rounded-xl border p-3.5 flex items-center gap-3 text-left transition-shadow hover:shadow-sm"
               style={{ backgroundColor: T.card, borderColor: T.border }}
             >
               <Avatar
