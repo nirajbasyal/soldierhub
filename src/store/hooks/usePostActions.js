@@ -10,6 +10,12 @@ function removePostFromList(list = [], postId) {
   return (list || []).filter((post) => getPostId(post) !== postId);
 }
 
+function updatePostInList(list = [], postId, updater) {
+  return (list || []).map((post) =>
+    getPostId(post) === postId ? updater(post) : post
+  );
+}
+
 function removeCachedFeedPost(postId) {
   if (typeof window === "undefined" || !postId) return;
 
@@ -93,6 +99,7 @@ export function usePostActions({
     };
 
     setPosts((p) => [post, ...p]);
+    setMyPosts((p) => [post, ...p]);
     pushToast("Posted to feed", "success");
     return { ok: true };
   };
@@ -101,19 +108,25 @@ export function usePostActions({
     if (!requireAuth()) return;
 
     const has = myUpvotes.has(postId);
+    const delta = has ? -1 : 1;
+
+    const applyDelta = (post) => ({
+      ...post,
+      upvote_count: Math.max((post.upvote_count || 0) + delta, 0),
+    });
+
+    const rollbackDelta = (post) => ({
+      ...post,
+      upvote_count: Math.max((post.upvote_count || 0) - delta, 0),
+    });
 
     setMyUpvotes((s) => {
       const n = new Set(s);
       has ? n.delete(postId) : n.add(postId);
       return n;
     });
-    setPosts((arr) =>
-      arr.map((p) =>
-        getPostId(p) === postId
-          ? { ...p, upvote_count: Math.max((p.upvote_count || 0) + (has ? -1 : 1), 0) }
-          : p
-      )
-    );
+    setPosts((arr) => updatePostInList(arr, postId, applyDelta));
+    setMyPosts((arr) => updatePostInList(arr, postId, applyDelta));
 
     if (SUPA) {
       const { error } = has
@@ -126,13 +139,8 @@ export function usePostActions({
           has ? n.add(postId) : n.delete(postId);
           return n;
         });
-        setPosts((arr) =>
-          arr.map((p) =>
-            getPostId(p) === postId
-              ? { ...p, upvote_count: Math.max((p.upvote_count || 0) + (has ? 1 : -1), 0) }
-              : p
-          )
-        );
+        setPosts((arr) => updatePostInList(arr, postId, rollbackDelta));
+        setMyPosts((arr) => updatePostInList(arr, postId, rollbackDelta));
         pushToast(error.message, "error");
       }
     }
@@ -144,11 +152,18 @@ export function usePostActions({
 
     setMyReports((s) => new Set(s).add(postId));
     setPosts((arr) =>
-      arr.map((p) =>
-        getPostId(p) === postId
-          ? { ...p, report_count: (p.report_count || 0) + 1, status: "reported" }
-          : p
-      )
+      updatePostInList(arr, postId, (p) => ({
+        ...p,
+        report_count: (p.report_count || 0) + 1,
+        status: "reported",
+      }))
+    );
+    setMyPosts((arr) =>
+      updatePostInList(arr, postId, (p) => ({
+        ...p,
+        report_count: (p.report_count || 0) + 1,
+        status: "reported",
+      }))
     );
 
     if (SUPA) {
@@ -162,13 +177,12 @@ export function usePostActions({
           n.delete(postId);
           return n;
         });
-        setPosts((arr) =>
-          arr.map((p) =>
-            getPostId(p) === postId
-              ? { ...p, report_count: Math.max((p.report_count || 1) - 1, 0) }
-              : p
-          )
-        );
+        const rollbackReport = (p) => ({
+          ...p,
+          report_count: Math.max((p.report_count || 1) - 1, 0),
+        });
+        setPosts((arr) => updatePostInList(arr, postId, rollbackReport));
+        setMyPosts((arr) => updatePostInList(arr, postId, rollbackReport));
         pushToast(error?.message || data?.error || "Could not report post.", "error");
         return;
       }
@@ -187,6 +201,12 @@ export function usePostActions({
       return { ok: false, error: "You must be verified to comment." };
     }
 
+    const incrementReplyCount = (post) => ({
+      ...post,
+      comment_count: (post.comment_count || 0) + 1,
+      reply_count: (post.reply_count || post.comment_count || 0) + 1,
+    });
+
     if (SUPA) {
       const { data, error } = await CommentsDB.createComment({
         post_id: postId,
@@ -203,13 +223,8 @@ export function usePostActions({
         ...m,
         [postId]: [...(m[postId] || []), data],
       }));
-      setPosts((arr) =>
-        arr.map((p) =>
-          getPostId(p) === postId
-            ? { ...p, comment_count: (p.comment_count || 0) + 1 }
-            : p
-        )
-      );
+      setPosts((arr) => updatePostInList(arr, postId, incrementReplyCount));
+      setMyPosts((arr) => updatePostInList(arr, postId, incrementReplyCount));
       return { ok: true };
     }
 
@@ -227,13 +242,8 @@ export function usePostActions({
       ...m,
       [postId]: [...(m[postId] || []), newComment],
     }));
-    setPosts((arr) =>
-      arr.map((p) =>
-        getPostId(p) === postId
-          ? { ...p, comment_count: (p.comment_count || 0) + 1 }
-          : p
-      )
-    );
+    setPosts((arr) => updatePostInList(arr, postId, incrementReplyCount));
+    setMyPosts((arr) => updatePostInList(arr, postId, incrementReplyCount));
 
     const post = posts.find((p) => getPostId(p) === postId);
     if (post && post.author_id !== currentUser.id) {
@@ -285,10 +295,10 @@ export function usePostActions({
     }
 
     setPosts((arr) =>
-      arr.map((p) => (getPostId(p) === postId ? { ...p, ...updates, edited: true } : p))
+      updatePostInList(arr, postId, (p) => ({ ...p, ...updates, edited: true }))
     );
     setMyPosts((arr) =>
-      arr.map((p) => (getPostId(p) === postId ? { ...p, ...updates, edited: true } : p))
+      updatePostInList(arr, postId, (p) => ({ ...p, ...updates, edited: true }))
     );
     pushToast("Post updated", "success");
     return { ok: true };
