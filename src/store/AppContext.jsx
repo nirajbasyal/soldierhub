@@ -20,7 +20,11 @@ import { useNotificationActions } from "./hooks/useNotificationActions";
 import { usePostActions } from "./hooks/usePostActions";
 import { useProfileActions } from "./hooks/useProfileActions";
 import { useToasts } from "./hooks/useToasts";
-import { getProfileStatus, normalizeSeedPosts } from "./utils/appHelpers";
+import {
+  getProfileStatus,
+  isIdentifiedPost,
+  normalizeSeedPosts,
+} from "./utils/appHelpers";
 
 const AppContext = createContext(null);
 
@@ -40,6 +44,8 @@ function buildSeedComments(seedPosts) {
   const comments = {};
 
   seedPosts.forEach((post) => {
+    if (!isIdentifiedPost(post)) return;
+
     comments[post.id] = (post.comments || []).map((comment) => ({
       ...comment,
       post_id: post.id,
@@ -53,6 +59,7 @@ function filterPosts({ posts, category, search }) {
   const q = search.trim().toLowerCase();
 
   return posts.filter((post) => {
+    if (!isIdentifiedPost(post)) return false;
     if (post.status === "deleted" || post.status === "removed") return false;
     if (category !== "All" && post.category !== category) return false;
     if (!q) return true;
@@ -64,11 +71,12 @@ function filterPosts({ posts, category, search }) {
 }
 
 function countPostsByCategory(posts) {
-  const counts = { All: posts.length };
+  const validPosts = posts.filter((post) => isIdentifiedPost(post));
+  const counts = { All: validPosts.length };
 
   CATEGORIES.forEach((category) => {
     if (category.key === "All") return;
-    counts[category.key] = posts.filter((post) => post.category === category.key)
+    counts[category.key] = validPosts.filter((post) => post.category === category.key)
       .length;
   });
 
@@ -233,19 +241,24 @@ export function AppProvider({ children }) {
   const isVerified = Boolean(currentUser && userStatus === "verified");
   const isAdmin = Boolean(isVerified && currentUser?.role === "admin");
 
-  const filteredPosts = useMemo(
-    () => filterPosts({ posts, category, search }),
-    [posts, category, search]
+  const visiblePosts = useMemo(
+    () => posts.filter((post) => isIdentifiedPost(post)),
+    [posts]
   );
 
-  const categoryCounts = useMemo(() => countPostsByCategory(posts), [posts]);
+  const filteredPosts = useMemo(
+    () => filterPosts({ posts: visiblePosts, category, search }),
+    [visiblePosts, category, search]
+  );
+
+  const categoryCounts = useMemo(() => countPostsByCategory(visiblePosts), [visiblePosts]);
 
   const reportedPosts = useMemo(
     () =>
-      posts.filter(
+      visiblePosts.filter(
         (post) => post.status === "reported" || (post.report_count || 0) > 0
       ),
-    [posts]
+    [visiblePosts]
   );
 
   const value = useMemo(
@@ -259,7 +272,7 @@ export function AppProvider({ children }) {
       users,
       pendingUsers,
       blockedUsers,
-      posts,
+      posts: visiblePosts,
       filteredPosts,
       reportedPosts,
       myPosts,
@@ -323,7 +336,7 @@ export function AppProvider({ children }) {
       users,
       pendingUsers,
       blockedUsers,
-      posts,
+      visiblePosts,
       filteredPosts,
       reportedPosts,
       myPosts,
