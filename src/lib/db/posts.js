@@ -354,22 +354,21 @@ async function listMyPostsFromView(supabase, userId, limit) {
   };
 }
 
-export async function listMyPosts(userId, { limit = 30 } = {}) {
-  const supabase = createClient();
-  if (!supabase) return { data: [], error: null };
+async function listReportedPostsFromView(supabase) {
+  const result = await supabase
+    .from("posts_with_meta")
+    .select("*")
+    .eq("status", "reported")
+    .order("created_at", { ascending: false })
+    .limit(50);
 
-  if (!userId) return { data: [], error: null };
-
-  const tableResult = await listMyPostsFromTable(supabase, userId, limit);
-  if (!tableResult.error) return tableResult;
-
-  return listMyPostsFromView(supabase, userId, limit);
+  return {
+    data: (result.data || []).map(normalizePostRow),
+    error: result.error,
+  };
 }
 
-export async function listReportedPosts() {
-  const supabase = createClient();
-  if (!supabase) return { data: [], error: null };
-
+async function listReportedPostsFromTable(supabase) {
   const { data, error } = await supabase
     .from("posts")
     .select(POST_SELECT)
@@ -378,6 +377,33 @@ export async function listReportedPosts() {
     .limit(50);
 
   return { data: await hydrateTablePosts(supabase, data || []), error };
+}
+
+export async function listMyPosts(userId, { limit = 30 } = {}) {
+  const supabase = createClient();
+  if (!supabase) return { data: [], error: null };
+
+  if (!userId) return { data: [], error: null };
+
+  // Production read path: prefer the meta view because it already includes
+  // upvote_count and comment_count. The raw table fallback needs two extra
+  // count reads, so only use it if the view is unavailable.
+  const viewResult = await listMyPostsFromView(supabase, userId, limit);
+  if (!viewResult.error) return viewResult;
+
+  return listMyPostsFromTable(supabase, userId, limit);
+}
+
+export async function listReportedPosts() {
+  const supabase = createClient();
+  if (!supabase) return { data: [], error: null };
+
+  // Admin moderation should also prefer the meta view so reported-post cards
+  // do not trigger extra upvote/comment count reads on every admin load.
+  const viewResult = await listReportedPostsFromView(supabase);
+  if (!viewResult.error) return viewResult;
+
+  return listReportedPostsFromTable(supabase);
 }
 
 async function getAccessTokenForApi(supabase, fallbackMessage) {
