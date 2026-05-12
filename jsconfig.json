@@ -1,7 +1,6 @@
 {
   "compilerOptions": {
     "paths": {
-      "@/store/AppContext": ["./src/store/AppContext.refactor.jsx"],
       "@/*": ["./src/*"]
     }
   }
