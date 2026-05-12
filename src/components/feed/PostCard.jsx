@@ -459,53 +459,51 @@ export default function PostCard({ post }) {
                 />
               ))}
             </div>
-          </div>
-        ) : null}
 
-        <div className="px-4 md:px-5 pb-4">
-          <div className="flex items-start gap-2.5">
-            <Avatar name={replyName} color={replyColor} size={32} />
-            <div className="min-w-0 flex-1">
-              <div
-                className="flex items-center gap-2 rounded-2xl border px-3 py-2"
-                style={{ borderColor: T.border, backgroundColor: "rgba(244,248,253,0.72)" }}
-              >
-                <input
-                  value={comment}
-                  onChange={(event) => {
-                    setComment(event.target.value);
-                    setCommentError("");
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" && !event.shiftKey) {
-                      event.preventDefault();
-                      submitComment();
-                    }
-                  }}
-                  placeholder="Write a reply..."
-                  className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[#9AA4B2]"
-                  style={{ color: T.text }}
-                  disabled={commentSubmitting}
-                />
-                <button
-                  type="button"
-                  onClick={submitComment}
-                  disabled={commentSubmitting || !comment.trim()}
-                  className="h-8 w-8 rounded-full flex items-center justify-center disabled:opacity-45"
-                  style={{ backgroundColor: T.navy, color: "white" }}
-                  aria-label="Send reply"
+            <div className="mt-3 flex items-start gap-2.5">
+              <Avatar name={replyName} color={replyColor} size={32} />
+              <div className="min-w-0 flex-1">
+                <div
+                  className="flex items-center gap-2 rounded-2xl border px-3 py-2"
+                  style={{ borderColor: T.border, backgroundColor: "rgba(244,248,253,0.72)" }}
                 >
-                  <Send size={15} />
-                </button>
-              </div>
-              {commentError ? (
-                <div className="mt-2 text-xs font-medium" style={{ color: T.red }}>
-                  {commentError}
+                  <input
+                    value={comment}
+                    onChange={(event) => {
+                      setComment(event.target.value);
+                      setCommentError("");
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && !event.shiftKey) {
+                        event.preventDefault();
+                        submitComment();
+                      }
+                    }}
+                    placeholder="Write a reply..."
+                    className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[#9AA4B2]"
+                    style={{ color: T.text }}
+                    disabled={commentSubmitting}
+                  />
+                  <button
+                    type="button"
+                    onClick={submitComment}
+                    disabled={commentSubmitting || !comment.trim()}
+                    className="h-8 w-8 rounded-full flex items-center justify-center disabled:opacity-45"
+                    style={{ backgroundColor: T.navy, color: "white" }}
+                    aria-label="Send reply"
+                  >
+                    <Send size={15} />
+                  </button>
                 </div>
-              ) : null}
+                {commentError ? (
+                  <div className="mt-2 text-xs font-medium" style={{ color: T.red }}>
+                    {commentError}
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
-        </div>
+        ) : null}
       </article>
 
       {editingOpen ? (
