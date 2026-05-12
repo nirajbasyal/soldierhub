@@ -107,6 +107,9 @@ export function AppProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(SUPA);
   const [postsLoading, setPostsLoading] = useState(SUPA);
+  const [loadingMorePosts, setLoadingMorePosts] = useState(false);
+  const [hasMorePosts, setHasMorePosts] = useState(SUPA);
+  const [postsCursor, setPostsCursor] = useState(null);
 
   // UI state
   const [authModal, setAuthModal] = useState(null);
@@ -141,6 +144,7 @@ export function AppProvider({ children }) {
 
   const {
     reloadPosts,
+    loadMorePosts,
     reloadMyPosts,
     reloadPendingUsers,
     reloadVerifiedUsers,
@@ -159,6 +163,9 @@ export function AppProvider({ children }) {
     setPendingUsers,
     setUsers,
     setBlockedUsers,
+    setPostsCursor,
+    setHasMorePosts,
+    setLoadingMorePosts,
     sendToPendingReview,
   });
 
@@ -282,6 +289,8 @@ export function AppProvider({ children }) {
       notifications,
       categoryCounts,
       counts: categoryCounts,
+      postsCursor,
+      hasMorePosts,
 
       // Session
       currentUser,
@@ -290,6 +299,7 @@ export function AppProvider({ children }) {
       isAdmin,
       authLoading,
       postsLoading,
+      loadingMorePosts,
 
       // UI
       authModal,
@@ -306,6 +316,7 @@ export function AppProvider({ children }) {
 
       // Loaders
       reloadPosts,
+      loadMorePosts,
       reloadMyPosts,
       reloadPendingUsers,
       reloadVerifiedUsers,
@@ -345,12 +356,15 @@ export function AppProvider({ children }) {
       myReports,
       notifications,
       categoryCounts,
+      postsCursor,
+      hasMorePosts,
       currentUser,
       userStatus,
       isVerified,
       isAdmin,
       authLoading,
       postsLoading,
+      loadingMorePosts,
       authModal,
       mobileMenu,
       search,
@@ -359,6 +373,7 @@ export function AppProvider({ children }) {
       pushToast,
       dismissToast,
       reloadPosts,
+      loadMorePosts,
       reloadMyPosts,
       reloadPendingUsers,
       reloadVerifiedUsers,
