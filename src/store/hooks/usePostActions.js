@@ -2,6 +2,10 @@ import { useCallback } from "react";
 import { uid } from "@/lib/helpers";
 import * as PostsDB from "@/lib/db/posts";
 import * as CommentsDB from "@/lib/db/comments";
+import {
+  checkClientActionLimit,
+  formatRetryMessage,
+} from "@/lib/rateLimit/clientActionLimiter";
 import { getPostId, getProfileStatus } from "../utils/appHelpers";
 
 const FEED_CACHE_KEY = "soldierhub_feed_cache_v1";
@@ -14,6 +18,19 @@ function updatePostInList(list = [], postId, updater) {
   return (list || []).map((post) =>
     getPostId(post) === postId ? updater(post) : post
   );
+}
+
+function getLimitIdentity(currentUser) {
+  return currentUser?.id || currentUser?.email || "guest";
+}
+
+function stopIfLimited({ action, currentUser, pushToast }) {
+  const result = checkClientActionLimit(action, getLimitIdentity(currentUser));
+
+  if (result.allowed) return false;
+
+  pushToast(formatRetryMessage(result.retryAfterMs), "error");
+  return true;
 }
 
 function removeCachedFeedPost(postId) {
@@ -62,6 +79,10 @@ export function usePostActions({
   const createPost = async ({ id, title, body, category, anonymous }) => {
     if (!requireAuth()) return { ok: false, error: "You must be verified to post." };
 
+    if (stopIfLimited({ action: "post", currentUser, pushToast })) {
+      return { ok: false, error: "Please slow down before posting again." };
+    }
+
     if (SUPA) {
       const { error } = await PostsDB.createPost({
         id,
@@ -107,6 +128,8 @@ export function usePostActions({
   const upvotePost = async (postId) => {
     if (!requireAuth()) return;
 
+    if (stopIfLimited({ action: "upvote", currentUser, pushToast })) return;
+
     const has = myUpvotes.has(postId);
     const delta = has ? -1 : 1;
 
@@ -149,6 +172,8 @@ export function usePostActions({
   const reportPost = async (postId) => {
     if (!requireAuth()) return;
     if (myReports.has(postId)) return;
+
+    if (stopIfLimited({ action: "report", currentUser, pushToast })) return;
 
     setMyReports((s) => new Set(s).add(postId));
     setPosts((arr) =>
@@ -199,6 +224,10 @@ export function usePostActions({
   const commentOnPost = async (postId, body) => {
     if (!requireAuth()) {
       return { ok: false, error: "You must be verified to comment." };
+    }
+
+    if (stopIfLimited({ action: "comment", currentUser, pushToast })) {
+      return { ok: false, error: "Please slow down before commenting again." };
     }
 
     const incrementReplyCount = (post) => ({
