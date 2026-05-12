@@ -5,6 +5,18 @@ import { createClient } from "@/lib/supabase/client";
 const POST_SELECT =
   "id, author_id, author_name_cached, author_color_cached, category, title, body, anonymous, status, edited, created_at, updated_at";
 
+const FEED_READ_SOURCE_CACHE_TTL_MS = 5 * 60 * 1000;
+const RPC_MODE_FULL = "full";
+const RPC_MODE_LIMIT = "limit";
+const RPC_MODE_EMPTY = "empty";
+
+let preferredFirstPageFeedSource = {
+  source: null,
+  expiresAt: 0,
+};
+
+let workingPublicPostsRpcMode = null;
+
 export function normalizePostRow(row = {}) {
   // IMPORTANT: id and post_id must both point to the real public.posts.id.
   // Upvotes, reports, comments, edit, and delete all target public.posts.id.
@@ -50,6 +62,33 @@ function resolvePostId(input) {
   }
 
   return input;
+}
+
+function hasFeedCursor(cursorCreatedAt, cursorId) {
+  return Boolean(cursorCreatedAt || cursorId);
+}
+
+function getPreferredFirstPageFeedSource() {
+  if (!preferredFirstPageFeedSource.source) return null;
+  if (Date.now() > preferredFirstPageFeedSource.expiresAt) {
+    preferredFirstPageFeedSource = { source: null, expiresAt: 0 };
+    return null;
+  }
+
+  return preferredFirstPageFeedSource.source;
+}
+
+function setPreferredFirstPageFeedSource(source) {
+  preferredFirstPageFeedSource = {
+    source,
+    expiresAt: Date.now() + FEED_READ_SOURCE_CACHE_TTL_MS,
+  };
+}
+
+function clearPreferredFirstPageFeedSource(source) {
+  if (!source || preferredFirstPageFeedSource.source === source) {
+    preferredFirstPageFeedSource = { source: null, expiresAt: 0 };
+  }
 }
 
 async function attachProfilesToPosts(supabase, rows = []) {
@@ -148,27 +187,52 @@ async function listPostsFromView(supabase, limit) {
   };
 }
 
+async function callPublicPostsRpc(
+  supabase,
+  mode,
+  { limit = 30, cursorCreatedAt = null, cursorId = null } = {}
+) {
+  if (mode === RPC_MODE_LIMIT) {
+    return supabase.rpc("get_public_posts", { limit_count: limit });
+  }
+
+  if (mode === RPC_MODE_EMPTY) {
+    return supabase.rpc("get_public_posts");
+  }
+
+  return supabase.rpc("get_public_posts", {
+    limit_count: limit,
+    cursor_created_at: cursorCreatedAt,
+    cursor_id: cursorId,
+  });
+}
+
 async function listPostsFromRpc(
   supabase,
   { limit = 30, cursorCreatedAt = null, cursorId = null } = {}
 ) {
-  const attempts = [
-    () =>
-      supabase.rpc("get_public_posts", {
-        limit_count: limit,
-        cursor_created_at: cursorCreatedAt,
-        cursor_id: cursorId,
-      }),
-    () => supabase.rpc("get_public_posts", { limit_count: limit }),
-    () => supabase.rpc("get_public_posts"),
-  ];
+  const usingCursor = hasFeedCursor(cursorCreatedAt, cursorId);
+
+  // Cursor pagination only works with the production RPC signature.
+  // Do not run older first-page-only RPC fallbacks for cursor loads.
+  const attempts = usingCursor
+    ? [RPC_MODE_FULL]
+    : workingPublicPostsRpcMode
+      ? [workingPublicPostsRpcMode]
+      : [RPC_MODE_FULL, RPC_MODE_LIMIT, RPC_MODE_EMPTY];
 
   let lastError = null;
 
-  for (const attempt of attempts) {
-    const result = await attempt();
+  for (const mode of attempts) {
+    const result = await callPublicPostsRpc(supabase, mode, {
+      limit,
+      cursorCreatedAt,
+      cursorId,
+    });
 
     if (!result.error && Array.isArray(result.data)) {
+      if (!usingCursor) workingPublicPostsRpcMode = mode;
+
       return {
         data: result.data.map(normalizePostRow),
         error: null,
@@ -178,7 +242,37 @@ async function listPostsFromRpc(
     lastError = result.error || lastError;
   }
 
+  // If a previously working RPC shape fails later, clear it so the next
+  // first-page load can rediscover the best available shape instead of
+  // repeatedly hammering a broken call.
+  if (!usingCursor && workingPublicPostsRpcMode) {
+    workingPublicPostsRpcMode = null;
+  }
+
   return { data: [], error: lastError };
+}
+
+async function listFirstPageFromPreferredSource(supabase, limit) {
+  const preferredSource = getPreferredFirstPageFeedSource();
+  if (!preferredSource) return null;
+
+  if (preferredSource === "rpc") {
+    const rpcResult = await listPostsFromRpc(supabase, { limit });
+    if (!rpcResult.error) return rpcResult;
+  }
+
+  if (preferredSource === "view") {
+    const viewResult = await listPostsFromView(supabase, limit);
+    if (!viewResult.error) return viewResult;
+  }
+
+  if (preferredSource === "table") {
+    const tableResult = await listPostsFromTable(supabase, limit);
+    if (!tableResult.error) return tableResult;
+  }
+
+  clearPreferredFirstPageFeedSource(preferredSource);
+  return null;
 }
 
 export async function listPosts({
@@ -189,26 +283,41 @@ export async function listPosts({
   const supabase = createClient();
   if (!supabase) return { data: [], error: null };
 
-  // Production-safe order:
-  // 1. Public RPC masks anonymous authors and supports cursor pagination.
-  // 2. Safe view fallback for first-page loads.
-  // 3. Raw table only as final fallback for admin/author access.
-  const rpcResult = await listPostsFromRpc(supabase, {
-    limit,
-    cursorCreatedAt,
-    cursorId,
-  });
-  if (!rpcResult.error) return rpcResult;
+  const usingCursor = hasFeedCursor(cursorCreatedAt, cursorId);
 
-  // Fallbacks are only safe for first-page loads. Cursor pagination depends on
-  // the RPC because the public raw table is intentionally protected by RLS.
-  if (cursorCreatedAt || cursorId) return rpcResult;
+  // Cursor pagination depends on the production RPC. The view/table fallbacks
+  // are first-page-only and should not be called for load-more requests.
+  if (usingCursor) {
+    return listPostsFromRpc(supabase, {
+      limit,
+      cursorCreatedAt,
+      cursorId,
+    });
+  }
+
+  // For first-page feed reads, remember the path that works in this browser
+  // session. This prevents repeated RPC/view/table fallback chains on every
+  // reload while still allowing recovery if the preferred path fails later.
+  const preferredResult = await listFirstPageFromPreferredSource(supabase, limit);
+  if (preferredResult) return preferredResult;
+
+  const rpcResult = await listPostsFromRpc(supabase, { limit });
+  if (!rpcResult.error) {
+    setPreferredFirstPageFeedSource("rpc");
+    return rpcResult;
+  }
 
   const viewResult = await listPostsFromView(supabase, limit);
-  if (!viewResult.error) return viewResult;
+  if (!viewResult.error) {
+    setPreferredFirstPageFeedSource("view");
+    return viewResult;
+  }
 
   const tableResult = await listPostsFromTable(supabase, limit);
-  if (!tableResult.error) return tableResult;
+  if (!tableResult.error) {
+    setPreferredFirstPageFeedSource("table");
+    return tableResult;
+  }
 
   return {
     data: [],
