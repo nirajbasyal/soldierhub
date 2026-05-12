@@ -2,7 +2,38 @@ import { useCallback } from "react";
 import { uid } from "@/lib/helpers";
 import * as PostsDB from "@/lib/db/posts";
 import * as CommentsDB from "@/lib/db/comments";
-import { getProfileStatus } from "../utils/appHelpers";
+import { getPostId, getProfileStatus } from "../utils/appHelpers";
+
+const FEED_CACHE_KEY = "soldierhub_feed_cache_v1";
+
+function removePostFromList(list = [], postId) {
+  return (list || []).filter((post) => getPostId(post) !== postId);
+}
+
+function removeCachedFeedPost(postId) {
+  if (typeof window === "undefined" || !postId) return;
+
+  try {
+    const raw = window.localStorage.getItem(FEED_CACHE_KEY);
+    if (!raw) return;
+
+    const parsed = JSON.parse(raw);
+    const posts = Array.isArray(parsed?.posts) ? parsed.posts : [];
+    const nextPosts = removePostFromList(posts, postId);
+
+    if (nextPosts.length === 0) {
+      window.localStorage.removeItem(FEED_CACHE_KEY);
+      return;
+    }
+
+    window.localStorage.setItem(
+      FEED_CACHE_KEY,
+      JSON.stringify({ ...parsed, posts: nextPosts, savedAt: Date.now() })
+    );
+  } catch {
+    window.localStorage.removeItem(FEED_CACHE_KEY);
+  }
+}
 
 export function usePostActions({
   SUPA,
@@ -78,7 +109,7 @@ export function usePostActions({
     });
     setPosts((arr) =>
       arr.map((p) =>
-        p.id === postId
+        getPostId(p) === postId
           ? { ...p, upvote_count: Math.max((p.upvote_count || 0) + (has ? -1 : 1), 0) }
           : p
       )
@@ -97,7 +128,7 @@ export function usePostActions({
         });
         setPosts((arr) =>
           arr.map((p) =>
-            p.id === postId
+            getPostId(p) === postId
               ? { ...p, upvote_count: Math.max((p.upvote_count || 0) + (has ? 1 : -1), 0) }
               : p
           )
@@ -114,7 +145,7 @@ export function usePostActions({
     setMyReports((s) => new Set(s).add(postId));
     setPosts((arr) =>
       arr.map((p) =>
-        p.id === postId
+        getPostId(p) === postId
           ? { ...p, report_count: (p.report_count || 0) + 1, status: "reported" }
           : p
       )
@@ -133,7 +164,7 @@ export function usePostActions({
         });
         setPosts((arr) =>
           arr.map((p) =>
-            p.id === postId
+            getPostId(p) === postId
               ? { ...p, report_count: Math.max((p.report_count || 1) - 1, 0) }
               : p
           )
@@ -174,7 +205,7 @@ export function usePostActions({
       }));
       setPosts((arr) =>
         arr.map((p) =>
-          p.id === postId
+          getPostId(p) === postId
             ? { ...p, comment_count: (p.comment_count || 0) + 1 }
             : p
         )
@@ -198,13 +229,13 @@ export function usePostActions({
     }));
     setPosts((arr) =>
       arr.map((p) =>
-        p.id === postId
+        getPostId(p) === postId
           ? { ...p, comment_count: (p.comment_count || 0) + 1 }
           : p
       )
     );
 
-    const post = posts.find((p) => p.id === postId);
+    const post = posts.find((p) => getPostId(p) === postId);
     if (post && post.author_id !== currentUser.id) {
       setNotifications((n) => [
         {
@@ -254,7 +285,10 @@ export function usePostActions({
     }
 
     setPosts((arr) =>
-      arr.map((p) => (p.id === postId ? { ...p, ...updates, edited: true } : p))
+      arr.map((p) => (getPostId(p) === postId ? { ...p, ...updates, edited: true } : p))
+    );
+    setMyPosts((arr) =>
+      arr.map((p) => (getPostId(p) === postId ? { ...p, ...updates, edited: true } : p))
     );
     pushToast("Post updated", "success");
     return { ok: true };
@@ -263,20 +297,53 @@ export function usePostActions({
   const deleteMyPost = async (postId) => {
     if (!requireAuth()) return { ok: false, error: "Not authorized." };
 
+    if (!postId) {
+      return { ok: false, error: "Post was not identified. Please refresh and try again." };
+    }
+
     if (SUPA) {
       const { error } = await PostsDB.deletePost(postId);
       if (error) {
         pushToast(error.message, "error");
         return { ok: false, error: error.message };
       }
-      setPosts((arr) => arr.filter((p) => p.id !== postId));
-      setMyPosts((arr) => arr.filter((p) => p.id !== postId));
+
+      setPosts((arr) => removePostFromList(arr, postId));
+      setMyPosts((arr) => removePostFromList(arr, postId));
+      setNotifications((arr) => (arr || []).filter((item) => item.post_id !== postId));
+      setMyUpvotes((set) => {
+        const next = new Set(set);
+        next.delete(postId);
+        return next;
+      });
+      setMyReports((set) => {
+        const next = new Set(set);
+        next.delete(postId);
+        return next;
+      });
+      setPostComments((map) => {
+        const next = { ...(map || {}) };
+        delete next[postId];
+        return next;
+      });
+      removeCachedFeedPost(postId);
+
+      await reloadPosts();
+      await reloadMyPosts();
+
       pushToast("Post deleted", "success");
       return { ok: true };
     }
 
-    setPosts((arr) => arr.filter((p) => p.id !== postId));
+    setPosts((arr) => removePostFromList(arr, postId));
+    setMyPosts((arr) => removePostFromList(arr, postId));
     setNotifications((n) => n.filter((x) => x.post_id !== postId));
+    setPostComments((map) => {
+      const next = { ...(map || {}) };
+      delete next[postId];
+      return next;
+    });
+    removeCachedFeedPost(postId);
     pushToast("Post deleted", "success");
     return { ok: true };
   };
