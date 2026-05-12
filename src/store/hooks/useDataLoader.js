@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import * as Auth from "@/lib/supabase/auth";
 import * as ProfilesDB from "@/lib/db/profiles";
 import * as PostsDB from "@/lib/db/posts";
@@ -8,6 +8,8 @@ import {
   subscribeToPosts,
 } from "@/lib/db/realtime";
 import { getProfileStatus, sanitizePosts } from "../utils/appHelpers";
+
+const FEED_REALTIME_DEBOUNCE_MS = 1200;
 
 export function useDataLoader({
   SUPA,
@@ -25,13 +27,60 @@ export function useDataLoader({
   setBlockedUsers,
   sendToPendingReview,
 }) {
+  const feedReloadTimerRef = useRef(null);
+  const feedReloadInFlightRef = useRef(false);
+  const feedReloadQueuedRef = useRef(false);
+
   const reloadPosts = useCallback(async () => {
     if (!SUPA) return;
     setPostsLoading(true);
-    const { data } = await PostsDB.listPosts();
-    setPosts(sanitizePosts(data || []));
-    setPostsLoading(false);
+
+    try {
+      const { data } = await PostsDB.listPosts();
+      setPosts(sanitizePosts(data || []));
+    } finally {
+      setPostsLoading(false);
+    }
   }, [SUPA, setPosts, setPostsLoading]);
+
+  const reloadPostsQuietly = useCallback(async () => {
+    if (!SUPA) return;
+
+    if (feedReloadInFlightRef.current) {
+      feedReloadQueuedRef.current = true;
+      return;
+    }
+
+    feedReloadInFlightRef.current = true;
+
+    try {
+      const { data } = await PostsDB.listPosts();
+      setPosts(sanitizePosts(data || []));
+    } finally {
+      feedReloadInFlightRef.current = false;
+
+      if (feedReloadQueuedRef.current) {
+        feedReloadQueuedRef.current = false;
+        feedReloadTimerRef.current = window.setTimeout(
+          () => reloadPostsQuietly(),
+          FEED_REALTIME_DEBOUNCE_MS
+        );
+      }
+    }
+  }, [SUPA, setPosts]);
+
+  const scheduleRealtimeFeedReload = useCallback(() => {
+    if (!SUPA || typeof window === "undefined") return;
+
+    if (feedReloadTimerRef.current) {
+      window.clearTimeout(feedReloadTimerRef.current);
+    }
+
+    feedReloadTimerRef.current = window.setTimeout(
+      () => reloadPostsQuietly(),
+      FEED_REALTIME_DEBOUNCE_MS
+    );
+  }, [SUPA, reloadPostsQuietly]);
 
   const reloadMyPosts = useCallback(async () => {
     if (!SUPA || !currentUser) return;
@@ -137,9 +186,16 @@ export function useDataLoader({
 
   useEffect(() => {
     if (!SUPA) return;
-    const unsubscribe = subscribeToPosts(() => reloadPosts());
-    return () => unsubscribe();
-  }, [SUPA, reloadPosts]);
+    const unsubscribe = subscribeToPosts(() => scheduleRealtimeFeedReload());
+
+    return () => {
+      unsubscribe();
+
+      if (feedReloadTimerRef.current && typeof window !== "undefined") {
+        window.clearTimeout(feedReloadTimerRef.current);
+      }
+    };
+  }, [SUPA, scheduleRealtimeFeedReload]);
 
   useEffect(() => {
     if (!SUPA || !currentUser) return;
