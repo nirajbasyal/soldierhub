@@ -208,27 +208,22 @@ export async function listPosts({ limit = 30 } = {}) {
   const supabase = createClient();
   if (!supabase) return { data: [], error: null };
 
-  // Always trust public.posts first because it guarantees the real public.posts.id.
-  const tableResult = await listPostsFromTable(supabase, limit);
-  if (!tableResult.error && tableResult.data.length > 0) return tableResult;
+  // Production-safe order:
+  // 1. Public RPC masks anonymous authors and works for logged-out users.
+  // 2. Safe view fallback.
+  // 3. Raw table only as final fallback for admin/author access.
+  const rpcResult = await listPostsFromRpc(supabase, limit);
+  if (!rpcResult.error) return rpcResult;
 
   const viewResult = await listPostsFromView(supabase, limit);
-  if (!viewResult.error && viewResult.data.length > 0) return viewResult;
+  if (!viewResult.error) return viewResult;
 
-  const rpcResult = await listPostsFromRpc(supabase, limit);
-  if (!rpcResult.error && rpcResult.data.length > 0) return rpcResult;
-
-  if (!tableResult.error && !viewResult.error && !rpcResult.error) {
-    return { data: [], error: null };
-  }
+  const tableResult = await listPostsFromTable(supabase, limit);
+  if (!tableResult.error) return tableResult;
 
   return {
-    data: tableResult.data.length
-      ? tableResult.data
-      : viewResult.data.length
-        ? viewResult.data
-        : rpcResult.data,
-    error: tableResult.error || viewResult.error || rpcResult.error,
+    data: [],
+    error: rpcResult.error || viewResult.error || tableResult.error,
   };
 }
 
