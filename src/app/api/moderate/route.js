@@ -4,6 +4,10 @@ import { NextResponse } from "next/server";
 const SAFETY_MESSAGE =
   "This content may violate SoldierHub community safety rules. Please revise it and try again.";
 
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const RATE_LIMIT_MAX_REQUESTS = 30;
+const RATE_LIMIT_STORE_KEY = "__soldierhub_moderation_rate_limit__";
+
 const BLOCKED_CATEGORIES = [
   "hate",
   "hate/threatening",
@@ -40,27 +44,123 @@ const THREAT_KEYWORDS = [
   "kill yourself",
 ];
 
+function getClientIp(req) {
+  const forwardedFor = req.headers.get("x-forwarded-for") || "";
+  const realIp = req.headers.get("x-real-ip") || "";
+  const vercelForwardedFor = req.headers.get("x-vercel-forwarded-for") || "";
+
+  return (
+    vercelForwardedFor.split(",")[0]?.trim() ||
+    forwardedFor.split(",")[0]?.trim() ||
+    realIp.trim() ||
+    "unknown"
+  );
+}
+
+function getRateLimitStore() {
+  if (!globalThis[RATE_LIMIT_STORE_KEY]) {
+    globalThis[RATE_LIMIT_STORE_KEY] = new Map();
+  }
+
+  return globalThis[RATE_LIMIT_STORE_KEY];
+}
+
+function checkRateLimit(req) {
+  const ip = getClientIp(req);
+  const now = Date.now();
+  const store = getRateLimitStore();
+  const current = store.get(ip);
+
+  if (!current || now > current.resetAt) {
+    store.set(ip, {
+      count: 1,
+      resetAt: now + RATE_LIMIT_WINDOW_MS,
+    });
+
+    return {
+      allowed: true,
+      remaining: RATE_LIMIT_MAX_REQUESTS - 1,
+      resetAt: now + RATE_LIMIT_WINDOW_MS,
+    };
+  }
+
+  if (current.count >= RATE_LIMIT_MAX_REQUESTS) {
+    return {
+      allowed: false,
+      remaining: 0,
+      resetAt: current.resetAt,
+    };
+  }
+
+  current.count += 1;
+  store.set(ip, current);
+
+  return {
+    allowed: true,
+    remaining: Math.max(RATE_LIMIT_MAX_REQUESTS - current.count, 0),
+    resetAt: current.resetAt,
+  };
+}
+
+function rateLimitHeaders(result) {
+  const retryAfterSeconds = Math.max(
+    Math.ceil((result.resetAt - Date.now()) / 1000),
+    1
+  );
+
+  return {
+    "X-RateLimit-Limit": String(RATE_LIMIT_MAX_REQUESTS),
+    "X-RateLimit-Remaining": String(result.remaining),
+    "X-RateLimit-Reset": String(Math.ceil(result.resetAt / 1000)),
+    "Retry-After": String(retryAfterSeconds),
+  };
+}
+
 export async function POST(req) {
   try {
+    const rateLimit = checkRateLimit(req);
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        {
+          allowed: false,
+          flagged: false,
+          blocked: true,
+          blockedBy: "rate_limit",
+          reason: "Too many moderation requests. Please wait a moment and try again.",
+        },
+        {
+          status: 429,
+          headers: rateLimitHeaders(rateLimit),
+        }
+      );
+    }
+
     const body = await req.json();
     const text = String(body?.text || "").trim();
 
     if (!text) {
-      return NextResponse.json({
-        allowed: true,
-        flagged: false,
-        blocked: false,
-        reason: "",
-      });
+      return NextResponse.json(
+        {
+          allowed: true,
+          flagged: false,
+          blocked: false,
+          reason: "",
+        },
+        { headers: rateLimitHeaders(rateLimit) }
+      );
     }
 
     if (text.length > 8000) {
-      return NextResponse.json({
-        allowed: false,
-        flagged: true,
-        blocked: true,
-        reason: "Post is too long. Please shorten it and try again.",
-      });
+      return NextResponse.json(
+        {
+          allowed: false,
+          flagged: true,
+          blocked: true,
+          reason: "Post is too long. Please shorten it and try again.",
+        },
+        { headers: rateLimitHeaders(rateLimit) }
+      );
     }
 
     const lowerText = text.toLowerCase();
@@ -70,14 +170,17 @@ export async function POST(req) {
     );
 
     if (blockedByThreatText) {
-      return NextResponse.json({
-        allowed: false,
-        flagged: true,
-        blocked: true,
-        blockedBy: "local_threat_keyword",
-        matchedCategories: ["violence"],
-        reason: SAFETY_MESSAGE,
-      });
+      return NextResponse.json(
+        {
+          allowed: false,
+          flagged: true,
+          blocked: true,
+          blockedBy: "local_threat_keyword",
+          matchedCategories: ["violence"],
+          reason: SAFETY_MESSAGE,
+        },
+        { headers: rateLimitHeaders(rateLimit) }
+      );
     }
 
     // If OpenAI key is missing, do not block normal posts.
@@ -85,13 +188,16 @@ export async function POST(req) {
     if (!process.env.OPENAI_API_KEY) {
       console.warn("OPENAI_API_KEY is missing. Using local moderation only.");
 
-      return NextResponse.json({
-        allowed: true,
-        flagged: false,
-        blocked: false,
-        blockedBy: "local_only_missing_openai_key",
-        reason: "",
-      });
+      return NextResponse.json(
+        {
+          allowed: true,
+          flagged: false,
+          blocked: false,
+          blockedBy: "local_only_missing_openai_key",
+          reason: "",
+        },
+        { headers: rateLimitHeaders(rateLimit) }
+      );
     }
 
     const openai = new OpenAI({
@@ -108,12 +214,15 @@ export async function POST(req) {
     if (!result) {
       console.warn("No moderation result returned. Allowing normal post.");
 
-      return NextResponse.json({
-        allowed: true,
-        flagged: false,
-        blocked: false,
-        reason: "",
-      });
+      return NextResponse.json(
+        {
+          allowed: true,
+          flagged: false,
+          blocked: false,
+          reason: "",
+        },
+        { headers: rateLimitHeaders(rateLimit) }
+      );
     }
 
     const categories = result.categories || {};
@@ -127,16 +236,19 @@ export async function POST(req) {
 
     const blocked = Boolean(result.flagged) || matchedCategories.length > 0;
 
-    return NextResponse.json({
-      allowed: !blocked,
-      flagged: Boolean(result.flagged),
-      blocked,
-      blockedBy: blocked ? "openai_moderation" : null,
-      categories,
-      scores,
-      matchedCategories,
-      reason: blocked ? SAFETY_MESSAGE : "",
-    });
+    return NextResponse.json(
+      {
+        allowed: !blocked,
+        flagged: Boolean(result.flagged),
+        blocked,
+        blockedBy: blocked ? "openai_moderation" : null,
+        categories,
+        scores,
+        matchedCategories,
+        reason: blocked ? SAFETY_MESSAGE : "",
+      },
+      { headers: rateLimitHeaders(rateLimit) }
+    );
   } catch (error) {
     console.error("Moderation route error:", error);
 
