@@ -22,6 +22,7 @@ function getInitials(name) {
 
 function getActorId(notification) {
   return (
+    notification?.comment?.author_id ||
     notification?.actor_user_id ||
     notification?.actor_id ||
     notification?.actor?.id ||
@@ -39,6 +40,12 @@ function getActorName(notification) {
     notification?.actor_name ||
     "Someone"
   );
+}
+
+function getProfileLinkName(name) {
+  const cleaned = String(name || "Someone").trim();
+  if (!cleaned || cleaned === "Someone") return "";
+  return cleaned;
 }
 
 function getPostText(notification, fallbackPost) {
@@ -131,6 +138,8 @@ export default function NotificationItem({ notification, group }) {
   const summary = isGroup ? buildSummary(group) : buildSummary({ notifications });
   const visibleActivityCount = (latestComment ? 1 : 0) + (upvoteItems.length > 0 ? upvoteItems.length : 0);
   const hiddenCount = Math.max(notifications.length - visibleActivityCount, 0);
+  const firstActorFallbackName = getProfileLinkName(firstActor.name);
+  const latestCommentFallbackName = getProfileLinkName(getActorName(latestComment));
 
   const openNotification = () => {
     if (postId) {
@@ -166,6 +175,7 @@ export default function NotificationItem({ notification, group }) {
 
       <ProfileIdentityLink
         userId={firstActor.id}
+        fallbackName={firstActorFallbackName}
         className="relative shrink-0 cursor-pointer transition hover:opacity-85 focus:outline-none"
       >
         <div
@@ -231,6 +241,7 @@ export default function NotificationItem({ notification, group }) {
                 <p className="min-w-0 text-sm leading-6" style={{ color: T.textMuted }}>
                   <ProfileIdentityLink
                     userId={getActorId(latestComment)}
+                    fallbackName={latestCommentFallbackName}
                     className="cursor-pointer font-bold transition hover:opacity-85 focus:outline-none"
                     style={{ color: T.navy }}
                   >
