@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, FileText, UserRound } from "lucide-react";
 import { T } from "@/lib/theme";
 import { colorFromString } from "@/lib/helpers";
@@ -48,11 +48,18 @@ function normalizePostRow(row = {}) {
   };
 }
 
-function normalizeProfile(row = {}, fallbackPost = null) {
+function cleanFallbackName(value) {
+  const name = typeof value === "string" ? value.trim() : "";
+  if (!name || name.length > 80) return "";
+  return name;
+}
+
+function normalizeProfile(row = {}, fallbackPost = null, fallbackName = "") {
   const name =
     row?.full_name ||
     fallbackPost?.author_name ||
     fallbackPost?.author_name_cached ||
+    fallbackName ||
     "SoldierHub member";
 
   return {
@@ -73,8 +80,10 @@ function normalizeProfile(row = {}, fallbackPost = null) {
 export default function VisitorProfilePage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { currentUser, authLoading, isLiveMode, posts = [], setAuthModal } = useApp();
   const profileId = typeof params?.id === "string" ? params.id : "";
+  const fallbackName = cleanFallbackName(searchParams?.get("name") || "");
 
   const [profile, setProfile] = useState(null);
   const [userPosts, setUserPosts] = useState([]);
@@ -144,7 +153,23 @@ export default function VisitorProfilePage() {
       if (cancelled) return;
 
       const fallbackPost = postRows[0] || localPosts[0] || null;
-      setProfile(profileRow || fallbackPost ? normalizeProfile(profileRow, fallbackPost) : null);
+      const safeFallbackProfile = fallbackName
+        ? {
+            id: profileId,
+            full_name: fallbackName,
+            bio: "",
+            avatar_color: colorFromString(fallbackName),
+            avatar_url: null,
+            base: "Fort Bliss",
+            status: "verified",
+          }
+        : null;
+
+      setProfile(
+        profileRow || fallbackPost
+          ? normalizeProfile(profileRow, fallbackPost, fallbackName)
+          : safeFallbackProfile
+      );
       setUserPosts(postRows);
       setLoading(false);
     }
@@ -154,7 +179,7 @@ export default function VisitorProfilePage() {
     return () => {
       cancelled = true;
     };
-  }, [authLoading, currentUser?.id, isLiveMode, posts, profileId]);
+  }, [authLoading, currentUser?.id, fallbackName, isLiveMode, posts, profileId]);
 
   const totalReplies = useMemo(
     () => userPosts.reduce((sum, post) => sum + (post.comment_count || 0), 0),
