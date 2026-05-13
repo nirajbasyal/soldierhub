@@ -31,6 +31,45 @@ function cleanText(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+async function createUpvoteNotification({ supabase, postId, actorUserId, actorName }) {
+  if (!postId || !actorUserId) return;
+
+  const { data: post, error: postError } = await supabase
+    .from("posts")
+    .select("id, author_id, body")
+    .eq("id", postId)
+    .maybeSingle();
+
+  if (postError || !post?.author_id || post.author_id === actorUserId) return;
+
+  const { data: existingNotification } = await supabase
+    .from("notifications")
+    .select("id")
+    .eq("recipient_user_id", post.author_id)
+    .eq("actor_user_id", actorUserId)
+    .eq("post_id", postId)
+    .eq("type", "upvote")
+    .maybeSingle();
+
+  if (existingNotification?.id) return;
+
+  const { error } = await supabase.from("notifications").insert([
+    {
+      recipient_user_id: post.author_id,
+      actor_user_id: actorUserId,
+      actor_name_cached: actorName || "Someone",
+      type: "upvote",
+      post_id: postId,
+      post_title_cached: post.body || "your post",
+      read: false,
+    },
+  ]);
+
+  if (error) {
+    console.error("Create upvote notification failed:", error);
+  }
+}
+
 export async function POST(request) {
   const ipRateLimit = checkRateLimit(request, {
     keyPrefix: "posts-upvote-ip",
@@ -107,7 +146,7 @@ export async function POST(request) {
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("id, status, verification_status")
+    .select("id, full_name, status, verification_status")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -179,6 +218,13 @@ export async function POST(request) {
       { status: 500, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
     );
   }
+
+  await createUpvoteNotification({
+    supabase,
+    postId,
+    actorUserId: user.id,
+    actorName: profile.full_name || user.email || "Someone",
+  });
 
   return NextResponse.json(
     { action: "add", upvote: data, already_upvoted: false },
