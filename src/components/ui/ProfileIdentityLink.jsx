@@ -12,18 +12,11 @@ function cleanFallbackName(value) {
 export function getProfileHref(userId, currentUser, fallbackName = "") {
   const safeName = cleanFallbackName(fallbackName);
 
-  if (userId) {
-    if (currentUser?.id && userId === currentUser.id) return "/profile";
+  if (!userId) return "";
+  if (currentUser?.id && userId === currentUser.id) return "/profile";
 
-    const query = safeName ? `?name=${encodeURIComponent(safeName)}` : "";
-    return `/profile/${encodeURIComponent(userId)}${query}`;
-  }
-
-  if (safeName) {
-    return `/profile/${encodeURIComponent(`name:${safeName}`)}`;
-  }
-
-  return "";
+  const query = safeName ? `?name=${encodeURIComponent(safeName)}` : "";
+  return `/profile/${encodeURIComponent(userId)}${query}`;
 }
 
 export default function ProfileIdentityLink({
