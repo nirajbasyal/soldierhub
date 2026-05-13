@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { T } from "@/lib/theme";
 import { timeAgo } from "@/lib/helpers";
 import { useApp } from "@/store/AppContext";
+import ProfileIdentityLink from "@/components/ui/ProfileIdentityLink";
 
 function getInitials(name) {
   if (!name) return "SH";
@@ -18,6 +19,17 @@ function getInitials(name) {
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 }
 
+function getActorId(notification) {
+  return (
+    notification?.actor_id ||
+    notification?.actor?.id ||
+    notification?.user_id ||
+    notification?.profile_id ||
+    notification?.created_by ||
+    null
+  );
+}
+
 export default function NotificationItem({ notification }) {
   const router = useRouter();
   const { posts } = useApp();
@@ -27,6 +39,8 @@ export default function NotificationItem({ notification }) {
     notification.actor?.full_name ||
     notification.actor_name ||
     "Someone";
+
+  const actorId = getActorId(notification);
 
   const postPreview =
     notification.post?.body ||
@@ -59,7 +73,10 @@ export default function NotificationItem({ notification }) {
         <div className="absolute left-0 top-0 h-full w-1.5 bg-[#B31942]" />
       )}
 
-      <div className="relative shrink-0">
+      <ProfileIdentityLink
+        userId={actorId}
+        className="relative shrink-0 cursor-pointer rounded-2xl transition hover:opacity-85 focus:outline-none focus:ring-2 focus:ring-[#BCD0EA]"
+      >
         <div
           className="w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-sm"
           style={{
@@ -82,15 +99,17 @@ export default function NotificationItem({ notification }) {
         >
           <MessageCircle size={13} strokeWidth={2.4} />
         </div>
-      </div>
+      </ProfileIdentityLink>
 
       <div className="flex-1 min-w-0 pt-0.5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="text-[15px] leading-snug" style={{ color: T.text }}>
-              <span className="font-bold" style={{ color: T.navy }}>
-                {actorName}
-              </span>{" "}
+              <ProfileIdentityLink userId={actorId} className="cursor-pointer rounded-md transition hover:underline hover:opacity-85">
+                <span className="font-bold" style={{ color: T.navy }}>
+                  {actorName}
+                </span>
+              </ProfileIdentityLink>{" "}
               commented on your post
             </div>
 
