@@ -13,9 +13,13 @@ import PostCard from "@/components/feed/PostCard";
 import PostSkeleton from "@/components/ui/PostSkeleton";
 import EmptyState from "@/components/ui/EmptyState";
 
+function getPostId(post) {
+  return post?.id || post?.post_id || post?.postId || post?.post?.id || null;
+}
+
 function normalizePostRow(row = {}) {
   const profile = row.profile || row.profiles || row.author || null;
-  const postId = row.id || row.post_id || row.postId || row.post?.id || null;
+  const postId = getPostId(row);
 
   return {
     ...row,
@@ -61,32 +65,45 @@ export default function PostDetailPage() {
     const id = params?.id;
     if (!id) return;
 
-    const found = posts.find((p) => p.id === id);
+    let cancelled = false;
+    setLoading(true);
+
+    const found = posts.find((p) => getPostId(p) === id);
     if (found) {
       setPost(found);
       setLoading(false);
-      return;
+      return () => {
+        cancelled = true;
+      };
     }
 
     if (isLiveMode) {
       (async () => {
         const supabase = createClient();
         if (!supabase) {
-          setLoading(false);
+          if (!cancelled) setLoading(false);
           return;
         }
+
         const { data } = await supabase
           .from("posts_with_meta")
           .select("*")
           .eq("id", id)
           .maybeSingle();
+
+        if (cancelled) return;
         setPost(data ? normalizePostRow(data) : null);
         setLoading(false);
       })();
     } else {
+      setPost(null);
       setLoading(false);
     }
-  }, [params, posts, isLiveMode]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [params?.id, posts, isLiveMode]);
 
   return (
     <AppShell hideNav>
