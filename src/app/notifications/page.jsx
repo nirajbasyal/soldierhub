@@ -60,6 +60,7 @@ export default function NotificationsPage() {
   const {
     currentUser,
     authLoading,
+    notificationsLoading,
     notifications = [],
     hasMoreNotifications,
     loadingMoreNotifications,
@@ -87,7 +88,7 @@ export default function NotificationsPage() {
   }, [authLoading, currentUser, router, setAuthModal]);
 
   useEffect(() => {
-    if (authLoading || !currentUser || didMarkReadRef.current) return;
+    if (authLoading || notificationsLoading || !currentUser || didMarkReadRef.current) return;
     if (notifications.length === 0) return;
 
     unreadSnapshotRef.current = new Set(
@@ -95,7 +96,7 @@ export default function NotificationsPage() {
     );
     didMarkReadRef.current = true;
     markNotificationsRead();
-  }, [authLoading, currentUser, markNotificationsRead, notifications]);
+  }, [authLoading, currentUser, markNotificationsRead, notifications, notificationsLoading]);
 
   const groupedNotifications = useMemo(() => {
     return groupNotificationsByPost(notifications, unreadSnapshotRef.current);
@@ -105,7 +106,7 @@ export default function NotificationsPage() {
     group.notifications.some((item) => item.read === false)
   ).length;
 
-  if (authLoading) {
+  if (authLoading || notificationsLoading) {
     return <NotificationsLoadingState />;
   }
 
@@ -195,10 +196,19 @@ function NotificationsLoadingState() {
         <div className="mx-auto w-full max-w-2xl">
           <div className="mb-5 rounded-[28px] border border-white/80 bg-white/80 p-5 shadow-sm backdrop-blur">
             <div className="flex items-center gap-3">
-              <div className="h-12 w-12 shrink-0 animate-pulse rounded-2xl bg-[#E8EEF5]" />
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#EEF3F8]">
+                <Bell size={22} style={{ color: T.gold }} />
+              </div>
               <div className="min-w-0 flex-1">
-                <div className="h-5 w-40 animate-pulse rounded-full bg-[#DDE6EF]" />
-                <div className="mt-2 h-3 w-56 max-w-full animate-pulse rounded-full bg-[#E8EEF5]" />
+                <div className="mb-1 text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: T.gold }}>
+                  Activity
+                </div>
+                <h1 className="text-3xl leading-tight font-serif md:text-4xl" style={{ color: T.navy }}>
+                  Notifications
+                </h1>
+                <p className="mt-1 text-sm font-medium" style={{ color: T.muted }}>
+                  Loading notifications...
+                </p>
               </div>
             </div>
           </div>
