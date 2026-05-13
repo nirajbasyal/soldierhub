@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { ArrowLeft, Inbox } from "lucide-react";
 import { T } from "@/lib/theme";
 import { useApp } from "@/store/AppContext";
@@ -51,9 +51,11 @@ function normalizePostRow(row = {}) {
 export default function PostDetailPage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const { posts, isLiveMode } = useApp();
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
+  const openRepliesDefault = searchParams?.get("replies") === "1";
 
   useEffect(() => {
     const id = params?.id;
@@ -96,7 +98,7 @@ export default function PostDetailPage() {
             {loading ? (
               <PostSkeleton />
             ) : post ? (
-              <PostCard post={post} />
+              <PostCard post={post} openRepliesDefault={openRepliesDefault} />
             ) : (
               <div className="rounded-2xl border p-8" style={{ backgroundColor: T.card, borderColor: T.border }}>
                 <EmptyState icon={Inbox} title="Post not found" body="This post may have been removed or the link is incorrect." />
