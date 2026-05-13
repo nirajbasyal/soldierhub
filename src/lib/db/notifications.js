@@ -2,8 +2,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 
-const NOTIFICATION_SELECT =
-  "id, recipient_user_id, actor_user_id, actor_name_cached, type, post_id, post_title_cached, comment_id, read, created_at";
+const NOTIFICATION_SELECT = "*";
 
 let unreadCountClientCache = {
   userId: null,
@@ -129,6 +128,37 @@ function normalizePostRow(row = {}) {
   };
 }
 
+function normalizeNotificationRow(row = {}) {
+  const actorId =
+    row.actor_user_id ||
+    row.actor_id ||
+    row.user_id ||
+    row.profile_id ||
+    row.created_by ||
+    row.author_id ||
+    null;
+
+  const recipientId =
+    row.recipient_user_id || row.recipient_id || row.owner_id || row.post_author_id || null;
+
+  return {
+    ...row,
+    actor_user_id: actorId,
+    actor_id: row.actor_id || actorId,
+    recipient_user_id: recipientId,
+    post_id: row.post_id || row.postId || row.post?.id || null,
+    comment_id: row.comment_id || row.commentId || row.comment?.id || null,
+    actor_name_cached:
+      row.actor_name_cached || row.actor_name || row.author_name || row.profile_name || "Someone",
+    post_title_cached:
+      row.post_title_cached || row.post_preview_cached || row.post_body_cached || "",
+    comment_body_cached: row.comment_body_cached || row.comment_body || "",
+    type: row.type || row.notification_type || row.kind || "comment",
+    read: Boolean(row.read),
+    created_at: row.created_at || row.inserted_at || row.createdAt || new Date().toISOString(),
+  };
+}
+
 async function loadPostsForNotifications(supabase, postIds = []) {
   const postById = new Map();
   const safePostIds = uniqueValues(postIds);
@@ -184,17 +214,18 @@ async function loadCommentsForNotifications(supabase, commentIds = []) {
 async function hydrateNotifications(supabase, rows = []) {
   if (!supabase || !Array.isArray(rows) || rows.length === 0) return rows || [];
 
+  const normalizedRows = rows.map(normalizeNotificationRow);
   const commentById = await loadCommentsForNotifications(
     supabase,
-    rows.map((row) => row.comment_id)
+    normalizedRows.map((row) => row.comment_id)
   );
 
   const resolvedPostIds = uniqueValues(
-    rows.map((row) => row.post_id || commentById.get(row.comment_id)?.post_id)
+    normalizedRows.map((row) => row.post_id || commentById.get(row.comment_id)?.post_id)
   );
   const postById = await loadPostsForNotifications(supabase, resolvedPostIds);
 
-  return rows.map((row) => {
+  return normalizedRows.map((row) => {
     const comment = commentById.get(row.comment_id) || null;
     const resolvedPostId = row.post_id || comment?.post_id || null;
     const post = postById.get(resolvedPostId) || null;
