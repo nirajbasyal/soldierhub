@@ -77,24 +77,13 @@ function normalizeProfile(row = {}, fallbackPost = null, fallbackName = "") {
   };
 }
 
-function decodeProfileParam(value = "") {
-  const decoded = decodeURIComponent(value || "");
-  if (decoded.startsWith("name:")) {
-    return { profileId: "", lookupName: cleanFallbackName(decoded.slice(5)) };
-  }
-  return { profileId: decoded, lookupName: "" };
-}
-
 export default function VisitorProfilePage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { currentUser, authLoading, isLiveMode, posts = [], setAuthModal } = useApp();
-  const rawProfileParam = typeof params?.id === "string" ? params.id : "";
-  const decodedParam = decodeProfileParam(rawProfileParam);
-  const profileId = decodedParam.profileId;
-  const lookupName = decodedParam.lookupName;
-  const fallbackName = cleanFallbackName(searchParams?.get("name") || lookupName || "");
+  const profileId = typeof params?.id === "string" ? decodeURIComponent(params.id) : "";
+  const fallbackName = cleanFallbackName(searchParams?.get("name") || "");
 
   const [profile, setProfile] = useState(null);
   const [userPosts, setUserPosts] = useState([]);
@@ -115,7 +104,7 @@ export default function VisitorProfilePage() {
   }, [authLoading, currentUser, profileId, router, setAuthModal]);
 
   useEffect(() => {
-    if (authLoading || (!profileId && !fallbackName) || currentUser?.id === profileId) return;
+    if (authLoading || !profileId || currentUser?.id === profileId) return;
 
     let cancelled = false;
 
@@ -123,16 +112,11 @@ export default function VisitorProfilePage() {
       setLoading(true);
 
       const localPosts = posts
-        .filter((post) => {
-          if (post?.anonymous) return false;
-          if (profileId) return getAuthorId(post) === profileId;
-          return String(post?.author_name || post?.author_name_cached || "").trim() === fallbackName;
-        })
+        .filter((post) => getAuthorId(post) === profileId && !post?.anonymous)
         .map(normalizePostRow)
         .filter((post) => post.id);
 
       let profileRow = null;
-      let resolvedProfileId = profileId;
       let postRows = localPosts;
 
       try {
@@ -140,50 +124,25 @@ export default function VisitorProfilePage() {
           const supabase = createClient();
 
           if (supabase) {
-            if (profileId) {
-              const [{ data: profileData }, { data: livePosts }] = await Promise.all([
-                supabase
-                  .from("profiles")
-                  .select("id, full_name, bio, avatar_color, avatar_url, base, status, verification_status")
-                  .eq("id", profileId)
-                  .maybeSingle(),
-                supabase
-                  .from("posts_with_meta")
-                  .select("*")
-                  .eq("author_id", profileId)
-                  .eq("anonymous", false)
-                  .order("created_at", { ascending: false })
-                  .limit(30),
-              ]);
-
-              profileRow = profileData || null;
-              postRows = Array.isArray(livePosts)
-                ? livePosts.map(normalizePostRow).filter((post) => post.id)
-                : localPosts;
-            } else if (fallbackName) {
-              const { data: profileData } = await supabase
+            const [{ data: profileData }, { data: livePosts }] = await Promise.all([
+              supabase
                 .from("profiles")
                 .select("id, full_name, bio, avatar_color, avatar_url, base, status, verification_status")
-                .ilike("full_name", fallbackName)
-                .maybeSingle();
+                .eq("id", profileId)
+                .maybeSingle(),
+              supabase
+                .from("posts_with_meta")
+                .select("*")
+                .eq("author_id", profileId)
+                .eq("anonymous", false)
+                .order("created_at", { ascending: false })
+                .limit(30),
+            ]);
 
-              profileRow = profileData || null;
-              resolvedProfileId = profileData?.id || "";
-
-              if (resolvedProfileId) {
-                const { data: livePosts } = await supabase
-                  .from("posts_with_meta")
-                  .select("*")
-                  .eq("author_id", resolvedProfileId)
-                  .eq("anonymous", false)
-                  .order("created_at", { ascending: false })
-                  .limit(30);
-
-                postRows = Array.isArray(livePosts)
-                  ? livePosts.map(normalizePostRow).filter((post) => post.id)
-                  : localPosts;
-              }
-            }
+            profileRow = profileData || null;
+            postRows = Array.isArray(livePosts)
+              ? livePosts.map(normalizePostRow).filter((post) => post.id)
+              : localPosts;
           }
         }
       } catch {
@@ -196,7 +155,7 @@ export default function VisitorProfilePage() {
       const fallbackPost = postRows[0] || localPosts[0] || null;
       const safeFallbackProfile = fallbackName
         ? {
-            id: resolvedProfileId || profileId || null,
+            id: profileId,
             full_name: fallbackName,
             bio: "",
             avatar_color: colorFromString(fallbackName),
