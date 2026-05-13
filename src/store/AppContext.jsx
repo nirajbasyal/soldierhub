@@ -107,6 +107,7 @@ export function AppProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(SUPA);
   const [postsLoading, setPostsLoading] = useState(SUPA);
+  const [notificationsLoading, setNotificationsLoading] = useState(SUPA);
   const [loadingMorePosts, setLoadingMorePosts] = useState(false);
   const [hasMorePosts, setHasMorePosts] = useState(SUPA);
   const [postsCursor, setPostsCursor] = useState(null);
@@ -160,6 +161,7 @@ export function AppProvider({ children }) {
     setCurrentUser,
     setAuthLoading,
     setPostsLoading,
+    setNotificationsLoading,
     setPosts,
     setMyPosts,
     setMyUpvotes,
@@ -310,6 +312,7 @@ export function AppProvider({ children }) {
       isAdmin,
       authLoading,
       postsLoading,
+      notificationsLoading,
       loadingMorePosts,
       loadingMoreNotifications,
 
@@ -381,6 +384,7 @@ export function AppProvider({ children }) {
       isAdmin,
       authLoading,
       postsLoading,
+      notificationsLoading,
       loadingMorePosts,
       loadingMoreNotifications,
       authModal,
