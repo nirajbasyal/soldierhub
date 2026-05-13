@@ -15,16 +15,30 @@ import EmptyState from "@/components/ui/EmptyState";
 import PostCard from "@/components/feed/PostCard";
 import PostSkeleton from "@/components/ui/PostSkeleton";
 
+function getAuthorId(item = {}) {
+  return (
+    item.author_id ||
+    item.user_id ||
+    item.profile_id ||
+    item.created_by ||
+    item.author_user_id ||
+    item.author?.id ||
+    item.profile?.id ||
+    item.user?.id ||
+    null
+  );
+}
+
 function normalizePostRow(row = {}) {
   const profile = row.profile || row.profiles || row.author || null;
   const postId = row.id || row.post_id || row.postId || row.post?.id || null;
+  const authorId = getAuthorId(row) || profile?.id || null;
 
   return {
     ...row,
     id: postId,
     post_id: postId,
-    author_id:
-      row.author_id || row.user_id || row.profile_id || row.created_by || row.author_user_id || profile?.id || null,
+    author_id: authorId,
     author_name:
       row.author_name || row.author_name_cached || row.full_name || row.profile_full_name || profile?.full_name || "Member",
     author_color:
@@ -60,7 +74,7 @@ export default function VisitorProfilePage() {
   const params = useParams();
   const router = useRouter();
   const { currentUser, authLoading, isLiveMode, posts = [], setAuthModal } = useApp();
-  const profileId = params?.id;
+  const profileId = typeof params?.id === "string" ? params.id : "";
 
   const [profile, setProfile] = useState(null);
   const [userPosts, setUserPosts] = useState([]);
@@ -89,40 +103,48 @@ export default function VisitorProfilePage() {
       setLoading(true);
 
       const localPosts = posts
-        .filter((post) => post?.author_id === profileId && !post?.anonymous)
-        .map(normalizePostRow);
+        .filter((post) => getAuthorId(post) === profileId && !post?.anonymous)
+        .map(normalizePostRow)
+        .filter((post) => post.id);
 
       let profileRow = null;
       let postRows = localPosts;
 
-      if (isLiveMode) {
-        const supabase = createClient();
+      try {
+        if (isLiveMode) {
+          const supabase = createClient();
 
-        if (supabase) {
-          const [{ data: profileData }, { data: livePosts }] = await Promise.all([
-            supabase
-              .from("profiles")
-              .select("id, full_name, bio, avatar_color, avatar_url, base, status, verification_status")
-              .eq("id", profileId)
-              .maybeSingle(),
-            supabase
-              .from("posts_with_meta")
-              .select("*")
-              .eq("author_id", profileId)
-              .eq("anonymous", false)
-              .order("created_at", { ascending: false })
-              .limit(30),
-          ]);
+          if (supabase) {
+            const [{ data: profileData }, { data: livePosts }] = await Promise.all([
+              supabase
+                .from("profiles")
+                .select("id, full_name, bio, avatar_color, avatar_url, base, status, verification_status")
+                .eq("id", profileId)
+                .maybeSingle(),
+              supabase
+                .from("posts_with_meta")
+                .select("*")
+                .eq("author_id", profileId)
+                .eq("anonymous", false)
+                .order("created_at", { ascending: false })
+                .limit(30),
+            ]);
 
-          profileRow = profileData || null;
-          postRows = Array.isArray(livePosts) ? livePosts.map(normalizePostRow) : localPosts;
+            profileRow = profileData || null;
+            postRows = Array.isArray(livePosts)
+              ? livePosts.map(normalizePostRow).filter((post) => post.id)
+              : localPosts;
+          }
         }
+      } catch {
+        profileRow = null;
+        postRows = localPosts;
       }
 
       if (cancelled) return;
 
       const fallbackPost = postRows[0] || localPosts[0] || null;
-      setProfile(normalizeProfile(profileRow, fallbackPost));
+      setProfile(profileRow || fallbackPost ? normalizeProfile(profileRow, fallbackPost) : null);
       setUserPosts(postRows);
       setLoading(false);
     }
@@ -238,51 +260,53 @@ export default function VisitorProfilePage() {
             </div>
           </section>
 
-          <section className="mt-6">
-            <div
-              className="rounded-3xl border p-4 md:p-5 mb-4 flex items-center justify-between gap-3"
-              style={{ backgroundColor: T.card, borderColor: T.border }}
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div
-                  className="h-11 w-11 rounded-2xl flex items-center justify-center shrink-0"
-                  style={{ backgroundColor: T.softBlue || "#EAF2FC" }}
-                >
-                  <FileText size={20} style={{ color: T.blue }} />
-                </div>
-                <div className="min-w-0">
-                  <h2 className="text-xl md:text-2xl font-extrabold tracking-[-0.02em]" style={{ color: T.navy }}>
-                    Public posts
-                  </h2>
-                  <p className="text-sm mt-0.5" style={{ color: T.textMuted }}>
-                    Non-anonymous posts shared by this member.
-                  </p>
+          {(loading || profile) ? (
+            <section className="mt-6">
+              <div
+                className="rounded-3xl border p-4 md:p-5 mb-4 flex items-center justify-between gap-3"
+                style={{ backgroundColor: T.card, borderColor: T.border }}
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className="h-11 w-11 rounded-2xl flex items-center justify-center shrink-0"
+                    style={{ backgroundColor: T.softBlue || "#EAF2FC" }}
+                  >
+                    <FileText size={20} style={{ color: T.blue }} />
+                  </div>
+                  <div className="min-w-0">
+                    <h2 className="text-xl md:text-2xl font-extrabold tracking-[-0.02em]" style={{ color: T.navy }}>
+                      Public posts
+                    </h2>
+                    <p className="text-sm mt-0.5" style={{ color: T.textMuted }}>
+                      Non-anonymous posts shared by this member.
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="-mx-4 md:mx-0 flex flex-col gap-2.5 sh-feed-post-list">
-              {loading ? (
-                <>
-                  <PostSkeleton />
-                  <PostSkeleton />
-                </>
-              ) : userPosts.length > 0 ? (
-                userPosts.map((post) => <PostCard key={post.id} post={post} />)
-              ) : (
-                <div
-                  className="mx-4 md:mx-0 rounded-3xl border p-8 md:p-10 text-center"
-                  style={{ backgroundColor: T.card, borderColor: T.border }}
-                >
-                  <EmptyState
-                    icon={FileText}
-                    title="No public posts yet"
-                    body="Anonymous posts stay private, so only public posts appear here."
-                  />
-                </div>
-              )}
-            </div>
-          </section>
+              <div className="-mx-4 md:mx-0 flex flex-col gap-2.5 sh-feed-post-list">
+                {loading ? (
+                  <>
+                    <PostSkeleton />
+                    <PostSkeleton />
+                  </>
+                ) : userPosts.length > 0 ? (
+                  userPosts.map((post) => <PostCard key={post.id} post={post} />)
+                ) : (
+                  <div
+                    className="mx-4 md:mx-0 rounded-3xl border p-8 md:p-10 text-center"
+                    style={{ backgroundColor: T.card, borderColor: T.border }}
+                  >
+                    <EmptyState
+                      icon={FileText}
+                      title="No public posts yet"
+                      body="Anonymous posts stay private, so only public posts appear here."
+                    />
+                  </div>
+                )}
+              </div>
+            </section>
+          ) : null}
 
           <Footer />
         </div>
