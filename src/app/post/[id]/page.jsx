@@ -60,6 +60,7 @@ export default function PostDetailPage() {
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
   const openRepliesDefault = searchParams?.get("replies") === "1";
+  const openedFromNotification = openRepliesDefault || searchParams?.get("from") === "notifications";
 
   useEffect(() => {
     const id = params?.id;
@@ -105,11 +106,17 @@ export default function PostDetailPage() {
     };
   }, [params?.id, posts, isLiveMode]);
 
+  const handleBack = () => {
+    router.push(openedFromNotification ? "/notifications" : "/");
+  };
+
   return (
     <AppShell hideNav>
       <main className="min-h-screen pb-24 md:pb-12" style={{ backgroundColor: T.bg }}>
         <div className="max-w-2xl mx-auto px-4 md:px-6 py-6 md:py-10">
-          <Button variant="secondary" icon={ArrowLeft} onClick={() => router.push("/")}>Back to feed</Button>
+          <Button variant="secondary" icon={ArrowLeft} onClick={handleBack}>
+            {openedFromNotification ? "Back" : "Back to feed"}
+          </Button>
 
           <div className="mt-6">
             {loading ? (
