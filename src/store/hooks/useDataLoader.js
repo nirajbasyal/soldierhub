@@ -50,6 +50,7 @@ export function useDataLoader({
   setCurrentUser,
   setAuthLoading,
   setPostsLoading,
+  setNotificationsLoading,
   setPosts,
   setMyPosts,
   setMyUpvotes,
@@ -222,6 +223,7 @@ export function useDataLoader({
       if (status === "rejected" || status === "revoked") {
         setCurrentUser(profile || null);
         setAuthLoading(false);
+        setNotificationsLoading(false);
         sendToPendingReview({
           email: profile?.email || profile?.personal_email || "",
           name: profile?.full_name || "",
@@ -234,6 +236,7 @@ export function useDataLoader({
 
       setCurrentUser(profile || null);
       setAuthLoading(false);
+      if (!profile || status !== "verified") setNotificationsLoading(false);
     })();
 
     unsubscribe = Auth.onAuthChange(async (user) => {
@@ -244,9 +247,11 @@ export function useDataLoader({
         setNotifications([]);
         setNotificationsCursor(null);
         setHasMoreNotifications(false);
+        setNotificationsLoading(false);
         return;
       }
 
+      setNotificationsLoading(true);
       const { data: profile } = await ProfilesDB.getProfile(user.id);
       const status = getProfileStatus(profile);
 
@@ -257,6 +262,7 @@ export function useDataLoader({
         setNotifications([]);
         setNotificationsCursor(null);
         setHasMoreNotifications(false);
+        setNotificationsLoading(false);
         sendToPendingReview({
           email: profile?.email || user.email || "",
           name: profile?.full_name || "",
@@ -268,6 +274,7 @@ export function useDataLoader({
       }
 
       setCurrentUser(profile || null);
+      if (!profile || status !== "verified") setNotificationsLoading(false);
     });
 
     return () => {
@@ -284,6 +291,7 @@ export function useDataLoader({
     setMyUpvotes,
     setNotifications,
     setNotificationsCursor,
+    setNotificationsLoading,
   ]);
 
   useEffect(() => {
@@ -301,11 +309,13 @@ export function useDataLoader({
       setNotifications([]);
       setNotificationsCursor(null);
       setHasMoreNotifications(false);
+      setNotificationsLoading(false);
       setMyPosts([]);
       return;
     }
 
     let cancelled = false;
+    setNotificationsLoading(true);
 
     (async () => {
       const [{ data: ups }, { data: reps }, { data: notifs }, { data: mine }] =
@@ -327,6 +337,7 @@ export function useDataLoader({
       setNotifications(safeNotifications);
       setNotificationsCursor(getNextCursor(safeNotifications));
       setHasMoreNotifications(safeNotifications.length === NOTIFICATION_PAGE_SIZE);
+      setNotificationsLoading(false);
       setMyPosts(sanitizePosts(mine || [], currentUser.id));
     })();
 
@@ -342,6 +353,7 @@ export function useDataLoader({
     setMyUpvotes,
     setNotifications,
     setNotificationsCursor,
+    setNotificationsLoading,
   ]);
 
   useEffect(() => {
