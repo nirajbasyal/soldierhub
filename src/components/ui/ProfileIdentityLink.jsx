@@ -3,12 +3,27 @@
 import { useRouter } from "next/navigation";
 import { useApp } from "@/store/AppContext";
 
-export function getProfileHref(userId, currentUser, fallbackName = "") {
-  if (!userId) return "";
-  if (currentUser?.id && userId === currentUser.id) return "/profile";
+function cleanFallbackName(value) {
+  const name = String(value || "").trim();
+  if (!name || name === "Member" || name === "Someone") return "";
+  return name.slice(0, 80);
+}
 
-  const query = fallbackName ? `?name=${encodeURIComponent(fallbackName)}` : "";
-  return `/profile/${encodeURIComponent(userId)}${query}`;
+export function getProfileHref(userId, currentUser, fallbackName = "") {
+  const safeName = cleanFallbackName(fallbackName);
+
+  if (userId) {
+    if (currentUser?.id && userId === currentUser.id) return "/profile";
+
+    const query = safeName ? `?name=${encodeURIComponent(safeName)}` : "";
+    return `/profile/${encodeURIComponent(userId)}${query}`;
+  }
+
+  if (safeName) {
+    return `/profile/${encodeURIComponent(`name:${safeName}`)}`;
+  }
+
+  return "";
 }
 
 export default function ProfileIdentityLink({
@@ -22,8 +37,8 @@ export default function ProfileIdentityLink({
 }) {
   const router = useRouter();
   const { currentUser, setAuthModal } = useApp();
-
-  const canOpen = Boolean(userId && !disabled);
+  const href = getProfileHref(userId, currentUser, fallbackName);
+  const canOpen = Boolean(href && !disabled);
 
   const openProfile = (event) => {
     event?.preventDefault?.();
@@ -36,7 +51,7 @@ export default function ProfileIdentityLink({
       return;
     }
 
-    router.push(getProfileHref(userId, currentUser, fallbackName));
+    router.push(href);
   };
 
   const handleKeyDown = (event) => {
