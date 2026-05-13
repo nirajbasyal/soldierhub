@@ -6,6 +6,8 @@ import { T } from "@/lib/theme";
 import { timeAgo } from "@/lib/helpers";
 import ProfileIdentityLink from "@/components/ui/ProfileIdentityLink";
 
+const THEME_RED = "#B31942";
+
 function getInitials(name) {
   if (!name) return "SH";
 
@@ -58,10 +60,15 @@ function getCommentText(notification) {
   );
 }
 
-function trimText(value, max = 120) {
-  const text = String(value || "").replace(/\s+/g, " ").trim();
-  if (text.length <= max) return text;
-  return `${text.slice(0, max - 1).trim()}…`;
+function trimWords(value, maxWords = 4) {
+  const words = String(value || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(" ")
+    .filter(Boolean);
+
+  if (words.length <= maxWords) return words.join(" ");
+  return `${words.slice(0, maxWords).join(" ")}...`;
 }
 
 function uniqueActors(notifications = []) {
@@ -115,17 +122,19 @@ export default function NotificationItem({ notification, group }) {
   const postId = latest.post_id || group?.postId;
   const fallbackPost = group?.post || null;
   const postText = getPostText(latest, fallbackPost);
-  const commentItems = notifications.filter((item) => item.type === "comment").slice(0, 3);
+  const commentItems = notifications.filter((item) => item.type === "comment");
+  const latestComment = commentItems[0] || null;
   const upvoteItems = notifications.filter((item) => item.type === "upvote");
   const actors = uniqueActors(notifications);
   const firstActor = actors[0] || { id: getActorId(latest), name: getActorName(latest) };
   const latestTime = latest.created_at;
   const summary = isGroup ? buildSummary(group) : buildSummary({ notifications });
-  const hiddenCount = Math.max(notifications.length - commentItems.length - upvoteItems.slice(0, 1).length, 0);
+  const visibleActivityCount = (latestComment ? 1 : 0) + (upvoteItems.length > 0 ? upvoteItems.length : 0);
+  const hiddenCount = Math.max(notifications.length - visibleActivityCount, 0);
 
   const openNotification = () => {
     if (postId) {
-      router.push(`/post/${postId}`);
+      router.push(`/post/${postId}?replies=1`);
       return;
     }
 
@@ -145,7 +154,7 @@ export default function NotificationItem({ notification, group }) {
           : "0 8px 22px rgba(11,28,44,0.04)",
       }}
     >
-      {unread ? <div className="absolute left-0 top-0 h-full w-1.5 bg-[#E8A020]" /> : null}
+      {unread ? <div className="absolute left-0 top-0 h-full w-1.5" style={{ backgroundColor: THEME_RED }} /> : null}
 
       <ProfileIdentityLink
         userId={firstActor.id}
@@ -166,10 +175,10 @@ export default function NotificationItem({ notification, group }) {
           style={{
             backgroundColor: "#FFFFFF",
             borderColor: "#FFFFFF",
-            color: upvoteItems.length > 0 && commentItems.length === 0 ? T.gold : T.blue,
+            color: upvoteItems.length > 0 && !latestComment ? T.gold : T.blue,
           }}
         >
-          {upvoteItems.length > 0 && commentItems.length === 0 ? (
+          {upvoteItems.length > 0 && !latestComment ? (
             <ThumbsUp size={13} strokeWidth={2.5} />
           ) : (
             <MessageCircle size={13} strokeWidth={2.5} />
@@ -194,40 +203,39 @@ export default function NotificationItem({ notification, group }) {
                 borderColor: unread ? "#C8D8EA" : "#DEE8F2",
               }}
             >
-              <div className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: T.gold }}>
+              <div className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: THEME_RED }}>
                 Your post
               </div>
               <p
-                className={`mt-1 line-clamp-2 text-sm leading-6 ${unread ? "font-bold" : "font-medium"}`}
+                className={`mt-1 text-sm leading-6 ${unread ? "font-bold" : "font-medium"}`}
                 style={{ color: unread ? T.text : T.textMuted }}
               >
-                {trimText(postText, 180)}
+                {trimWords(postText, 3)}
               </p>
             </div>
 
-            {commentItems.length > 0 ? (
-              <div className="mt-3 space-y-2">
-                {commentItems.map((item) => (
-                  <div key={item.id} className="flex gap-2">
-                    <div
-                      className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full"
-                      style={{ backgroundColor: item.read ? "#9AA8B8" : T.gold }}
-                    />
-                    <p className="min-w-0 text-sm leading-6" style={{ color: T.textMuted }}>
-                      <ProfileIdentityLink
-                        userId={getActorId(item)}
-                        className="cursor-pointer font-bold transition hover:opacity-85 focus:outline-none"
-                        style={{ color: T.navy }}
-                      >
-                        {getActorName(item)}
-                      </ProfileIdentityLink>
-                      {": "}
-                      <span className={item.read ? "font-medium" : "font-bold"} style={{ color: item.read ? T.textMuted : T.text }}>
-                        {trimText(getCommentText(item), 120) || "Commented"}
-                      </span>
-                    </p>
-                  </div>
-                ))}
+            {latestComment ? (
+              <div className="mt-3 flex gap-2">
+                <div
+                  className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: latestComment.read ? "#9AA8B8" : THEME_RED }}
+                />
+                <p className="min-w-0 text-sm leading-6" style={{ color: T.textMuted }}>
+                  <ProfileIdentityLink
+                    userId={getActorId(latestComment)}
+                    className="cursor-pointer font-bold transition hover:opacity-85 focus:outline-none"
+                    style={{ color: T.navy }}
+                  >
+                    {getActorName(latestComment)}
+                  </ProfileIdentityLink>
+                  {": "}
+                  <span
+                    className={latestComment.read ? "font-medium" : "font-bold"}
+                    style={{ color: latestComment.read ? T.textMuted : T.text }}
+                  >
+                    {trimWords(getCommentText(latestComment), 4) || "Commented"}
+                  </span>
+                </p>
               </div>
             ) : null}
 
@@ -245,14 +253,14 @@ export default function NotificationItem({ notification, group }) {
             ) : null}
 
             <div className="mt-3 flex items-center gap-2 text-xs font-semibold" style={{ color: unread ? T.navy : T.textSubtle }}>
-              {unread ? <span className="h-2 w-2 rounded-full" style={{ backgroundColor: T.gold }} /> : null}
+              {unread ? <span className="h-2 w-2 rounded-full" style={{ backgroundColor: THEME_RED }} /> : null}
               <span>{latestTime ? timeAgo(latestTime) : "Recently"}</span>
             </div>
           </div>
 
           <div className="flex shrink-0 flex-col items-end gap-2">
             {unread ? (
-              <span className="rounded-full px-2.5 py-1 text-[11px] font-extrabold" style={{ backgroundColor: "#EAF1FA", color: T.navy }}>
+              <span className="rounded-full px-2.5 py-1 text-[11px] font-extrabold" style={{ backgroundColor: "#FBE8EE", color: THEME_RED }}>
                 New
               </span>
             ) : null}
