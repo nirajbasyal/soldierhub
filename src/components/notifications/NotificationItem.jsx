@@ -153,7 +153,7 @@ export default function NotificationItem({ notification, group }) {
       tabIndex={0}
       onClick={openNotification}
       onKeyDown={handleKeyDown}
-      className="group relative flex w-full cursor-pointer items-start gap-3 overflow-hidden rounded-[26px] border p-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#B9CBE1] md:gap-4 md:p-5"
+      className="group relative flex w-full cursor-pointer items-start gap-3 overflow-hidden rounded-[26px] border p-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 md:gap-4 md:p-5"
       style={{
         backgroundColor: unread ? "#FFFFFF" : "rgba(255,255,255,0.78)",
         borderColor: unread ? "#B9CBE1" : "#D9E3EE",
