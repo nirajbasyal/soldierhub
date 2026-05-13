@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Bell } from "lucide-react";
 import { T } from "@/lib/theme";
@@ -56,6 +56,50 @@ function saveCachedNotifications(userId, notifications) {
   }
 }
 
+function getNotificationTime(notification) {
+  const time = new Date(notification?.created_at || 0).getTime();
+  return Number.isFinite(time) ? time : 0;
+}
+
+function groupNotificationsByPost(notifications = [], unreadSnapshotIds = new Set()) {
+  const groups = new Map();
+
+  notifications.forEach((notification) => {
+    const key = notification?.post_id || notification?.id;
+    if (!key) return;
+
+    const wasUnread = unreadSnapshotIds.has(notification.id) || notification.read === false;
+    const safeNotification = wasUnread ? { ...notification, read: false } : notification;
+    const existing = groups.get(key);
+
+    if (!existing) {
+      groups.set(key, {
+        id: key,
+        postId: notification.post_id,
+        post: notification.post || null,
+        latestAt: notification.created_at,
+        notifications: [safeNotification],
+      });
+      return;
+    }
+
+    existing.notifications.push(safeNotification);
+    if (!existing.post && notification.post) existing.post = notification.post;
+    if (getNotificationTime(notification) > getNotificationTime({ created_at: existing.latestAt })) {
+      existing.latestAt = notification.created_at;
+    }
+  });
+
+  return Array.from(groups.values())
+    .map((group) => ({
+      ...group,
+      notifications: group.notifications.sort(
+        (a, b) => getNotificationTime(b) - getNotificationTime(a)
+      ),
+    }))
+    .sort((a, b) => getNotificationTime({ created_at: b.latestAt }) - getNotificationTime({ created_at: a.latestAt }));
+}
+
 export default function NotificationsPage() {
   const router = useRouter();
   const {
@@ -70,10 +114,14 @@ export default function NotificationsPage() {
   } = useApp();
 
   const [cachedNotifications, setCachedNotifications] = useState(() => readCachedNotifications(null));
+  const unreadSnapshotRef = useRef(new Set());
+  const didMarkReadRef = useRef(false);
 
   useEffect(() => {
     if (!currentUser?.id) return;
     setCachedNotifications(readCachedNotifications(currentUser.id));
+    didMarkReadRef.current = false;
+    unreadSnapshotRef.current = new Set();
   }, [currentUser?.id]);
 
   useEffect(() => {
@@ -90,15 +138,31 @@ export default function NotificationsPage() {
     if (!currentUser) {
       router.replace("/");
       setAuthModal("login");
-      return;
     }
+  }, [authLoading, currentUser, router, setAuthModal]);
 
+  useEffect(() => {
+    if (authLoading || !currentUser || didMarkReadRef.current) return;
+    if (notifications.length === 0) return;
+
+    unreadSnapshotRef.current = new Set(
+      notifications.filter((item) => item.read === false).map((item) => item.id)
+    );
+    didMarkReadRef.current = true;
     markNotificationsRead();
-  }, [authLoading, currentUser, router, setAuthModal, markNotificationsRead]);
+  }, [authLoading, currentUser, markNotificationsRead, notifications]);
 
   const displayNotifications = useMemo(() => {
     return notifications.length > 0 ? notifications : cachedNotifications;
   }, [cachedNotifications, notifications]);
+
+  const groupedNotifications = useMemo(() => {
+    return groupNotificationsByPost(displayNotifications, unreadSnapshotRef.current);
+  }, [displayNotifications]);
+
+  const unreadGroupCount = groupedNotifications.filter((group) =>
+    group.notifications.some((item) => item.read === false)
+  ).length;
 
   if (authLoading && displayNotifications.length === 0) {
     return <NotificationsLoadingState />;
@@ -116,13 +180,13 @@ export default function NotificationsPage() {
             Back to feed
           </Button>
 
-          <section className="mt-5 mb-5 rounded-[30px] border border-white/80 bg-white/80 p-5 shadow-sm backdrop-blur">
+          <section className="mt-5 mb-5 rounded-[28px] border border-white/80 bg-white/90 p-5 shadow-sm backdrop-blur">
             <div className="flex items-center gap-3">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#EEF3F8]">
                 <Bell size={22} style={{ color: T.gold }} />
               </div>
 
-              <div>
+              <div className="min-w-0 flex-1">
                 <div className="mb-1 text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: T.gold }}>
                   Activity
                 </div>
@@ -130,25 +194,27 @@ export default function NotificationsPage() {
                   Notifications
                 </h1>
                 <p className="mt-1 text-sm" style={{ color: T.muted }}>
-                  Replies and activity from your SoldierHub posts.
+                  {unreadGroupCount > 0
+                    ? `${unreadGroupCount} post${unreadGroupCount > 1 ? "s" : ""} with new activity.`
+                    : "Replies and activity from your SoldierHub posts."}
                 </p>
               </div>
             </div>
           </section>
 
-          {displayNotifications.length === 0 ? (
+          {groupedNotifications.length === 0 ? (
             <div className="rounded-[28px] border border-white/80 bg-white/80 p-8 shadow-sm backdrop-blur">
               <EmptyState
                 icon={Bell}
                 title="You're all caught up"
-                body="When someone replies to your posts, you'll see it here."
+                body="When someone replies to your posts or upvotes them, you'll see it here."
               />
             </div>
           ) : (
             <>
               <div className="flex flex-col gap-3">
-                {displayNotifications.map((notification) => (
-                  <NotificationItem key={notification.id} notification={notification} />
+                {groupedNotifications.map((group) => (
+                  <NotificationItem key={group.id} group={group} />
                 ))}
               </div>
 
