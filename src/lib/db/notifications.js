@@ -230,9 +230,15 @@ async function hydrateNotifications(supabase, rows = []) {
     const resolvedPostId = row.post_id || comment?.post_id || null;
     const post = postById.get(resolvedPostId) || null;
     const postPreview = post?.body || row.post_title_cached || "";
+    const isCommentNotification = row.type === "comment";
+    const resolvedActorId = isCommentNotification
+      ? comment?.author_id || row.actor_user_id || row.actor_id || null
+      : row.actor_user_id || row.actor_id || null;
 
     return {
       ...row,
+      actor_user_id: resolvedActorId,
+      actor_id: resolvedActorId,
       post_id: resolvedPostId,
       post,
       comment,
