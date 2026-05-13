@@ -3,14 +3,17 @@
 import { useRouter } from "next/navigation";
 import { useApp } from "@/store/AppContext";
 
-export function getProfileHref(userId, currentUser) {
+export function getProfileHref(userId, currentUser, fallbackName = "") {
   if (!userId) return "";
   if (currentUser?.id && userId === currentUser.id) return "/profile";
-  return `/profile/${encodeURIComponent(userId)}`;
+
+  const query = fallbackName ? `?name=${encodeURIComponent(fallbackName)}` : "";
+  return `/profile/${encodeURIComponent(userId)}${query}`;
 }
 
 export default function ProfileIdentityLink({
   userId,
+  fallbackName = "",
   disabled = false,
   children,
   className = "",
@@ -33,7 +36,7 @@ export default function ProfileIdentityLink({
       return;
     }
 
-    router.push(getProfileHref(userId, currentUser));
+    router.push(getProfileHref(userId, currentUser, fallbackName));
   };
 
   const handleKeyDown = (event) => {
