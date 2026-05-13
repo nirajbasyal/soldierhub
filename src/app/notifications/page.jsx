@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Bell } from "lucide-react";
 import { T } from "@/lib/theme";
@@ -10,51 +10,6 @@ import Footer from "@/components/layout/Footer";
 import Button from "@/components/ui/Button";
 import EmptyState from "@/components/ui/EmptyState";
 import NotificationItem from "@/components/notifications/NotificationItem";
-
-const NOTIFICATION_CACHE_PREFIX = "soldierhub_notifications_cache_";
-const NOTIFICATION_LAST_CACHE_KEY = "soldierhub_notifications_cache_last";
-
-function getNotificationCacheKey(userId) {
-  return `${NOTIFICATION_CACHE_PREFIX}${userId || "guest"}`;
-}
-
-function readNotificationCacheByKey(key) {
-  if (typeof window === "undefined" || !key) return [];
-
-  try {
-    const raw = window.localStorage.getItem(key);
-    if (!raw) return [];
-
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed?.notifications) ? parsed.notifications : [];
-  } catch {
-    return [];
-  }
-}
-
-function readCachedNotifications(userId) {
-  if (!userId) return readNotificationCacheByKey(NOTIFICATION_LAST_CACHE_KEY);
-  return readNotificationCacheByKey(getNotificationCacheKey(userId));
-}
-
-function saveCachedNotifications(userId, notifications) {
-  if (typeof window === "undefined" || !Array.isArray(notifications)) return;
-
-  const payload = JSON.stringify({
-    savedAt: Date.now(),
-    notifications: notifications.slice(0, 30),
-  });
-
-  try {
-    window.localStorage.setItem(NOTIFICATION_LAST_CACHE_KEY, payload);
-
-    if (userId) {
-      window.localStorage.setItem(getNotificationCacheKey(userId), payload);
-    }
-  } catch {
-    // Browser storage can fail in private mode or when full. Notifications still load normally.
-  }
-}
 
 function getNotificationTime(notification) {
   const time = new Date(notification?.created_at || 0).getTime();
@@ -113,24 +68,14 @@ export default function NotificationsPage() {
     markNotificationsRead,
   } = useApp();
 
-  const [cachedNotifications, setCachedNotifications] = useState(() => readCachedNotifications(null));
   const unreadSnapshotRef = useRef(new Set());
   const didMarkReadRef = useRef(false);
 
   useEffect(() => {
     if (!currentUser?.id) return;
-    setCachedNotifications(readCachedNotifications(currentUser.id));
     didMarkReadRef.current = false;
     unreadSnapshotRef.current = new Set();
   }, [currentUser?.id]);
-
-  useEffect(() => {
-    if (!currentUser?.id || notifications.length === 0) return;
-
-    const freshNotifications = notifications.slice(0, 30);
-    setCachedNotifications(freshNotifications);
-    saveCachedNotifications(currentUser.id, freshNotifications);
-  }, [currentUser?.id, notifications]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -152,19 +97,15 @@ export default function NotificationsPage() {
     markNotificationsRead();
   }, [authLoading, currentUser, markNotificationsRead, notifications]);
 
-  const displayNotifications = useMemo(() => {
-    return notifications.length > 0 ? notifications : cachedNotifications;
-  }, [cachedNotifications, notifications]);
-
   const groupedNotifications = useMemo(() => {
-    return groupNotificationsByPost(displayNotifications, unreadSnapshotRef.current);
-  }, [displayNotifications]);
+    return groupNotificationsByPost(notifications, unreadSnapshotRef.current);
+  }, [notifications]);
 
   const unreadGroupCount = groupedNotifications.filter((group) =>
     group.notifications.some((item) => item.read === false)
   ).length;
 
-  if (authLoading && displayNotifications.length === 0) {
+  if (authLoading) {
     return <NotificationsLoadingState />;
   }
 
