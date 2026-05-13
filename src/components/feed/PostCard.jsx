@@ -22,6 +22,7 @@ import ExpandableText from "@/components/ui/ExpandableText";
 import ClientTimeAgo from "@/components/ui/ClientTimeAgo";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import EditPostModal from "@/components/profile/EditPostModal";
+import ProfileIdentityLink from "@/components/ui/ProfileIdentityLink";
 
 function getPostId(post) {
   return post?.id || post?.postId || post?.post?.id || post?.post_id || null;
@@ -34,6 +35,7 @@ function getAuthorId(item) {
     item?.profile_id ||
     item?.created_by ||
     item?.author_user_id ||
+    item?.actor_id ||
     item?.author?.id ||
     item?.profile?.id ||
     item?.user?.id ||
@@ -105,6 +107,21 @@ function MenuButton({ children, icon: Icon, danger = false, onClick }) {
   );
 }
 
+function AuthorAvatarName({ userId, name, color, size, anonymous = false, children }) {
+  if (anonymous || !userId) {
+    return children || <Avatar name={name} color={color} size={size} />;
+  }
+
+  return (
+    <ProfileIdentityLink
+      userId={userId}
+      className="inline-flex cursor-pointer rounded-full transition hover:opacity-85 focus:outline-none focus:ring-2 focus:ring-[#BCD0EA]"
+    >
+      {children || <Avatar name={name} color={color} size={size} />}
+    </ProfileIdentityLink>
+  );
+}
+
 function CommentRow({ comment, post, currentUser }) {
   const postId = getPostId(post);
   const postAuthorId = getAuthorId(post);
@@ -133,14 +150,18 @@ function CommentRow({ comment, post, currentUser }) {
 
   return (
     <div className="flex items-start gap-2.5">
-      <Avatar name={name} color={color} size={30} />
+      <AuthorAvatarName userId={commentAuthorId} name={name} color={color} size={30} anonymous={anonymousAuthor}>
+        <Avatar name={name} color={color} size={30} />
+      </AuthorAvatarName>
       <div
         className="min-w-0 flex-1 rounded-2xl px-3 py-2"
         style={{ backgroundColor: "rgba(244,248,253,0.95)" }}
       >
         <div className="flex items-center gap-1.5 text-xs font-bold" style={{ color: T.text }}>
           {anonymousAuthor ? <Lock size={11} /> : null}
-          <span>{name}</span>
+          <AuthorAvatarName userId={commentAuthorId} name={name} color={color} size={30} anonymous={anonymousAuthor}>
+            <span className="cursor-pointer rounded-md transition hover:underline hover:opacity-85">{name}</span>
+          </AuthorAvatarName>
           {isMine ? <span style={{ color: T.textSubtle }}>(you)</span> : null}
         </div>
         <p className="mt-1 whitespace-pre-wrap text-sm leading-6" style={{ color: T.textMuted }}>
@@ -341,12 +362,16 @@ export default function PostCard({ post }) {
         <div className="px-4 md:px-5 pt-4 pb-3">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-3 min-w-0 flex-1">
-              <Avatar name={displayName} color={displayColor} size={42} />
+              <AuthorAvatarName userId={authorId} name={displayName} color={displayColor} size={42} anonymous={post?.anonymous}>
+                <Avatar name={displayName} color={displayColor} size={42} />
+              </AuthorAvatarName>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-bold text-sm md:text-[15px] truncate" style={{ color: T.text }}>
-                    {displayName}
-                  </span>
+                  <AuthorAvatarName userId={authorId} name={displayName} color={displayColor} size={42} anonymous={post?.anonymous}>
+                    <span className="font-bold text-sm md:text-[15px] truncate cursor-pointer rounded-md transition hover:underline hover:opacity-85" style={{ color: T.text }}>
+                      {displayName}
+                    </span>
+                  </AuthorAvatarName>
                   {post?.anonymous ? <Lock size={13} style={{ color: T.textSubtle }} /> : null}
                   <span className="text-xs" style={{ color: T.textSubtle }}>
                     <ClientTimeAgo date={postCreatedAt} />
@@ -468,7 +493,9 @@ export default function PostCard({ post }) {
             </div>
 
             <div className="mt-3 flex items-start gap-2.5">
-              <Avatar name={replyName} color={replyColor} size={32} />
+              <AuthorAvatarName userId={currentUser?.id} name={replyName} color={replyColor} size={32} anonymous={post?.anonymous && ownsPost}>
+                <Avatar name={replyName} color={replyColor} size={32} />
+              </AuthorAvatarName>
               <div className="min-w-0 flex-1">
                 <div
                   className="flex items-center gap-2 rounded-2xl border px-3 py-2"
