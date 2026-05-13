@@ -75,7 +75,7 @@ export default function NotificationItem({ notification }) {
 
       <ProfileIdentityLink
         userId={actorId}
-        className="relative shrink-0 cursor-pointer rounded-2xl transition hover:opacity-85 focus:outline-none focus:ring-2 focus:ring-[#BCD0EA]"
+        className="relative shrink-0 cursor-pointer transition hover:opacity-85 focus:outline-none"
       >
         <div
           className="w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-sm"
@@ -105,7 +105,7 @@ export default function NotificationItem({ notification }) {
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="text-[15px] leading-snug" style={{ color: T.text }}>
-              <ProfileIdentityLink userId={actorId} className="cursor-pointer rounded-md transition hover:underline hover:opacity-85">
+              <ProfileIdentityLink userId={actorId} className="cursor-pointer transition hover:opacity-85 focus:outline-none">
                 <span className="font-bold" style={{ color: T.navy }}>
                   {actorName}
                 </span>
