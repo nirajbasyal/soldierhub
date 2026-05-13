@@ -131,12 +131,13 @@ function normalizePostRow(row = {}) {
 
 async function loadPostsForNotifications(supabase, postIds = []) {
   const postById = new Map();
-  if (!supabase || postIds.length === 0) return postById;
+  const safePostIds = uniqueValues(postIds);
+  if (!supabase || safePostIds.length === 0) return postById;
 
   const { data: viewPosts, error: viewError } = await supabase
     .from("posts_with_meta")
     .select("*")
-    .in("id", postIds);
+    .in("id", safePostIds);
 
   if (!viewError) {
     (viewPosts || []).forEach((post) => {
@@ -145,7 +146,7 @@ async function loadPostsForNotifications(supabase, postIds = []) {
     });
   }
 
-  const missingPostIds = postIds.filter((postId) => !postById.has(postId));
+  const missingPostIds = safePostIds.filter((postId) => !postById.has(postId));
   if (missingPostIds.length === 0) return postById;
 
   const { data: tablePosts, error: tableError } = await supabase
@@ -163,32 +164,45 @@ async function loadPostsForNotifications(supabase, postIds = []) {
   return postById;
 }
 
+async function loadCommentsForNotifications(supabase, commentIds = []) {
+  const commentById = new Map();
+  const safeCommentIds = uniqueValues(commentIds);
+  if (!supabase || safeCommentIds.length === 0) return commentById;
+
+  const { data: comments, error: commentError } = await supabase
+    .from("comments")
+    .select("id, post_id, body, author_id, created_at")
+    .in("id", safeCommentIds);
+
+  if (!commentError) {
+    (comments || []).forEach((comment) => commentById.set(comment.id, comment));
+  }
+
+  return commentById;
+}
+
 async function hydrateNotifications(supabase, rows = []) {
   if (!supabase || !Array.isArray(rows) || rows.length === 0) return rows || [];
 
-  const postIds = uniqueValues(rows.map((row) => row.post_id));
-  const commentIds = uniqueValues(rows.map((row) => row.comment_id));
-  const postById = await loadPostsForNotifications(supabase, postIds);
-  const commentById = new Map();
+  const commentById = await loadCommentsForNotifications(
+    supabase,
+    rows.map((row) => row.comment_id)
+  );
 
-  if (commentIds.length > 0) {
-    const { data: comments, error: commentError } = await supabase
-      .from("comments")
-      .select("id, post_id, body, author_id, created_at")
-      .in("id", commentIds);
-
-    if (!commentError) {
-      (comments || []).forEach((comment) => commentById.set(comment.id, comment));
-    }
-  }
+  const resolvedPostIds = uniqueValues(
+    rows.map((row) => row.post_id || commentById.get(row.comment_id)?.post_id)
+  );
+  const postById = await loadPostsForNotifications(supabase, resolvedPostIds);
 
   return rows.map((row) => {
-    const post = postById.get(row.post_id) || null;
     const comment = commentById.get(row.comment_id) || null;
+    const resolvedPostId = row.post_id || comment?.post_id || null;
+    const post = postById.get(resolvedPostId) || null;
     const postPreview = post?.body || row.post_title_cached || "";
 
     return {
       ...row,
+      post_id: resolvedPostId,
       post,
       comment,
       post_preview_cached: postPreview,
