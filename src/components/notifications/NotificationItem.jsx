@@ -134,18 +134,26 @@ export default function NotificationItem({ notification, group }) {
 
   const openNotification = () => {
     if (postId) {
-      router.push(`/post/${postId}?replies=1`);
+      router.push(`/post/${encodeURIComponent(postId)}?replies=1`);
       return;
     }
 
     router.push("/");
   };
 
+  const handleKeyDown = (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    openNotification();
+  };
+
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={openNotification}
-      className="group relative flex w-full items-start gap-3 overflow-hidden rounded-[26px] border p-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md md:gap-4 md:p-5"
+      onKeyDown={handleKeyDown}
+      className="group relative flex w-full cursor-pointer items-start gap-3 overflow-hidden rounded-[26px] border p-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#B9CBE1] md:gap-4 md:p-5"
       style={{
         backgroundColor: unread ? "#FFFFFF" : "rgba(255,255,255,0.78)",
         borderColor: unread ? "#B9CBE1" : "#D9E3EE",
@@ -242,7 +250,7 @@ export default function NotificationItem({ notification, group }) {
             {upvoteItems.length > 0 ? (
               <div className="mt-3 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold" style={{ backgroundColor: "#FFF8EA", borderColor: "#F1D497", color: T.navy }}>
                 <ThumbsUp size={13} strokeWidth={2.5} style={{ color: T.gold }} />
-                {upvoteItems.length === 1 ? "1 new upvote" : `${upvoteItems.length} new upvotes`}
+                {upvoteItems.length === 1 ? "1 upvote" : `${upvoteItems.length} upvotes`}
               </div>
             ) : null}
 
@@ -274,6 +282,6 @@ export default function NotificationItem({ notification, group }) {
           </div>
         </div>
       </div>
-    </button>
+    </div>
   );
 }
