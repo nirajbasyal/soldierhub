@@ -174,7 +174,7 @@ function CommentRow({ comment, post, currentUser }) {
   );
 }
 
-export default function PostCard({ post }) {
+export default function PostCard({ post, openRepliesDefault = false }) {
   const {
     currentUser,
     requireAuth,
@@ -194,7 +194,7 @@ export default function PostCard({ post }) {
   const postId = getPostId(post);
   const postCreatedAt = getPostCreatedAt(post);
   const safePost = useMemo(() => ({ ...post, id: postId, post_id: postId }), [post, postId]);
-  const [showComments, setShowComments] = useState(false);
+  const [showComments, setShowComments] = useState(Boolean(openRepliesDefault));
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [comment, setComment] = useState("");
   const [commentError, setCommentError] = useState("");
@@ -232,11 +232,31 @@ export default function PostCard({ post }) {
   const bodyText = post?.body || post?.content || post?.text || post?.title || "";
 
   useEffect(() => {
-    setShowComments(false);
+    setShowComments(Boolean(openRepliesDefault));
     setComment("");
     setCommentError("");
     setCommentsLoading(false);
-  }, [currentUser?.id, postId]);
+  }, [currentUser?.id, postId, openRepliesDefault]);
+
+  useEffect(() => {
+    if (!openRepliesDefault || !postId || comments.length > 0) return;
+
+    let cancelled = false;
+    setShowComments(true);
+    setCommentsLoading(true);
+
+    (async () => {
+      try {
+        await loadCommentsForPost?.(postId);
+      } finally {
+        if (!cancelled) setCommentsLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [openRepliesDefault, postId, comments.length, loadCommentsForPost]);
 
   useEffect(() => {
     if (!menuOpen) return undefined;
