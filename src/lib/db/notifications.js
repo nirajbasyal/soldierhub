@@ -114,24 +114,62 @@ function uniqueValues(values = []) {
   return [...new Set(values.filter(Boolean))];
 }
 
+function normalizePostRow(row = {}) {
+  const postId = row.id || row.post_id || row.postId || row.post?.id || null;
+
+  return {
+    ...row,
+    id: postId,
+    post_id: postId,
+    body: row.body || row.post_body || row.content || row.text || "",
+    category: row.category || "general",
+    anonymous: Boolean(row.anonymous),
+    status: row.status || "active",
+    created_at: row.created_at || null,
+  };
+}
+
+async function loadPostsForNotifications(supabase, postIds = []) {
+  const postById = new Map();
+  if (!supabase || postIds.length === 0) return postById;
+
+  const { data: viewPosts, error: viewError } = await supabase
+    .from("posts_with_meta")
+    .select("*")
+    .in("id", postIds);
+
+  if (!viewError) {
+    (viewPosts || []).forEach((post) => {
+      const normalized = normalizePostRow(post);
+      if (normalized.id) postById.set(normalized.id, normalized);
+    });
+  }
+
+  const missingPostIds = postIds.filter((postId) => !postById.has(postId));
+  if (missingPostIds.length === 0) return postById;
+
+  const { data: tablePosts, error: tableError } = await supabase
+    .from("posts")
+    .select("id, body, category, anonymous, status, created_at")
+    .in("id", missingPostIds);
+
+  if (!tableError) {
+    (tablePosts || []).forEach((post) => {
+      const normalized = normalizePostRow(post);
+      if (normalized.id) postById.set(normalized.id, normalized);
+    });
+  }
+
+  return postById;
+}
+
 async function hydrateNotifications(supabase, rows = []) {
   if (!supabase || !Array.isArray(rows) || rows.length === 0) return rows || [];
 
   const postIds = uniqueValues(rows.map((row) => row.post_id));
   const commentIds = uniqueValues(rows.map((row) => row.comment_id));
-  const postById = new Map();
+  const postById = await loadPostsForNotifications(supabase, postIds);
   const commentById = new Map();
-
-  if (postIds.length > 0) {
-    const { data: posts, error: postError } = await supabase
-      .from("posts")
-      .select("id, body, category, anonymous, status, created_at")
-      .in("id", postIds);
-
-    if (!postError) {
-      (posts || []).forEach((post) => postById.set(post.id, post));
-    }
-  }
 
   if (commentIds.length > 0) {
     const { data: comments, error: commentError } = await supabase
@@ -147,12 +185,14 @@ async function hydrateNotifications(supabase, rows = []) {
   return rows.map((row) => {
     const post = postById.get(row.post_id) || null;
     const comment = commentById.get(row.comment_id) || null;
+    const postPreview = post?.body || row.post_title_cached || "";
 
     return {
       ...row,
       post,
       comment,
-      post_preview_cached: post?.body || row.post_title_cached || "",
+      post_preview_cached: postPreview,
+      post_title_cached: row.post_title_cached || postPreview,
       comment_body_cached: comment?.body || row.comment_body_cached || "",
     };
   });
