@@ -336,7 +336,7 @@ export default function PostCard({ post, openRepliesDefault = false }) {
     setCommentsLoading(false);
     setCommentMenuOpenId(null);
     setCommentToDelete(null);
-  }, [currentUser?.id, postId, openRepliesDefault]);
+  }, [postId, openRepliesDefault]);
 
   useEffect(() => {
     if (!openRepliesDefault || !postId || commentsLoaded) return;
@@ -347,7 +347,8 @@ export default function PostCard({ post, openRepliesDefault = false }) {
 
     (async () => {
       try {
-        await loadCommentsForPost?.(postId);
+        const result = await loadCommentsForPost?.(postId);
+        if (result?.source === "cache" && !cancelled) return;
       } finally {
         if (!cancelled) setCommentsLoading(false);
       }
@@ -384,9 +385,11 @@ export default function PostCard({ post, openRepliesDefault = false }) {
     const next = !showComments;
     setShowComments(next);
     if (!next || !postId || commentsLoaded) return;
+
     setCommentsLoading(true);
     try {
-      await loadCommentsForPost?.(postId);
+      const result = await loadCommentsForPost?.(postId);
+      if (result?.source === "cache") return;
     } finally {
       setCommentsLoading(false);
     }
