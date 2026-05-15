@@ -32,6 +32,10 @@ function getCommentId(comment) {
   return comment?.id || comment?.comment_id || comment?.commentId || null;
 }
 
+function isTemporaryCommentId(commentId) {
+  return typeof commentId === "string" && commentId.startsWith("temp-");
+}
+
 function getAuthorId(item) {
   return (
     item?.author_id ||
@@ -205,7 +209,8 @@ function CommentRow({
   const name = anonymousAuthor ? anonymousName : getDisplayName(comment, "Member");
   const color = anonymousAuthor ? "#5C6470" : getDisplayColor(comment, name);
   const isMine = viewerOwnsComment(comment, currentUser);
-  const canDeleteComment = Boolean(commentId && currentUser?.id && (isAdmin || isMine));
+  const isSavingComment = isTemporaryCommentId(commentId);
+  const canDeleteComment = Boolean(commentId && !isSavingComment && currentUser?.id && (isAdmin || isMine));
 
   return (
     <div className="group flex items-start gap-2.5">
@@ -225,6 +230,7 @@ function CommentRow({
               </span>
             </AuthorAvatarName>
             {isMine ? <span className="shrink-0" style={{ color: T.textSubtle }}>(you)</span> : null}
+            {isSavingComment ? <span className="shrink-0" style={{ color: T.textSubtle }}>Saving…</span> : null}
           </div>
 
           <p className="mt-1 whitespace-pre-wrap text-sm leading-6" style={{ color: T.textMuted }}>
@@ -471,6 +477,12 @@ export default function PostCard({ post, openRepliesDefault = false }) {
     const commentId = getCommentId(commentToDelete);
 
     if (deletingComment || !postId || !commentId) return;
+
+    if (isTemporaryCommentId(commentId)) {
+      setCommentToDelete(null);
+      pushToast?.("Please wait until the comment finishes saving.", "info");
+      return;
+    }
 
     setDeletingComment(true);
     try {
