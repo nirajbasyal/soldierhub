@@ -4,13 +4,13 @@ export const ADMIN_EMAIL = "niraj.basyal2054@gmail.com";
 export const CATEGORIES = [
   { key: "All",                 label: "All",                 tone: "navy" },
   { key: "General Q&A",         label: "General Q&A",         tone: "indigo" },
-  { key: "New Soldier Help",    label: "New Soldier Help",    tone: "blue" },
-  { key: "Single Soldier Guide", label: "Single Soldier Guide", tone: "amber" },
-  { key: "Local Help",          label: "Local Help",          tone: "violet" },
-  { key: "Things To Do",        label: "Things To Do",        tone: "teal" },
-  { key: "On-Base Guide",       label: "On-Base Guide",       tone: "navy" },
   { key: "Resources & Support", label: "Resources & Support", tone: "rose" },
   { key: "Events & Community",  label: "Events & Community",  tone: "blue" },
+  { key: "Single Soldier Guide", label: "Single Soldier Guide", tone: "amber" },
+  { key: "Local Help",          label: "Local Help",          tone: "violet" },
+  { key: "On-Base Guide",       label: "On-Base Guide",       tone: "navy" },
+  { key: "Things To Do",        label: "Things To Do",        tone: "teal" },
+  { key: "New Soldier Help",    label: "New Soldier Help",    tone: "blue" },
 ];
 
 export const GATES = [
