@@ -31,15 +31,58 @@ function getPostId(post) {
 function getAuthorId(item) {
   return (
     item?.author_id ||
+    item?.author_user_id ||
+    item?.comment_author_id ||
+    item?.comment_author_user_id ||
+    item?.commenter_id ||
+    item?.commenter_user_id ||
+    item?.actor_user_id ||
+    item?.actor_id ||
     item?.user_id ||
     item?.profile_id ||
     item?.created_by ||
-    item?.author_user_id ||
-    item?.actor_id ||
-    item?.author?.id ||
+    item?.created_by_id ||
+    item?.owner_id ||
     item?.profile?.id ||
+    item?.author?.id ||
     item?.user?.id ||
+    item?.commenter?.id ||
+    item?.actor?.id ||
     null
+  );
+}
+
+function getDisplayName(item, fallback = "Member") {
+  return (
+    item?.author_name_cached ||
+    item?.author_name ||
+    item?.comment_author_name ||
+    item?.commenter_name ||
+    item?.profile_full_name ||
+    item?.full_name ||
+    item?.profile?.full_name ||
+    item?.author?.full_name ||
+    item?.user?.full_name ||
+    item?.commenter?.full_name ||
+    item?.actor?.full_name ||
+    fallback
+  );
+}
+
+function getDisplayColor(item, name) {
+  return (
+    item?.author_color_cached ||
+    item?.author_color ||
+    item?.comment_author_color ||
+    item?.commenter_color ||
+    item?.profile_avatar_color ||
+    item?.avatar_color ||
+    item?.profile?.avatar_color ||
+    item?.author?.avatar_color ||
+    item?.user?.avatar_color ||
+    item?.commenter?.avatar_color ||
+    item?.actor?.avatar_color ||
+    colorFromString(name)
   );
 }
 
@@ -108,7 +151,7 @@ function MenuButton({ children, icon: Icon, danger = false, onClick }) {
 }
 
 function AuthorAvatarName({ userId, fallbackName = "", name, color, size, anonymous = false, children }) {
-  if (anonymous) {
+  if (anonymous || !userId) {
     return children || <Avatar name={name} color={color} size={size} />;
   }
 
@@ -131,22 +174,8 @@ function CommentRow({ comment, post, currentUser }) {
   const anonymousAuthor = Boolean(
     post?.anonymous && commentAuthorId && postAuthorId && commentAuthorId === postAuthorId
   );
-  const name = anonymousAuthor
-    ? anonymousName
-    : comment?.author_name_cached ||
-      comment?.author_name ||
-      comment?.profile?.full_name ||
-      comment?.author?.full_name ||
-      comment?.user?.full_name ||
-      "Member";
-  const color = anonymousAuthor
-    ? "#5C6470"
-    : comment?.author_color_cached ||
-      comment?.author_color ||
-      comment?.profile?.avatar_color ||
-      comment?.author?.avatar_color ||
-      comment?.user?.avatar_color ||
-      colorFromString(name);
+  const name = anonymousAuthor ? anonymousName : getDisplayName(comment, "Member");
+  const color = anonymousAuthor ? "#5C6470" : getDisplayColor(comment, name);
   const isMine = Boolean(currentUser?.id && commentAuthorId === currentUser.id);
 
   return (
@@ -161,7 +190,7 @@ function CommentRow({ comment, post, currentUser }) {
         <div className="flex items-center gap-1.5 text-xs font-bold" style={{ color: T.text }}>
           {anonymousAuthor ? <Lock size={11} /> : null}
           <AuthorAvatarName userId={commentAuthorId} fallbackName={name} name={name} color={color} size={30} anonymous={anonymousAuthor}>
-            <span className={anonymousAuthor ? "" : "cursor-pointer transition hover:opacity-80"}>
+            <span className={anonymousAuthor || !commentAuthorId ? "" : "cursor-pointer transition hover:opacity-80"}>
               {name}
             </span>
           </AuthorAvatarName>
@@ -208,12 +237,8 @@ export default function PostCard({ post, openRepliesDefault = false }) {
   const category = CATEGORIES.find((c) => c.key === post?.category) || CATEGORIES[0];
   const authorId = getAuthorId(post);
   const anonymousName = getAnonymousDisplayName(postId);
-  const displayName = post?.anonymous
-    ? anonymousName
-    : post?.author_name || post?.author_name_cached || "Member";
-  const displayColor = post?.anonymous
-    ? "#5C6470"
-    : post?.author_color || post?.author_color_cached || colorFromString(displayName);
+  const displayName = post?.anonymous ? anonymousName : getDisplayName(post, "Member");
+  const displayColor = post?.anonymous ? "#5C6470" : getDisplayColor(post, displayName);
   const comments = postId ? postComments?.[postId] || [] : [];
   const commentCount = post?.comment_count ?? post?.reply_count ?? comments.length ?? 0;
   const upvoteCount = post?.upvote_count ?? 0;
@@ -393,7 +418,7 @@ export default function PostCard({ post, openRepliesDefault = false }) {
                   <AuthorAvatarName userId={authorId} fallbackName={displayName} name={displayName} color={displayColor} size={42} anonymous={post?.anonymous}>
                     <span
                       className={`font-bold text-sm md:text-[15px] truncate transition ${
-                        post?.anonymous ? "" : "cursor-pointer hover:opacity-80"
+                        post?.anonymous || !authorId ? "" : "cursor-pointer hover:opacity-80"
                       }`}
                       style={{ color: T.text }}
                     >
