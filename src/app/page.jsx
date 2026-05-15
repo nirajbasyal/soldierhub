@@ -270,9 +270,9 @@ export default function HomePage() {
 
   return (
     <AppShell>
-      <main className="max-w-6xl mx-auto px-4 md:px-6 py-5 md:py-8 pb-24 md:pb-12">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5">
-          <div className="flex flex-col gap-3 min-w-0">
+      <main className="max-w-6xl mx-auto px-4 md:px-6 py-3 md:py-6 pb-24 md:pb-10">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-3 lg:gap-4">
+          <div className="flex flex-col gap-2 min-w-0">
             <div className="block lg:hidden">
               <MobileWeatherStrip />
             </div>
@@ -282,7 +282,7 @@ export default function HomePage() {
             <PostComposer />
 
             <div
-              className="sticky top-[73px] z-20 -mx-4 md:mx-0 px-4 md:px-0 py-2 backdrop-blur-xl"
+              className="sticky top-[68px] md:top-[85px] z-20 -mx-4 md:mx-0 px-4 md:px-0 py-1.5 backdrop-blur-xl"
               style={{
                 background:
                   "linear-gradient(180deg, rgba(234,240,248,0.96) 0%, rgba(234,240,248,0.82) 100%)",
@@ -300,7 +300,7 @@ export default function HomePage() {
                 type="button"
                 onClick={handleRefreshFeed}
                 disabled={refreshingFeed || postsLoading}
-                className="mx-auto inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold shadow-sm transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                className="mx-auto inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-semibold shadow-sm transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
                 style={{
                   backgroundColor: "#FDECF0",
                   borderColor: "rgba(179,25,66,0.28)",
@@ -319,14 +319,14 @@ export default function HomePage() {
             ) : null}
 
             {showInitialSkeleton ? (
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-2">
                 <PostSkeleton />
                 <PostSkeleton />
                 <PostSkeleton />
               </div>
             ) : filtered.length === 0 ? (
               <div
-                className="rounded-[24px] border p-8 sh-card-premium"
+                className="rounded-[24px] border p-6 sh-card-premium"
                 style={{ backgroundColor: T.card, borderColor: T.border }}
               >
                 <EmptyState
@@ -341,7 +341,7 @@ export default function HomePage() {
               </div>
             ) : (
               <>
-                <div className="-mx-4 md:mx-0 flex flex-col gap-2.5 sh-feed-post-list">
+                <div className="-mx-4 md:mx-0 flex flex-col gap-2 sh-feed-post-list">
                   {visibleFiltered.map((post) => {
                     const normalizedPost = normalizeFeedPostForCard(post);
                     return <PostCard key={normalizedPost.id} post={normalizedPost} />;
@@ -349,7 +349,7 @@ export default function HomePage() {
                 </div>
 
                 {showLoadMore ? (
-                  <div className="flex justify-center pt-2">
+                  <div className="flex justify-center pt-1">
                     <button
                       type="button"
                       onClick={handleLoadMore}
@@ -369,7 +369,7 @@ export default function HomePage() {
             )}
           </div>
 
-          <aside className="hidden lg:flex flex-col gap-4 sticky top-24 self-start">
+          <aside className="hidden lg:flex flex-col gap-3 sticky top-24 self-start">
             <MobileWeatherStrip />
             <BAHCard />
             <GateHoursCard />
