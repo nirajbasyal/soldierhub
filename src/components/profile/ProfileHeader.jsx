@@ -39,6 +39,8 @@ const COLOR_OPTIONS = [
   "#7A5C20",
 ];
 
+const FOLLOW_LIST_PREVIEW_LIMIT = 30;
+
 function InfoPill({ icon: Icon, label, value }) {
   return (
     <div
@@ -115,12 +117,23 @@ function normalizeFollowProfile(row = {}) {
   };
 }
 
-function FollowListPanel({ type, items, loading, refreshing, error, onUnfollow, unfollowingId }) {
+function FollowListPanel({
+  type,
+  items,
+  loading,
+  refreshing,
+  error,
+  onUnfollow,
+  unfollowingId,
+  totalCount = 0,
+}) {
   const isFollowing = type === "following";
   const title = isFollowing ? "People you follow" : "People following you";
   const emptyBody = isFollowing
     ? "You are not following anyone yet. Search a member profile and tap Follow."
     : "No followers yet. As members follow your profile, they will appear here.";
+  const safeTotalCount = Math.max(0, Number(totalCount) || 0);
+  const hasMoreHidden = safeTotalCount > items.length;
 
   return (
     <div
@@ -207,6 +220,15 @@ function FollowListPanel({ type, items, loading, refreshing, error, onUnfollow, 
               </div>
             );
           })}
+
+          {hasMoreHidden ? (
+            <div
+              className="rounded-2xl border px-3 py-2 text-xs font-semibold text-center"
+              style={{ backgroundColor: "rgba(255,255,255,0.82)", borderColor: "#D5E2F2", color: T.textMuted }}
+            >
+              Showing first {items.length} of {safeTotalCount}. More loading can be added later if needed.
+            </div>
+          ) : null}
         </div>
       )}
     </div>
@@ -326,8 +348,20 @@ export default function ProfileHeader() {
         return;
       }
 
+      const expectedCount =
+        type === "following"
+          ? Number(followSummary.followingCount) || 0
+          : Number(followSummary.followersCount) || 0;
+
       setConnectionsTab(type);
       setConnectionsError("");
+
+      if (expectedCount === 0) {
+        setConnections([]);
+        setConnectionsLoading(false);
+        setConnectionsRefreshing(false);
+        return;
+      }
 
       const cachedConnections = Follows.getCachedFollowConnections?.(type, currentUser.id);
       if (cachedConnections) {
@@ -341,8 +375,8 @@ export default function ProfileHeader() {
       }
 
       const { data, error } = await Follows.listFollowConnections(type, currentUser.id, {
-        limit: 100,
-        skipCache: true,
+        limit: FOLLOW_LIST_PREVIEW_LIMIT,
+        skipCache: Boolean(cachedConnections),
       });
 
       setConnectionsLoading(false);
@@ -355,7 +389,7 @@ export default function ProfileHeader() {
 
       setConnections(data || []);
     },
-    [connectionsTab, currentUser?.id]
+    [connectionsTab, currentUser?.id, followSummary.followersCount, followSummary.followingCount]
   );
 
   const handleUnfollowFromList = useCallback(
@@ -485,6 +519,8 @@ export default function ProfileHeader() {
 
   const followerValue = followSummary.followersCount || 0;
   const followingValue = followSummary.followingCount || 0;
+  const activeConnectionsTotal =
+    connectionsTab === "following" ? followingValue : connectionsTab === "followers" ? followerValue : 0;
 
   return (
     <section
@@ -762,6 +798,7 @@ export default function ProfileHeader() {
             error={connectionsError}
             onUnfollow={handleUnfollowFromList}
             unfollowingId={unfollowingId}
+            totalCount={activeConnectionsTotal}
           />
         )}
       </div>
