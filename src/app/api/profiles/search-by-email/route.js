@@ -35,7 +35,7 @@ function normalizeStatus(profile = {}) {
 
 function safeProfilePayload(profile = {}) {
   return {
-    id: profile.id,
+    id: profile.id || profile.profile_id,
     full_name: profile.full_name || "SoldierHub member",
     avatar_color: profile.avatar_color || "#314A66",
     avatar_url: profile.avatar_url || null,
@@ -129,24 +129,27 @@ export async function POST(request) {
     );
   }
 
-  const { data: profiles, error: profileError } = await supabase
-    .from("profiles")
-    .select("id, full_name, avatar_color, avatar_url, base, status, verification_status")
-    .or(`email.eq.${email},personal_email.eq.${email}`)
-    .limit(2);
+  const { data: searchedProfiles, error: profileError } = await supabase.rpc(
+    "search_verified_profile_by_email",
+    { p_email: email }
+  );
 
   if (profileError) {
+    const message = String(profileError.message || "").toLowerCase();
+
     return NextResponse.json(
-      { error: "Could not search profiles. Please try again." },
+      {
+        error: message.includes("function") || message.includes("does not exist")
+          ? "Profile search is not ready yet. Please run the latest Supabase SQL migration."
+          : "Could not search profiles. Please try again.",
+      },
       { status: 500, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
     );
   }
 
-  const matchedProfile = (profiles || []).find(
-    (profile) => profile?.id && normalizeStatus(profile) === "verified"
-  );
+  const matchedProfile = Array.isArray(searchedProfiles) ? searchedProfiles[0] : null;
 
-  if (!matchedProfile) {
+  if (!matchedProfile?.profile_id && !matchedProfile?.id) {
     return NextResponse.json(
       { error: "User not found." },
       { status: 404, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
