@@ -23,8 +23,12 @@ function createAuthedSupabaseClient(accessToken) {
   });
 }
 
-function getProfileStatus(profile) {
-  return profile?.status || profile?.verification_status || "pending";
+function isVerifiedProfile(profile) {
+  const values = [profile?.status, profile?.verification_status]
+    .filter(Boolean)
+    .map((value) => String(value).trim().toLowerCase());
+
+  return values.includes("verified");
 }
 
 function cleanText(value) {
@@ -204,30 +208,10 @@ export async function POST(request) {
     );
   }
 
-  if (!profile || getProfileStatus(profile) !== "verified") {
+  if (!profile || !isVerifiedProfile(profile)) {
     return NextResponse.json(
       { error: "Your profile must be verified before following members." },
       { status: 403, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
-    );
-  }
-
-  const { data: targetProfile, error: targetProfileError } = await supabase
-    .from("profiles")
-    .select("id, status, verification_status")
-    .eq("id", targetProfileId)
-    .maybeSingle();
-
-  if (targetProfileError) {
-    return NextResponse.json(
-      { error: "Could not verify the member profile. Please try again." },
-      { status: 500, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
-    );
-  }
-
-  if (!targetProfile || getProfileStatus(targetProfile) !== "verified") {
-    return NextResponse.json(
-      { error: "That member profile is not available." },
-      { status: 404, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
     );
   }
 
@@ -259,6 +243,26 @@ export async function POST(request) {
         viewer_summary,
       },
       { status: 200, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
+    );
+  }
+
+  const { data: targetProfile, error: targetProfileError } = await supabase
+    .from("profiles")
+    .select("id, status, verification_status")
+    .eq("id", targetProfileId)
+    .maybeSingle();
+
+  if (targetProfileError) {
+    return NextResponse.json(
+      { error: "Could not verify the member profile. Please try again." },
+      { status: 500, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
+    );
+  }
+
+  if (!targetProfile || !isVerifiedProfile(targetProfile)) {
+    return NextResponse.json(
+      { error: "That member profile is not available." },
+      { status: 404, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
     );
   }
 
