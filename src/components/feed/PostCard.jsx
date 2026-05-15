@@ -28,6 +28,10 @@ function getPostId(post) {
   return post?.id || post?.postId || post?.post?.id || post?.post_id || null;
 }
 
+function getCommentId(comment) {
+  return comment?.id || comment?.comment_id || comment?.commentId || null;
+}
+
 function getAuthorId(item) {
   return (
     item?.author_id ||
@@ -166,9 +170,18 @@ function AuthorAvatarName({ userId, fallbackName = "", name, color, size, anonym
   );
 }
 
-function CommentRow({ comment, post, currentUser }) {
+function CommentRow({
+  comment,
+  post,
+  currentUser,
+  isAdmin = false,
+  menuOpen = false,
+  onToggleMenu,
+  onDeleteRequest,
+}) {
   const postId = getPostId(post);
   const postAuthorId = getAuthorId(post);
+  const commentId = getCommentId(comment);
   const commentAuthorId = getAuthorId(comment);
   const anonymousName = getAnonymousDisplayName(postId);
   const anonymousAuthor = Boolean(
@@ -177,28 +190,62 @@ function CommentRow({ comment, post, currentUser }) {
   const name = anonymousAuthor ? anonymousName : getDisplayName(comment, "Member");
   const color = anonymousAuthor ? "#5C6470" : getDisplayColor(comment, name);
   const isMine = Boolean(currentUser?.id && commentAuthorId === currentUser.id);
+  const canDeleteComment = Boolean(commentId && currentUser?.id && (isAdmin || isMine));
 
   return (
-    <div className="flex items-start gap-2.5">
+    <div className="group flex items-start gap-2.5">
       <AuthorAvatarName userId={commentAuthorId} fallbackName={name} name={name} color={color} size={30} anonymous={anonymousAuthor}>
         <Avatar name={name} color={color} size={30} />
       </AuthorAvatarName>
-      <div
-        className="min-w-0 flex-1 rounded-2xl px-3 py-2"
-        style={{ backgroundColor: "rgba(244,248,253,0.95)" }}
-      >
-        <div className="flex items-center gap-1.5 text-xs font-bold" style={{ color: T.text }}>
-          {anonymousAuthor ? <Lock size={11} /> : null}
-          <AuthorAvatarName userId={commentAuthorId} fallbackName={name} name={name} color={color} size={30} anonymous={anonymousAuthor}>
-            <span className={anonymousAuthor || !commentAuthorId ? "" : "cursor-pointer transition hover:opacity-80"}>
-              {name}
-            </span>
-          </AuthorAvatarName>
-          {isMine ? <span style={{ color: T.textSubtle }}>(you)</span> : null}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start gap-1.5">
+          <div
+            className="min-w-0 flex-1 rounded-2xl px-3 py-2"
+            style={{ backgroundColor: "rgba(244,248,253,0.95)" }}
+          >
+            <div className="flex items-center gap-1.5 text-xs font-bold" style={{ color: T.text }}>
+              {anonymousAuthor ? <Lock size={11} /> : null}
+              <AuthorAvatarName userId={commentAuthorId} fallbackName={name} name={name} color={color} size={30} anonymous={anonymousAuthor}>
+                <span className={anonymousAuthor || !commentAuthorId ? "" : "cursor-pointer transition hover:opacity-80"}>
+                  {name}
+                </span>
+              </AuthorAvatarName>
+              {isMine ? <span style={{ color: T.textSubtle }}>(you)</span> : null}
+            </div>
+            <p className="mt-1 whitespace-pre-wrap text-sm leading-6" style={{ color: T.textMuted }}>
+              {comment?.body || comment?.content || comment?.text || ""}
+            </p>
+          </div>
+
+          {canDeleteComment ? (
+            <div className="relative shrink-0">
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onToggleMenu?.(commentId);
+                }}
+                className="h-8 w-8 rounded-full flex items-center justify-center opacity-70 transition hover:bg-black/[0.04] hover:opacity-100"
+                style={{ color: T.textMuted }}
+                aria-label="Comment options"
+              >
+                <MoreHorizontal size={17} />
+              </button>
+
+              {menuOpen ? (
+                <div
+                  onClick={(event) => event.stopPropagation()}
+                  className="absolute right-0 top-9 z-30 w-44 overflow-hidden rounded-2xl border shadow-xl"
+                  style={{ backgroundColor: T.card, borderColor: T.border }}
+                >
+                  <MenuButton icon={Trash2} danger onClick={() => onDeleteRequest?.(comment)}>
+                    Delete comment
+                  </MenuButton>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </div>
-        <p className="mt-1 whitespace-pre-wrap text-sm leading-6" style={{ color: T.textMuted }}>
-          {comment?.body || comment?.content || comment?.text || ""}
-        </p>
       </div>
     </div>
   );
@@ -212,8 +259,10 @@ export default function PostCard({ post, openRepliesDefault = false }) {
     upvotePost,
     reportPost,
     commentOnPost,
+    deleteComment: deleteCommentAction,
     editMyPost,
     deleteMyPost,
+    isAdmin,
     myUpvotes = new Set(),
     myReports = new Set(),
     myPosts = [],
@@ -233,6 +282,9 @@ export default function PostCard({ post, openRepliesDefault = false }) {
   const [editingOpen, setEditingOpen] = useState(false);
   const [deletingOpen, setDeletingOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [commentMenuOpenId, setCommentMenuOpenId] = useState(null);
+  const [commentToDelete, setCommentToDelete] = useState(null);
+  const [deletingComment, setDeletingComment] = useState(false);
 
   const category = CATEGORIES.find((c) => c.key === post?.category) || CATEGORIES[0];
   const authorId = getAuthorId(post);
@@ -262,6 +314,8 @@ export default function PostCard({ post, openRepliesDefault = false }) {
     setComment("");
     setCommentError("");
     setCommentsLoading(false);
+    setCommentMenuOpenId(null);
+    setCommentToDelete(null);
   }, [currentUser?.id, postId, openRepliesDefault]);
 
   useEffect(() => {
@@ -285,15 +339,20 @@ export default function PostCard({ post, openRepliesDefault = false }) {
   }, [openRepliesDefault, postId, comments.length, loadCommentsForPost]);
 
   useEffect(() => {
-    if (!menuOpen) return undefined;
-    const closeMenu = () => setMenuOpen(false);
+    if (!menuOpen && !commentMenuOpenId) return undefined;
+
+    const closeMenu = () => {
+      setMenuOpen(false);
+      setCommentMenuOpenId(null);
+    };
+
     window.addEventListener("click", closeMenu);
     window.addEventListener("scroll", closeMenu, true);
     return () => {
       window.removeEventListener("click", closeMenu);
       window.removeEventListener("scroll", closeMenu, true);
     };
-  }, [menuOpen]);
+  }, [menuOpen, commentMenuOpenId]);
 
   const ensurePostId = () => {
     if (postId) return true;
@@ -378,6 +437,25 @@ export default function PostCard({ post, openRepliesDefault = false }) {
     }
   };
 
+  const handleDeleteCommentConfirm = async () => {
+    const commentId = getCommentId(commentToDelete);
+
+    if (deletingComment || !postId || !commentId) return;
+
+    setDeletingComment(true);
+    try {
+      const result = await deleteCommentAction?.({ postId, commentId });
+
+      if (result?.ok === false) {
+        return pushToast?.(result?.error || "Could not delete comment.", "error");
+      }
+
+      setCommentToDelete(null);
+    } finally {
+      setDeletingComment(false);
+    }
+  };
+
   const submitComment = async () => {
     if (commentSubmitting) return;
     setCommentError("");
@@ -459,6 +537,7 @@ export default function PostCard({ post, openRepliesDefault = false }) {
                 onClick={(event) => {
                   event.stopPropagation();
                   setMenuOpen((value) => !value);
+                  setCommentMenuOpenId(null);
                 }}
                 className="h-9 w-9 rounded-full flex items-center justify-center transition hover:bg-black/[0.04]"
                 style={{ color: T.textMuted }}
@@ -535,14 +614,28 @@ export default function PostCard({ post, openRepliesDefault = false }) {
                   No replies yet. Be the first to help.
                 </div>
               ) : null}
-              {comments.map((item) => (
-                <CommentRow
-                  key={item.id || `${postId}-${item.created_at}-${item.body}`}
-                  comment={item}
-                  post={safePost}
-                  currentUser={currentUser}
-                />
-              ))}
+              {comments.map((item) => {
+                const itemCommentId = getCommentId(item);
+
+                return (
+                  <CommentRow
+                    key={itemCommentId || `${postId}-${item.created_at}-${item.body}`}
+                    comment={item}
+                    post={safePost}
+                    currentUser={currentUser}
+                    isAdmin={isAdmin}
+                    menuOpen={commentMenuOpenId === itemCommentId}
+                    onToggleMenu={(id) => {
+                      setMenuOpen(false);
+                      setCommentMenuOpenId((value) => (value === id ? null : id));
+                    }}
+                    onDeleteRequest={(selectedComment) => {
+                      setCommentMenuOpenId(null);
+                      setCommentToDelete(selectedComment);
+                    }}
+                  />
+                );
+              })}
             </div>
 
             <div className="mt-3 flex items-start gap-2.5">
@@ -606,6 +699,18 @@ export default function PostCard({ post, openRepliesDefault = false }) {
         onConfirm={handleDeleteConfirm}
         onCancel={() => {
           if (!deleting) setDeletingOpen(false);
+        }}
+      />
+
+      <ConfirmDialog
+        open={Boolean(commentToDelete)}
+        title="Delete this comment?"
+        body="This will remove this comment from the post."
+        confirmText={deletingComment ? "Deleting…" : "Delete comment"}
+        danger
+        onConfirm={handleDeleteCommentConfirm}
+        onCancel={() => {
+          if (!deletingComment) setCommentToDelete(null);
         }}
       />
     </>
