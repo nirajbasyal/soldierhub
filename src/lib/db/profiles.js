@@ -207,3 +207,25 @@ export async function adminRevokeProfileByEmail(email) {
     "Could not revoke profile by email."
   );
 }
+
+export async function findProfileByEmailForSearch(email) {
+  const supabase = createClient();
+  if (!supabase) return { data: null, error: { message: "Supabase is not configured." } };
+
+  const cleanEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+  if (!cleanEmail) return { data: null, error: { message: "Enter a valid email." } };
+
+  const { accessToken, error } = await getAccessTokenForApi(
+    supabase,
+    "Please log in again before searching profiles."
+  );
+
+  if (error || !accessToken) return { data: null, error };
+
+  return postJsonToApi(
+    "/api/profiles/search-by-email",
+    accessToken,
+    { email: cleanEmail },
+    "User not found."
+  );
+}
