@@ -1,7 +1,6 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
-import { listCommentsForPost } from "@/lib/db/comments";
 
 const POST_SELECT =
   "id, author_id, author_name_cached, author_color_cached, category, body, anonymous, status, edited, created_at, updated_at";
@@ -9,13 +8,13 @@ const POST_SELECT =
 const RPC_MODE_FULL = "full";
 const RPC_MODE_LIMIT = "limit";
 const RPC_MODE_EMPTY = "empty";
-const COMMENT_COUNT_LIMIT = 200;
 
 let workingPublicPostsRpcMode = null;
 
 export function normalizePostRow(row = {}) {
   const profile = row.profile || row.profiles || row.author || null;
   const postId = row.id || row.post_id || row.postId || row.post?.id || null;
+  const commentCount = row.comment_count ?? row.comments_count ?? row.reply_count ?? 0;
 
   return {
     ...row,
@@ -44,7 +43,9 @@ export function normalizePostRow(row = {}) {
       profile?.avatar_color ||
       "#314A66",
     upvote_count: row.upvote_count ?? row.upvotes_count ?? 0,
-    comment_count: row.comment_count ?? row.comments_count ?? row.reply_count ?? 0,
+    comment_count: commentCount,
+    reply_count: commentCount,
+    report_count: row.report_count ?? row.reports_count ?? 0,
   };
 }
 
@@ -82,47 +83,8 @@ async function attachProfilesToPosts(supabase, rows = []) {
   );
 }
 
-async function countVisibleCommentsForPost(postId) {
-  if (!postId) return 0;
-
-  const { data, error } = await listCommentsForPost(postId, {
-    limit: COMMENT_COUNT_LIMIT,
-  });
-
-  if (error) {
-    console.error("Attach visible comment count failed:", error);
-    return null;
-  }
-
-  return (data || []).length;
-}
-
-async function attachCountsToPosts(_supabase, rows = []) {
-  if (!Array.isArray(rows) || rows.length === 0) return [];
-
-  const normalizedRows = rows.map(normalizePostRow);
-
-  const countPairs = await Promise.all(
-    normalizedRows.map(async (row) => [row.id, await countVisibleCommentsForPost(row.id)])
-  );
-
-  const commentCounts = new Map(countPairs.filter(([, count]) => typeof count === "number"));
-
-  return normalizedRows.map((row) => {
-    const visibleCommentCount = commentCounts.get(row.id);
-    const safeCount = typeof visibleCommentCount === "number" ? visibleCommentCount : 0;
-
-    return {
-      ...row,
-      comment_count: safeCount,
-      reply_count: safeCount,
-    };
-  });
-}
-
 async function hydrateTablePosts(supabase, rows = []) {
-  const withProfiles = await attachProfilesToPosts(supabase, rows || []);
-  return attachCountsToPosts(supabase, withProfiles);
+  return attachProfilesToPosts(supabase, rows || []);
 }
 
 async function callPublicPostsRpc(
@@ -161,9 +123,7 @@ async function listPostsFromRpc(
 
     if (!result.error && Array.isArray(result.data)) {
       if (!usingCursor) workingPublicPostsRpcMode = mode;
-      const normalizedRows = result.data.map(normalizePostRow);
-      const rowsWithVisibleCounts = await attachCountsToPosts(supabase, normalizedRows);
-      return { data: rowsWithVisibleCounts, error: null };
+      return { data: result.data.map(normalizePostRow), error: null };
     }
 
     lastError = result.error || lastError;
