@@ -93,8 +93,8 @@ async function getJsonFromApi(path, accessToken, fallbackMessage) {
   return { data: result || null, error: null };
 }
 
-function getCachedUnreadCount(userId) {
-  if (!userId) return null;
+function getCachedUnreadCount(userId, { allowCache = true } = {}) {
+  if (!allowCache || !userId) return null;
   if (unreadCountClientCache.userId !== userId) return null;
   if (Date.now() > unreadCountClientCache.expiresAt) return null;
 
@@ -104,7 +104,7 @@ function getCachedUnreadCount(userId) {
 function setCachedUnreadCount(userId, count) {
   unreadCountClientCache = {
     userId,
-    count: count || 0,
+    count: Math.max(0, Number(count) || 0),
     expiresAt: Date.now() + 20 * 1000,
   };
 }
@@ -327,30 +327,31 @@ export async function markAllNotificationsRead() {
   return result;
 }
 
-export async function getUnreadCount(userId) {
-  const cachedCount = getCachedUnreadCount(userId);
-  if (cachedCount !== null) return { count: cachedCount, error: null };
+export async function getUnreadCount(userId, { skipCache = false } = {}) {
+  const cachedCount = getCachedUnreadCount(userId, { allowCache: !skipCache });
+  if (cachedCount !== null) return { count: cachedCount, error: null, cached: true };
 
   const supabase = createClient();
-  if (!supabase) return { count: 0, error: null };
+  if (!supabase) return { count: 0, error: null, cached: false };
 
   const { accessToken, error } = await getAccessTokenForApi(
     supabase,
     "Please log in again before loading notifications."
   );
 
-  if (error || !accessToken) return { count: 0, error };
+  if (error || !accessToken) return { count: 0, error, cached: false };
 
+  const cacheBuster = skipCache ? `?t=${Date.now()}` : "";
   const result = await getJsonFromApi(
-    "/api/notifications/unread-count",
+    `/api/notifications/unread-count${cacheBuster}`,
     accessToken,
     "Could not load unread count."
   );
 
-  if (result.error) return { count: 0, error: result.error };
+  if (result.error) return { count: 0, error: result.error, cached: false };
 
-  const count = result.data?.count || 0;
+  const count = Math.max(0, Number(result.data?.count) || 0);
   setCachedUnreadCount(userId, count);
 
-  return { count, error: null };
+  return { count, error: null, cached: false };
 }
