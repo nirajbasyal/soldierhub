@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { checkRateLimit, rateLimitResponse } from "@/lib/server/rateLimit";
+import { checkContentSafety } from "@/lib/server/contentSafety";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -248,6 +249,16 @@ export async function POST(request) {
         { error: validationError },
         { status: 400, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
       );
+    }
+
+    if (updates.body !== undefined) {
+      const safety = await checkContentSafety(cleanText(updates.body));
+      if (!safety.allowed) {
+        return NextResponse.json(
+          { error: safety.reason || "This post could not be updated." },
+          { status: 400, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
+        );
+      }
     }
 
     const { data, error } = await updatePost({ supabase, postId, updates });
