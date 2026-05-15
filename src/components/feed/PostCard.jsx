@@ -339,7 +339,7 @@ export default function PostCard({ post, openRepliesDefault = false }) {
   }, [currentUser?.id, postId, openRepliesDefault]);
 
   useEffect(() => {
-    if (!openRepliesDefault || !postId || comments.length > 0) return;
+    if (!openRepliesDefault || !postId || commentsLoaded) return;
 
     let cancelled = false;
     setShowComments(true);
@@ -356,7 +356,7 @@ export default function PostCard({ post, openRepliesDefault = false }) {
     return () => {
       cancelled = true;
     };
-  }, [openRepliesDefault, postId, comments.length, loadCommentsForPost]);
+  }, [openRepliesDefault, postId, commentsLoaded, loadCommentsForPost]);
 
   useEffect(() => {
     if (!menuOpen && !commentMenuOpenId) return undefined;
@@ -383,7 +383,7 @@ export default function PostCard({ post, openRepliesDefault = false }) {
   const handleToggleComments = async () => {
     const next = !showComments;
     setShowComments(next);
-    if (!next || !postId || comments.length > 0) return;
+    if (!next || !postId || commentsLoaded) return;
     setCommentsLoading(true);
     try {
       await loadCommentsForPost?.(postId);
