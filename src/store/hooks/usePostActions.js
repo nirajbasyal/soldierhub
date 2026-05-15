@@ -8,7 +8,9 @@ import {
 } from "@/lib/rateLimit/clientActionLimiter";
 import { getPostId, getProfileStatus } from "../utils/appHelpers";
 
-const FEED_CACHE_KEY = "soldierhub_feed_cache_v1";
+const FEED_CACHE_KEY = "soldierhub_feed_cache_v2";
+const COMMENT_CACHE_PREFIX = "soldierhub_comment_cache_v1:";
+const COMMENT_CACHE_MAX_AGE_MS = 1000 * 60 * 5;
 
 function removePostFromList(list = [], postId) {
   return (list || []).filter((post) => getPostId(post) !== postId);
@@ -97,6 +99,39 @@ function stopIfLimited({ action, currentUser, pushToast }) {
   return true;
 }
 
+function writeCachedFeedPosts(posts = []) {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.localStorage.setItem(
+      FEED_CACHE_KEY,
+      JSON.stringify({ posts: posts.slice(0, 30), savedAt: Date.now() })
+    );
+  } catch {
+    // Cache is a performance helper only.
+  }
+}
+
+function updateCachedFeedPost(postId, updater) {
+  if (typeof window === "undefined" || !postId) return;
+
+  try {
+    const raw = window.localStorage.getItem(FEED_CACHE_KEY);
+    if (!raw) return;
+
+    const parsed = JSON.parse(raw);
+    const posts = Array.isArray(parsed?.posts) ? parsed.posts : [];
+    const nextPosts = updatePostInList(posts, postId, updater);
+
+    window.localStorage.setItem(
+      FEED_CACHE_KEY,
+      JSON.stringify({ ...parsed, posts: nextPosts, savedAt: Date.now() })
+    );
+  } catch {
+    window.localStorage.removeItem(FEED_CACHE_KEY);
+  }
+}
+
 function removeCachedFeedPost(postId) {
   if (typeof window === "undefined" || !postId) return;
 
@@ -113,13 +148,47 @@ function removeCachedFeedPost(postId) {
       return;
     }
 
-    window.localStorage.setItem(
-      FEED_CACHE_KEY,
-      JSON.stringify({ ...parsed, posts: nextPosts, savedAt: Date.now() })
-    );
+    writeCachedFeedPosts(nextPosts);
   } catch {
     window.localStorage.removeItem(FEED_CACHE_KEY);
   }
+}
+
+function readCachedComments(postId) {
+  if (typeof window === "undefined" || !postId) return null;
+
+  try {
+    const raw = window.localStorage.getItem(`${COMMENT_CACHE_PREFIX}${postId}`);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw);
+    const comments = Array.isArray(parsed?.comments) ? parsed.comments : [];
+    const savedAt = Number(parsed?.savedAt || 0);
+
+    if (!savedAt || Date.now() - savedAt > COMMENT_CACHE_MAX_AGE_MS) return null;
+    return comments;
+  } catch {
+    window.localStorage.removeItem(`${COMMENT_CACHE_PREFIX}${postId}`);
+    return null;
+  }
+}
+
+function writeCachedComments(postId, comments = []) {
+  if (typeof window === "undefined" || !postId) return;
+
+  try {
+    window.localStorage.setItem(
+      `${COMMENT_CACHE_PREFIX}${postId}`,
+      JSON.stringify({ comments, savedAt: Date.now() })
+    );
+  } catch {
+    // Cache is a performance helper only.
+  }
+}
+
+function removeCachedComments(postId) {
+  if (typeof window === "undefined" || !postId) return;
+  window.localStorage.removeItem(`${COMMENT_CACHE_PREFIX}${postId}`);
 }
 
 export function usePostActions({
@@ -147,27 +216,10 @@ export function usePostActions({
       return { ok: false, error: "Please slow down before posting again." };
     }
 
-    if (SUPA) {
-      const { error } = await PostsDB.createPost({
-        id,
-        author_id: currentUser.id,
-        category,
-        title,
-        body,
-        anonymous,
-      });
-      if (error) {
-        pushToast(error.message, "error");
-        return { ok: false, error: error.message };
-      }
-      pushToast("Posted to feed", "success");
-      await reloadPosts();
-      await reloadMyPosts();
-      return { ok: true };
-    }
-
-    const post = {
-      id: id || uid(),
+    const postId = id || uid();
+    const optimisticPost = {
+      id: postId,
+      post_id: postId,
       category,
       title,
       body,
@@ -177,14 +229,42 @@ export function usePostActions({
       author_color: anonymous ? null : currentUser.avatar_color,
       upvote_count: 0,
       comment_count: 0,
+      reply_count: 0,
       report_count: 0,
       status: "active",
       edited: false,
       created_at: new Date().toISOString(),
     };
 
-    setPosts((p) => [post, ...p]);
-    setMyPosts((p) => [post, ...p]);
+    setPosts((arr) => {
+      const next = [optimisticPost, ...arr];
+      writeCachedFeedPosts(next);
+      return next;
+    });
+    setMyPosts((arr) => [optimisticPost, ...arr]);
+
+    if (SUPA) {
+      const { error } = await PostsDB.createPost({
+        id: postId,
+        author_id: currentUser.id,
+        category,
+        title,
+        body,
+        anonymous,
+      });
+      if (error) {
+        setPosts((arr) => removePostFromList(arr, postId));
+        setMyPosts((arr) => removePostFromList(arr, postId));
+        removeCachedFeedPost(postId);
+        pushToast(error.message, "error");
+        return { ok: false, error: error.message };
+      }
+      pushToast("Posted to feed", "success");
+      reloadPosts?.({ silent: true });
+      reloadMyPosts?.();
+      return { ok: true };
+    }
+
     pushToast("Posted to feed", "success");
     return { ok: true };
   };
@@ -212,7 +292,11 @@ export function usePostActions({
       has ? n.delete(postId) : n.add(postId);
       return n;
     });
-    setPosts((arr) => updatePostInList(arr, postId, applyDelta));
+    setPosts((arr) => {
+      const next = updatePostInList(arr, postId, applyDelta);
+      writeCachedFeedPosts(next);
+      return next;
+    });
     setMyPosts((arr) => updatePostInList(arr, postId, applyDelta));
 
     if (SUPA) {
@@ -226,7 +310,11 @@ export function usePostActions({
           has ? n.add(postId) : n.delete(postId);
           return n;
         });
-        setPosts((arr) => updatePostInList(arr, postId, rollbackDelta));
+        setPosts((arr) => {
+          const next = updatePostInList(arr, postId, rollbackDelta);
+          writeCachedFeedPosts(next);
+          return next;
+        });
         setMyPosts((arr) => updatePostInList(arr, postId, rollbackDelta));
         pushToast(error.message, "error");
       }
@@ -240,20 +328,17 @@ export function usePostActions({
     if (stopIfLimited({ action: "report", currentUser, pushToast })) return;
 
     setMyReports((s) => new Set(s).add(postId));
-    setPosts((arr) =>
-      updatePostInList(arr, postId, (p) => ({
-        ...p,
-        report_count: (p.report_count || 0) + 1,
-        status: "reported",
-      }))
-    );
-    setMyPosts((arr) =>
-      updatePostInList(arr, postId, (p) => ({
-        ...p,
-        report_count: (p.report_count || 0) + 1,
-        status: "reported",
-      }))
-    );
+    const applyReport = (p) => ({
+      ...p,
+      report_count: (p.report_count || 0) + 1,
+      status: "reported",
+    });
+    setPosts((arr) => {
+      const next = updatePostInList(arr, postId, applyReport);
+      writeCachedFeedPosts(next);
+      return next;
+    });
+    setMyPosts((arr) => updatePostInList(arr, postId, applyReport));
 
     if (SUPA) {
       const verifiedUserId =
@@ -270,7 +355,11 @@ export function usePostActions({
           ...p,
           report_count: Math.max((p.report_count || 1) - 1, 0),
         });
-        setPosts((arr) => updatePostInList(arr, postId, rollbackReport));
+        setPosts((arr) => {
+          const next = updatePostInList(arr, postId, rollbackReport);
+          writeCachedFeedPosts(next);
+          return next;
+        });
         setMyPosts((arr) => updatePostInList(arr, postId, rollbackReport));
         pushToast(error?.message || data?.error || "Could not report post.", "error");
         return;
@@ -294,11 +383,28 @@ export function usePostActions({
       return { ok: false, error: "Please slow down before commenting again." };
     }
 
-    const incrementReplyCount = (post) => ({
-      ...post,
-      comment_count: (post.comment_count || 0) + 1,
-      reply_count: (post.reply_count || post.comment_count || 0) + 1,
+    const optimisticComment = {
+      id: `temp-${uid()}`,
+      post_id: postId,
+      author_id: currentUser.id,
+      body,
+      created_at: new Date().toISOString(),
+      author_name_cached: currentUser.full_name,
+      author_color_cached: currentUser.avatar_color,
+      viewer_is_author: true,
+    };
+
+    setPostComments((m) => {
+      const nextComments = [...(m[postId] || []), optimisticComment];
+      writeCachedComments(postId, nextComments);
+      return { ...m, [postId]: nextComments };
     });
+    setPosts((arr) => {
+      const next = updatePostInList(arr, postId, incrementCommentCount);
+      writeCachedFeedPosts(next);
+      return next;
+    });
+    setMyPosts((arr) => updatePostInList(arr, postId, incrementCommentCount));
 
     if (SUPA) {
       const { data, error } = await CommentsDB.createComment({
@@ -308,35 +414,32 @@ export function usePostActions({
       });
 
       if (error) {
+        setPostComments((m) => {
+          const nextComments = (m[postId] || []).filter(
+            (item) => getCommentId(item) !== optimisticComment.id
+          );
+          writeCachedComments(postId, nextComments);
+          return { ...m, [postId]: nextComments };
+        });
+        setPosts((arr) => {
+          const next = updatePostInList(arr, postId, decrementCommentCount);
+          writeCachedFeedPosts(next);
+          return next;
+        });
+        setMyPosts((arr) => updatePostInList(arr, postId, decrementCommentCount));
         pushToast(error.message, "error");
         return { ok: false, error: error.message };
       }
 
-      setPostComments((m) => ({
-        ...m,
-        [postId]: [...(m[postId] || []), data],
-      }));
-      setPosts((arr) => updatePostInList(arr, postId, incrementReplyCount));
-      setMyPosts((arr) => updatePostInList(arr, postId, incrementReplyCount));
+      setPostComments((m) => {
+        const nextComments = (m[postId] || []).map((item) =>
+          getCommentId(item) === optimisticComment.id ? data : item
+        );
+        writeCachedComments(postId, nextComments);
+        return { ...m, [postId]: nextComments };
+      });
       return { ok: true };
     }
-
-    const newComment = {
-      id: uid(),
-      post_id: postId,
-      author_id: currentUser.id,
-      body,
-      created_at: new Date().toISOString(),
-      author_name_cached: currentUser.full_name,
-      author_color_cached: currentUser.avatar_color,
-    };
-
-    setPostComments((m) => ({
-      ...m,
-      [postId]: [...(m[postId] || []), newComment],
-    }));
-    setPosts((arr) => updatePostInList(arr, postId, incrementReplyCount));
-    setMyPosts((arr) => updatePostInList(arr, postId, incrementReplyCount));
 
     const post = posts.find((p) => getPostId(p) === postId);
     if (post && post.author_id !== currentUser.id) {
@@ -348,7 +451,7 @@ export function usePostActions({
           actor_name_cached: currentUser.full_name,
           post_id: postId,
           post_title_cached: post.title,
-          comment_id: newComment.id,
+          comment_id: optimisticComment.id,
           type: "comment",
           read: false,
           created_at: new Date().toISOString(),
@@ -361,11 +464,21 @@ export function usePostActions({
   };
 
   const loadCommentsForPost = useCallback(
-    async (postId) => {
-      if (!SUPA) return;
-      if (postComments[postId]) return;
+    async (postId, { force = false } = {}) => {
+      if (!SUPA || !postId) return;
+      if (!force && postComments[postId]) return;
+
+      if (!force) {
+        const cachedComments = readCachedComments(postId);
+        if (cachedComments) {
+          setPostComments((m) => ({ ...m, [postId]: cachedComments }));
+        }
+      }
+
       const { data } = await CommentsDB.listCommentsForPost(postId);
-      setPostComments((m) => ({ ...m, [postId]: data || [] }));
+      const comments = data || [];
+      writeCachedComments(postId, comments);
+      setPostComments((m) => ({ ...m, [postId]: comments }));
     },
     [SUPA, postComments, setPostComments]
   );
@@ -390,8 +503,16 @@ export function usePostActions({
 
     const previousComments = postComments;
 
-    setPostComments((map) => removeCommentFromMap(map, postId, commentId));
-    setPosts((arr) => updatePostInList(arr, postId, decrementCommentCount));
+    setPostComments((map) => {
+      const nextMap = removeCommentFromMap(map, postId, commentId);
+      writeCachedComments(postId, nextMap[postId] || []);
+      return nextMap;
+    });
+    setPosts((arr) => {
+      const next = updatePostInList(arr, postId, decrementCommentCount);
+      writeCachedFeedPosts(next);
+      return next;
+    });
     setMyPosts((arr) => updatePostInList(arr, postId, decrementCommentCount));
     setNotifications((arr) => (arr || []).filter((item) => item.comment_id !== commentId));
 
@@ -400,7 +521,11 @@ export function usePostActions({
 
       if (error) {
         setPostComments(previousComments);
-        setPosts((arr) => updatePostInList(arr, postId, incrementCommentCount));
+        setPosts((arr) => {
+          const next = updatePostInList(arr, postId, incrementCommentCount);
+          writeCachedFeedPosts(next);
+          return next;
+        });
         setMyPosts((arr) => updatePostInList(arr, postId, incrementCommentCount));
 
         pushToast(error.message || "Could not delete comment.", "error");
@@ -417,24 +542,30 @@ export function usePostActions({
       return { ok: false, error: "You must be verified to edit posts." };
     }
 
+    const previousPosts = posts;
+    const applyEdit = (p) => ({ ...p, ...updates, edited: true, updated_at: new Date().toISOString() });
+
+    setPosts((arr) => {
+      const next = updatePostInList(arr, postId, applyEdit);
+      writeCachedFeedPosts(next);
+      return next;
+    });
+    setMyPosts((arr) => updatePostInList(arr, postId, applyEdit));
+
     if (SUPA) {
       const { error } = await PostsDB.updateMyPost(postId, updates);
       if (error) {
+        setPosts(previousPosts);
+        writeCachedFeedPosts(previousPosts);
         pushToast(error.message, "error");
         return { ok: false, error: error.message };
       }
       pushToast("Post updated", "success");
-      await reloadPosts();
-      await reloadMyPosts();
+      reloadPosts?.({ silent: true });
+      reloadMyPosts?.();
       return { ok: true };
     }
 
-    setPosts((arr) =>
-      updatePostInList(arr, postId, (p) => ({ ...p, ...updates, edited: true }))
-    );
-    setMyPosts((arr) =>
-      updatePostInList(arr, postId, (p) => ({ ...p, ...updates, edited: true }))
-    );
     pushToast("Post updated", "success");
     return { ok: true };
   };
@@ -446,49 +577,44 @@ export function usePostActions({
       return { ok: false, error: "Post was not identified. Please refresh and try again." };
     }
 
-    if (SUPA) {
-      const { error } = await PostsDB.deletePost(postId);
-      if (error) {
-        pushToast(error.message, "error");
-        return { ok: false, error: error.message };
-      }
-
-      setPosts((arr) => removePostFromList(arr, postId));
-      setMyPosts((arr) => removePostFromList(arr, postId));
-      setNotifications((arr) => (arr || []).filter((item) => item.post_id !== postId));
-      setMyUpvotes((set) => {
-        const next = new Set(set);
-        next.delete(postId);
-        return next;
-      });
-      setMyReports((set) => {
-        const next = new Set(set);
-        next.delete(postId);
-        return next;
-      });
-      setPostComments((map) => {
-        const next = { ...(map || {}) };
-        delete next[postId];
-        return next;
-      });
-      removeCachedFeedPost(postId);
-
-      await reloadPosts();
-      await reloadMyPosts();
-
-      pushToast("Post deleted", "success");
-      return { ok: true };
-    }
+    const previousPosts = posts;
 
     setPosts((arr) => removePostFromList(arr, postId));
     setMyPosts((arr) => removePostFromList(arr, postId));
-    setNotifications((n) => n.filter((x) => x.post_id !== postId));
+    setNotifications((arr) => (arr || []).filter((item) => item.post_id !== postId));
+    setMyUpvotes((set) => {
+      const next = new Set(set);
+      next.delete(postId);
+      return next;
+    });
+    setMyReports((set) => {
+      const next = new Set(set);
+      next.delete(postId);
+      return next;
+    });
     setPostComments((map) => {
       const next = { ...(map || {}) };
       delete next[postId];
       return next;
     });
     removeCachedFeedPost(postId);
+    removeCachedComments(postId);
+
+    if (SUPA) {
+      const { error } = await PostsDB.deletePost(postId);
+      if (error) {
+        setPosts(previousPosts);
+        writeCachedFeedPosts(previousPosts);
+        pushToast(error.message, "error");
+        return { ok: false, error: error.message };
+      }
+
+      reloadPosts?.({ silent: true });
+      reloadMyPosts?.();
+      pushToast("Post deleted", "success");
+      return { ok: true };
+    }
+
     pushToast("Post deleted", "success");
     return { ok: true };
   };
