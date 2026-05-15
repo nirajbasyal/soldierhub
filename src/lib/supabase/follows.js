@@ -3,7 +3,7 @@ import { createClient } from "./client";
 const FOLLOW_SUMMARY_CACHE_PREFIX = "soldierhub_follow_summary_v2:";
 const FOLLOW_CONNECTIONS_CACHE_PREFIX = "soldierhub_follow_connections_v2:";
 const FOLLOW_CACHE_MAX_AGE_MS = 1000 * 60 * 5;
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function isValidProfileId(value) {
   return UUID_PATTERN.test(String(value || "").trim());
@@ -159,7 +159,17 @@ async function getAccessTokenForApi(supabase) {
     return { accessToken: null, error: error || { message: "Please log in again." } };
   }
 
-  return { accessToken: session.access_token, error: null };
+  return { accessToken, error: null };
+}
+
+async function getCurrentUserId(supabase) {
+  const { session, error } = await getCurrentSession(supabase);
+
+  if (error || !session?.user?.id) {
+    return { userId: null, error: error || { message: "Please log in again." } };
+  }
+
+  return { userId: session.user.id, error: null };
 }
 
 async function postJsonToApi(path, accessToken, payload, fallbackMessage) {
@@ -252,16 +262,6 @@ export function removeProfileFromCachedFollowing(profileId, targetProfileId) {
 export function clearCachedFollowConnections(type, profileId) {
   if (!isValidProfileId(profileId)) return;
   removeCache(followConnectionsCacheKey(type, profileId));
-}
-
-async function getCurrentUserId(supabase) {
-  const { session, error } = await getCurrentSession(supabase);
-
-  if (error || !session?.user?.id) {
-    return { userId: null, error: error || { message: "Please log in again." } };
-  }
-
-  return { userId: session.user.id, error: null };
 }
 
 export async function getFollowSummary(profileId, viewerId = null, options = {}) {
