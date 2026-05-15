@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -11,13 +12,21 @@ import {
   Shield,
   UserPlus,
 } from "lucide-react";
+import { findProfileByEmailForSearch } from "@/lib/db/profiles";
 import { T } from "@/lib/theme";
 import { useApp } from "@/store/AppContext";
 import Avatar from "@/components/ui/Avatar";
 import Button from "@/components/ui/Button";
 
+const EMAIL_SEARCH_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function isEmailSearch(value) {
+  return EMAIL_SEARCH_PATTERN.test(String(value || "").trim().toLowerCase());
+}
+
 export default function TopNav() {
   const router = useRouter();
+  const [profileSearchLoading, setProfileSearchLoading] = useState(false);
 
   const app = useApp() || {};
   const {
@@ -28,6 +37,7 @@ export default function TopNav() {
     setSearch = () => {},
     setAuthModal = () => {},
     setMobileMenu = () => {},
+    pushToast = () => {},
   } = app;
 
   const safeUser = currentUser || null;
@@ -65,6 +75,67 @@ export default function TopNav() {
     router.push("/notifications");
   };
 
+  const handleSearchSubmit = async (event) => {
+    event?.preventDefault?.();
+
+    const q = String(search || "").trim();
+
+    if (!q) {
+      setSearch("");
+      router.push("/");
+      return;
+    }
+
+    // Normal text stays as post search. This keeps the current feed search behavior,
+    // and pressing Enter from another page returns the user to the feed with the same query.
+    if (!isEmailSearch(q)) {
+      router.push("/");
+      return;
+    }
+
+    // Email profile lookup is protected because profile emails should not be publicly enumerable.
+    if (!safeUser) {
+      setAuthModal("login");
+      pushToast("Please sign in to search member profiles by email.", "info");
+      return;
+    }
+
+    if (userStatus !== "verified") {
+      router.push(
+        `/pending-review?email=${encodeURIComponent(displayEmail)}&name=${encodeURIComponent(displayName)}&found=1`
+      );
+      return;
+    }
+
+    try {
+      setProfileSearchLoading(true);
+
+      const { data, error } = await findProfileByEmailForSearch(q);
+
+      if (error || !data?.id) {
+        pushToast(error?.message || "User not found.", "error");
+        return;
+      }
+
+      setSearch("");
+
+      if (data.id === safeUser.id) {
+        router.push("/profile");
+        return;
+      }
+
+      router.push(
+        `/profile/${encodeURIComponent(data.id)}?name=${encodeURIComponent(
+          data.full_name || "SoldierHub member"
+        )}`
+      );
+    } catch {
+      pushToast("Could not search right now. Please try again.", "error");
+    } finally {
+      setProfileSearchLoading(false);
+    }
+  };
+
   return (
     <div
       className="sticky top-0 z-40 border-b backdrop-blur-xl"
@@ -88,7 +159,7 @@ export default function TopNav() {
           />
         </Link>
 
-        <div className="hidden md:flex flex-1 max-w-lg">
+        <form onSubmit={handleSearchSubmit} className="hidden md:flex flex-1 max-w-lg">
           <div className="relative w-full group">
             <Search
               size={17}
@@ -99,8 +170,10 @@ export default function TopNav() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search posts, people, places…"
-              className="w-full h-12 pl-11 pr-16 rounded-2xl text-sm outline-none border shadow-sm transition-all"
+              placeholder="Search posts or exact email…"
+              autoComplete="off"
+              inputMode="search"
+              className="w-full h-12 pl-11 pr-20 rounded-2xl text-sm outline-none border shadow-sm transition-all"
               style={{
                 borderColor: T.border,
                 backgroundColor: "rgba(253,254,255,0.88)",
@@ -116,18 +189,21 @@ export default function TopNav() {
               }}
             />
 
-            <span
-              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-xl border px-2 py-1 text-[11px] font-semibold"
+            <button
+              type="submit"
+              disabled={profileSearchLoading}
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-xl border px-2 py-1 text-[11px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-70"
               style={{
                 color: T.textSubtle,
                 borderColor: T.borderSoft,
                 backgroundColor: T.surface,
               }}
+              aria-label="Run search"
             >
-              Ctrl K
-            </span>
+              {profileSearchLoading ? "..." : "Enter"}
+            </button>
           </div>
-        </div>
+        </form>
 
         <div className="flex-1 md:flex-none" />
 
@@ -262,7 +338,7 @@ export default function TopNav() {
       </div>
 
       <div className="md:hidden px-4 pb-3">
-        <div className="relative">
+        <form onSubmit={handleSearchSubmit} className="relative">
           <Search
             size={16}
             className="absolute left-3.5 top-1/2 -translate-y-1/2"
@@ -272,15 +348,31 @@ export default function TopNav() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search posts…"
-            className="w-full h-11 pl-10 pr-4 rounded-2xl text-sm outline-none border shadow-sm"
+            placeholder="Search posts or exact email…"
+            autoComplete="off"
+            inputMode="search"
+            className="w-full h-11 pl-10 pr-16 rounded-2xl text-sm outline-none border shadow-sm"
             style={{
               borderColor: T.border,
               backgroundColor: T.card,
               color: T.text,
             }}
           />
-        </div>
+
+          <button
+            type="submit"
+            disabled={profileSearchLoading}
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-xl border px-2.5 py-1 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-70"
+            style={{
+              color: T.textSubtle,
+              borderColor: T.borderSoft,
+              backgroundColor: T.surface,
+            }}
+            aria-label="Run search"
+          >
+            {profileSearchLoading ? "..." : "Go"}
+          </button>
+        </form>
       </div>
     </div>
   );
