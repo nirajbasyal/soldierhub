@@ -81,8 +81,10 @@ export async function checkContentSafety(text) {
   const localCheck = localThreatCheck(cleanText);
   if (!localCheck.allowed) return localCheck;
 
-  if (!process.env.OPENAI_API_KEY) {
-    console.warn("OPENAI_API_KEY is missing. Server moderation is using local safety checks only.");
+  const apiKey = process.env.MODERATION_API_KEY || process.env.OPENAI_API_KEY;
+
+  if (!apiKey) {
+    console.warn("Moderation API key is missing. Server moderation is using local safety checks only.");
 
     return {
       allowed: true,
@@ -95,7 +97,8 @@ export async function checkContentSafety(text) {
   }
 
   try {
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const openai = new OpenAI({ apiKey });
+
     const moderation = await openai.moderations.create({
       model: "omni-moderation-latest",
       input: cleanText,
