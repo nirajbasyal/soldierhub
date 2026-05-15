@@ -273,7 +273,7 @@ export default function HomePage() {
       <main className="max-w-6xl mx-auto px-0 md:px-5 pt-0 md:pt-6 pb-24 md:pb-10 overflow-x-hidden">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-2 lg:gap-4">
           <div className="flex flex-col gap-2 min-w-0">
-            <div className="block lg:hidden -mt-1 px-2">
+            <div className="block lg:hidden -mt-3 px-2">
               <MobileWeatherStrip />
             </div>
 
