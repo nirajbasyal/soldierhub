@@ -92,11 +92,21 @@ function followConnectionsCacheKey(type, profileId) {
   return safeCacheKey(FOLLOW_CONNECTIONS_CACHE_PREFIX, normalizedType, profileId);
 }
 
-async function getAccessTokenForApi(supabase) {
+async function getCurrentSession(supabase) {
   const {
     data: { session },
     error,
   } = await supabase.auth.getSession();
+
+  if (error || !session?.user?.id) {
+    return { session: null, error: error || { message: "Please log in again." } };
+  }
+
+  return { session, error: null };
+}
+
+async function getAccessTokenForApi(supabase) {
+  const { session, error } = await getCurrentSession(supabase);
 
   if (error || !session?.access_token) {
     return { accessToken: null, error: error || { message: "Please log in again." } };
@@ -192,16 +202,13 @@ export function clearCachedFollowConnections(type, profileId) {
 }
 
 async function getCurrentUserId(supabase) {
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
+  const { session, error } = await getCurrentSession(supabase);
 
-  if (error || !user?.id) {
+  if (error || !session?.user?.id) {
     return { userId: null, error: error || { message: "Please log in again." } };
   }
 
-  return { userId: user.id, error: null };
+  return { userId: session.user.id, error: null };
 }
 
 export async function getFollowSummary(profileId, viewerId = null, options = {}) {
