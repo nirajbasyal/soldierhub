@@ -64,40 +64,8 @@ function normalizeCommentRow(comment = {}) {
   };
 }
 
-async function hydrateMissingAuthorIds(supabase, comments = []) {
-  const normalizedComments = comments.map(normalizeCommentRow);
-  const missingAuthorIds = normalizedComments.filter(
-    (comment) => comment.id && !comment.author_id
-  );
-
-  if (!supabase || missingAuthorIds.length === 0) return normalizedComments;
-
-  const commentIds = [...new Set(missingAuthorIds.map((comment) => comment.id).filter(Boolean))];
-
-  if (commentIds.length === 0) return normalizedComments;
-
-  const { data, error } = await supabase
-    .from("comments")
-    .select("id, author_id")
-    .in("id", commentIds);
-
-  if (error || !Array.isArray(data)) return normalizedComments;
-
-  const authorByCommentId = new Map(
-    data.filter((item) => item?.id && item?.author_id).map((item) => [item.id, item.author_id])
-  );
-
-  return normalizedComments.map((comment) => {
-    if (comment.author_id) return comment;
-
-    const authorId = authorByCommentId.get(comment.id) || null;
-
-    return {
-      ...comment,
-      author_id: authorId,
-      author_user_id: authorId,
-    };
-  });
+function normalizeSafeComments(comments = []) {
+  return (comments || []).map(normalizeCommentRow);
 }
 
 export async function listCommentsForPost(postId, { limit = DEFAULT_COMMENT_LIMIT } = {}) {
@@ -105,7 +73,7 @@ export async function listCommentsForPost(postId, { limit = DEFAULT_COMMENT_LIMI
   if (!supabase) return { data: [], error: null };
 
   // The updated Supabase function uses `target_post_id` and `limit_count`.
-  // Keep fallbacks so local/staging DBs do not break if they lag behind production.
+  // Keep RPC signature fallbacks so local/staging DBs do not break if they lag behind production.
   let result = await supabase.rpc("get_public_comments_for_post", {
     target_post_id: postId,
     limit_count: limit,
@@ -134,7 +102,7 @@ export async function listCommentsForPost(postId, { limit = DEFAULT_COMMENT_LIMI
   if (result.error) return { data: [], error: result.error };
 
   return {
-    data: await hydrateMissingAuthorIds(supabase, result.data || []),
+    data: normalizeSafeComments(result.data || []),
     error: null,
   };
 }
