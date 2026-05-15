@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, FileText, Loader2, UserCheck, UserPlus, UserRound } from "lucide-react";
 import { T } from "@/lib/theme";
@@ -16,6 +16,9 @@ import EmptyState from "@/components/ui/EmptyState";
 import PostCard from "@/components/feed/PostCard";
 import PostSkeleton from "@/components/ui/PostSkeleton";
 import ShareProfileButton from "@/components/profile/ShareProfileButton";
+
+const VISITOR_PROFILE_CACHE_PREFIX = "soldierhub_visitor_profile_v2:";
+const VISITOR_PROFILE_CACHE_MAX_AGE_MS = 1000 * 60 * 5;
 
 function getAuthorId(item = {}) {
   return (
@@ -79,6 +82,45 @@ function normalizeProfile(row = {}, fallbackPost = null, fallbackName = "") {
   };
 }
 
+function readVisitorProfileCache(profileId) {
+  if (typeof window === "undefined" || !profileId) return null;
+
+  try {
+    const raw = window.localStorage.getItem(`${VISITOR_PROFILE_CACHE_PREFIX}${profileId}`);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw);
+    const savedAt = Number(parsed?.savedAt || 0);
+
+    if (!savedAt || Date.now() - savedAt > VISITOR_PROFILE_CACHE_MAX_AGE_MS) {
+      window.localStorage.removeItem(`${VISITOR_PROFILE_CACHE_PREFIX}${profileId}`);
+      return null;
+    }
+
+    if (!parsed?.profile) return null;
+    return {
+      profile: parsed.profile,
+      posts: Array.isArray(parsed.posts) ? parsed.posts : [],
+    };
+  } catch {
+    window.localStorage.removeItem(`${VISITOR_PROFILE_CACHE_PREFIX}${profileId}`);
+    return null;
+  }
+}
+
+function writeVisitorProfileCache(profileId, profile, posts = []) {
+  if (typeof window === "undefined" || !profileId || !profile) return;
+
+  try {
+    window.localStorage.setItem(
+      `${VISITOR_PROFILE_CACHE_PREFIX}${profileId}`,
+      JSON.stringify({ profile, posts: posts.slice(0, 30), savedAt: Date.now() })
+    );
+  } catch {
+    // Cache is only used to make profile navigation feel instant.
+  }
+}
+
 function StatCard({ label, value }) {
   return (
     <div
@@ -113,6 +155,7 @@ export default function VisitorProfilePage() {
   const [profile, setProfile] = useState(null);
   const [userPosts, setUserPosts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshingProfile, setRefreshingProfile] = useState(false);
   const [followSummary, setFollowSummary] = useState({
     followersCount: 0,
     followingCount: 0,
@@ -136,19 +179,44 @@ export default function VisitorProfilePage() {
     }
   }, [authLoading, currentUser, isOwnProfile, router, setAuthModal]);
 
-  const loadFollowSummary = useCallback(async () => {
-    if (!profileId || isOwnProfile) return;
+  const loadFollowSummary = useCallback(
+    async ({ silent = false, skipCache = false } = {}) => {
+      if (!profileId || isOwnProfile) return;
 
-    const { data, error } = await Follows.getFollowSummary(profileId, currentUser?.id || null);
+      if (!silent) {
+        const cachedSummary = Follows.getCachedFollowSummary?.(profileId, currentUser?.id || null);
+        if (cachedSummary) {
+          setFollowSummary(cachedSummary);
+        } else {
+          setFollowLoading(true);
+        }
+      }
 
-    if (!error) {
-      setFollowSummary(data);
-    }
-  }, [currentUser?.id, isOwnProfile, profileId]);
+      const { data, error } = await Follows.getFollowSummary(profileId, currentUser?.id || null, {
+        skipCache,
+      });
+
+      if (!silent) setFollowLoading(false);
+
+      if (!error && data) {
+        setFollowSummary(data);
+      }
+    },
+    [currentUser?.id, isOwnProfile, profileId]
+  );
 
   useEffect(() => {
     loadFollowSummary();
   }, [loadFollowSummary]);
+
+  const localPostsForProfile = useMemo(
+    () =>
+      posts
+        .filter((post) => getAuthorId(post) === profileId && !post?.anonymous)
+        .map(normalizePostRow)
+        .filter((post) => post.id),
+    [posts, profileId]
+  );
 
   useEffect(() => {
     if (authLoading || !profileId || isOwnProfile) return;
@@ -156,15 +224,26 @@ export default function VisitorProfilePage() {
     let cancelled = false;
 
     async function loadVisitorProfile() {
-      setLoading(true);
+      const cached = readVisitorProfileCache(profileId);
+      const hasCache = Boolean(cached?.profile);
 
-      const localPosts = posts
-        .filter((post) => getAuthorId(post) === profileId && !post?.anonymous)
-        .map(normalizePostRow)
-        .filter((post) => post.id);
+      if (hasCache) {
+        setProfile(cached.profile);
+        setUserPosts(cached.posts || []);
+        setLoading(false);
+        setRefreshingProfile(true);
+      } else if (localPostsForProfile.length > 0) {
+        const fallbackProfile = normalizeProfile(null, localPostsForProfile[0], fallbackName);
+        setProfile(fallbackProfile);
+        setUserPosts(localPostsForProfile);
+        setLoading(false);
+        setRefreshingProfile(true);
+      } else {
+        setLoading(true);
+      }
 
       let profileRow = null;
-      let postRows = localPosts;
+      let postRows = localPostsForProfile;
 
       try {
         if (isLiveMode) {
@@ -189,17 +268,17 @@ export default function VisitorProfilePage() {
             profileRow = profileData || null;
             postRows = Array.isArray(livePosts)
               ? livePosts.map(normalizePostRow).filter((post) => post.id)
-              : localPosts;
+              : localPostsForProfile;
           }
         }
       } catch {
         profileRow = null;
-        postRows = localPosts;
+        postRows = localPostsForProfile;
       }
 
       if (cancelled) return;
 
-      const fallbackPost = postRows[0] || localPosts[0] || null;
+      const fallbackPost = postRows[0] || localPostsForProfile[0] || null;
       const safeFallbackProfile = fallbackName
         ? {
             id: profileId,
@@ -212,13 +291,19 @@ export default function VisitorProfilePage() {
           }
         : null;
 
-      setProfile(
+      const nextProfile =
         profileRow || fallbackPost
           ? normalizeProfile(profileRow, fallbackPost, fallbackName)
-          : safeFallbackProfile
-      );
+          : safeFallbackProfile;
+
+      setProfile(nextProfile);
       setUserPosts(postRows);
       setLoading(false);
+      setRefreshingProfile(false);
+
+      if (nextProfile) {
+        writeVisitorProfileCache(profileId, nextProfile, postRows);
+      }
     }
 
     loadVisitorProfile();
@@ -226,7 +311,7 @@ export default function VisitorProfilePage() {
     return () => {
       cancelled = true;
     };
-  }, [authLoading, currentUser?.id, fallbackName, isLiveMode, isOwnProfile, posts, profileId]);
+  }, [authLoading, fallbackName, isLiveMode, isOwnProfile, localPostsForProfile, profileId]);
 
   const handleFollowToggle = async () => {
     if (!currentUser) {
@@ -239,11 +324,14 @@ export default function VisitorProfilePage() {
     setFollowLoading(true);
     const wasFollowing = followSummary.isFollowing;
 
-    setFollowSummary((prev) => ({
-      ...prev,
+    const optimisticSummary = {
+      ...followSummary,
       isFollowing: !wasFollowing,
-      followersCount: Math.max(0, (prev.followersCount || 0) + (wasFollowing ? -1 : 1)),
-    }));
+      followersCount: Math.max(0, (followSummary.followersCount || 0) + (wasFollowing ? -1 : 1)),
+    };
+
+    setFollowSummary(optimisticSummary);
+    Follows.cacheFollowSummary?.(profileId, currentUser.id, optimisticSummary);
 
     const result = wasFollowing
       ? await Follows.unfollowUser(profileId)
@@ -252,17 +340,19 @@ export default function VisitorProfilePage() {
     setFollowLoading(false);
 
     if (result.error) {
-      setFollowSummary((prev) => ({
-        ...prev,
+      const rollbackSummary = {
+        ...optimisticSummary,
         isFollowing: wasFollowing,
-        followersCount: Math.max(0, (prev.followersCount || 0) + (wasFollowing ? 1 : -1)),
-      }));
+        followersCount: Math.max(0, (optimisticSummary.followersCount || 0) + (wasFollowing ? 1 : -1)),
+      };
+      setFollowSummary(rollbackSummary);
+      Follows.cacheFollowSummary?.(profileId, currentUser.id, rollbackSummary);
       pushToast?.(result.error.message || "Could not update follow status.", "error");
       return;
     }
 
     pushToast?.(wasFollowing ? "Member unfollowed." : "Member followed.", "success");
-    loadFollowSummary();
+    loadFollowSummary({ silent: true, skipCache: true });
   };
 
   const publicPostCount = userPosts.length;
@@ -321,6 +411,7 @@ export default function VisitorProfilePage() {
                     >
                       <UserRound size={13} />
                       Member Profile
+                      {refreshingProfile ? <Loader2 size={12} className="animate-spin" /> : null}
                     </div>
 
                     <h1 className="mt-3 text-[2rem] sm:text-4xl md:text-5xl font-extrabold tracking-[-0.04em] leading-[0.95]" style={{ color: T.navy }}>
@@ -363,8 +454,8 @@ export default function VisitorProfilePage() {
 
                   <div className="grid grid-cols-3 md:grid-cols-1 gap-2 md:min-w-[150px]">
                     <StatCard label="Posts" value={publicPostCount} />
-                    <StatCard label="Followers" value={followSummary.followersCount || 0} />
-                    <StatCard label="Following" value={followSummary.followingCount || 0} />
+                    <StatCard label="Followers" value={followLoading && !followSummary.followersCount ? "…" : followSummary.followersCount || 0} />
+                    <StatCard label="Following" value={followLoading && !followSummary.followingCount ? "…" : followSummary.followingCount || 0} />
                   </div>
                 </div>
               ) : (
