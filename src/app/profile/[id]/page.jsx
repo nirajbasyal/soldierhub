@@ -18,7 +18,7 @@ import PostCard from "@/components/feed/PostCard";
 import PostSkeleton from "@/components/ui/PostSkeleton";
 import ShareProfileButton from "@/components/profile/ShareProfileButton";
 
-const VISITOR_PROFILE_CACHE_PREFIX = "soldierhub_visitor_profile_v3:";
+const VISITOR_PROFILE_CACHE_PREFIX = "soldierhub_visitor_profile_v4:";
 const VISITOR_PROFILE_CACHE_MAX_AGE_MS = 1000 * 60 * 5;
 const EMAIL_LOOKUP_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -193,13 +193,14 @@ export default function VisitorProfilePage() {
     pushToast,
   } = useApp();
   const routeProfileLookup = typeof params?.id === "string" ? decodeURIComponent(params.id).trim() : "";
+  const routeProfileId = getSafeProfileId(routeProfileLookup);
   const fallbackName = cleanFallbackName(searchParams?.get("name") || "");
 
   const [profile, setProfile] = useState(null);
   const [userPosts, setUserPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshingProfile, setRefreshingProfile] = useState(false);
-  const [resolvedProfileId, setResolvedProfileId] = useState(getSafeProfileId(routeProfileLookup));
+  const [resolvedProfileId, setResolvedProfileId] = useState(routeProfileId);
   const [followSummary, setFollowSummary] = useState({
     followersCount: 0,
     followingCount: 0,
@@ -207,12 +208,20 @@ export default function VisitorProfilePage() {
   });
   const [followLoading, setFollowLoading] = useState(false);
 
-  const targetProfileId = getSafeProfileId(profile?.id) || getSafeProfileId(resolvedProfileId) || getSafeProfileId(routeProfileLookup);
+  const activeProfileId = getSafeProfileId(profile?.id);
+  const targetProfileId = routeProfileId || getSafeProfileId(resolvedProfileId) || activeProfileId;
   const isOwnProfile = Boolean(targetProfileId && currentUser?.id === targetProfileId);
 
   useEffect(() => {
-    const routeUuid = getSafeProfileId(routeProfileLookup);
-    if (routeUuid) setResolvedProfileId(routeUuid);
+    const nextRouteProfileId = getSafeProfileId(routeProfileLookup);
+
+    setResolvedProfileId(nextRouteProfileId);
+    setProfile(null);
+    setUserPosts([]);
+    setLoading(true);
+    setRefreshingProfile(false);
+    setFollowLoading(false);
+    setFollowSummary({ followersCount: 0, followingCount: 0, isFollowing: false });
   }, [routeProfileLookup]);
 
   useEffect(() => {
@@ -260,14 +269,14 @@ export default function VisitorProfilePage() {
   }, [loadFollowSummary]);
 
   const localPostsForProfile = useMemo(() => {
-    const safeLookupId = targetProfileId || getSafeProfileId(routeProfileLookup);
+    const safeLookupId = routeProfileId || getSafeProfileId(resolvedProfileId) || activeProfileId;
     if (!safeLookupId) return [];
 
     return posts
       .filter((post) => getAuthorId(post) === safeLookupId && !post?.anonymous)
       .map(normalizePostRow)
       .filter((post) => post.id);
-  }, [posts, routeProfileLookup, targetProfileId]);
+  }, [activeProfileId, posts, resolvedProfileId, routeProfileId]);
 
   useEffect(() => {
     if (authLoading || !routeProfileLookup || isOwnProfile) return;
@@ -275,13 +284,14 @@ export default function VisitorProfilePage() {
     let cancelled = false;
 
     async function loadVisitorProfile() {
-      const cacheKey = targetProfileId || routeProfileLookup;
+      const startingProfileId = routeProfileId || getSafeProfileId(resolvedProfileId);
+      const cacheKey = startingProfileId || routeProfileLookup;
       const cached = readVisitorProfileCache(cacheKey);
-      const hasCache = Boolean(cached?.profile);
+      const cachedProfileId = getSafeProfileId(cached?.profile?.id);
+      const cacheMatchesRoute = Boolean(cached?.profile) && (!routeProfileId || cachedProfileId === routeProfileId);
 
-      if (hasCache) {
-        const cachedId = getSafeProfileId(cached.profile?.id);
-        if (cachedId) setResolvedProfileId(cachedId);
+      if (cacheMatchesRoute) {
+        if (cachedProfileId) setResolvedProfileId(cachedProfileId);
         setProfile(cached.profile);
         setUserPosts(cached.posts || []);
         setLoading(false);
@@ -297,7 +307,7 @@ export default function VisitorProfilePage() {
         setLoading(true);
       }
 
-      let resolvedLookup = targetProfileId;
+      let resolvedLookup = startingProfileId;
       let previewProfile = null;
 
       if (!resolvedLookup) {
@@ -381,7 +391,7 @@ export default function VisitorProfilePage() {
     return () => {
       cancelled = true;
     };
-  }, [authLoading, fallbackName, isLiveMode, isOwnProfile, localPostsForProfile, routeProfileLookup, targetProfileId]);
+  }, [authLoading, fallbackName, isLiveMode, isOwnProfile, localPostsForProfile, resolvedProfileId, routeProfileId, routeProfileLookup]);
 
   const handleFollowToggle = async () => {
     if (!currentUser) {
@@ -389,7 +399,7 @@ export default function VisitorProfilePage() {
       return;
     }
 
-    const safeTargetProfileId = getSafeProfileId(profile?.id) || getSafeProfileId(resolvedProfileId) || getSafeProfileId(routeProfileLookup);
+    const safeTargetProfileId = routeProfileId || getSafeProfileId(resolvedProfileId) || getSafeProfileId(profile?.id);
 
     if (!safeTargetProfileId) {
       pushToast?.("Profile is still loading. Please try again in a moment.", "info");
