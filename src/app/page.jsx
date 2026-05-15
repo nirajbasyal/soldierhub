@@ -270,8 +270,8 @@ export default function HomePage() {
 
   return (
     <AppShell>
-      <main className="max-w-6xl mx-auto px-4 md:px-6 py-3 md:py-6 pb-24 md:pb-10">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-3 lg:gap-4">
+      <main className="max-w-6xl mx-auto px-2 md:px-5 py-3 md:py-6 pb-24 md:pb-10">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-2 lg:gap-4">
           <div className="flex flex-col gap-2 min-w-0">
             <div className="block lg:hidden">
               <MobileWeatherStrip />
@@ -282,7 +282,7 @@ export default function HomePage() {
             <PostComposer />
 
             <div
-              className="sticky top-[68px] md:top-[85px] z-20 -mx-4 md:mx-0 px-4 md:px-0 py-1.5 backdrop-blur-xl"
+              className="sticky top-[68px] md:top-[85px] z-20 -mx-2 md:mx-0 px-2 md:px-0 py-1.5 backdrop-blur-xl"
               style={{
                 background:
                   "linear-gradient(180deg, rgba(234,240,248,0.96) 0%, rgba(234,240,248,0.82) 100%)",
@@ -319,7 +319,7 @@ export default function HomePage() {
             ) : null}
 
             {showInitialSkeleton ? (
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-1">
                 <PostSkeleton />
                 <PostSkeleton />
                 <PostSkeleton />
@@ -341,7 +341,7 @@ export default function HomePage() {
               </div>
             ) : (
               <>
-                <div className="-mx-4 md:mx-0 flex flex-col gap-2 sh-feed-post-list">
+                <div className="-mx-2 md:mx-0 flex flex-col gap-0 sh-feed-post-list">
                   {visibleFiltered.map((post) => {
                     const normalizedPost = normalizeFeedPostForCard(post);
                     return <PostCard key={normalizedPost.id} post={normalizedPost} />;
