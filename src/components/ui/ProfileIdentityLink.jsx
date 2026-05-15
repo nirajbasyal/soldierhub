@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useApp } from "@/store/AppContext";
 
 function cleanFallbackName(value) {
@@ -9,14 +9,21 @@ function cleanFallbackName(value) {
   return name.slice(0, 80);
 }
 
+function normalizeUserId(value) {
+  const id = String(value || "").trim();
+  if (!id || id === "null" || id === "undefined") return "";
+  return id;
+}
+
 export function getProfileHref(userId, currentUser, fallbackName = "") {
+  const safeUserId = normalizeUserId(userId);
   const safeName = cleanFallbackName(fallbackName);
 
-  if (!userId) return "";
-  if (currentUser?.id && userId === currentUser.id) return "/profile";
+  if (!safeUserId) return "";
+  if (currentUser?.id && safeUserId === currentUser.id) return "/profile";
 
   const query = safeName ? `?name=${encodeURIComponent(safeName)}` : "";
-  return `/profile/${encodeURIComponent(userId)}${query}`;
+  return `/profile/${encodeURIComponent(safeUserId)}${query}`;
 }
 
 export default function ProfileIdentityLink({
@@ -27,43 +34,54 @@ export default function ProfileIdentityLink({
   className = "",
   style,
   title = "View profile",
+  ariaLabel,
+  prefetch = false,
 }) {
-  const router = useRouter();
   const { currentUser, setAuthModal } = useApp();
   const href = getProfileHref(userId, currentUser, fallbackName);
   const canOpen = Boolean(href && !disabled);
 
-  const openProfile = (event) => {
-    event?.preventDefault?.();
-    event?.stopPropagation?.();
+  const handleClick = (event) => {
+    // Profile links are often rendered inside clickable cards.
+    // Stop bubbling so clicking a username/avatar opens the profile,
+    // not the surrounding notification/post action.
+    event.stopPropagation();
 
-    if (!canOpen) return;
-
-    if (!currentUser) {
-      setAuthModal?.("login");
+    if (!canOpen) {
+      event.preventDefault();
       return;
     }
 
-    router.push(href);
+    if (!currentUser) {
+      event.preventDefault();
+      setAuthModal?.("login");
+    }
   };
 
-  const handleKeyDown = (event) => {
-    if (!canOpen) return;
-    if (event.key !== "Enter" && event.key !== " ") return;
-    openProfile(event);
-  };
+  if (!canOpen) {
+    return (
+      <span
+        aria-disabled="true"
+        className={className}
+        style={style}
+        onClick={(event) => event.stopPropagation()}
+      >
+        {children}
+      </span>
+    );
+  }
 
   return (
-    <span
-      role={canOpen ? "link" : undefined}
-      tabIndex={canOpen ? 0 : undefined}
-      title={canOpen ? title : undefined}
-      onClick={openProfile}
-      onKeyDown={handleKeyDown}
+    <Link
+      href={href}
+      prefetch={prefetch}
+      title={title}
+      aria-label={ariaLabel || title}
+      onClick={handleClick}
       className={className}
       style={style}
     >
       {children}
-    </span>
+    </Link>
   );
 }
