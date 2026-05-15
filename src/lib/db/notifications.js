@@ -166,27 +166,12 @@ async function loadPostsForNotifications(supabase, postIds = []) {
   const safePostIds = uniqueValues(postIds);
   if (!supabase || safePostIds.length === 0) return postById;
 
-  const { data: viewPosts, error: viewError } = await supabase
-    .from("posts_with_meta")
-    .select("*")
-    .in("id", safePostIds);
-
-  if (!viewError) {
-    (viewPosts || []).forEach((post) => {
-      const normalized = normalizePostRow(post);
-      if (normalized.id) postById.set(normalized.id, normalized);
-    });
-  }
-
-  const missingPostIds = safePostIds.filter((postId) => !postById.has(postId));
-  if (missingPostIds.length === 0) return postById;
-
-  const { data: tablePosts, error: tableError } = await supabase
+  const { data: tablePosts, error } = await supabase
     .from("posts")
     .select("id, body, category, anonymous, status, created_at")
-    .in("id", missingPostIds);
+    .in("id", safePostIds);
 
-  if (!tableError) {
+  if (!error) {
     (tablePosts || []).forEach((post) => {
       const normalized = normalizePostRow(post);
       if (normalized.id) postById.set(normalized.id, normalized);
