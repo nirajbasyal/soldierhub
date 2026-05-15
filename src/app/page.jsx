@@ -270,10 +270,10 @@ export default function HomePage() {
 
   return (
     <AppShell>
-      <main className="max-w-6xl mx-auto px-0 md:px-5 py-3 md:py-6 pb-24 md:pb-10 overflow-x-hidden">
+      <main className="max-w-6xl mx-auto px-0 md:px-5 pt-1 md:pt-6 pb-24 md:pb-10 overflow-x-hidden">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-2 lg:gap-4">
           <div className="flex flex-col gap-2 min-w-0">
-            <div className="block lg:hidden mt-2 px-2">
+            <div className="block lg:hidden px-2">
               <MobileWeatherStrip />
             </div>
 
@@ -286,19 +286,17 @@ export default function HomePage() {
             </div>
 
             <div
-              className="sticky top-[68px] md:top-[85px] z-20 px-0 md:px-0 py-1.5 backdrop-blur-xl"
+              className="sticky top-[68px] md:top-[85px] z-20 w-full px-0 py-1.5 backdrop-blur-xl"
               style={{
                 background:
                   "linear-gradient(180deg, rgba(234,240,248,0.96) 0%, rgba(234,240,248,0.82) 100%)",
               }}
             >
-              <div className="px-2 md:px-0">
-                <CategoryStrip
-                  selected={category}
-                  counts={counts}
-                  onSelect={setCategory}
-                />
-              </div>
+              <CategoryStrip
+                selected={category}
+                counts={counts}
+                onSelect={setCategory}
+              />
             </div>
 
             {hasNewFeedItems ? (
