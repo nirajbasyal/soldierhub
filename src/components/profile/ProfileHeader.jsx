@@ -25,6 +25,7 @@ import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import TextInput from "@/components/ui/TextInput";
 import TextArea from "@/components/ui/TextArea";
+import ShareProfileButton from "@/components/profile/ShareProfileButton";
 
 const COLOR_OPTIONS = [
   "#0B1C2C",
@@ -676,16 +677,23 @@ export default function ProfileHeader() {
         </div>
 
         {!editing && (
-          <div className="mt-4 md:mt-5 flex justify-center md:justify-start">
+          <div className="mt-4 md:mt-5 flex flex-col sm:flex-row items-center justify-center md:justify-start gap-2">
             <button
               type="button"
               onClick={() => setEditing(true)}
-              className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold transition hover:-translate-y-0.5"
+              className="inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-bold transition hover:-translate-y-0.5 w-full sm:w-auto"
               style={{ backgroundColor: T.navy, borderColor: "rgba(7,27,51,0.18)", color: "#FFFFFF" }}
             >
               <Edit3 size={16} />
               Edit profile
             </button>
+
+            <ShareProfileButton
+              profileId={currentUser?.id}
+              profileName={displayName}
+              pushToast={pushToast}
+              className="w-full sm:w-auto"
+            />
           </div>
         )}
 
