@@ -10,6 +10,7 @@ import AppShell from "@/components/layout/AppShell";
 import Footer from "@/components/layout/Footer";
 import Button from "@/components/ui/Button";
 import ProfileHeader from "@/components/profile/ProfileHeader";
+import ShareProfileButton from "@/components/profile/ShareProfileButton";
 import UserPostList from "@/components/profile/UserPostList";
 
 function ProfileStatusCard({ icon: Icon, title, body, action }) {
@@ -55,7 +56,7 @@ function ProfileStatusCard({ icon: Icon, title, body, action }) {
 export default function ProfilePage() {
   const router = useRouter();
 
-  const { currentUser, authLoading, setAuthModal, handleLogout } = useApp();
+  const { currentUser, authLoading, setAuthModal, handleLogout, pushToast } = useApp();
 
   const userStatus =
     currentUser?.status || currentUser?.verification_status || "pending";
@@ -160,6 +161,20 @@ export default function ProfilePage() {
           </div>
 
           <ProfileHeader />
+
+          <div className="-mt-20 md:-mt-20 mb-8 relative z-10 pointer-events-none">
+            <div className="flex justify-center md:justify-start md:pl-[236px] pointer-events-auto">
+              <div className="flex flex-col sm:flex-row items-center gap-2">
+                <div className="hidden sm:block w-[142px]" aria-hidden="true" />
+                <ShareProfileButton
+                  profileId={currentUser.id}
+                  profileName={currentUser.full_name || "SoldierHub user"}
+                  pushToast={pushToast}
+                />
+              </div>
+            </div>
+          </div>
+
           <UserPostList />
 
           <Footer />
