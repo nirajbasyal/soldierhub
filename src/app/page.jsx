@@ -18,7 +18,9 @@ import BAHCard from "@/components/tools/BAHCard";
 import GateHoursCard from "@/components/tools/GateHoursCard";
 import SiteInfoCard from "@/components/tools/SiteInfoCard";
 
-const FEED_CACHE_KEY = "soldierhub_feed_cache_v1";
+const FEED_CACHE_KEY = "soldierhub_feed_cache_v2";
+const LEGACY_FEED_CACHE_KEYS = ["soldierhub_feed_cache_v1"];
+const FEED_CACHE_MAX_AGE_MS = 1000 * 60 * 5;
 const INITIAL_RENDERED_POSTS = 20;
 const RENDER_INCREMENT = 20;
 
@@ -57,20 +59,46 @@ function normalizeFeedPostForCard(post) {
   };
 }
 
-function readCachedFeed() {
+function readCachedFeedFromKey(cacheKey) {
   if (typeof window === "undefined") return [];
 
   try {
-    const raw = window.localStorage.getItem(FEED_CACHE_KEY);
+    const raw = window.localStorage.getItem(cacheKey);
     if (!raw) return [];
 
     const parsed = JSON.parse(raw);
     const posts = Array.isArray(parsed?.posts) ? parsed.posts : [];
+    const savedAt = Number(parsed?.savedAt || 0);
+
+    if (!posts.length || !savedAt || Date.now() - savedAt > FEED_CACHE_MAX_AGE_MS) {
+      window.localStorage.removeItem(cacheKey);
+      return [];
+    }
+
     return posts.filter(isValidFeedPost).map(normalizeFeedPostForCard);
   } catch {
-    window.localStorage.removeItem(FEED_CACHE_KEY);
+    window.localStorage.removeItem(cacheKey);
     return [];
   }
+}
+
+function readCachedFeed() {
+  const primaryCachedPosts = readCachedFeedFromKey(FEED_CACHE_KEY);
+  if (primaryCachedPosts.length > 0) return primaryCachedPosts;
+
+  for (const legacyKey of LEGACY_FEED_CACHE_KEYS) {
+    const legacyCachedPosts = readCachedFeedFromKey(legacyKey);
+    if (legacyCachedPosts.length > 0) return legacyCachedPosts;
+  }
+
+  return [];
+}
+
+function clearFeedCaches() {
+  if (typeof window === "undefined") return;
+
+  window.localStorage.removeItem(FEED_CACHE_KEY);
+  LEGACY_FEED_CACHE_KEYS.forEach((legacyKey) => window.localStorage.removeItem(legacyKey));
 }
 
 export default function HomePage() {
@@ -138,8 +166,10 @@ export default function HomePage() {
     if (typeof window === "undefined") return;
 
     if (!posts.length) {
-      window.localStorage.removeItem(FEED_CACHE_KEY);
-      setCachedPosts([]);
+      if (!postsLoading) {
+        clearFeedCaches();
+        setCachedPosts([]);
+      }
       return;
     }
 
@@ -155,10 +185,11 @@ export default function HomePage() {
         FEED_CACHE_KEY,
         JSON.stringify({ savedAt: Date.now(), posts: postsToCache })
       );
+      LEGACY_FEED_CACHE_KEYS.forEach((legacyKey) => window.localStorage.removeItem(legacyKey));
     } catch {
-      window.localStorage.removeItem(FEED_CACHE_KEY);
+      clearFeedCaches();
     }
-  }, [posts]);
+  }, [posts, postsLoading]);
 
   const feedPosts = useMemo(() => {
     const source = posts.length ? posts : cachedPosts;
