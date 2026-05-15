@@ -154,7 +154,12 @@ async function getCurrentUserId(supabase) {
   return { userId: user.id, error: null };
 }
 
-export async function getFollowSummary(profileId, viewerId = null) {
+export async function getFollowSummary(profileId, viewerId = null, options = {}) {
+  const cached = options.skipCache ? null : getCachedFollowSummary(profileId, viewerId);
+  if (cached) {
+    return { data: cached, error: null, cached: true };
+  }
+
   const supabase = createClient();
   if (!supabase || !profileId) {
     return {
@@ -204,6 +209,7 @@ export async function getFollowSummary(profileId, viewerId = null) {
     return {
       data: summary,
       error: null,
+      cached: false,
     };
   } catch (error) {
     return {
@@ -284,7 +290,13 @@ export async function unfollowUser(targetProfileId) {
   return { error: getFriendlyError(error, "Could not unfollow this member.") };
 }
 
-export async function listFollowConnections(type, profileId, { limit = 100 } = {}) {
+export async function listFollowConnections(type, profileId, { limit = 100, skipCache = false } = {}) {
+  const normalizedType = type === "following" ? "following" : "followers";
+  const cached = skipCache ? null : getCachedFollowConnections(normalizedType, profileId);
+  if (cached) {
+    return { data: cached, error: null, cached: true };
+  }
+
   const supabase = createClient();
   if (!supabase || !profileId) {
     return { data: [], error: { message: "Follow system is not available." } };
@@ -297,7 +309,6 @@ export async function listFollowConnections(type, profileId, { limit = 100 } = {
     return { data: [], error: { message: "You can only view your own followers and following list." } };
   }
 
-  const normalizedType = type === "following" ? "following" : "followers";
   const safeLimit = cleanLimit(limit);
 
   const { data, error } = await supabase.rpc("list_my_follow_connections", {
@@ -328,5 +339,6 @@ export async function listFollowConnections(type, profileId, { limit = 100 } = {
   return {
     data: rows,
     error: null,
+    cached: false,
   };
 }
