@@ -14,7 +14,6 @@ function userMatchesSearch(user, searchQuery) {
     user.full_name,
     user.email,
     user.personal_email,
-    user.military_email,
     user.phone,
     user.status,
     user.verification_status,
@@ -49,7 +48,7 @@ export default function BlockedUsersList({ searchQuery = "" }) {
   }
 
   if (visibleUsers.length === 0) {
-    return <EmptyState icon={UserX} title="No matching blocked users" body="Try searching by name, email, military email, phone number, rejected, or revoked." />;
+    return <EmptyState icon={UserX} title="No matching blocked users" body="Try searching by name, email, phone number, rejected, or revoked." />;
   }
 
   const handleVerify = async (user) => {
@@ -98,12 +97,6 @@ export default function BlockedUsersList({ searchQuery = "" }) {
                   <Mail size={12} className="shrink-0" />
                   <span className="truncate">{email}</span>
                 </div>
-
-                {user.military_email && (
-                  <p className="text-xs mt-1" style={{ color: T.textMuted }}>
-                    Military email: <span style={{ color: T.text }}>{user.military_email}</span>
-                  </p>
-                )}
 
                 {user.phone && (
                   <p className="text-xs mt-1 flex items-center gap-1" style={{ color: T.textMuted }}>
