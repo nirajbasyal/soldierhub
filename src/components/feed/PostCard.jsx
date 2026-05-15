@@ -402,16 +402,20 @@ export default function PostCard({ post, openRepliesDefault = false }) {
     if (!ensurePostId()) return;
     const url = getPostUrl(postId);
 
-    try {
-      if (navigator?.share) {
+    if (navigator?.share) {
+      try {
         await navigator.share({ url });
         return;
+      } catch {
+        // User cancelled share or the device share sheet failed. Do not show an error.
       }
+    }
 
+    try {
       await navigator.clipboard.writeText(url);
       pushToast?.("Post link copied", "success");
     } catch {
-      pushToast?.("Could not share this post.", "error");
+      // Clipboard may be blocked on some browsers. Keep the UI quiet instead of showing a scary error.
     }
   };
 
