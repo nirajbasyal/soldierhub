@@ -23,6 +23,8 @@ import Button from "@/components/ui/Button";
 import MenuItem from "@/components/ui/MenuItem";
 import SiteInfoCard from "@/components/tools/SiteInfoCard";
 
+const SIDEBAR_LOGO_SRC = "/brand/soldierhub-logo-sidebar.svg";
+
 function getPathnameOnly(path = "") {
   return String(path || "").split("?")[0] || "/";
 }
@@ -36,10 +38,10 @@ function PageLoadingScreen() {
       <div className="w-full max-w-xs text-center">
         <div className="flex justify-center mb-5">
           <Image
-            src="/brand/soldierhub-logo.png"
+            src={SIDEBAR_LOGO_SRC}
             alt="SoldierHub"
-            width={220}
-            height={72}
+            width={240}
+            height={80}
             priority
             className="h-14 w-auto object-contain"
           />
@@ -194,12 +196,12 @@ export default function MobileMenu() {
         >
           <div className="flex items-center min-w-0">
             <Image
-              src="/brand/soldierhub-logo.png"
+              src={SIDEBAR_LOGO_SRC}
               alt="SoldierHub"
-              width={220}
-              height={72}
+              width={260}
+              height={80}
               priority
-              className="h-12 w-auto object-contain max-w-[210px]"
+              className="h-12 w-auto object-contain max-w-[230px]"
             />
           </div>
 
