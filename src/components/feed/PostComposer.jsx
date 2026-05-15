@@ -44,6 +44,7 @@ export default function PostComposer() {
   const [submitting, setSubmitting] = useState(false);
 
   const bodyRef = useRef(null);
+  const anonymousToggleAtRef = useRef(0);
 
   useEffect(() => {
     if (open && bodyRef.current) {
@@ -63,6 +64,10 @@ export default function PostComposer() {
     window.requestAnimationFrame(() => {
       bodyRef.current?.focus({ preventScroll: true });
     });
+
+    window.setTimeout(() => {
+      bodyRef.current?.focus({ preventScroll: true });
+    }, 60);
   };
 
   const selectCategory = (nextCategory) => {
@@ -78,6 +83,11 @@ export default function PostComposer() {
     event?.preventDefault?.();
     event?.stopPropagation?.();
 
+    const now = Date.now();
+    if (now - anonymousToggleAtRef.current < 250) return;
+    anonymousToggleAtRef.current = now;
+
+    bodyRef.current?.focus({ preventScroll: true });
     setAnonymous((value) => !value);
     keepComposerKeyboardOpen();
   };
@@ -346,13 +356,16 @@ export default function PostComposer() {
           type="button"
           aria-pressed={anonymous}
           disabled={submitting}
-          onPointerDown={(event) => event.preventDefault()}
-          onClick={toggleAnonymousWithoutBlur}
+          onPointerDown={toggleAnonymousWithoutBlur}
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+          }}
           className="flex items-center gap-2 text-sm cursor-pointer select-none disabled:cursor-not-allowed disabled:opacity-60"
           style={{
             color: anonymous ? T.text : T.textMuted,
             WebkitTapHighlightColor: "transparent",
-            touchAction: "manipulation",
+            touchAction: "none",
             userSelect: "none",
           }}
         >
