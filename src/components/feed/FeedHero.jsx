@@ -31,7 +31,7 @@ export default function FeedHero({ currentUser, postCount = 0 }) {
 
   return (
     <section
-      className="relative mb-4 overflow-hidden rounded-[26px] border px-4 py-4 shadow-[0_18px_42px_rgba(7,27,51,0.18)] md:mb-5 md:px-5 md:py-5"
+      className="relative mb-0 overflow-hidden rounded-[26px] border px-4 py-4 shadow-[0_18px_42px_rgba(7,27,51,0.18)] md:px-5 md:py-5"
       style={{
         backgroundColor: "#0B1C2C",
         borderColor: "rgba(191,212,236,0.22)",
