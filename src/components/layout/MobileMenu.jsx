@@ -70,6 +70,7 @@ export default function MobileMenu() {
 
   const {
     currentUser,
+    isAdmin = false,
     mobileMenu,
     setMobileMenu,
     setAuthModal,
@@ -101,11 +102,15 @@ export default function MobileMenu() {
 
     router.prefetch?.("/profile");
     router.prefetch?.("/notifications");
-    router.prefetch?.("/resources");
+
+    if (isAdmin) {
+      router.prefetch?.("/resources");
+      router.prefetch?.("/admin");
+    }
+
     router.prefetch?.("/tools/bah");
     router.prefetch?.("/tools/gates");
-    router.prefetch?.("/admin");
-  }, [mobileMenu, router]);
+  }, [isAdmin, mobileMenu, router]);
 
   if (isNavigating) {
     return <PageLoadingScreen />;
@@ -272,7 +277,7 @@ export default function MobileMenu() {
             </button>
           )}
 
-          {currentUser?.role === "admin" && (
+          {isAdmin && (
             <div>
               <div
                 className="text-[11px] font-semibold uppercase tracking-wider px-1 mb-2"
@@ -304,8 +309,14 @@ export default function MobileMenu() {
               <MenuItem
                 icon={BookMarked}
                 label="Resources"
-                hint="Official sites and trusted services"
-                onClick={() => go("/resources")}
+                hint={
+                  isAdmin
+                    ? "Official sites and trusted services"
+                    : "Admin is preparing trusted resources"
+                }
+                badge={isAdmin ? undefined : "Coming Soon"}
+                disabled={!isAdmin}
+                onClick={isAdmin ? () => go("/resources") : undefined}
               />
             </div>
           </div>
