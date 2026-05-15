@@ -1,13 +1,16 @@
 "use client";
 
+import * as Sentry from "@sentry/nextjs";
 import { useEffect } from "react";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 
 export default function GlobalError({ error, reset }) {
   useEffect(() => {
-    // Log to console in dev. In production, hook this up to your error
-    // monitoring service (Sentry, LogRocket, etc.).
-    console.error(error);
+    Sentry.captureException(error);
+
+    if (process.env.NODE_ENV !== "production") {
+      console.error(error);
+    }
   }, [error]);
 
   return (
@@ -66,8 +69,7 @@ export default function GlobalError({ error, reset }) {
                 margin: "12px 0 24px",
               }}
             >
-              An unexpected error happened. Try refreshing — if it persists,
-              let us know in the feed.
+              An unexpected error happened. Try refreshing the page.
             </p>
             <button
               onClick={reset}
