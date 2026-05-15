@@ -37,11 +37,11 @@ function InfoPill({ icon: Icon, label, value }) {
   return (
     <div
       className="rounded-2xl border px-3 py-2.5 flex items-center gap-2.5 min-w-0"
-      style={{ backgroundColor: "rgba(255,255,255,0.76)", borderColor: "#D5E2F2" }}
+      style={{ backgroundColor: "rgba(255,255,255,0.92)", borderColor: "#D5E2F2" }}
     >
       <div
         className="h-8 w-8 rounded-xl flex items-center justify-center shrink-0"
-        style={{ backgroundColor: "rgba(220,232,247,0.92)", color: T.blue }}
+        style={{ backgroundColor: "rgba(220,232,247,0.82)", color: T.blue }}
       >
         <Icon size={15} />
       </div>
@@ -203,30 +203,31 @@ export default function ProfileHeader() {
 
   return (
     <section
-      className="rounded-[26px] md:rounded-[32px] border overflow-hidden relative"
+      className="rounded-[24px] md:rounded-[30px] border relative"
       style={{
-        borderColor: "#BCD0EA",
-        background:
-          "linear-gradient(135deg, rgba(220,232,247,0.96) 0%, rgba(253,254,255,0.98) 52%, rgba(253,236,240,0.9) 100%)",
-        boxShadow: "0 22px 60px rgba(7,27,51,0.08)",
+        borderColor: "#D5E2F2",
+        backgroundColor: "rgba(255,255,255,0.92)",
+        boxShadow: "0 14px 38px rgba(7,27,51,0.07)",
       }}
     >
-      <div className="absolute left-0 top-0 h-full w-1.5 md:w-2 bg-[#B31942]" />
-      <div className="absolute right-0 top-0 h-full w-1.5 md:w-2 bg-[#1E4E8C]" />
+      <div
+        className="absolute left-5 right-5 top-0 h-1 rounded-b-full"
+        style={{ backgroundColor: "rgba(30,78,140,0.72)" }}
+      />
 
-      <div className="px-4 py-5 md:p-8">
+      <div className="px-4 py-5 md:p-7">
         <div className="flex flex-col lg:flex-row gap-4 md:gap-6 lg:items-start lg:justify-between">
           <div className="flex flex-col md:flex-row gap-3 md:gap-5 md:items-start min-w-0">
             <div className="flex flex-col items-center md:items-start gap-2 md:gap-3 shrink-0">
               <div
-                className="rounded-[22px] md:rounded-[28px] p-1.5 md:p-2 border"
-                style={{ backgroundColor: "rgba(255,255,255,0.65)", borderColor: "#D5E2F2" }}
+                className="rounded-[22px] md:rounded-[26px] p-1.5 md:p-2 border"
+                style={{ backgroundColor: "#FFFFFF", borderColor: "#D5E2F2" }}
               >
                 <div className="md:hidden">
-                  <Avatar name={editing ? name : displayName} color={editing ? color : displayColor} size={68} />
+                  <Avatar name={editing ? name : displayName} color={editing ? color : displayColor} size={64} />
                 </div>
                 <div className="hidden md:block">
-                  <Avatar name={editing ? name : displayName} color={editing ? color : displayColor} size={92} />
+                  <Avatar name={editing ? name : displayName} color={editing ? color : displayColor} size={88} />
                 </div>
               </div>
 
@@ -255,14 +256,14 @@ export default function ProfileHeader() {
                 <>
                   <div
                     className="inline-flex items-center gap-1.5 md:gap-2 rounded-full border px-2.5 md:px-3 py-1 md:py-1.5 text-[10px] md:text-xs font-bold uppercase tracking-[0.12em]"
-                    style={{ backgroundColor: "rgba(255,255,255,0.72)", borderColor: "#D5E2F2", color: T.blue }}
+                    style={{ backgroundColor: "rgba(244,248,253,0.95)", borderColor: "#D5E2F2", color: T.blue }}
                   >
                     <UserRound size={13} />
                     My Profile
                   </div>
 
                   <div className="mt-3 md:mt-4 flex items-center justify-center md:justify-start gap-2 flex-wrap">
-                    <h1 className="text-[2rem] sm:text-4xl md:text-5xl font-extrabold tracking-[-0.04em] leading-[0.95]" style={{ color: T.navy }}>
+                    <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-[-0.04em] leading-[0.95]" style={{ color: T.navy }}>
                       {displayName}
                     </h1>
 
@@ -298,7 +299,7 @@ export default function ProfileHeader() {
               ) : (
                 <div
                   className="rounded-3xl border p-4 md:p-5 text-left"
-                  style={{ backgroundColor: "rgba(255,255,255,0.78)", borderColor: "#D5E2F2" }}
+                  style={{ backgroundColor: "rgba(255,255,255,0.96)", borderColor: "#D5E2F2" }}
                 >
                   <div className="flex items-start justify-between gap-3 mb-4">
                     <div>
@@ -351,8 +352,7 @@ export default function ProfileHeader() {
                     <div
                       className="mt-4 rounded-3xl border p-4"
                       style={{
-                        background:
-                          "linear-gradient(135deg, rgba(244,248,253,0.96), rgba(255,255,255,0.96))",
+                        backgroundColor: "rgba(244,248,253,0.95)",
                         borderColor: "#D5E2F2",
                       }}
                     >
@@ -436,7 +436,7 @@ export default function ProfileHeader() {
                 <div
                   key={label}
                   className="rounded-2xl border px-2 py-2.5 md:p-3 text-center lg:text-left"
-                  style={{ backgroundColor: "rgba(255,255,255,0.72)", borderColor: "#D5E2F2" }}
+                  style={{ backgroundColor: "rgba(244,248,253,0.9)", borderColor: "#D5E2F2" }}
                 >
                   <div className="text-xl md:text-2xl font-extrabold tabular-nums" style={{ color: T.navy }}>
                     {value}
@@ -456,7 +456,7 @@ export default function ProfileHeader() {
               type="button"
               onClick={() => setEditing(true)}
               className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold transition hover:-translate-y-0.5"
-              style={{ background: "linear-gradient(135deg, #071B33 0%, #1E4E8C 100%)", borderColor: "rgba(7,27,51,0.18)", color: "#FFFFFF" }}
+              style={{ backgroundColor: T.navy, borderColor: "rgba(7,27,51,0.18)", color: "#FFFFFF" }}
             >
               <Edit3 size={16} />
               Edit profile
