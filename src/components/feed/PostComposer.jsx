@@ -57,6 +57,18 @@ export default function PostComposer() {
     });
   };
 
+  const keepComposerKeyboardOpen = () => {
+    bodyRef.current?.focus({ preventScroll: true });
+
+    window.requestAnimationFrame(() => {
+      bodyRef.current?.focus({ preventScroll: true });
+    });
+
+    window.setTimeout(() => {
+      bodyRef.current?.focus({ preventScroll: true });
+    }, 40);
+  };
+
   const selectCategory = (nextCategory) => {
     if (submitting) return;
 
@@ -68,7 +80,18 @@ export default function PostComposer() {
     if (submitting) return;
 
     setAnonymous((value) => !value);
-    focusComposerField();
+    keepComposerKeyboardOpen();
+  };
+
+  const toggleAnonymousWithoutBlur = (event) => {
+    if (submitting) return;
+
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+
+    bodyRef.current?.focus({ preventScroll: true });
+    setAnonymous((value) => !value);
+    keepComposerKeyboardOpen();
   };
 
   const closeComposer = () => {
@@ -331,31 +354,26 @@ export default function PostComposer() {
         className="flex items-center justify-between gap-2 pt-3 mt-2 border-t"
         style={{ borderColor: T.borderSoft }}
       >
-        <button
-          type="button"
+        <div
           role="switch"
           aria-checked={anonymous}
-          disabled={submitting}
-          onMouseDown={(e) => {
+          aria-disabled={submitting}
+          tabIndex={-1}
+          onPointerDown={toggleAnonymousWithoutBlur}
+          onMouseDown={toggleAnonymousWithoutBlur}
+          onTouchStart={toggleAnonymousWithoutBlur}
+          onClick={(e) => {
             e.preventDefault();
-            toggleAnonymous();
+            e.stopPropagation();
           }}
-          onTouchStart={(e) => {
-            e.preventDefault();
-            toggleAnonymous();
-          }}
-          onClick={(e) => e.preventDefault()}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              toggleAnonymous();
-            }
-          }}
-          className="flex items-center gap-2 text-sm cursor-pointer select-none disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex items-center gap-2 text-sm cursor-pointer select-none"
           style={{
             color: anonymous ? T.text : T.textMuted,
+            opacity: submitting ? 0.6 : 1,
+            pointerEvents: submitting ? "none" : "auto",
             WebkitTapHighlightColor: "transparent",
-            touchAction: "manipulation",
+            touchAction: "none",
+            userSelect: "none",
           }}
         >
           <span
@@ -370,7 +388,7 @@ export default function PostComposer() {
             {anonymous ? "✓" : ""}
           </span>
           Post anonymously
-        </button>
+        </div>
 
         <div className="flex gap-2">
           <Button variant="ghost" onClick={closeComposer} disabled={submitting}>
