@@ -107,13 +107,20 @@ function StatCard({ label, value, onClick, active = false, loading = false }) {
   );
 }
 
+function getFollowProfileId(item = {}) {
+  return Follows.getConnectionProfileId?.(item) || "";
+}
+
 function normalizeFollowProfile(row = {}) {
+  const profileId = getFollowProfileId(row);
+  const profile = row.profile || row.profiles || row.author || row.user || {};
+
   return {
-    id: row.id || null,
-    full_name: row.full_name || "SoldierHub member",
-    avatar_color: row.avatar_color || "#314A66",
-    avatar_url: row.avatar_url || null,
-    base: row.base || "Fort Bliss",
+    id: profileId,
+    full_name: profile.full_name || row.full_name || "SoldierHub member",
+    avatar_color: profile.avatar_color || row.avatar_color || "#314A66",
+    avatar_url: profile.avatar_url || row.avatar_url || null,
+    base: profile.base || row.base || "Fort Bliss",
   };
 }
 
@@ -132,8 +139,9 @@ function FollowListPanel({
   const emptyBody = isFollowing
     ? "You are not following anyone yet. Search a member profile and tap Follow."
     : "No followers yet. As members follow your profile, they will appear here.";
+  const safeItems = (items || []).filter((item) => Boolean(getFollowProfileId(item)));
   const safeTotalCount = Math.max(0, Number(totalCount) || 0);
-  const hasMoreHidden = safeTotalCount > items.length;
+  const hasMoreHidden = safeTotalCount > safeItems.length;
 
   return (
     <div
@@ -176,17 +184,15 @@ function FollowListPanel({
         <div className="rounded-2xl border px-3 py-3 text-sm" style={{ backgroundColor: "rgba(253,236,240,0.95)", borderColor: "#F3C7D1", color: "#B31942" }}>
           {error}
         </div>
-      ) : items.length === 0 ? (
+      ) : safeItems.length === 0 ? (
         <div className="rounded-2xl border px-3 py-3 text-sm" style={{ backgroundColor: "#FFFFFF", borderColor: "#D5E2F2", color: T.textMuted }}>
           {emptyBody}
         </div>
       ) : (
         <div className="grid gap-2">
-          {items.map((item) => {
-            const profile = normalizeFollowProfile(item.profile || item);
-            const profileHref = profile.id
-              ? `/profile/${profile.id}?name=${encodeURIComponent(profile.full_name)}`
-              : "#";
+          {safeItems.map((item) => {
+            const profile = normalizeFollowProfile(item);
+            const profileHref = `/profile/${profile.id}?name=${encodeURIComponent(profile.full_name)}`;
 
             return (
               <div
@@ -226,7 +232,7 @@ function FollowListPanel({
               className="rounded-2xl border px-3 py-2 text-xs font-semibold text-center"
               style={{ backgroundColor: "rgba(255,255,255,0.82)", borderColor: "#D5E2F2", color: T.textMuted }}
             >
-              Showing first {items.length} of {safeTotalCount}. More loading can be added later if needed.
+              Showing first {safeItems.length} of {safeTotalCount}. More loading can be added later if needed.
             </div>
           ) : null}
         </div>
@@ -394,14 +400,21 @@ export default function ProfileHeader() {
 
   const handleUnfollowFromList = useCallback(
     async (targetProfileId) => {
-      if (!targetProfileId || unfollowingId || !currentUser?.id) return;
+      if (unfollowingId || !currentUser?.id) return;
+
+      if (!Follows.isValidProfileId?.(targetProfileId)) {
+        Follows.clearCachedFollowConnections?.("following", currentUser.id);
+        setConnections((items) => items.filter((item) => Boolean(getFollowProfileId(item))));
+        setConnectionsError("This follow list had an old cached profile. Please tap Following again to refresh.");
+        return;
+      }
 
       const previousConnections = connections;
       const previousSummary = followSummary;
 
       setUnfollowingId(targetProfileId);
       setConnections((items) =>
-        items.filter((item) => (item.profile?.id || item.id) !== targetProfileId)
+        items.filter((item) => getFollowProfileId(item) !== targetProfileId)
       );
       setFollowSummary((prev) => {
         const next = {
