@@ -206,146 +206,148 @@ export default function TopNav() {
   };
 
   return (
-    <div
-      className="sticky top-0 z-40 border-b backdrop-blur-xl"
-      style={{
-        borderColor: "rgba(207,218,232,0.95)",
-        background:
-          "linear-gradient(180deg, rgba(253,254,255,0.96) 0%, rgba(243,246,251,0.92) 100%)",
-      }}
-    >
-      <div className="max-w-6xl mx-auto px-4 md:px-6 h-[68px] md:h-[84px] flex items-center gap-3 md:gap-5">
-        <Link href="/" className="flex items-center shrink-0 min-w-0">
-          <Image
-            src={LOGO_SRC}
-            alt="SoldierHub"
-            width={220}
-            height={90}
-            priority
-            className="h-11 md:h-16 w-auto object-contain"
-          />
-        </Link>
+    <div className="sticky top-0 z-40 mb-3 md:mb-0">
+      <div
+        className="border-b backdrop-blur-xl"
+        style={{
+          borderColor: "rgba(207,218,232,0.95)",
+          background:
+            "linear-gradient(180deg, rgba(253,254,255,0.96) 0%, rgba(243,246,251,0.92) 100%)",
+        }}
+      >
+        <div className="max-w-6xl mx-auto px-4 md:px-6 h-[68px] md:h-[84px] flex items-center gap-3 md:gap-5">
+          <Link href="/" className="flex items-center shrink-0 min-w-0">
+            <Image
+              src={LOGO_SRC}
+              alt="SoldierHub"
+              width={220}
+              height={90}
+              priority
+              className="h-11 md:h-16 w-auto object-contain"
+            />
+          </Link>
 
-        {searchForm("desktop")}
+          {searchForm("desktop")}
 
-        <div className="flex-1" />
+          <div className="flex-1" />
 
-        <button
-          type="button"
-          onClick={() => setMobileSearchOpen((open) => !open)}
-          className="md:hidden w-9 h-9 rounded-2xl border flex items-center justify-center shrink-0 transition-all active:scale-95"
-          style={{
-            borderColor: hasSearchText || mobileSearchOpen ? "rgba(179,25,66,0.35)" : "rgba(159,60,85,0.28)",
-            backgroundColor: hasSearchText || mobileSearchOpen ? "rgba(179,25,66,0.08)" : "rgba(179,25,66,0.045)",
-            color: hasSearchText || mobileSearchOpen ? SEARCH_ACTIVE_COLOR : SEARCH_IDLE_COLOR,
-          }}
-          aria-label={mobileSearchOpen ? "Close search" : "Open search"}
-        >
-          {mobileSearchOpen ? <X size={17} /> : <Search size={17} />}
-        </button>
-
-        <div className="hidden md:flex items-center gap-2">
           <button
             type="button"
-            onClick={goNotifications}
-            className="relative w-11 h-11 rounded-2xl border flex items-center justify-center transition-all hover:-translate-y-0.5 hover:shadow-sm"
+            onClick={() => setMobileSearchOpen((open) => !open)}
+            className="md:hidden w-9 h-9 rounded-2xl border flex items-center justify-center shrink-0 transition-all active:scale-95"
             style={{
-              borderColor: T.border,
-              backgroundColor: "rgba(253,254,255,0.92)",
-              color: T.navy,
+              borderColor: hasSearchText || mobileSearchOpen ? "rgba(179,25,66,0.35)" : "rgba(159,60,85,0.28)",
+              backgroundColor: hasSearchText || mobileSearchOpen ? "rgba(179,25,66,0.08)" : "rgba(179,25,66,0.045)",
+              color: hasSearchText || mobileSearchOpen ? SEARCH_ACTIVE_COLOR : SEARCH_IDLE_COLOR,
             }}
-            aria-label={
-              showNotificationBadge
-                ? `Open notifications, ${notificationCount} unread`
-                : "Open notifications"
-            }
+            aria-label={mobileSearchOpen ? "Close search" : "Open search"}
           >
-            <Bell size={17} />
-
-            {showNotificationBadge && (
-              <span
-                className="absolute -right-1.5 -top-1.5 min-w-[19px] h-[19px] px-1 rounded-full border flex items-center justify-center text-[10px] font-bold leading-none shadow-sm"
-                style={{
-                  backgroundColor: "#B31942",
-                  borderColor: "rgba(255,255,255,0.95)",
-                  color: "#FFFFFF",
-                }}
-              >
-                {notificationBadgeText}
-              </span>
-            )}
+            {mobileSearchOpen ? <X size={17} /> : <Search size={17} />}
           </button>
 
-          {isAdmin && (
-            <Link
-              href="/resources"
-              className="px-3 h-11 rounded-2xl text-sm font-semibold flex items-center gap-1.5"
-              style={{ color: T.navy }}
-            >
-              <BookMarked size={16} />
-              Resources
-            </Link>
-          )}
-
-          {safeUser?.role === "admin" && (
-            <Button
-              variant="secondary"
-              icon={Shield}
-              size="md"
-              onClick={() => router.push("/admin")}
-            >
-              Admin
-            </Button>
-          )}
-
-          {safeUser ? (
+          <div className="hidden md:flex items-center gap-2">
             <button
               type="button"
-              onClick={goProfile}
-              className="rounded-2xl border p-1 pr-3 flex items-center gap-2 hover:shadow-md hover:-translate-y-0.5 transition-all"
+              onClick={goNotifications}
+              className="relative w-11 h-11 rounded-2xl border flex items-center justify-center transition-all hover:-translate-y-0.5 hover:shadow-sm"
               style={{
                 borderColor: T.border,
-                backgroundColor: "rgba(253,254,255,0.95)",
+                backgroundColor: "rgba(253,254,255,0.92)",
+                color: T.navy,
               }}
+              aria-label={
+                showNotificationBadge
+                  ? `Open notifications, ${notificationCount} unread`
+                  : "Open notifications"
+              }
             >
-              <Avatar
-                name={displayName}
-                color={safeUser.avatar_color}
-                size={34}
-              />
+              <Bell size={17} />
 
-              <span className="text-sm font-semibold" style={{ color: T.text }}>
-                {firstName}
-              </span>
+              {showNotificationBadge && (
+                <span
+                  className="absolute -right-1.5 -top-1.5 min-w-[19px] h-[19px] px-1 rounded-full border flex items-center justify-center text-[10px] font-bold leading-none shadow-sm"
+                  style={{
+                    backgroundColor: "#B31942",
+                    borderColor: "rgba(255,255,255,0.95)",
+                    color: "#FFFFFF",
+                  }}
+                >
+                  {notificationBadgeText}
+                </span>
+              )}
             </button>
-          ) : (
-            <>
-              <Button variant="ghost" onClick={() => setAuthModal("login")}>
-                Sign in
-              </Button>
 
-              <Button
-                variant="primary"
-                icon={UserPlus}
-                onClick={() => setAuthModal("signup")}
+            {isAdmin && (
+              <Link
+                href="/resources"
+                className="px-3 h-11 rounded-2xl text-sm font-semibold flex items-center gap-1.5"
+                style={{ color: T.navy }}
               >
-                Join
-              </Button>
-            </>
-          )}
-        </div>
-      </div>
+                <BookMarked size={16} />
+                Resources
+              </Link>
+            )}
 
-      {mobileSearchOpen ? (
-        <div className="md:hidden px-4 pb-3 -mt-1">
-          <div
-            className="rounded-[20px] border p-2 shadow-sm"
-            style={{ backgroundColor: T.card, borderColor: T.border }}
-          >
-            {searchForm("mobile")}
+            {safeUser?.role === "admin" && (
+              <Button
+                variant="secondary"
+                icon={Shield}
+                size="md"
+                onClick={() => router.push("/admin")}
+              >
+                Admin
+              </Button>
+            )}
+
+            {safeUser ? (
+              <button
+                type="button"
+                onClick={goProfile}
+                className="rounded-2xl border p-1 pr-3 flex items-center gap-2 hover:shadow-md hover:-translate-y-0.5 transition-all"
+                style={{
+                  borderColor: T.border,
+                  backgroundColor: "rgba(253,254,255,0.95)",
+                }}
+              >
+                <Avatar
+                  name={displayName}
+                  color={safeUser.avatar_color}
+                  size={34}
+                />
+
+                <span className="text-sm font-semibold" style={{ color: T.text }}>
+                  {firstName}
+                </span>
+              </button>
+            ) : (
+              <>
+                <Button variant="ghost" onClick={() => setAuthModal("login")}>
+                  Sign in
+                </Button>
+
+                <Button
+                  variant="primary"
+                  icon={UserPlus}
+                  onClick={() => setAuthModal("signup")}
+                >
+                  Join
+                </Button>
+              </>
+            )}
           </div>
         </div>
-      ) : null}
+
+        {mobileSearchOpen ? (
+          <div className="md:hidden px-4 pb-3 -mt-1">
+            <div
+              className="rounded-[20px] border p-2 shadow-sm"
+              style={{ backgroundColor: T.card, borderColor: T.border }}
+            >
+              {searchForm("mobile")}
+            </div>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
