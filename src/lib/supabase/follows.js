@@ -1,7 +1,7 @@
 import { createClient } from "./client";
 
-const FOLLOW_SUMMARY_CACHE_PREFIX = "soldierhub_follow_summary_v2:";
-const FOLLOW_CONNECTIONS_CACHE_PREFIX = "soldierhub_follow_connections_v2:";
+const FOLLOW_SUMMARY_CACHE_PREFIX = "soldierhub_follow_summary_v3:";
+const FOLLOW_CONNECTIONS_CACHE_PREFIX = "soldierhub_follow_connections_v3:";
 const FOLLOW_CACHE_MAX_AGE_MS = 1000 * 60 * 5;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -57,8 +57,14 @@ function getFriendlyError(error, fallback = "Something went wrong. Please try ag
 
 function normalizeFollowCountRow(row = {}) {
   return {
-    followersCount: Number(row.followersCount ?? row.followers_count ?? row.follower_count ?? 0),
-    followingCount: Number(row.followingCount ?? row.following_count ?? 0),
+    followersCount: Math.max(
+      0,
+      Number(row.followersCount ?? row.followers_count ?? row.follower_count ?? 0) || 0
+    ),
+    followingCount: Math.max(
+      0,
+      Number(row.followingCount ?? row.following_count ?? 0) || 0
+    ),
     isFollowing: Boolean(row.isFollowing ?? row.is_following ?? false),
   };
 }
@@ -159,7 +165,7 @@ async function getAccessTokenForApi(supabase) {
     return { accessToken: null, error: error || { message: "Please log in again." } };
   }
 
-  return { accessToken, error: null };
+  return { accessToken: session.access_token, error: null };
 }
 
 async function getCurrentUserId(supabase) {
@@ -298,6 +304,7 @@ export async function getFollowSummary(profileId, viewerId = null, options = {})
             .select("follower_id")
             .eq("follower_id", viewerId)
             .eq("following_id", profileId)
+            .limit(1)
             .maybeSingle()
         : Promise.resolve({ data: null, error: null }),
     ]);
@@ -336,90 +343,136 @@ export async function getFollowSummary(profileId, viewerId = null, options = {})
   }
 }
 
+function applyServerFollowResult({ data, targetProfileId, userId, fallbackTargetSummary, fallbackViewerSummary }) {
+  const targetSummary = data?.summary || data?.targetSummary || data?.target_summary || fallbackTargetSummary;
+  const viewerSummary = data?.viewer_summary || data?.viewerSummary || fallbackViewerSummary;
+
+  if (targetSummary) {
+    cacheFollowSummary(targetProfileId, userId, targetSummary);
+  }
+
+  if (viewerSummary) {
+    cacheFollowSummary(userId, userId, viewerSummary);
+  }
+
+  return {
+    targetSummary: targetSummary ? normalizeFollowCountRow(targetSummary) : null,
+    viewerSummary: viewerSummary ? normalizeFollowCountRow(viewerSummary) : null,
+  };
+}
+
 export async function followUser(targetProfileId) {
-  const supabase = createClient();
-  if (!supabase) {
-    return { data: null, error: { message: "Follow system is not available." } };
+  try {
+    const supabase = createClient();
+    if (!supabase) {
+      return { data: null, error: { message: "Follow system is not available." } };
+    }
+
+    if (!isValidProfileId(targetProfileId)) {
+      return { data: null, error: { message: "This profile link needs to refresh. Please reload the page and try again." } };
+    }
+
+    const [{ userId, error: userError }, { accessToken, error: tokenError }] = await Promise.all([
+      getCurrentUserId(supabase),
+      getAccessTokenForApi(supabase),
+    ]);
+
+    if (userError || !userId) return { data: null, error: getFriendlyError(userError, "Please log in again.") };
+    if (tokenError || !accessToken) return { data: null, error: getFriendlyError(tokenError, "Please log in again.") };
+
+    if (userId === targetProfileId) {
+      return { data: null, error: { message: "You cannot follow your own profile." } };
+    }
+
+    const { data, error } = await postJsonToApi(
+      "/api/profiles/follow",
+      accessToken,
+      { target_profile_id: targetProfileId, action: "follow" },
+      "Could not follow this member."
+    );
+
+    if (!error) {
+      const fallbackTargetSummary = updateCachedFollowSummary(targetProfileId, userId, (current) => ({
+        ...current,
+        isFollowing: true,
+        followersCount: current.isFollowing ? current.followersCount : current.followersCount + 1,
+      }));
+      const fallbackViewerSummary = updateCachedFollowSummary(userId, userId, (current) => ({
+        ...current,
+        followingCount: current.followingCount + 1,
+      }));
+      clearCachedFollowConnections("following", userId);
+
+      const summaries = applyServerFollowResult({
+        data,
+        targetProfileId,
+        userId,
+        fallbackTargetSummary,
+        fallbackViewerSummary,
+      });
+
+      return { data: { ...(data || {}), ...summaries }, error: null };
+    }
+
+    return { data, error: getFriendlyError(error, "Could not follow this member.") };
+  } catch (error) {
+    return { data: null, error: getFriendlyError(error, "Could not follow this member.") };
   }
-
-  if (!isValidProfileId(targetProfileId)) {
-    return { data: null, error: { message: "This profile link needs to refresh. Please reload the page and try again." } };
-  }
-
-  const [{ userId, error: userError }, { accessToken, error: tokenError }] = await Promise.all([
-    getCurrentUserId(supabase),
-    getAccessTokenForApi(supabase),
-  ]);
-
-  if (userError || !userId) return { data: null, error: getFriendlyError(userError, "Please log in again.") };
-  if (tokenError || !accessToken) return { data: null, error: getFriendlyError(tokenError, "Please log in again.") };
-
-  if (userId === targetProfileId) {
-    return { data: null, error: { message: "You cannot follow your own profile." } };
-  }
-
-  const { data, error } = await postJsonToApi(
-    "/api/profiles/follow",
-    accessToken,
-    { target_profile_id: targetProfileId, action: "follow" },
-    "Could not follow this member."
-  );
-
-  if (!error) {
-    updateCachedFollowSummary(targetProfileId, userId, (current) => ({
-      ...current,
-      isFollowing: true,
-      followersCount: current.isFollowing ? current.followersCount : current.followersCount + 1,
-    }));
-    updateCachedFollowSummary(userId, userId, (current) => ({
-      ...current,
-      followingCount: current.followingCount + 1,
-    }));
-    clearCachedFollowConnections("following", userId);
-  }
-
-  return { data, error: getFriendlyError(error, "Could not follow this member.") };
 }
 
 export async function unfollowUser(targetProfileId) {
-  const supabase = createClient();
-  if (!supabase) {
-    return { error: { message: "Follow system is not available." } };
+  try {
+    const supabase = createClient();
+    if (!supabase) {
+      return { data: null, error: { message: "Follow system is not available." } };
+    }
+
+    if (!isValidProfileId(targetProfileId)) {
+      return { data: null, error: { message: "This profile link needs to refresh. Please reload the page and try again." } };
+    }
+
+    const [{ userId, error: userError }, { accessToken, error: tokenError }] = await Promise.all([
+      getCurrentUserId(supabase),
+      getAccessTokenForApi(supabase),
+    ]);
+
+    if (userError || !userId) return { data: null, error: getFriendlyError(userError, "Please log in again.") };
+    if (tokenError || !accessToken) return { data: null, error: getFriendlyError(tokenError, "Please log in again.") };
+
+    const { data, error } = await postJsonToApi(
+      "/api/profiles/follow",
+      accessToken,
+      { target_profile_id: targetProfileId, action: "unfollow" },
+      "Could not unfollow this member."
+    );
+
+    if (!error) {
+      const fallbackTargetSummary = updateCachedFollowSummary(targetProfileId, userId, (current) => ({
+        ...current,
+        isFollowing: false,
+        followersCount: Math.max(0, current.followersCount - 1),
+      }));
+      const fallbackViewerSummary = updateCachedFollowSummary(userId, userId, (current) => ({
+        ...current,
+        followingCount: Math.max(0, current.followingCount - 1),
+      }));
+      removeProfileFromCachedFollowing(userId, targetProfileId);
+
+      const summaries = applyServerFollowResult({
+        data,
+        targetProfileId,
+        userId,
+        fallbackTargetSummary,
+        fallbackViewerSummary,
+      });
+
+      return { data: { ...(data || {}), ...summaries }, error: null };
+    }
+
+    return { data, error: getFriendlyError(error, "Could not unfollow this member.") };
+  } catch (error) {
+    return { data: null, error: getFriendlyError(error, "Could not unfollow this member.") };
   }
-
-  if (!isValidProfileId(targetProfileId)) {
-    return { error: { message: "This profile link needs to refresh. Please reload the page and try again." } };
-  }
-
-  const [{ userId, error: userError }, { accessToken, error: tokenError }] = await Promise.all([
-    getCurrentUserId(supabase),
-    getAccessTokenForApi(supabase),
-  ]);
-
-  if (userError || !userId) return { error: getFriendlyError(userError, "Please log in again.") };
-  if (tokenError || !accessToken) return { error: getFriendlyError(tokenError, "Please log in again.") };
-
-  const { error } = await postJsonToApi(
-    "/api/profiles/follow",
-    accessToken,
-    { target_profile_id: targetProfileId, action: "unfollow" },
-    "Could not unfollow this member."
-  );
-
-  if (!error) {
-    updateCachedFollowSummary(targetProfileId, userId, (current) => ({
-      ...current,
-      isFollowing: false,
-      followersCount: Math.max(0, current.followersCount - 1),
-    }));
-    updateCachedFollowSummary(userId, userId, (current) => ({
-      ...current,
-      followingCount: Math.max(0, current.followingCount - 1),
-    }));
-    removeProfileFromCachedFollowing(userId, targetProfileId);
-  }
-
-  return { error: getFriendlyError(error, "Could not unfollow this member.") };
 }
 
 export async function listFollowConnections(type, profileId, { limit = 100, skipCache = false } = {}) {
