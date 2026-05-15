@@ -276,6 +276,7 @@ export default function PostCard({ post, openRepliesDefault = false }) {
     deleteComment: deleteCommentAction,
     editMyPost,
     deleteMyPost,
+    adminDeletePost,
     isAdmin,
     myUpvotes = new Set(),
     myReports = new Set(),
@@ -323,6 +324,7 @@ export default function PostCard({ post, openRepliesDefault = false }) {
         Array.isArray(myPosts) &&
         myPosts.some((myPost) => getPostId(myPost) === postId))
   );
+  const adminModeratingOtherPost = Boolean(isAdmin && !ownsPost);
   const replyName = post?.anonymous && ownsPost ? anonymousName : currentUser?.full_name || "Member";
   const replyColor = post?.anonymous && ownsPost ? "#5C6470" : currentUser?.avatar_color || colorFromString(replyName);
   const bodyText = post?.body || post?.content || post?.text || post?.title || "";
@@ -439,7 +441,7 @@ export default function PostCard({ post, openRepliesDefault = false }) {
   const handleDeleteClick = () => {
     setMenuOpen(false);
     if (!ensurePostId()) return;
-    if (!ownsPost) return pushToast?.("You can only delete your own post.", "error");
+    if (!ownsPost && !isAdmin) return pushToast?.("You can only delete your own post.", "error");
     setDeletingOpen(true);
   };
 
@@ -447,7 +449,10 @@ export default function PostCard({ post, openRepliesDefault = false }) {
     if (deleting || !ensurePostId()) return;
     setDeleting(true);
     try {
-      const result = await deleteMyPost?.(postId);
+      const result = adminModeratingOtherPost
+        ? await adminDeletePost?.(postId)
+        : await deleteMyPost?.(postId);
+
       if (result?.ok === false) return pushToast?.(result?.error || "Could not delete post.", "error");
       setDeletingOpen(false);
     } finally {
@@ -576,9 +581,14 @@ export default function PostCard({ post, openRepliesDefault = false }) {
                       <MenuButton icon={Trash2} danger onClick={handleDeleteClick}>Delete post</MenuButton>
                     </>
                   ) : (
-                    <MenuButton icon={Flag} danger={userReported} onClick={handleReport}>
-                      {userReported ? "Reported" : "Report post"}
-                    </MenuButton>
+                    <>
+                      {isAdmin ? (
+                        <MenuButton icon={Trash2} danger onClick={handleDeleteClick}>Delete post</MenuButton>
+                      ) : null}
+                      <MenuButton icon={Flag} danger={userReported} onClick={handleReport}>
+                        {userReported ? "Reported" : "Report post"}
+                      </MenuButton>
+                    </>
                   )}
                 </div>
               ) : null}
@@ -711,7 +721,11 @@ export default function PostCard({ post, openRepliesDefault = false }) {
       <ConfirmDialog
         open={deletingOpen}
         title="Delete this post?"
-        body="This will remove this post from SoldierHub."
+        body={
+          adminModeratingOtherPost
+            ? "This will permanently delete another user's post and its comments from SoldierHub. This cannot be undone."
+            : "This will remove this post from SoldierHub."
+        }
         confirmText={deleting ? "Deleting…" : "Delete post"}
         danger
         onConfirm={handleDeleteConfirm}
