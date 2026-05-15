@@ -111,7 +111,7 @@ function normalizeFollowProfile(row = {}) {
   };
 }
 
-function FollowListPanel({ type, items, loading, error, onUnfollow, unfollowingId }) {
+function FollowListPanel({ type, items, loading, refreshing, error, onUnfollow, unfollowingId }) {
   const isFollowing = type === "following";
   const title = isFollowing ? "People you follow" : "People following you";
   const emptyBody = isFollowing
@@ -132,8 +132,9 @@ function FollowListPanel({ type, items, loading, error, onUnfollow, unfollowingI
             <UsersRound size={17} />
           </div>
           <div className="min-w-0">
-            <h3 className="text-sm md:text-base font-extrabold" style={{ color: T.navy }}>
+            <h3 className="text-sm md:text-base font-extrabold flex items-center gap-2" style={{ color: T.navy }}>
               {title}
+              {refreshing ? <Loader2 size={13} className="animate-spin" style={{ color: T.textSubtle }} /> : null}
             </h3>
             <p className="text-xs" style={{ color: T.textMuted }}>
               Only you can see this full list on your profile.
@@ -143,9 +144,16 @@ function FollowListPanel({ type, items, loading, error, onUnfollow, unfollowingI
       </div>
 
       {loading ? (
-        <div className="flex items-center gap-2 rounded-2xl border px-3 py-3 text-sm" style={{ backgroundColor: "#FFFFFF", borderColor: "#D5E2F2", color: T.textMuted }}>
-          <Loader2 size={16} className="animate-spin" />
-          Loading {isFollowing ? "following" : "followers"}…
+        <div className="grid gap-2">
+          {[0, 1, 2].map((item) => (
+            <div key={item} className="rounded-2xl border px-3 py-3 flex items-center gap-3" style={{ backgroundColor: "#FFFFFF", borderColor: "#D5E2F2" }}>
+              <div className="h-[42px] w-[42px] rounded-full animate-pulse bg-[#DDE6EF]" />
+              <div className="min-w-0 flex-1">
+                <div className="h-4 w-36 animate-pulse rounded-full bg-[#DDE6EF]" />
+                <div className="mt-2 h-3 w-24 animate-pulse rounded-full bg-[#E8EEF5]" />
+              </div>
+            </div>
+          ))}
         </div>
       ) : error ? (
         <div className="rounded-2xl border px-3 py-3 text-sm" style={{ backgroundColor: "rgba(253,236,240,0.95)", borderColor: "#F3C7D1", color: "#B31942" }}>
@@ -244,6 +252,7 @@ export default function ProfileHeader() {
   const [connectionsTab, setConnectionsTab] = useState(null);
   const [connections, setConnections] = useState([]);
   const [connectionsLoading, setConnectionsLoading] = useState(false);
+  const [connectionsRefreshing, setConnectionsRefreshing] = useState(false);
   const [connectionsError, setConnectionsError] = useState("");
   const [unfollowingId, setUnfollowingId] = useState("");
 
@@ -262,20 +271,34 @@ export default function ProfileHeader() {
     setColor(currentUser.avatar_color || "#1E4E8C");
   }, [currentUser]);
 
-  const loadFollowSummary = useCallback(async () => {
-    if (!currentUser?.id) return;
+  const loadFollowSummary = useCallback(
+    async ({ silent = false, skipCache = false } = {}) => {
+      if (!currentUser?.id) return;
 
-    setFollowLoading(true);
-    const { data, error } = await Follows.getFollowSummary(currentUser.id, currentUser.id);
-    setFollowLoading(false);
+      if (!silent) {
+        const cachedSummary = Follows.getCachedFollowSummary?.(currentUser.id, currentUser.id);
+        if (cachedSummary) {
+          setFollowSummary(cachedSummary);
+        } else {
+          setFollowLoading(true);
+        }
+      }
 
-    if (error) {
-      setFollowSummary({ followersCount: 0, followingCount: 0, isFollowing: false });
-      return;
-    }
+      const { data, error } = await Follows.getFollowSummary(currentUser.id, currentUser.id, {
+        skipCache,
+      });
 
-    setFollowSummary(data);
-  }, [currentUser?.id]);
+      if (!silent) setFollowLoading(false);
+
+      if (error) {
+        if (!silent) setFollowSummary({ followersCount: 0, followingCount: 0, isFollowing: false });
+        return;
+      }
+
+      setFollowSummary(data);
+    },
+    [currentUser?.id]
+  );
 
   useEffect(() => {
     loadFollowSummary();
@@ -295,17 +318,31 @@ export default function ProfileHeader() {
         setConnectionsTab(null);
         setConnections([]);
         setConnectionsError("");
+        setConnectionsRefreshing(false);
         return;
       }
 
       setConnectionsTab(type);
-      setConnections([]);
       setConnectionsError("");
-      setConnectionsLoading(true);
 
-      const { data, error } = await Follows.listFollowConnections(type, currentUser.id, { limit: 100 });
+      const cachedConnections = Follows.getCachedFollowConnections?.(type, currentUser.id);
+      if (cachedConnections) {
+        setConnections(cachedConnections);
+        setConnectionsLoading(false);
+        setConnectionsRefreshing(true);
+      } else {
+        setConnections([]);
+        setConnectionsLoading(true);
+        setConnectionsRefreshing(false);
+      }
+
+      const { data, error } = await Follows.listFollowConnections(type, currentUser.id, {
+        limit: 100,
+        skipCache: true,
+      });
 
       setConnectionsLoading(false);
+      setConnectionsRefreshing(false);
 
       if (error) {
         setConnectionsError(error.message || "Could not load this list.");
@@ -319,27 +356,40 @@ export default function ProfileHeader() {
 
   const handleUnfollowFromList = useCallback(
     async (targetProfileId) => {
-      if (!targetProfileId || unfollowingId) return;
+      if (!targetProfileId || unfollowingId || !currentUser?.id) return;
+
+      const previousConnections = connections;
+      const previousSummary = followSummary;
 
       setUnfollowingId(targetProfileId);
+      setConnections((items) =>
+        items.filter((item) => (item.profile?.id || item.id) !== targetProfileId)
+      );
+      setFollowSummary((prev) => {
+        const next = {
+          ...prev,
+          followingCount: Math.max(0, (prev.followingCount || 0) - 1),
+        };
+        Follows.cacheFollowSummary?.(currentUser.id, currentUser.id, next);
+        return next;
+      });
+      Follows.removeProfileFromCachedFollowing?.(currentUser.id, targetProfileId);
+
       const { error } = await Follows.unfollowUser(targetProfileId);
       setUnfollowingId("");
 
       if (error) {
+        setConnections(previousConnections);
+        setFollowSummary(previousSummary);
+        Follows.cacheFollowSummary?.(currentUser.id, currentUser.id, previousSummary);
         pushToast?.(error.message || "Could not unfollow this member.", "error");
         return;
       }
 
-      setConnections((items) =>
-        items.filter((item) => (item.profile?.id || item.id) !== targetProfileId)
-      );
-      setFollowSummary((prev) => ({
-        ...prev,
-        followingCount: Math.max(0, (prev.followingCount || 0) - 1),
-      }));
       pushToast?.("Member unfollowed.", "success");
+      loadFollowSummary({ silent: true, skipCache: true });
     },
-    [pushToast, unfollowingId]
+    [connections, currentUser?.id, followSummary, loadFollowSummary, pushToast, unfollowingId]
   );
 
   const resetPasswordForm = () => {
@@ -702,6 +752,7 @@ export default function ProfileHeader() {
             type={connectionsTab}
             items={connections}
             loading={connectionsLoading}
+            refreshing={connectionsRefreshing}
             error={connectionsError}
             onUnfollow={handleUnfollowFromList}
             unfollowingId={unfollowingId}
