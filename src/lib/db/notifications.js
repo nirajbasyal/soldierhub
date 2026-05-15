@@ -150,6 +150,8 @@ function normalizeNotificationRow(row = {}) {
     comment_id: row.comment_id || row.commentId || row.comment?.id || null,
     actor_name_cached:
       row.actor_name_cached || row.actor_name || row.author_name || row.profile_name || "Someone",
+    actor_color_cached:
+      row.actor_color_cached || row.actor_color || row.author_color || row.profile_color || "#314A66",
     post_title_cached:
       row.post_title_cached || row.post_preview_cached || row.post_body_cached || "",
     comment_body_cached: row.comment_body_cached || row.comment_body || "",
@@ -211,6 +213,28 @@ async function loadCommentsForNotifications(supabase, commentIds = []) {
   return commentById;
 }
 
+async function loadProfilesForNotifications(supabase, actorIds = []) {
+  const profileById = new Map();
+  const safeActorIds = uniqueValues(actorIds);
+  if (!supabase || safeActorIds.length === 0) return profileById;
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, full_name, avatar_color")
+    .in("id", safeActorIds);
+
+  if (!error) {
+    (data || []).forEach((profile) => profileById.set(profile.id, profile));
+  }
+
+  return profileById;
+}
+
+export async function hydrateNotificationRows(rows = []) {
+  const supabase = createClient();
+  return hydrateNotifications(supabase, rows);
+}
+
 async function hydrateNotifications(supabase, rows = []) {
   if (!supabase || !Array.isArray(rows) || rows.length === 0) return rows || [];
 
@@ -224,6 +248,13 @@ async function hydrateNotifications(supabase, rows = []) {
     normalizedRows.map((row) => row.post_id || commentById.get(row.comment_id)?.post_id)
   );
   const postById = await loadPostsForNotifications(supabase, resolvedPostIds);
+  const resolvedActorIds = uniqueValues(
+    normalizedRows.map((row) => {
+      const comment = commentById.get(row.comment_id) || null;
+      return comment?.author_id || row.actor_user_id || row.actor_id || null;
+    })
+  );
+  const profileById = await loadProfilesForNotifications(supabase, resolvedActorIds);
 
   return normalizedRows.map((row) => {
     const comment = commentById.get(row.comment_id) || null;
@@ -234,11 +265,14 @@ async function hydrateNotifications(supabase, rows = []) {
     const resolvedActorId = isCommentNotification
       ? comment?.author_id || row.actor_user_id || row.actor_id || null
       : row.actor_user_id || row.actor_id || null;
+    const profile = profileById.get(resolvedActorId) || null;
 
     return {
       ...row,
       actor_user_id: resolvedActorId,
       actor_id: resolvedActorId,
+      actor_name_cached: profile?.full_name || row.actor_name_cached || "Someone",
+      actor_color_cached: profile?.avatar_color || row.actor_color_cached || "#314A66",
       post_id: resolvedPostId,
       post,
       comment,
