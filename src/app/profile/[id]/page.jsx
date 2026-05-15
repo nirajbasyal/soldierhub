@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, FileText, UserRound } from "lucide-react";
+import { ArrowLeft, FileText, Loader2, UserCheck, UserPlus, UserRound } from "lucide-react";
 import { T } from "@/lib/theme";
 import { colorFromString } from "@/lib/helpers";
 import { useApp } from "@/store/AppContext";
 import { createClient } from "@/lib/supabase/client";
+import * as Follows from "@/lib/supabase/follows";
 import AppShell from "@/components/layout/AppShell";
 import Footer from "@/components/layout/Footer";
 import Button from "@/components/ui/Button";
@@ -77,17 +78,48 @@ function normalizeProfile(row = {}, fallbackPost = null, fallbackName = "") {
   };
 }
 
+function StatCard({ label, value }) {
+  return (
+    <div
+      className="rounded-2xl border px-2 py-2.5 md:p-3 text-center md:text-left"
+      style={{ backgroundColor: "rgba(244,248,253,0.9)", borderColor: "#D5E2F2" }}
+    >
+      <div className="text-xl md:text-2xl font-extrabold tabular-nums" style={{ color: T.navy }}>
+        {value}
+      </div>
+      <div className="text-[10px] md:text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: T.textSubtle }}>
+        {label}
+      </div>
+    </div>
+  );
+}
+
 export default function VisitorProfilePage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { currentUser, authLoading, isLiveMode, posts = [], setAuthModal } = useApp();
+  const {
+    currentUser,
+    authLoading,
+    isLiveMode,
+    posts = [],
+    setAuthModal,
+    pushToast,
+  } = useApp();
   const profileId = typeof params?.id === "string" ? decodeURIComponent(params.id) : "";
   const fallbackName = cleanFallbackName(searchParams?.get("name") || "");
 
   const [profile, setProfile] = useState(null);
   const [userPosts, setUserPosts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [followSummary, setFollowSummary] = useState({
+    followersCount: 0,
+    followingCount: 0,
+    isFollowing: false,
+  });
+  const [followLoading, setFollowLoading] = useState(false);
+
+  const isOwnProfile = Boolean(profileId && currentUser?.id === profileId);
 
   useEffect(() => {
     if (authLoading) return;
@@ -98,13 +130,27 @@ export default function VisitorProfilePage() {
       return;
     }
 
-    if (profileId && currentUser?.id === profileId) {
+    if (isOwnProfile) {
       router.replace("/profile");
     }
-  }, [authLoading, currentUser, profileId, router, setAuthModal]);
+  }, [authLoading, currentUser, isOwnProfile, router, setAuthModal]);
+
+  const loadFollowSummary = useCallback(async () => {
+    if (!profileId || isOwnProfile) return;
+
+    const { data, error } = await Follows.getFollowSummary(profileId, currentUser?.id || null);
+
+    if (!error) {
+      setFollowSummary(data);
+    }
+  }, [currentUser?.id, isOwnProfile, profileId]);
 
   useEffect(() => {
-    if (authLoading || !profileId || currentUser?.id === profileId) return;
+    loadFollowSummary();
+  }, [loadFollowSummary]);
+
+  useEffect(() => {
+    if (authLoading || !profileId || isOwnProfile) return;
 
     let cancelled = false;
 
@@ -179,17 +225,46 @@ export default function VisitorProfilePage() {
     return () => {
       cancelled = true;
     };
-  }, [authLoading, currentUser?.id, fallbackName, isLiveMode, posts, profileId]);
+  }, [authLoading, currentUser?.id, fallbackName, isLiveMode, isOwnProfile, posts, profileId]);
 
-  const totalReplies = useMemo(
-    () => userPosts.reduce((sum, post) => sum + (post.comment_count || 0), 0),
-    [userPosts]
-  );
+  const handleFollowToggle = async () => {
+    if (!currentUser) {
+      setAuthModal?.("login");
+      return;
+    }
 
-  const totalUpvotes = useMemo(
-    () => userPosts.reduce((sum, post) => sum + (post.upvote_count || 0), 0),
-    [userPosts]
-  );
+    if (!profileId || followLoading || isOwnProfile) return;
+
+    setFollowLoading(true);
+    const wasFollowing = followSummary.isFollowing;
+
+    setFollowSummary((prev) => ({
+      ...prev,
+      isFollowing: !wasFollowing,
+      followersCount: Math.max(0, (prev.followersCount || 0) + (wasFollowing ? -1 : 1)),
+    }));
+
+    const result = wasFollowing
+      ? await Follows.unfollowUser(profileId)
+      : await Follows.followUser(profileId);
+
+    setFollowLoading(false);
+
+    if (result.error) {
+      setFollowSummary((prev) => ({
+        ...prev,
+        isFollowing: wasFollowing,
+        followersCount: Math.max(0, (prev.followersCount || 0) + (wasFollowing ? 1 : -1)),
+      }));
+      pushToast?.(result.error.message || "Could not update follow status.", "error");
+      return;
+    }
+
+    pushToast?.(wasFollowing ? "Member unfollowed." : "Member followed.", "success");
+    loadFollowSummary();
+  };
+
+  const publicPostCount = userPosts.length;
 
   return (
     <AppShell hideNav>
@@ -208,14 +283,12 @@ export default function VisitorProfilePage() {
           <section
             className="mt-5 rounded-[26px] md:rounded-[32px] border overflow-hidden relative"
             style={{
-              borderColor: "#BCD0EA",
-              background:
-                "linear-gradient(135deg, rgba(220,232,247,0.96) 0%, rgba(253,254,255,0.98) 52%, rgba(253,236,240,0.9) 100%)",
-              boxShadow: "0 22px 60px rgba(7,27,51,0.08)",
+              borderColor: "#D5E2F2",
+              backgroundColor: "rgba(255,255,255,0.92)",
+              boxShadow: "0 14px 38px rgba(7,27,51,0.07)",
             }}
           >
-            <div className="absolute left-0 top-0 h-full w-1.5 md:w-2 bg-[#B31942]" />
-            <div className="absolute right-0 top-0 h-full w-1.5 md:w-2 bg-[#1E4E8C]" />
+            <div className="absolute left-5 right-5 top-0 h-1 rounded-b-full" style={{ backgroundColor: "rgba(30,78,140,0.72)" }} />
 
             <div className="px-4 py-5 md:p-8">
               {loading ? (
@@ -230,7 +303,7 @@ export default function VisitorProfilePage() {
                 <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-5">
                   <div
                     className="rounded-[22px] md:rounded-[28px] p-1.5 md:p-2 border shrink-0 mx-auto md:mx-0"
-                    style={{ backgroundColor: "rgba(255,255,255,0.65)", borderColor: "#D5E2F2" }}
+                    style={{ backgroundColor: "#FFFFFF", borderColor: "#D5E2F2" }}
                   >
                     <Avatar
                       name={profile.full_name}
@@ -243,7 +316,7 @@ export default function VisitorProfilePage() {
                   <div className="min-w-0 flex-1 text-center md:text-left">
                     <div
                       className="inline-flex items-center gap-1.5 md:gap-2 rounded-full border px-2.5 md:px-3 py-1 md:py-1.5 text-[10px] md:text-xs font-bold uppercase tracking-[0.12em]"
-                      style={{ backgroundColor: "rgba(255,255,255,0.72)", borderColor: "#D5E2F2", color: T.blue }}
+                      style={{ backgroundColor: "rgba(244,248,253,0.95)", borderColor: "#D5E2F2", color: T.blue }}
                     >
                       <UserRound size={13} />
                       Member Profile
@@ -256,27 +329,35 @@ export default function VisitorProfilePage() {
                     <p className="mt-2 text-sm md:text-base leading-6 md:leading-7 max-w-2xl mx-auto md:mx-0" style={{ color: profile.bio ? T.text : T.textMuted }}>
                       {profile.bio || "This member has not added a bio yet."}
                     </p>
+
+                    <div className="mt-4 flex justify-center md:justify-start">
+                      <button
+                        type="button"
+                        onClick={handleFollowToggle}
+                        disabled={followLoading}
+                        className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold transition hover:-translate-y-0.5 disabled:opacity-60"
+                        style={{
+                          backgroundColor: followSummary.isFollowing ? "rgba(220,232,247,0.96)" : T.navy,
+                          borderColor: followSummary.isFollowing ? "#BCD0EA" : "rgba(7,27,51,0.18)",
+                          color: followSummary.isFollowing ? T.blue : "#FFFFFF",
+                        }}
+                      >
+                        {followLoading ? (
+                          <Loader2 size={16} className="animate-spin" />
+                        ) : followSummary.isFollowing ? (
+                          <UserCheck size={16} />
+                        ) : (
+                          <UserPlus size={16} />
+                        )}
+                        {followSummary.isFollowing ? "Following" : "Follow"}
+                      </button>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-3 md:grid-cols-1 gap-2 md:min-w-[150px]">
-                    {[
-                      ["Posts", userPosts.length],
-                      ["Upvotes", totalUpvotes],
-                      ["Replies", totalReplies],
-                    ].map(([label, value]) => (
-                      <div
-                        key={label}
-                        className="rounded-2xl border px-2 py-2.5 md:p-3 text-center md:text-left"
-                        style={{ backgroundColor: "rgba(255,255,255,0.72)", borderColor: "#D5E2F2" }}
-                      >
-                        <div className="text-xl md:text-2xl font-extrabold tabular-nums" style={{ color: T.navy }}>
-                          {value}
-                        </div>
-                        <div className="text-[10px] md:text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: T.textSubtle }}>
-                          {label}
-                        </div>
-                      </div>
-                    ))}
+                    <StatCard label="Posts" value={publicPostCount} />
+                    <StatCard label="Followers" value={followSummary.followersCount || 0} />
+                    <StatCard label="Following" value={followSummary.followingCount || 0} />
                   </div>
                 </div>
               ) : (
