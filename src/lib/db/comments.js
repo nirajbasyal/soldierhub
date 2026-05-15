@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/client";
 
 const DEFAULT_COMMENT_LIMIT = 50;
+const DELETED_COMMENT_BODY = "[deleted]";
 
 // Comments are read through safe RPC functions.
 // This prevents anonymous post authors from leaking their real name
@@ -27,6 +28,17 @@ function getCommentAuthorId(comment = {}) {
     comment?.profile?.id ||
     comment?.user?.id ||
     null
+  );
+}
+
+function isDeletedComment(comment = {}) {
+  const body = String(comment?.body || comment?.content || comment?.text || "").trim();
+
+  return Boolean(
+    comment?.deleted_at ||
+      comment?.is_deleted === true ||
+      comment?.deleted === true ||
+      body.toLowerCase() === DELETED_COMMENT_BODY
   );
 }
 
@@ -65,9 +77,7 @@ function normalizeCommentRow(comment = {}) {
 }
 
 function normalizeSafeComments(comments = []) {
-  return (comments || [])
-    .filter((comment) => !comment?.deleted_at)
-    .map(normalizeCommentRow);
+  return (comments || []).filter((comment) => !isDeletedComment(comment)).map(normalizeCommentRow);
 }
 
 export async function listCommentsForPost(postId, { limit = DEFAULT_COMMENT_LIMIT } = {}) {
