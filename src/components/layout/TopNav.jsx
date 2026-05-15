@@ -214,7 +214,7 @@ export default function TopNav() {
           "linear-gradient(180deg, rgba(253,254,255,0.96) 0%, rgba(243,246,251,0.92) 100%)",
       }}
     >
-      <div className="max-w-6xl mx-auto px-4 md:px-6 h-[84px] flex items-center gap-4 md:gap-5">
+      <div className="max-w-6xl mx-auto px-4 md:px-6 h-[68px] md:h-[84px] flex items-center gap-3 md:gap-5">
         <Link href="/" className="flex items-center shrink-0 min-w-0">
           <Image
             src={LOGO_SRC}
@@ -222,7 +222,7 @@ export default function TopNav() {
             width={220}
             height={90}
             priority
-            className="h-14 md:h-16 w-auto object-contain"
+            className="h-11 md:h-16 w-auto object-contain"
           />
         </Link>
 
@@ -233,7 +233,7 @@ export default function TopNav() {
         <button
           type="button"
           onClick={() => setMobileSearchOpen((open) => !open)}
-          className="md:hidden w-10 h-10 rounded-2xl border flex items-center justify-center shrink-0 transition-all active:scale-95"
+          className="md:hidden w-9 h-9 rounded-2xl border flex items-center justify-center shrink-0 transition-all active:scale-95"
           style={{
             borderColor: hasSearchText || mobileSearchOpen ? "rgba(179,25,66,0.35)" : "rgba(159,60,85,0.28)",
             backgroundColor: hasSearchText || mobileSearchOpen ? "rgba(179,25,66,0.08)" : "rgba(179,25,66,0.045)",
@@ -241,7 +241,7 @@ export default function TopNav() {
           }}
           aria-label={mobileSearchOpen ? "Close search" : "Open search"}
         >
-          {mobileSearchOpen ? <X size={18} /> : <Search size={18} />}
+          {mobileSearchOpen ? <X size={17} /> : <Search size={17} />}
         </button>
 
         <div className="hidden md:flex items-center gap-2">
@@ -337,9 +337,9 @@ export default function TopNav() {
       </div>
 
       {mobileSearchOpen ? (
-        <div className="md:hidden px-4 pb-4 -mt-1">
+        <div className="md:hidden px-4 pb-3 -mt-1">
           <div
-            className="rounded-[22px] border p-2 shadow-sm"
+            className="rounded-[20px] border p-2 shadow-sm"
             style={{ backgroundColor: T.card, borderColor: T.border }}
           >
             {searchForm("mobile")}
