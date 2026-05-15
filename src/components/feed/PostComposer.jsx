@@ -64,6 +64,13 @@ export default function PostComposer() {
     focusComposerField();
   };
 
+  const toggleAnonymous = () => {
+    if (submitting) return;
+
+    setAnonymous((value) => !value);
+    focusComposerField();
+  };
+
   const closeComposer = () => {
     if (submitting) return;
 
@@ -324,19 +331,46 @@ export default function PostComposer() {
         className="flex items-center justify-between gap-2 pt-3 mt-2 border-t"
         style={{ borderColor: T.borderSoft }}
       >
-        <label
-          className="flex items-center gap-2 text-sm cursor-pointer select-none"
-          style={{ color: T.textMuted }}
+        <button
+          type="button"
+          role="switch"
+          aria-checked={anonymous}
+          disabled={submitting}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            toggleAnonymous();
+          }}
+          onTouchStart={(e) => {
+            e.preventDefault();
+            toggleAnonymous();
+          }}
+          onClick={(e) => e.preventDefault()}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              toggleAnonymous();
+            }
+          }}
+          className="flex items-center gap-2 text-sm cursor-pointer select-none disabled:cursor-not-allowed disabled:opacity-60"
+          style={{
+            color: anonymous ? T.text : T.textMuted,
+            WebkitTapHighlightColor: "transparent",
+            touchAction: "manipulation",
+          }}
         >
-          <input
-            type="checkbox"
-            checked={anonymous}
-            disabled={submitting}
-            onChange={(e) => setAnonymous(e.target.checked)}
-            className="w-4 h-4 rounded"
-          />
+          <span
+            className="w-4 h-4 rounded border flex items-center justify-center text-[11px] font-bold leading-none"
+            style={{
+              backgroundColor: anonymous ? T.navy : T.card,
+              borderColor: anonymous ? T.navy : T.border,
+              color: "#FFFFFF",
+            }}
+            aria-hidden="true"
+          >
+            {anonymous ? "✓" : ""}
+          </span>
           Post anonymously
-        </label>
+        </button>
 
         <div className="flex gap-2">
           <Button variant="ghost" onClick={closeComposer} disabled={submitting}>
