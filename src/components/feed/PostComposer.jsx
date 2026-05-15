@@ -44,14 +44,66 @@ export default function PostComposer() {
   const [submitting, setSubmitting] = useState(false);
 
   const bodyRef = useRef(null);
+  const composerActionsRef = useRef(null);
   const anonymousToggleAtRef = useRef(0);
   const anonymousTouchActiveRef = useRef(false);
+
+  const revealComposerActionsAboveKeyboard = (behavior = "smooth") => {
+    if (typeof window === "undefined") return;
+
+    const target = composerActionsRef.current;
+    if (!target) return;
+
+    try {
+      target.scrollIntoView({
+        behavior,
+        block: "center",
+        inline: "nearest",
+      });
+    } catch {
+      target.scrollIntoView(false);
+    }
+
+    window.requestAnimationFrame(() => {
+      const rect = target.getBoundingClientRect();
+      const visualViewport = window.visualViewport;
+      const visibleHeight = visualViewport?.height || window.innerHeight;
+      const safeBottom = visibleHeight - 24;
+      const hiddenByKeyboard = rect.bottom - safeBottom;
+
+      if (hiddenByKeyboard > 0) {
+        window.scrollBy({
+          top: hiddenByKeyboard + 28,
+          behavior,
+        });
+      }
+
+      bodyRef.current?.focus({ preventScroll: true });
+    });
+  };
 
   useEffect(() => {
     if (open && bodyRef.current) {
       bodyRef.current.focus();
     }
   }, [open]);
+
+  useEffect(() => {
+    if (!open || !anonymous) return undefined;
+
+    const firstScroll = window.setTimeout(() => {
+      revealComposerActionsAboveKeyboard("smooth");
+    }, 80);
+
+    const secondScroll = window.setTimeout(() => {
+      revealComposerActionsAboveKeyboard("auto");
+    }, 260);
+
+    return () => {
+      window.clearTimeout(firstScroll);
+      window.clearTimeout(secondScroll);
+    };
+  }, [open, anonymous]);
 
   const focusComposerField = () => {
     window.requestAnimationFrame(() => {
@@ -381,6 +433,7 @@ export default function PostComposer() {
       )}
 
       <div
+        ref={composerActionsRef}
         className="flex items-center justify-between gap-2 pt-3 mt-2 border-t"
         style={{ borderColor: T.borderSoft }}
       >
