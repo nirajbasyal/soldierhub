@@ -191,6 +191,24 @@ function removeCachedComments(postId) {
   window.localStorage.removeItem(`${COMMENT_CACHE_PREFIX}${postId}`);
 }
 
+function hasLoadedComments(postComments = {}, postId) {
+  return Object.prototype.hasOwnProperty.call(postComments || {}, postId);
+}
+
+function refreshCommentsInBackground(postId, setPostComments) {
+  if (!postId) return;
+
+  CommentsDB.listCommentsForPost(postId)
+    .then(({ data }) => {
+      const comments = data || [];
+      writeCachedComments(postId, comments);
+      setPostComments((m) => ({ ...m, [postId]: comments }));
+    })
+    .catch(() => {
+      // Background refresh should never block the visible reply section.
+    });
+}
+
 export function usePostActions({
   SUPA,
   currentUser,
@@ -465,20 +483,31 @@ export function usePostActions({
 
   const loadCommentsForPost = useCallback(
     async (postId, { force = false } = {}) => {
-      if (!SUPA || !postId) return;
-      if (!force && postComments[postId]) return;
+      if (!SUPA || !postId) return { ok: false, source: "disabled" };
+
+      if (!force && hasLoadedComments(postComments, postId)) {
+        return { ok: true, source: "state" };
+      }
 
       if (!force) {
         const cachedComments = readCachedComments(postId);
+
         if (cachedComments) {
           setPostComments((m) => ({ ...m, [postId]: cachedComments }));
+          refreshCommentsInBackground(postId, setPostComments);
+          return { ok: true, source: "cache" };
         }
       }
 
-      const { data } = await CommentsDB.listCommentsForPost(postId);
+      const { data, error } = await CommentsDB.listCommentsForPost(postId);
       const comments = data || [];
-      writeCachedComments(postId, comments);
-      setPostComments((m) => ({ ...m, [postId]: comments }));
+
+      if (!error) {
+        writeCachedComments(postId, comments);
+        setPostComments((m) => ({ ...m, [postId]: comments }));
+      }
+
+      return { ok: !error, source: "server", error };
     },
     [SUPA, postComments, setPostComments]
   );
