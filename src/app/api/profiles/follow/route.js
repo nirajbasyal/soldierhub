@@ -49,6 +49,21 @@ function normalizeSummary(row = {}, isFollowing = false) {
   };
 }
 
+function getFollowWriteErrorMessage(error, fallback) {
+  const message = String(error?.message || "").toLowerCase();
+  const code = String(error?.code || "");
+
+  if (code === "23503" || message.includes("foreign key")) {
+    return "That member profile is not available.";
+  }
+
+  if (code === "42501" || message.includes("row-level security") || message.includes("permission denied")) {
+    return "Follow permission is not ready yet. Please check the latest profile_follows RLS policy in Supabase.";
+  }
+
+  return error?.message || fallback;
+}
+
 async function getFollowSummaryForApi(supabase, profileId, viewerId) {
   if (!supabase || !isValidUuid(profileId)) {
     return { followersCount: 0, followingCount: 0, isFollowing: false };
@@ -225,7 +240,7 @@ export async function POST(request) {
 
     if (error) {
       return NextResponse.json(
-        { error: error.message || "Could not unfollow this member." },
+        { error: getFollowWriteErrorMessage(error, "Could not unfollow this member.") },
         { status: 500, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
       );
     }
@@ -246,26 +261,6 @@ export async function POST(request) {
     );
   }
 
-  const { data: targetProfile, error: targetProfileError } = await supabase
-    .from("profiles")
-    .select("id, status, verification_status")
-    .eq("id", targetProfileId)
-    .maybeSingle();
-
-  if (targetProfileError) {
-    return NextResponse.json(
-      { error: "Could not verify the member profile. Please try again." },
-      { status: 500, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
-    );
-  }
-
-  if (!targetProfile || !isVerifiedProfile(targetProfile)) {
-    return NextResponse.json(
-      { error: "That member profile is not available." },
-      { status: 404, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
-    );
-  }
-
   const { data, error } = await supabase
     .from("profile_follows")
     .upsert(
@@ -278,7 +273,7 @@ export async function POST(request) {
   if (error) {
     if (error.code !== "23505") {
       return NextResponse.json(
-        { error: error.message || "Could not follow this member." },
+        { error: getFollowWriteErrorMessage(error, "Could not follow this member.") },
         { status: 500, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
       );
     }
