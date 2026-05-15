@@ -21,6 +21,7 @@ import Button from "@/components/ui/Button";
 
 const EMAIL_SEARCH_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const SEARCH_ACTIVE_COLOR = "#B31942";
+const SEARCH_IDLE_COLOR = "#9F3C55";
 const LOGO_SRC = "/brand/soldierhub-logo-header.svg";
 
 function isEmailSearch(value) {
@@ -53,7 +54,7 @@ export default function TopNav() {
     Boolean(safeUser) && userStatus === "verified" && notificationCount > 0;
   const notificationBadgeText = notificationCount > 99 ? "99+" : String(notificationCount);
   const hasSearchText = String(search || "").trim().length > 0;
-  const searchIconColor = hasSearchText ? SEARCH_ACTIVE_COLOR : T.textSubtle;
+  const searchIconColor = hasSearchText ? SEARCH_ACTIVE_COLOR : SEARCH_IDLE_COLOR;
 
   const goProfile = () => {
     if (!safeUser) return setAuthModal("login");
@@ -176,8 +177,8 @@ export default function TopNav() {
           className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-xl border transition-all active:scale-95 disabled:cursor-wait disabled:opacity-80"
           style={{
             color: searchIconColor,
-            borderColor: hasSearchText ? "rgba(179,25,66,0.35)" : T.borderSoft,
-            backgroundColor: hasSearchText ? "rgba(179,25,66,0.08)" : T.surface,
+            borderColor: hasSearchText ? "rgba(179,25,66,0.35)" : "rgba(159,60,85,0.28)",
+            backgroundColor: hasSearchText ? "rgba(179,25,66,0.08)" : "rgba(179,25,66,0.045)",
           }}
           aria-label={profileSearchLoading ? "Searching profile" : "Run search"}
           title={profileSearchLoading ? "Searching profile..." : "Search"}
@@ -218,9 +219,9 @@ export default function TopNav() {
           onClick={() => setMobileSearchOpen((open) => !open)}
           className="md:hidden w-10 h-10 rounded-2xl border flex items-center justify-center shrink-0 transition-all active:scale-95"
           style={{
-            borderColor: hasSearchText || mobileSearchOpen ? "rgba(179,25,66,0.35)" : T.border,
-            backgroundColor: hasSearchText || mobileSearchOpen ? "rgba(179,25,66,0.08)" : T.card,
-            color: hasSearchText || mobileSearchOpen ? SEARCH_ACTIVE_COLOR : T.navy,
+            borderColor: hasSearchText || mobileSearchOpen ? "rgba(179,25,66,0.35)" : "rgba(159,60,85,0.28)",
+            backgroundColor: hasSearchText || mobileSearchOpen ? "rgba(179,25,66,0.08)" : "rgba(179,25,66,0.045)",
+            color: hasSearchText || mobileSearchOpen ? SEARCH_ACTIVE_COLOR : SEARCH_IDLE_COLOR,
           }}
           aria-label={mobileSearchOpen ? "Close search" : "Open search"}
         >
