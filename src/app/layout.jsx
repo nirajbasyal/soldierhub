@@ -31,10 +31,10 @@ export const metadata = {
 
   icons: {
     icon: [
-      { url: "/favicon.ico", sizes: "any" },
-      { url: "/icon.png", type: "image/png", sizes: "512x512" },
+      { url: "/brand/soldierhub-favicon.svg", type: "image/svg+xml", sizes: "any" },
     ],
-    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
+    shortcut: ["/brand/soldierhub-favicon.svg"],
+    apple: [{ url: "/brand/soldierhub-favicon.svg", sizes: "512x512", type: "image/svg+xml" }],
   },
 
   openGraph: {
@@ -47,7 +47,7 @@ export const metadata = {
     locale: "en_US",
     images: [
       {
-        url: "/icon.png",
+        url: "/brand/soldierhub-favicon.svg",
         width: 512,
         height: 512,
         alt: "Soldier Hub logo",
@@ -60,7 +60,7 @@ export const metadata = {
     title: "Soldier Hub — Fort Bliss Community",
     description:
       "Ask for help, share tips, get recommendations, and support the Fort Bliss community.",
-    images: ["/icon.png"],
+    images: ["/brand/soldierhub-favicon.svg"],
   },
 
   robots: {
