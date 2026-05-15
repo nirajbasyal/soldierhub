@@ -306,7 +306,11 @@ export default function PostCard({ post, openRepliesDefault = false }) {
   const displayName = post?.anonymous ? anonymousName : getDisplayName(post, "Member");
   const displayColor = post?.anonymous ? "#5C6470" : getDisplayColor(post, displayName);
   const comments = postId ? postComments?.[postId] || [] : [];
-  const commentCount = post?.comment_count ?? post?.reply_count ?? comments.length ?? 0;
+  const commentsLoaded = Boolean(
+    postId && Object.prototype.hasOwnProperty.call(postComments || {}, postId)
+  );
+  const storedCommentCount = post?.comment_count ?? post?.reply_count ?? 0;
+  const commentCount = commentsLoaded ? comments.length : storedCommentCount;
   const upvoteCount = post?.upvote_count ?? 0;
   const userUpvoted = Boolean(currentUser && postId && myUpvotes?.has?.(postId));
   const userReported = Boolean(postId && myReports?.has?.(postId));
