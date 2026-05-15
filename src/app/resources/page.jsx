@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   BookMarked,
-  CheckCircle2,
   ExternalLink,
   FileText,
   LifeBuoy,
@@ -15,6 +14,7 @@ import {
 import { useRouter } from "next/navigation";
 import { T } from "@/lib/theme";
 import { listResources } from "@/lib/db/resources";
+import { useApp } from "@/store/AppContext";
 import AppShell from "@/components/layout/AppShell";
 import Footer from "@/components/layout/Footer";
 import ResourceCard from "@/components/resources/ResourceCard";
@@ -69,8 +69,93 @@ function StatusCard({ icon: Icon, title, body }) {
   );
 }
 
+function ComingSoonResources({ onBack }) {
+  return (
+    <AppShell hideNav>
+      <main
+        className="min-h-screen pb-24 md:pb-12"
+        style={{
+          background:
+            "radial-gradient(circle at top left, rgba(220,232,247,0.9), transparent 32%), linear-gradient(180deg, #F4F8FD 0%, #FFFFFF 48%, #F4F8FD 100%)",
+        }}
+      >
+        <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 md:py-10">
+          <button
+            type="button"
+            onClick={onBack}
+            className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition hover:-translate-y-0.5"
+            style={{
+              backgroundColor: "rgba(255,255,255,0.86)",
+              borderColor: "#D5E2F2",
+              color: T.navy,
+            }}
+          >
+            <ArrowLeft size={16} />
+            Back to feed
+          </button>
+
+          <section
+            className="mt-6 rounded-[32px] border overflow-hidden relative"
+            style={{
+              borderColor: "#BCD0EA",
+              background:
+                "linear-gradient(135deg, rgba(220,232,247,0.96) 0%, rgba(253,254,255,0.98) 52%, rgba(253,236,240,0.9) 100%)",
+              boxShadow: "0 22px 60px rgba(7,27,51,0.08)",
+            }}
+          >
+            <div className="absolute left-0 top-0 h-full w-2 bg-[#B31942]" />
+            <div className="absolute right-0 top-0 h-full w-2 bg-[#1E4E8C]" />
+
+            <div className="p-7 md:p-10 text-center">
+              <div
+                className="mx-auto h-16 w-16 rounded-3xl flex items-center justify-center border"
+                style={{
+                  backgroundColor: "rgba(255,255,255,0.82)",
+                  borderColor: "#D5E2F2",
+                  color: T.blue,
+                }}
+              >
+                <BookMarked size={28} />
+              </div>
+
+              <div
+                className="mt-5 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold uppercase tracking-[0.12em]"
+                style={{
+                  backgroundColor: T.amberBg,
+                  borderColor: "#F2D29A",
+                  color: T.amber,
+                }}
+              >
+                Coming Soon
+              </div>
+
+              <h1
+                className="mt-4 text-3xl md:text-5xl font-extrabold tracking-[-0.04em] leading-tight"
+                style={{ color: T.navy }}
+              >
+                Resources are being prepared
+              </h1>
+
+              <p
+                className="mt-4 max-w-xl mx-auto text-sm md:text-base leading-7"
+                style={{ color: T.textMuted }}
+              >
+                SoldierHub admins are organizing trusted Fort Bliss links before
+                opening this section to everyone.
+              </p>
+            </div>
+          </section>
+
+          <Footer />
+        </div>
+      </main>
+    </AppShell>
+  );
+}
+
 export default function ResourcesPage() {
   const router = useRouter();
+  const { isAdmin = false } = useApp();
 
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -79,6 +164,13 @@ export default function ResourcesPage() {
   const [query, setQuery] = useState("");
 
   useEffect(() => {
+    if (!isAdmin) {
+      setLoading(false);
+      setResources([]);
+      setLoadError("");
+      return;
+    }
+
     let alive = true;
 
     async function loadResources() {
@@ -104,7 +196,7 @@ export default function ResourcesPage() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [isAdmin]);
 
   const sections = useMemo(() => {
     const uniqueSections = Array.from(
@@ -144,6 +236,10 @@ export default function ResourcesPage() {
       return groups;
     }, {});
   }, [filteredResources]);
+
+  if (!isAdmin) {
+    return <ComingSoonResources onBack={() => router.push("/")} />;
+  }
 
   return (
     <AppShell hideNav>
