@@ -149,6 +149,7 @@ export function useDataLoader({
   setMyUpvotes,
   setMyReports,
   setNotifications,
+  setUnreadCount,
   setPendingUsers,
   setUsers,
   setBlockedUsers,
@@ -161,6 +162,24 @@ export function useDataLoader({
   setHasNewFeedItems,
   sendToPendingReview,
 }) {
+  const refreshUnreadCount = useCallback(
+    async (userId, { skipCache = true } = {}) => {
+      if (!SUPA || !userId) {
+        setUnreadCount(0);
+        return;
+      }
+
+      const { count, error } = await NotificationsDB.getUnreadCount(userId, {
+        skipCache,
+      });
+
+      if (!error) {
+        setUnreadCount(Math.max(0, Number(count) || 0));
+      }
+    },
+    [SUPA, setUnreadCount]
+  );
+
   const reloadPosts = useCallback(
     async ({ silent = false } = {}) => {
       if (!SUPA) return;
@@ -329,6 +348,7 @@ export function useDataLoader({
     if (cachedProfile) {
       setCurrentUser(cachedProfile);
       setAuthLoading(false);
+      refreshUnreadCount(cachedProfile.id, { skipCache: true });
     }
 
     (async () => {
@@ -340,6 +360,7 @@ export function useDataLoader({
       if (status === "rejected" || status === "revoked") {
         clearProfileCache();
         setCurrentUser(profile || null);
+        setUnreadCount(0);
         setAuthLoading(false);
         setNotificationsLoading(false);
         sendToPendingReview({
@@ -360,7 +381,13 @@ export function useDataLoader({
 
       setCurrentUser(profile || null);
       setAuthLoading(false);
-      if (!profile || status !== "verified") setNotificationsLoading(false);
+
+      if (profile && status === "verified") {
+        refreshUnreadCount(profile.id, { skipCache: true });
+      } else {
+        setUnreadCount(0);
+        setNotificationsLoading(false);
+      }
     })();
 
     unsubscribe = Auth.onAuthChange(async (user) => {
@@ -370,6 +397,7 @@ export function useDataLoader({
         setMyUpvotes(new Set());
         setMyReports(new Set());
         setNotifications([]);
+        setUnreadCount(0);
         setNotificationsCursor(null);
         setHasMoreNotifications(false);
         setNotificationsLoading(false);
@@ -386,6 +414,7 @@ export function useDataLoader({
         setMyUpvotes(new Set());
         setMyReports(new Set());
         setNotifications([]);
+        setUnreadCount(0);
         setNotificationsCursor(null);
         setHasMoreNotifications(false);
         setNotificationsLoading(false);
@@ -406,7 +435,13 @@ export function useDataLoader({
       }
 
       setCurrentUser(profile || null);
-      if (!profile || status !== "verified") setNotificationsLoading(false);
+
+      if (profile && status === "verified") {
+        refreshUnreadCount(profile.id, { skipCache: true });
+      } else {
+        setUnreadCount(0);
+        setNotificationsLoading(false);
+      }
     });
 
     return () => {
@@ -415,6 +450,7 @@ export function useDataLoader({
     };
   }, [
     SUPA,
+    refreshUnreadCount,
     sendToPendingReview,
     setAuthLoading,
     setCurrentUser,
@@ -424,6 +460,7 @@ export function useDataLoader({
     setNotifications,
     setNotificationsCursor,
     setNotificationsLoading,
+    setUnreadCount,
   ]);
 
   useEffect(() => {
@@ -439,6 +476,7 @@ export function useDataLoader({
       setMyUpvotes(new Set());
       setMyReports(new Set());
       setNotifications([]);
+      setUnreadCount(0);
       setNotificationsCursor(null);
       setHasMoreNotifications(false);
       setNotificationsLoading(false);
@@ -448,6 +486,7 @@ export function useDataLoader({
 
     let cancelled = false;
     setNotificationsLoading(true);
+    refreshUnreadCount(currentUser.id, { skipCache: true });
 
     (async () => {
       const [{ data: ups }, { data: reps }, { data: notifs }, { data: mine }] =
@@ -471,6 +510,7 @@ export function useDataLoader({
       setHasMoreNotifications(safeNotifications.length === NOTIFICATION_PAGE_SIZE);
       setNotificationsLoading(false);
       setMyPosts(sanitizePosts(mine || [], currentUser.id));
+      refreshUnreadCount(currentUser.id, { skipCache: true });
     })();
 
     return () => {
@@ -479,6 +519,7 @@ export function useDataLoader({
   }, [
     SUPA,
     currentUser,
+    refreshUnreadCount,
     setHasMoreNotifications,
     setMyPosts,
     setMyReports,
@@ -486,6 +527,7 @@ export function useDataLoader({
     setNotifications,
     setNotificationsCursor,
     setNotificationsLoading,
+    setUnreadCount,
   ]);
 
   useEffect(() => {
@@ -493,6 +535,12 @@ export function useDataLoader({
     if (getProfileStatus(currentUser) !== "verified") return;
 
     const unsubscribe = subscribeToMyNotifications(currentUser.id, (notification) => {
+      if (notification && notification.read === false) {
+        setUnreadCount((currentCount) => Math.max(0, Number(currentCount) || 0) + 1);
+      } else {
+        refreshUnreadCount(currentUser.id, { skipCache: true });
+      }
+
       NotificationsDB.hydrateNotificationRows([notification]).then((hydrated) => {
         const safeNotification = hydrated?.[0] || notification;
         setNotifications((currentNotifications) =>
@@ -504,7 +552,7 @@ export function useDataLoader({
     return () => {
       unsubscribe();
     };
-  }, [SUPA, currentUser, setNotifications]);
+  }, [SUPA, currentUser, refreshUnreadCount, setNotifications, setUnreadCount]);
 
   useEffect(() => {
     if (SUPA && currentUser?.role === "admin") {
