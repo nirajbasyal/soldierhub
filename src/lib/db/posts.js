@@ -154,13 +154,10 @@ async function listFirstPageFromPreferredSource(supabase, limit) {
     const rpcResult = await listPostsFromRpc(supabase, { limit });
     if (!rpcResult.error) return rpcResult;
   }
+
   if (preferredSource === "view") {
     const viewResult = await listPostsFromView(supabase, limit);
     if (!viewResult.error) return viewResult;
-  }
-  if (preferredSource === "table") {
-    const tableResult = await listPostsFromTable(supabase, limit);
-    if (!tableResult.error) return tableResult;
   }
 
   clearPreferredFirstPageFeedSource(preferredSource);
@@ -189,13 +186,7 @@ export async function listPosts({ limit = 30, cursorCreatedAt = null, cursorId =
     return viewResult;
   }
 
-  const tableResult = await listPostsFromTable(supabase, limit);
-  if (!tableResult.error) {
-    setPreferredFirstPageFeedSource("table");
-    return tableResult;
-  }
-
-  return { data: [], error: rpcResult.error || viewResult.error || tableResult.error };
+  return { data: [], error: rpcResult.error || viewResult.error };
 }
 
 async function listMyPostsFromTable(supabase, userId, limit) {
