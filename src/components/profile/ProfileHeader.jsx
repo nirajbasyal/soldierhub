@@ -1,20 +1,25 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   Check,
   Edit3,
   KeyRound,
+  Loader2,
   Mail,
   Shield,
   ShieldCheck,
+  UserMinus,
   UserRound,
+  UsersRound,
   X,
 } from "lucide-react";
 import { T } from "@/lib/theme";
 import { useApp } from "@/store/AppContext";
 import * as Auth from "@/lib/supabase/auth";
+import * as Follows from "@/lib/supabase/follows";
 import Avatar from "@/components/ui/Avatar";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
@@ -57,6 +62,144 @@ function InfoPill({ icon: Icon, label, value }) {
   );
 }
 
+function StatCard({ label, value, onClick, active = false }) {
+  const content = (
+    <>
+      <div className="text-xl md:text-2xl font-extrabold tabular-nums" style={{ color: T.navy }}>
+        {value}
+      </div>
+      <div className="text-[10px] md:text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: T.textSubtle }}>
+        {label}
+      </div>
+    </>
+  );
+
+  const sharedClass = "rounded-2xl border px-2 py-2.5 md:p-3 text-center lg:text-left transition";
+  const sharedStyle = {
+    backgroundColor: active ? "rgba(220,232,247,0.98)" : "rgba(244,248,253,0.9)",
+    borderColor: active ? "#9DB9DA" : "#D5E2F2",
+  };
+
+  if (!onClick) {
+    return (
+      <div className={sharedClass} style={sharedStyle}>
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`${sharedClass} hover:-translate-y-0.5 hover:shadow-sm`}
+      style={sharedStyle}
+    >
+      {content}
+    </button>
+  );
+}
+
+function normalizeFollowProfile(row = {}) {
+  return {
+    id: row.id || null,
+    full_name: row.full_name || "SoldierHub member",
+    avatar_color: row.avatar_color || "#314A66",
+    avatar_url: row.avatar_url || null,
+    base: row.base || "Fort Bliss",
+  };
+}
+
+function FollowListPanel({ type, items, loading, error, onUnfollow, unfollowingId }) {
+  const isFollowing = type === "following";
+  const title = isFollowing ? "People you follow" : "People following you";
+  const emptyBody = isFollowing
+    ? "You are not following anyone yet. Search a member profile and tap Follow."
+    : "No followers yet. As members follow your profile, they will appear here.";
+
+  return (
+    <div
+      className="mt-4 rounded-3xl border p-3 md:p-4"
+      style={{ backgroundColor: "rgba(244,248,253,0.92)", borderColor: "#D5E2F2" }}
+    >
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <div
+            className="h-9 w-9 rounded-2xl flex items-center justify-center shrink-0"
+            style={{ backgroundColor: "rgba(220,232,247,0.96)", color: T.blue }}
+          >
+            <UsersRound size={17} />
+          </div>
+          <div className="min-w-0">
+            <h3 className="text-sm md:text-base font-extrabold" style={{ color: T.navy }}>
+              {title}
+            </h3>
+            <p className="text-xs" style={{ color: T.textMuted }}>
+              Only you can see this full list on your profile.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center gap-2 rounded-2xl border px-3 py-3 text-sm" style={{ backgroundColor: "#FFFFFF", borderColor: "#D5E2F2", color: T.textMuted }}>
+          <Loader2 size={16} className="animate-spin" />
+          Loading {isFollowing ? "following" : "followers"}…
+        </div>
+      ) : error ? (
+        <div className="rounded-2xl border px-3 py-3 text-sm" style={{ backgroundColor: "rgba(253,236,240,0.95)", borderColor: "#F3C7D1", color: "#B31942" }}>
+          {error}
+        </div>
+      ) : items.length === 0 ? (
+        <div className="rounded-2xl border px-3 py-3 text-sm" style={{ backgroundColor: "#FFFFFF", borderColor: "#D5E2F2", color: T.textMuted }}>
+          {emptyBody}
+        </div>
+      ) : (
+        <div className="grid gap-2">
+          {items.map((item) => {
+            const profile = normalizeFollowProfile(item.profile || item);
+            const profileHref = profile.id
+              ? `/profile/${profile.id}?name=${encodeURIComponent(profile.full_name)}`
+              : "#";
+
+            return (
+              <div
+                key={profile.id || item.created_at || profile.full_name}
+                className="rounded-2xl border px-3 py-3 flex items-center gap-3"
+                style={{ backgroundColor: "#FFFFFF", borderColor: "#D5E2F2" }}
+              >
+                <Avatar name={profile.full_name} color={profile.avatar_color} src={profile.avatar_url} size={42} />
+
+                <Link href={profileHref} className="min-w-0 flex-1 text-left">
+                  <div className="text-sm font-extrabold truncate" style={{ color: T.navy }}>
+                    {profile.full_name}
+                  </div>
+                  <div className="text-xs truncate" style={{ color: T.textMuted }}>
+                    {profile.base}
+                  </div>
+                </Link>
+
+                {isFollowing && profile.id && (
+                  <button
+                    type="button"
+                    onClick={() => onUnfollow(profile.id)}
+                    disabled={unfollowingId === profile.id}
+                    className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition hover:-translate-y-0.5 disabled:opacity-60"
+                    style={{ backgroundColor: "rgba(253,236,240,0.95)", borderColor: "#F3C7D1", color: "#B31942" }}
+                  >
+                    {unfollowingId === profile.id ? <Loader2 size={13} className="animate-spin" /> : <UserMinus size={13} />}
+                    Unfollow
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function postBelongsToCurrentUser(post, user) {
   if (!post || !user?.id) return false;
 
@@ -75,6 +218,7 @@ export default function ProfileHeader() {
     updateProfile,
     posts = [],
     myPosts = [],
+    pushToast,
   } = app;
 
   const safeUser = currentUser || {};
@@ -89,6 +233,18 @@ export default function ProfileHeader() {
   const [name, setName] = useState(displayName);
   const [bio, setBio] = useState(displayBio);
   const [color, setColor] = useState(displayColor);
+
+  const [followSummary, setFollowSummary] = useState({
+    followersCount: 0,
+    followingCount: 0,
+    isFollowing: false,
+  });
+  const [followLoading, setFollowLoading] = useState(false);
+  const [connectionsTab, setConnectionsTab] = useState(null);
+  const [connections, setConnections] = useState([]);
+  const [connectionsLoading, setConnectionsLoading] = useState(false);
+  const [connectionsError, setConnectionsError] = useState("");
+  const [unfollowingId, setUnfollowingId] = useState("");
 
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -105,14 +261,85 @@ export default function ProfileHeader() {
     setColor(currentUser.avatar_color || "#1E4E8C");
   }, [currentUser]);
 
+  const loadFollowSummary = useCallback(async () => {
+    if (!currentUser?.id) return;
+
+    setFollowLoading(true);
+    const { data, error } = await Follows.getFollowSummary(currentUser.id, currentUser.id);
+    setFollowLoading(false);
+
+    if (error) {
+      setFollowSummary({ followersCount: 0, followingCount: 0, isFollowing: false });
+      return;
+    }
+
+    setFollowSummary(data);
+  }, [currentUser?.id]);
+
+  useEffect(() => {
+    loadFollowSummary();
+  }, [loadFollowSummary]);
+
   const visiblePosts = useMemo(() => {
     if (!currentUser?.id) return [];
     if (myPosts.length > 0) return myPosts;
     return posts.filter((post) => postBelongsToCurrentUser(post, currentUser));
   }, [currentUser, myPosts, posts]);
 
-  const totalUpvotes = visiblePosts.reduce((sum, post) => sum + (post.upvote_count || 0), 0);
-  const totalReplies = visiblePosts.reduce((sum, post) => sum + (post.comment_count || 0), 0);
+  const openConnections = useCallback(
+    async (type) => {
+      if (!currentUser?.id) return;
+
+      if (connectionsTab === type) {
+        setConnectionsTab(null);
+        setConnections([]);
+        setConnectionsError("");
+        return;
+      }
+
+      setConnectionsTab(type);
+      setConnections([]);
+      setConnectionsError("");
+      setConnectionsLoading(true);
+
+      const { data, error } = await Follows.listFollowConnections(type, currentUser.id, { limit: 100 });
+
+      setConnectionsLoading(false);
+
+      if (error) {
+        setConnectionsError(error.message || "Could not load this list.");
+        return;
+      }
+
+      setConnections(data || []);
+    },
+    [connectionsTab, currentUser?.id]
+  );
+
+  const handleUnfollowFromList = useCallback(
+    async (targetProfileId) => {
+      if (!targetProfileId || unfollowingId) return;
+
+      setUnfollowingId(targetProfileId);
+      const { error } = await Follows.unfollowUser(targetProfileId);
+      setUnfollowingId("");
+
+      if (error) {
+        pushToast?.(error.message || "Could not unfollow this member.", "error");
+        return;
+      }
+
+      setConnections((items) =>
+        items.filter((item) => (item.profile?.id || item.id) !== targetProfileId)
+      );
+      setFollowSummary((prev) => ({
+        ...prev,
+        followingCount: Math.max(0, (prev.followingCount || 0) - 1),
+      }));
+      pushToast?.("Member unfollowed.", "success");
+    },
+    [pushToast, unfollowingId]
+  );
 
   const resetPasswordForm = () => {
     setCurrentPassword("");
@@ -200,6 +427,9 @@ export default function ProfileHeader() {
     setConfirmPassword("");
     setPasswordSuccess("Password updated successfully.");
   };
+
+  const followerValue = followLoading ? "…" : followSummary.followersCount || 0;
+  const followingValue = followLoading ? "…" : followSummary.followingCount || 0;
 
   return (
     <section
@@ -428,24 +658,19 @@ export default function ProfileHeader() {
 
           {!editing && (
             <div className="grid grid-cols-3 lg:grid-cols-1 gap-2 lg:min-w-[150px]">
-              {[
-                ["Posts", visiblePosts.length],
-                ["Upvotes", totalUpvotes],
-                ["Replies", totalReplies],
-              ].map(([label, value]) => (
-                <div
-                  key={label}
-                  className="rounded-2xl border px-2 py-2.5 md:p-3 text-center lg:text-left"
-                  style={{ backgroundColor: "rgba(244,248,253,0.9)", borderColor: "#D5E2F2" }}
-                >
-                  <div className="text-xl md:text-2xl font-extrabold tabular-nums" style={{ color: T.navy }}>
-                    {value}
-                  </div>
-                  <div className="text-[10px] md:text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: T.textSubtle }}>
-                    {label}
-                  </div>
-                </div>
-              ))}
+              <StatCard label="Posts" value={visiblePosts.length} />
+              <StatCard
+                label="Followers"
+                value={followerValue}
+                onClick={() => openConnections("followers")}
+                active={connectionsTab === "followers"}
+              />
+              <StatCard
+                label="Following"
+                value={followingValue}
+                onClick={() => openConnections("following")}
+                active={connectionsTab === "following"}
+              />
             </div>
           )}
         </div>
@@ -462,6 +687,17 @@ export default function ProfileHeader() {
               Edit profile
             </button>
           </div>
+        )}
+
+        {!editing && connectionsTab && (
+          <FollowListPanel
+            type={connectionsTab}
+            items={connections}
+            loading={connectionsLoading}
+            error={connectionsError}
+            onUnfollow={handleUnfollowFromList}
+            unfollowingId={unfollowingId}
+          />
         )}
       </div>
     </section>
