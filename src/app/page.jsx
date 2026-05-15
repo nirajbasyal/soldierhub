@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Inbox, RefreshCw } from "lucide-react";
+import { Inbox, RefreshCw, Search } from "lucide-react";
 import { CATEGORIES } from "@/lib/constants";
 import { T } from "@/lib/theme";
 import { subscribeToPosts } from "@/lib/db/realtime";
@@ -106,6 +106,7 @@ export default function HomePage() {
     posts,
     currentUser,
     search,
+    setSearch,
     category,
     setCategory,
     postsLoading,
@@ -278,6 +279,44 @@ export default function HomePage() {
             </div>
 
             <FeedHero currentUser={currentUser} postCount={feedPosts.length} />
+
+            <div className="md:hidden">
+              <div
+                className="relative rounded-[22px] border px-4 py-3 shadow-sm"
+                style={{ backgroundColor: T.card, borderColor: T.border }}
+              >
+                <Search
+                  size={17}
+                  className="absolute left-7 top-1/2 -translate-y-1/2"
+                  style={{ color: search?.trim() ? "#B31942" : T.textSubtle }}
+                />
+
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search posts..."
+                  autoComplete="off"
+                  inputMode="search"
+                  className="h-11 w-full rounded-2xl border pl-10 pr-24 text-sm font-medium outline-none"
+                  style={{
+                    backgroundColor: T.surface,
+                    borderColor: T.borderSoft,
+                    color: T.text,
+                  }}
+                />
+
+                {search?.trim() ? (
+                  <button
+                    type="button"
+                    onClick={() => setSearch("")}
+                    className="absolute right-7 top-1/2 -translate-y-1/2 rounded-full px-3 py-1.5 text-xs font-bold"
+                    style={{ backgroundColor: "#FDECF0", color: "#B31942" }}
+                  >
+                    Clear
+                  </button>
+                ) : null}
+              </div>
+            </div>
 
             <PostComposer />
 
