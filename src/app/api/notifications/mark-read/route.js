@@ -27,6 +27,10 @@ function getProfileStatus(profile) {
   return profile?.status || profile?.verification_status || "pending";
 }
 
+function noStoreHeaders(rateLimitHeaders = {}) {
+  return { ...rateLimitHeaders, "Cache-Control": "no-store" };
+}
+
 export async function POST(request) {
   const ipRateLimit = checkRateLimit(request, {
     keyPrefix: "notifications-mark-read-ip",
@@ -41,7 +45,7 @@ export async function POST(request) {
   if (!accessToken) {
     return NextResponse.json(
       { error: "Please log in again before updating notifications." },
-      { status: 401, headers: { ...ipRateLimit.headers, "Cache-Control": "no-store" } }
+      { status: 401, headers: noStoreHeaders(ipRateLimit.headers) }
     );
   }
 
@@ -50,19 +54,16 @@ export async function POST(request) {
   if (!supabase) {
     return NextResponse.json(
       { error: "Supabase is not configured." },
-      { status: 503, headers: { ...ipRateLimit.headers, "Cache-Control": "no-store" } }
+      { status: 503, headers: noStoreHeaders(ipRateLimit.headers) }
     );
   }
 
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser(accessToken);
+  const { data: { user }, error: userError } = await supabase.auth.getUser(accessToken);
 
   if (userError || !user) {
     return NextResponse.json(
       { error: "Please log in again before updating notifications." },
-      { status: 401, headers: { ...ipRateLimit.headers, "Cache-Control": "no-store" } }
+      { status: 401, headers: noStoreHeaders(ipRateLimit.headers) }
     );
   }
 
@@ -83,33 +84,32 @@ export async function POST(request) {
   if (profileError) {
     return NextResponse.json(
       { error: "Could not verify your profile. Please try again." },
-      { status: 500, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
+      { status: 500, headers: noStoreHeaders(userRateLimit.headers) }
     );
   }
 
   if (!profile || getProfileStatus(profile) !== "verified") {
     return NextResponse.json(
       { error: "Your profile must be verified before updating notifications." },
-      { status: 403, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
+      { status: 403, headers: noStoreHeaders(userRateLimit.headers) }
     );
   }
 
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from("notifications")
     .update({ read: true })
     .eq("recipient_user_id", user.id)
-    .eq("read", false)
-    .select("id");
+    .eq("read", false);
 
   if (error) {
     return NextResponse.json(
       { error: error.message || "Could not update notifications." },
-      { status: 500, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
+      { status: 500, headers: noStoreHeaders(userRateLimit.headers) }
     );
   }
 
   return NextResponse.json(
-    { updatedCount: Array.isArray(data) ? data.length : 0 },
-    { status: 200, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
+    { ok: true },
+    { status: 200, headers: noStoreHeaders(userRateLimit.headers) }
   );
 }
