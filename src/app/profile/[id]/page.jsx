@@ -18,7 +18,7 @@ import PostCard from "@/components/feed/PostCard";
 import PostSkeleton from "@/components/ui/PostSkeleton";
 import ShareProfileButton from "@/components/profile/ShareProfileButton";
 
-const VISITOR_PROFILE_CACHE_PREFIX = "soldierhub_visitor_profile_v4:";
+const VISITOR_PROFILE_CACHE_PREFIX = "soldierhub_visitor_profile_v5:";
 const VISITOR_PROFILE_CACHE_MAX_AGE_MS = 1000 * 60 * 5;
 const EMAIL_LOOKUP_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -70,7 +70,7 @@ function cleanFallbackName(value) {
   return name;
 }
 
-function normalizeProfile(row = {}, fallbackPost = null, fallbackName = "") {
+function normalizeProfile(row = {}, fallbackPost = null, fallbackName = "", fallbackId = "") {
   const name =
     row?.full_name ||
     fallbackPost?.author_name ||
@@ -79,7 +79,7 @@ function normalizeProfile(row = {}, fallbackPost = null, fallbackName = "") {
     "SoldierHub member";
 
   return {
-    id: getSafeProfileId(row?.id || row?.profile_id || fallbackPost?.author_id),
+    id: getSafeProfileId(row?.id || row?.profile_id || fallbackPost?.author_id || fallbackId),
     full_name: name,
     bio: row?.bio || "",
     avatar_color:
@@ -90,6 +90,23 @@ function normalizeProfile(row = {}, fallbackPost = null, fallbackName = "") {
     avatar_url: row?.avatar_url || null,
     base: row?.base || "Fort Bliss",
     status: row?.status || row?.verification_status || "verified",
+  };
+}
+
+function makeFallbackProfile(profileId, fallbackName = "") {
+  const safeProfileId = getSafeProfileId(profileId);
+  if (!safeProfileId) return null;
+
+  const safeName = cleanFallbackName(fallbackName) || "SoldierHub member";
+
+  return {
+    id: safeProfileId,
+    full_name: safeName,
+    bio: "",
+    avatar_color: colorFromString(safeName),
+    avatar_url: null,
+    base: "Fort Bliss",
+    status: "verified",
   };
 }
 
@@ -297,10 +314,16 @@ export default function VisitorProfilePage() {
         setLoading(false);
         setRefreshingProfile(true);
       } else if (localPostsForProfile.length > 0) {
-        const fallbackProfile = normalizeProfile(null, localPostsForProfile[0], fallbackName);
+        const fallbackProfile = normalizeProfile(null, localPostsForProfile[0], fallbackName, startingProfileId);
         if (fallbackProfile.id) setResolvedProfileId(fallbackProfile.id);
         setProfile(fallbackProfile);
         setUserPosts(localPostsForProfile);
+        setLoading(false);
+        setRefreshingProfile(true);
+      } else if (startingProfileId) {
+        const fallbackProfile = makeFallbackProfile(startingProfileId, fallbackName);
+        setProfile(fallbackProfile);
+        setUserPosts([]);
         setLoading(false);
         setRefreshingProfile(true);
       } else {
@@ -318,6 +341,13 @@ export default function VisitorProfilePage() {
         if (resolvedLookup && !cancelled) {
           setResolvedProfileId(resolvedLookup);
         }
+      }
+
+      const resolvedCache = resolvedLookup ? readVisitorProfileCache(resolvedLookup) : null;
+      const resolvedCacheProfile = resolvedCache?.profile || null;
+
+      if (!previewProfile && resolvedCacheProfile) {
+        previewProfile = resolvedCacheProfile;
       }
 
       let profileRow = previewProfile;
@@ -343,36 +373,35 @@ export default function VisitorProfilePage() {
                 .limit(30),
             ]);
 
-            profileRow = profileData || previewProfile || null;
+            profileRow = profileData || previewProfile || resolvedCacheProfile || null;
             postRows = Array.isArray(livePosts)
               ? livePosts.map(normalizePostRow).filter((post) => post.id)
               : localPostsForProfile;
           }
         }
       } catch {
-        profileRow = previewProfile || null;
+        profileRow = previewProfile || resolvedCacheProfile || null;
         postRows = resolvedLookup ? localPostsForProfile : [];
       }
 
       if (cancelled) return;
 
       const fallbackPost = postRows[0] || localPostsForProfile[0] || null;
-      const safeFallbackProfile = fallbackName && resolvedLookup
-        ? {
-            id: resolvedLookup,
-            full_name: fallbackName,
-            bio: "",
-            avatar_color: colorFromString(fallbackName),
-            avatar_url: null,
-            base: "Fort Bliss",
-            status: "verified",
-          }
-        : null;
+      const fallbackDisplayName =
+        fallbackName ||
+        profileRow?.full_name ||
+        previewProfile?.full_name ||
+        resolvedCacheProfile?.full_name ||
+        fallbackPost?.author_name ||
+        fallbackPost?.author_name_cached ||
+        "SoldierHub member";
 
-      const nextProfile =
+      const safeFallbackProfile = makeFallbackProfile(resolvedLookup, fallbackDisplayName);
+      const normalizedProfile =
         profileRow || fallbackPost
-          ? normalizeProfile(profileRow, fallbackPost, fallbackName)
-          : safeFallbackProfile;
+          ? normalizeProfile(profileRow || {}, fallbackPost, fallbackDisplayName, resolvedLookup)
+          : null;
+      const nextProfile = normalizedProfile || safeFallbackProfile;
 
       setProfile(nextProfile);
       setUserPosts(postRows);
