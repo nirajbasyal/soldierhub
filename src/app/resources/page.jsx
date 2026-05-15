@@ -30,9 +30,7 @@ function SectionPill({ active, children, onClick }) {
       onClick={onClick}
       className="rounded-full px-3 py-2 text-sm font-bold transition-all hover:-translate-y-0.5 whitespace-nowrap"
       style={{
-        background: active
-          ? "linear-gradient(135deg, #071B33 0%, #1E4E8C 100%)"
-          : "rgba(255,255,255,0.78)",
+        backgroundColor: active ? T.navy : "rgba(255,255,255,0.9)",
         color: active ? "#FFFFFF" : T.navy,
         border: `1px solid ${active ? "rgba(7,27,51,0.18)" : "#D5E2F2"}`,
         boxShadow: active ? "0 10px 22px rgba(7,27,51,0.12)" : "none",
@@ -95,22 +93,23 @@ function ComingSoonResources({ onBack }) {
           </button>
 
           <section
-            className="mt-6 rounded-[32px] border overflow-hidden relative"
+            className="mt-6 rounded-[26px] md:rounded-[30px] border relative"
             style={{
-              borderColor: "#BCD0EA",
-              background:
-                "linear-gradient(135deg, rgba(220,232,247,0.96) 0%, rgba(253,254,255,0.98) 52%, rgba(253,236,240,0.9) 100%)",
-              boxShadow: "0 22px 60px rgba(7,27,51,0.08)",
+              borderColor: "#D5E2F2",
+              backgroundColor: "rgba(255,255,255,0.94)",
+              boxShadow: "0 14px 38px rgba(7,27,51,0.07)",
             }}
           >
-            <div className="absolute left-0 top-0 h-full w-2 bg-[#B31942]" />
-            <div className="absolute right-0 top-0 h-full w-2 bg-[#1E4E8C]" />
+            <div
+              className="absolute left-5 right-5 top-0 h-1 rounded-b-full"
+              style={{ backgroundColor: "rgba(30,78,140,0.72)" }}
+            />
 
             <div className="p-7 md:p-10 text-center">
               <div
                 className="mx-auto h-16 w-16 rounded-3xl flex items-center justify-center border"
                 style={{
-                  backgroundColor: "rgba(255,255,255,0.82)",
+                  backgroundColor: "rgba(244,248,253,0.96)",
                   borderColor: "#D5E2F2",
                   color: T.blue,
                 }}
@@ -266,16 +265,17 @@ export default function ResourcesPage() {
           </button>
 
           <section
-            className="mt-6 rounded-[32px] border overflow-hidden relative"
+            className="mt-6 rounded-[26px] md:rounded-[30px] border relative"
             style={{
-              borderColor: "#BCD0EA",
-              background:
-                "linear-gradient(135deg, rgba(220,232,247,0.96) 0%, rgba(253,254,255,0.98) 52%, rgba(253,236,240,0.9) 100%)",
-              boxShadow: "0 22px 60px rgba(7,27,51,0.08)",
+              borderColor: "#D5E2F2",
+              backgroundColor: "rgba(255,255,255,0.94)",
+              boxShadow: "0 14px 38px rgba(7,27,51,0.07)",
             }}
           >
-            <div className="absolute left-0 top-0 h-full w-2 bg-[#B31942]" />
-            <div className="absolute right-0 top-0 h-full w-2 bg-[#1E4E8C]" />
+            <div
+              className="absolute left-5 right-5 top-0 h-1 rounded-b-full"
+              style={{ backgroundColor: "rgba(30,78,140,0.72)" }}
+            />
 
             <div className="p-6 md:p-8">
               <div className="grid lg:grid-cols-[1fr_320px] gap-6 items-end">
@@ -283,7 +283,7 @@ export default function ResourcesPage() {
                   <div
                     className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold uppercase tracking-[0.12em]"
                     style={{
-                      backgroundColor: "rgba(255,255,255,0.72)",
+                      backgroundColor: "rgba(244,248,253,0.95)",
                       borderColor: "#D5E2F2",
                       color: T.blue,
                     }}
@@ -311,7 +311,7 @@ export default function ResourcesPage() {
                 <div
                   className="rounded-3xl border p-4"
                   style={{
-                    backgroundColor: "rgba(255,255,255,0.72)",
+                    backgroundColor: "rgba(244,248,253,0.9)",
                     borderColor: "#D5E2F2",
                   }}
                 >
@@ -323,7 +323,7 @@ export default function ResourcesPage() {
                   </div>
 
                   <div className="mt-3 grid gap-2">
-                    <div className="flex items-start gap-3 rounded-2xl border p-3" style={{ backgroundColor: "rgba(255,255,255,0.78)", borderColor: "rgba(188,208,234,0.85)" }}>
+                    <div className="flex items-start gap-3 rounded-2xl border p-3" style={{ backgroundColor: "rgba(255,255,255,0.88)", borderColor: "rgba(188,208,234,0.85)" }}>
                       <ShieldCheck size={18} className="mt-0.5 shrink-0" style={{ color: T.blue }} />
                       <div>
                         <div className="text-sm font-bold" style={{ color: T.navy }}>
@@ -335,7 +335,7 @@ export default function ResourcesPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-start gap-3 rounded-2xl border p-3" style={{ backgroundColor: "rgba(255,255,255,0.78)", borderColor: "rgba(188,208,234,0.85)" }}>
+                    <div className="flex items-start gap-3 rounded-2xl border p-3" style={{ backgroundColor: "rgba(255,255,255,0.88)", borderColor: "rgba(188,208,234,0.85)" }}>
                       <LifeBuoy size={18} className="mt-0.5 shrink-0" style={{ color: "#B31942" }} />
                       <div>
                         <div className="text-sm font-bold" style={{ color: T.navy }}>
@@ -468,20 +468,21 @@ export default function ResourcesPage() {
           </section>
 
           <div
-            className="rounded-3xl border p-5 mt-8 relative overflow-hidden"
+            className="rounded-3xl border p-5 mt-8 relative"
             style={{
-              background:
-                "linear-gradient(135deg, rgba(220,232,247,0.95), rgba(253,254,255,0.98), rgba(253,236,240,0.75))",
-              borderColor: "#BCD0EA",
+              backgroundColor: "rgba(255,255,255,0.94)",
+              borderColor: "#D5E2F2",
             }}
           >
-            <div className="absolute left-0 top-0 h-full w-1.5 bg-[#B31942]" />
-            <div className="absolute right-0 top-0 h-full w-1.5 bg-[#1E4E8C]" />
+            <div
+              className="absolute left-5 right-5 top-0 h-1 rounded-b-full"
+              style={{ backgroundColor: "rgba(30,78,140,0.72)" }}
+            />
 
-            <div className="flex items-start gap-3 pl-2">
+            <div className="flex items-start gap-3 pt-1">
               <div
                 className="h-11 w-11 rounded-2xl flex items-center justify-center shrink-0"
-                style={{ backgroundColor: "rgba(255,255,255,0.78)" }}
+                style={{ backgroundColor: "rgba(244,248,253,0.95)" }}
               >
                 <ExternalLink size={20} style={{ color: T.blue }} />
               </div>
