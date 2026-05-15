@@ -89,7 +89,8 @@ async function attachCountsToPosts(supabase, rows = []) {
   const { data: comments } = await supabase
     .from("comments")
     .select("post_id")
-    .in("post_id", postIds);
+    .in("post_id", postIds)
+    .is("deleted_at", null);
 
   const commentCounts = new Map();
 
