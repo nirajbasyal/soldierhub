@@ -90,11 +90,14 @@ export default function TopNav() {
       return;
     }
 
+    // Normal text stays as post search. This keeps the current feed search behavior,
+    // and pressing Enter from another page returns the user to the feed with the same query.
     if (!isEmailSearch(q)) {
       router.push("/");
       return;
     }
 
+    // Email profile lookup is protected because profile emails should not be publicly enumerable.
     if (!safeUser) {
       setAuthModal("login");
       pushToast("Please sign in to search member profiles by email.", "info");
@@ -167,6 +170,38 @@ export default function TopNav() {
             className="h-10 sm:h-11 md:h-12 w-auto object-contain max-w-[170px] sm:max-w-[220px] drop-shadow-sm"
           />
         </Link>
+
+        <form onSubmit={handleSearchSubmit} className="hidden md:flex flex-1 max-w-lg">
+          <div className="relative w-full group">
+            <Search
+              size={17}
+              className="absolute left-4 top-1/2 -translate-y-1/2 transition-colors"
+              style={{ color: searchIconColor }}
+            />
+
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search posts or exact email…"
+              autoComplete="off"
+              inputMode="search"
+              className="w-full h-12 pl-11 pr-16 rounded-2xl text-sm outline-none border shadow-sm transition-all"
+              style={{
+                borderColor: T.border,
+                backgroundColor: "rgba(253,254,255,0.88)",
+                color: T.text,
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = T.blue;
+                e.currentTarget.style.boxShadow = "0 0 0 4px rgba(30,78,140,0.10)";
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = T.border;
+                e.currentTarget.style.boxShadow = "0 1px 2px rgba(7,27,51,0.05)";
+              }}
+            />
+          </div>
+        </form>
       </div>
     </div>
   );
