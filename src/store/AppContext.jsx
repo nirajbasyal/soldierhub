@@ -102,6 +102,7 @@ export function AppProvider({ children }) {
   const [myUpvotes, setMyUpvotes] = useState(new Set());
   const [myReports, setMyReports] = useState(new Set());
   const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   // Session state
   const [currentUser, setCurrentUser] = useState(null);
@@ -167,6 +168,7 @@ export function AppProvider({ children }) {
     setMyUpvotes,
     setMyReports,
     setNotifications,
+    setUnreadCount,
     setPendingUsers,
     setUsers,
     setBlockedUsers,
@@ -253,6 +255,8 @@ export function AppProvider({ children }) {
     currentUser,
     notifications,
     setNotifications,
+    unreadCount,
+    setUnreadCount,
   });
 
   const userStatus = getProfileStatus(currentUser);
@@ -298,6 +302,7 @@ export function AppProvider({ children }) {
       myUpvotes,
       myReports,
       notifications,
+      unreadCount,
       categoryCounts,
       counts: categoryCounts,
       postsCursor,
@@ -373,6 +378,7 @@ export function AppProvider({ children }) {
       myUpvotes,
       myReports,
       notifications,
+      unreadCount,
       categoryCounts,
       postsCursor,
       hasMorePosts,
