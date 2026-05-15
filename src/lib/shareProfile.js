@@ -45,12 +45,8 @@ export async function shareProfileLink({ profileId, profileName = "", title = "S
     return { ok: false, reason: "missing-profile" };
   }
 
-  const cleanName = typeof profileName === "string" ? profileName.trim() : "";
   const shareData = {
     title,
-    text: cleanName
-      ? `View ${cleanName}'s SoldierHub profile.`
-      : "View this SoldierHub profile.",
     url,
   };
 
