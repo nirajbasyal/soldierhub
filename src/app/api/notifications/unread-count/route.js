@@ -5,9 +5,6 @@ import { checkRateLimit, rateLimitResponse } from "@/lib/server/rateLimit";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const UNREAD_COUNT_CACHE_TTL_MS = 20 * 1000;
-const unreadCountCache = new Map();
-
 function getBearerToken(request) {
   const header = request.headers.get("authorization") || "";
   if (!header.toLowerCase().startsWith("bearer ")) return null;
@@ -30,41 +27,17 @@ function getProfileStatus(profile) {
   return profile?.status || profile?.verification_status || "pending";
 }
 
-function getCachedUnreadCount(userId) {
-  const cached = unreadCountCache.get(userId);
-  if (!cached) return null;
-  if (Date.now() > cached.expiresAt) {
-    unreadCountCache.delete(userId);
-    return null;
-  }
-
-  return cached;
-}
-
-function setCachedUnreadCount(userId, count) {
-  const cachedAt = new Date().toISOString();
-
-  unreadCountCache.set(userId, {
-    count,
-    cachedAt,
-    expiresAt: Date.now() + UNREAD_COUNT_CACHE_TTL_MS,
-  });
-
-  return cachedAt;
-}
-
-function responseHeaders(rateLimitHeaders, cacheStatus) {
+function responseHeaders(rateLimitHeaders) {
   return {
     ...rateLimitHeaders,
     "Cache-Control": "private, max-age=0, no-store",
-    "X-SoldierHub-Cache": cacheStatus,
   };
 }
 
 export async function GET(request) {
   const ipRateLimit = checkRateLimit(request, {
     keyPrefix: "notifications-unread-count-ip",
-    limit: 120,
+    limit: 180,
     windowMs: 60 * 1000,
   });
 
@@ -75,7 +48,7 @@ export async function GET(request) {
   if (!accessToken) {
     return NextResponse.json(
       { count: 0, error: "Please log in again before loading notifications." },
-      { status: 401, headers: responseHeaders(ipRateLimit.headers, "MISS") }
+      { status: 401, headers: responseHeaders(ipRateLimit.headers) }
     );
   }
 
@@ -84,7 +57,7 @@ export async function GET(request) {
   if (!supabase) {
     return NextResponse.json(
       { count: 0, error: "Supabase is not configured." },
-      { status: 503, headers: responseHeaders(ipRateLimit.headers, "MISS") }
+      { status: 503, headers: responseHeaders(ipRateLimit.headers) }
     );
   }
 
@@ -96,29 +69,17 @@ export async function GET(request) {
   if (userError || !user) {
     return NextResponse.json(
       { count: 0, error: "Please log in again before loading notifications." },
-      { status: 401, headers: responseHeaders(ipRateLimit.headers, "MISS") }
+      { status: 401, headers: responseHeaders(ipRateLimit.headers) }
     );
   }
 
   const userRateLimit = checkRateLimit(request, {
     keyPrefix: `notifications-unread-count-user-${user.id}`,
-    limit: 80,
+    limit: 180,
     windowMs: 10 * 60 * 1000,
   });
 
   if (!userRateLimit.allowed) return rateLimitResponse(userRateLimit);
-
-  const cached = getCachedUnreadCount(user.id);
-
-  if (cached) {
-    return NextResponse.json(
-      {
-        count: cached.count,
-        cachedAt: cached.cachedAt,
-      },
-      { headers: responseHeaders(userRateLimit.headers, "HIT") }
-    );
-  }
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
@@ -129,38 +90,35 @@ export async function GET(request) {
   if (profileError) {
     return NextResponse.json(
       { count: 0, error: "Could not verify your profile. Please try again." },
-      { status: 500, headers: responseHeaders(userRateLimit.headers, "MISS") }
+      { status: 500, headers: responseHeaders(userRateLimit.headers) }
     );
   }
 
   if (!profile || getProfileStatus(profile) !== "verified") {
     return NextResponse.json(
       { count: 0 },
-      { status: 200, headers: responseHeaders(userRateLimit.headers, "MISS") }
+      { status: 200, headers: responseHeaders(userRateLimit.headers) }
     );
   }
 
   const { count, error } = await supabase
     .from("notifications")
-    .select("id", { count: "estimated", head: true })
+    .select("id", { count: "exact", head: true })
     .eq("recipient_user_id", user.id)
     .eq("read", false);
 
   if (error) {
     return NextResponse.json(
       { count: 0, error: error.message || "Could not load unread count." },
-      { status: 500, headers: responseHeaders(userRateLimit.headers, "MISS") }
+      { status: 500, headers: responseHeaders(userRateLimit.headers) }
     );
   }
 
-  const safeCount = count || 0;
-  const cachedAt = setCachedUnreadCount(user.id, safeCount);
-
   return NextResponse.json(
     {
-      count: safeCount,
-      cachedAt,
+      count: Math.max(0, Number(count) || 0),
+      checkedAt: new Date().toISOString(),
     },
-    { headers: responseHeaders(userRateLimit.headers, "MISS") }
+    { headers: responseHeaders(userRateLimit.headers) }
   );
 }
