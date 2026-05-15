@@ -140,40 +140,66 @@ export async function listPosts({ limit = 30, cursorCreatedAt = null, cursorId =
   return listPostsFromRpc(supabase, { limit, cursorCreatedAt, cursorId });
 }
 
-async function listMyPostsFromTable(supabase, userId, limit) {
+async function listMyPostsFromView(supabase, userId, limit) {
   const result = await supabase
+    .from("my_posts_with_meta")
+    .select("*")
+    .eq("author_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (!result.error) {
+    return { data: (result.data || []).map(normalizePostRow), error: null };
+  }
+
+  console.error("List my posts from metadata view failed:", result.error);
+
+  const fallback = await supabase
     .from("posts")
     .select(POST_SELECT)
     .eq("author_id", userId)
     .order("created_at", { ascending: false })
     .limit(limit);
 
-  return { data: await hydrateTablePosts(supabase, result.data || []), error: result.error };
+  return { data: await hydrateTablePosts(supabase, fallback.data || []), error: fallback.error };
 }
 
-async function listReportedPostsFromTable(supabase) {
-  const { data, error } = await supabase
+async function listReportedPostsFromView(supabase) {
+  const result = await supabase
+    .from("posts_with_meta")
+    .select("*")
+    .eq("status", "reported")
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (!result.error) {
+    return { data: (result.data || []).map(normalizePostRow), error: null };
+  }
+
+  console.error("List reported posts from metadata view failed:", result.error);
+
+  const fallback = await supabase
     .from("posts")
     .select(POST_SELECT)
     .eq("status", "reported")
     .order("created_at", { ascending: false })
     .limit(50);
 
-  return { data: await hydrateTablePosts(supabase, data || []), error };
+  return { data: await hydrateTablePosts(supabase, fallback.data || []), error: fallback.error };
 }
 
 export async function listMyPosts(userId, { limit = 30 } = {}) {
   const supabase = createClient();
   if (!supabase || !userId) return { data: [], error: null };
 
-  return listMyPostsFromTable(supabase, userId, limit);
+  return listMyPostsFromView(supabase, userId, limit);
 }
 
 export async function listReportedPosts() {
   const supabase = createClient();
   if (!supabase) return { data: [], error: null };
 
-  return listReportedPostsFromTable(supabase);
+  return listReportedPostsFromView(supabase);
 }
 
 async function getAccessTokenForApi(supabase, fallbackMessage) {
@@ -306,14 +332,18 @@ export async function restoreReportedPost(postId) {
   return { data, error };
 }
 
-export async function listMyUpvotedPostIds(userId) {
+export async function listMyUpvotedPostIds(userId, postIds = []) {
   const supabase = createClient();
-  if (!supabase) return { data: [], error: null };
+  if (!supabase || !userId) return { data: [], error: null };
 
-  const { data, error } = await supabase
-    .from("upvotes")
-    .select("post_id")
-    .eq("user_id", userId);
+  const safePostIds = Array.isArray(postIds) ? postIds.filter(Boolean) : [];
+  let query = supabase.from("upvotes").select("post_id").eq("user_id", userId);
+
+  if (safePostIds.length > 0) {
+    query = query.in("post_id", safePostIds);
+  }
+
+  const { data, error } = await query;
 
   if (error) console.error("List my upvotes failed:", error);
 
