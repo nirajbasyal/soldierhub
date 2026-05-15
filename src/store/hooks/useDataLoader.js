@@ -361,9 +361,12 @@ export function useDataLoader({
     if (getProfileStatus(currentUser) !== "verified") return;
 
     const unsubscribe = subscribeToMyNotifications(currentUser.id, (notification) => {
-      setNotifications((currentNotifications) =>
-        prependRealtimeNotification(currentNotifications, notification)
-      );
+      NotificationsDB.hydrateNotificationRows([notification]).then((hydrated) => {
+        const safeNotification = hydrated?.[0] || notification;
+        setNotifications((currentNotifications) =>
+          prependRealtimeNotification(currentNotifications, safeNotification)
+        );
+      });
     });
 
     return () => {
