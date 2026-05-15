@@ -21,6 +21,7 @@ import Button from "@/components/ui/Button";
 
 const EMAIL_SEARCH_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const SEARCH_ACTIVE_COLOR = "#B31942";
+const LOGO_SRC = "/brand/soldierhub-logo-connect.svg";
 
 function isEmailSearch(value) {
   return EMAIL_SEARCH_PATTERN.test(String(value || "").trim().toLowerCase());
@@ -50,8 +51,7 @@ export default function TopNav() {
   const notificationCount = Math.max(0, Number(unreadCount) || 0);
   const showNotificationBadge =
     Boolean(safeUser) && userStatus === "verified" && notificationCount > 0;
-  const notificationBadgeText =
-    notificationCount > 99 ? "99+" : String(notificationCount);
+  const notificationBadgeText = notificationCount > 99 ? "99+" : String(notificationCount);
   const hasSearchText = String(search || "").trim().length > 0;
   const searchIconColor = hasSearchText ? SEARCH_ACTIVE_COLOR : T.textSubtle;
 
@@ -90,14 +90,11 @@ export default function TopNav() {
       return;
     }
 
-    // Normal text stays as post search. This keeps the current feed search behavior,
-    // and pressing Enter from another page returns the user to the feed with the same query.
     if (!isEmailSearch(q)) {
       router.push("/");
       return;
     }
 
-    // Email profile lookup is protected because profile emails should not be publicly enumerable.
     if (!safeUser) {
       setAuthModal("login");
       pushToast("Please sign in to search member profiles by email.", "info");
@@ -113,7 +110,6 @@ export default function TopNav() {
 
     try {
       setProfileSearchLoading(true);
-
       const { data, error } = await findProfileByEmailForSearch(q);
 
       if (error || !data?.id) {
@@ -162,7 +158,7 @@ export default function TopNav() {
       <div className="max-w-6xl mx-auto px-4 md:px-6 h-[72px] flex items-center gap-3 md:gap-5">
         <Link href="/" className="flex items-center shrink-0 min-w-0">
           <Image
-            src="/brand/soldierhub-logo-red.svg"
+            src={LOGO_SRC}
             alt="SoldierHub"
             width={220}
             height={64}
@@ -200,7 +196,192 @@ export default function TopNav() {
                 e.currentTarget.style.boxShadow = "0 1px 2px rgba(7,27,51,0.05)";
               }}
             />
+
+            <button
+              type="submit"
+              disabled={profileSearchLoading}
+              className="absolute right-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-xl border transition-all hover:-translate-y-[52%] hover:shadow-sm disabled:cursor-wait disabled:opacity-80"
+              style={{
+                color: searchIconColor,
+                borderColor: hasSearchText ? "rgba(179,25,66,0.35)" : T.borderSoft,
+                backgroundColor: hasSearchText ? "rgba(179,25,66,0.08)" : T.surface,
+              }}
+              aria-label={profileSearchLoading ? "Searching profile" : "Run search"}
+              title={profileSearchLoading ? "Searching profile..." : "Search"}
+            >
+              {renderSearchSubmitIcon(16)}
+            </button>
           </div>
+        </form>
+
+        <div className="flex-1 md:flex-none" />
+
+        <div className="hidden md:flex items-center gap-2">
+          {isAdmin ? (
+            <Link
+              href="/resources"
+              className="px-3 h-11 rounded-2xl text-sm font-semibold flex items-center gap-1.5 transition-all hover:shadow-sm"
+              style={{ color: T.navy }}
+            >
+              <BookMarked size={16} />
+              Resources
+            </Link>
+          ) : (
+            <button
+              type="button"
+              disabled
+              className="px-3 h-11 rounded-2xl text-sm font-semibold flex items-center gap-1.5 cursor-not-allowed opacity-80"
+              style={{ color: T.navy }}
+              aria-disabled="true"
+              title="Resources are coming soon"
+            >
+              <BookMarked size={16} />
+              Resources
+              <span
+                className="rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+                style={{
+                  backgroundColor: T.amberBg,
+                  borderColor: "#F2D29A",
+                  color: T.amber,
+                }}
+              >
+                Coming Soon
+              </span>
+            </button>
+          )}
+
+          {safeUser ? (
+            <>
+              <button
+                type="button"
+                onClick={goNotifications}
+                className="relative w-11 h-11 rounded-2xl border flex items-center justify-center transition-all hover:-translate-y-0.5 hover:shadow-sm"
+                style={{
+                  borderColor: T.border,
+                  backgroundColor: "rgba(253,254,255,0.92)",
+                  color: T.navy,
+                }}
+                aria-label={
+                  showNotificationBadge
+                    ? `Open notifications, ${notificationCount} unread`
+                    : "Open notifications"
+                }
+              >
+                <Bell size={17} />
+
+                {showNotificationBadge && (
+                  <span
+                    className="absolute -right-1.5 -top-1.5 min-w-[19px] h-[19px] px-1 rounded-full border flex items-center justify-center text-[10px] font-bold leading-none shadow-sm"
+                    style={{
+                      backgroundColor: "#B31942",
+                      borderColor: "rgba(255,255,255,0.95)",
+                      color: "#FFFFFF",
+                    }}
+                  >
+                    {notificationBadgeText}
+                  </span>
+                )}
+              </button>
+
+              {safeUser.role === "admin" && (
+                <Button
+                  variant="secondary"
+                  icon={Shield}
+                  size="md"
+                  onClick={() => router.push("/admin")}
+                >
+                  Admin
+                </Button>
+              )}
+
+              <button
+                type="button"
+                onClick={goProfile}
+                className="rounded-2xl border p-1 pr-3 flex items-center gap-2 hover:shadow-md hover:-translate-y-0.5 transition-all"
+                style={{
+                  borderColor: T.border,
+                  backgroundColor: "rgba(253,254,255,0.95)",
+                }}
+              >
+                <Avatar
+                  name={displayName}
+                  color={safeUser.avatar_color}
+                  size={34}
+                />
+
+                <span className="text-sm font-semibold" style={{ color: T.text }}>
+                  {firstName}
+                </span>
+              </button>
+            </>
+          ) : (
+            <>
+              <Button variant="ghost" onClick={() => setAuthModal("login")}>
+                Sign in
+              </Button>
+
+              <Button
+                variant="primary"
+                icon={UserPlus}
+                onClick={() => setAuthModal("signup")}
+              >
+                Join
+              </Button>
+            </>
+          )}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setMobileMenu(true)}
+          className="md:hidden w-10 h-10 rounded-xl border flex items-center justify-center shrink-0"
+          style={{
+            borderColor: T.border,
+            backgroundColor: T.card,
+            color: T.text,
+          }}
+          aria-label="Open mobile menu"
+        >
+          <Menu size={18} />
+        </button>
+      </div>
+
+      <div className="md:hidden px-4 pb-3">
+        <form onSubmit={handleSearchSubmit} className="relative">
+          <Search
+            size={16}
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors"
+            style={{ color: searchIconColor }}
+          />
+
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search posts or exact email…"
+            autoComplete="off"
+            inputMode="search"
+            className="w-full h-11 pl-10 pr-14 rounded-2xl text-sm outline-none border shadow-sm"
+            style={{
+              borderColor: T.border,
+              backgroundColor: T.card,
+              color: T.text,
+            }}
+          />
+
+          <button
+            type="submit"
+            disabled={profileSearchLoading}
+            className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-xl border transition-all active:scale-95 disabled:cursor-wait disabled:opacity-80"
+            style={{
+              color: searchIconColor,
+              borderColor: hasSearchText ? "rgba(179,25,66,0.35)" : T.borderSoft,
+              backgroundColor: hasSearchText ? "rgba(179,25,66,0.08)" : T.surface,
+            }}
+            aria-label={profileSearchLoading ? "Searching profile" : "Run search"}
+            title={profileSearchLoading ? "Searching profile..." : "Search"}
+          >
+            {renderSearchSubmitIcon(16)}
+          </button>
         </form>
       </div>
     </div>
