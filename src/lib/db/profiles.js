@@ -8,6 +8,15 @@ const SELF_PROFILE_FIELDS =
 const ADMIN_PROFILE_FIELDS =
   "id, full_name, email, personal_email, military_email, phone, bio, avatar_color, avatar_url, role, status, verification_status, base, created_at, updated_at";
 
+const DEFAULT_ADMIN_PROFILE_LIMIT = 50;
+const MAX_ADMIN_PROFILE_LIMIT = 100;
+
+function cleanLimit(limit) {
+  const parsed = Number(limit);
+  if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_ADMIN_PROFILE_LIMIT;
+  return Math.min(Math.floor(parsed), MAX_ADMIN_PROFILE_LIMIT);
+}
+
 async function getAccessTokenForApi(supabase, fallbackMessage) {
   const {
     data: { session },
@@ -81,28 +90,32 @@ export async function getProfile(userId) {
   return { data, error };
 }
 
-export async function listVerifiedProfiles() {
+export async function listVerifiedProfiles({ limit = DEFAULT_ADMIN_PROFILE_LIMIT } = {}) {
   const supabase = createClient();
   if (!supabase) return { data: [], error: null };
 
+  const safeLimit = cleanLimit(limit);
   const { data, error } = await supabase
     .from("profiles")
     .select(ADMIN_PROFILE_FIELDS)
     .eq("status", "verified")
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(safeLimit);
 
   return { data: data || [], error };
 }
 
-export async function listPendingProfiles() {
+export async function listPendingProfiles({ limit = DEFAULT_ADMIN_PROFILE_LIMIT } = {}) {
   const supabase = createClient();
   if (!supabase) return { data: [], error: null };
 
+  const safeLimit = cleanLimit(limit);
   const { data, error } = await supabase
     .from("profiles")
     .select(ADMIN_PROFILE_FIELDS)
     .eq("status", "pending")
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(safeLimit);
 
   return { data: data || [], error };
 }
@@ -173,15 +186,17 @@ export async function adminVerifyProfileByEmail(email) {
   );
 }
 
-export async function listBlockedProfiles() {
+export async function listBlockedProfiles({ limit = DEFAULT_ADMIN_PROFILE_LIMIT } = {}) {
   const supabase = createClient();
   if (!supabase) return { data: [], error: null };
 
+  const safeLimit = cleanLimit(limit);
   const { data, error } = await supabase
     .from("profiles")
     .select(ADMIN_PROFILE_FIELDS)
     .in("status", ["rejected", "revoked"])
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(safeLimit);
 
   return { data: data || [], error };
 }
