@@ -20,6 +20,55 @@ function updatePostInList(list = [], postId, updater) {
   );
 }
 
+function decrementCommentCount(post) {
+  const currentCommentCount = post.comment_count ?? post.reply_count ?? 0;
+
+  return {
+    ...post,
+    comment_count: Math.max(currentCommentCount - 1, 0),
+    reply_count: Math.max((post.reply_count ?? currentCommentCount) - 1, 0),
+  };
+}
+
+function incrementCommentCount(post) {
+  const currentCommentCount = post.comment_count ?? post.reply_count ?? 0;
+
+  return {
+    ...post,
+    comment_count: currentCommentCount + 1,
+    reply_count: (post.reply_count ?? currentCommentCount) + 1,
+  };
+}
+
+function getCommentId(comment = {}) {
+  return comment?.id || comment?.comment_id || comment?.commentId || null;
+}
+
+function getCommentAuthorId(comment = {}) {
+  return (
+    comment?.author_id ||
+    comment?.author_user_id ||
+    comment?.comment_author_id ||
+    comment?.comment_author_user_id ||
+    comment?.user_id ||
+    comment?.profile_id ||
+    comment?.created_by ||
+    comment?.actor_user_id ||
+    comment?.actor_id ||
+    comment?.author?.id ||
+    comment?.profile?.id ||
+    comment?.user?.id ||
+    null
+  );
+}
+
+function removeCommentFromMap(map = {}, postId, commentId) {
+  return {
+    ...map,
+    [postId]: (map[postId] || []).filter((comment) => getCommentId(comment) !== commentId),
+  };
+}
+
 function getLimitIdentity(currentUser) {
   return currentUser?.id || currentUser?.email || "guest";
 }
@@ -306,6 +355,49 @@ export function usePostActions({
     [SUPA, postComments, setPostComments]
   );
 
+  const deleteComment = async ({ postId, commentId }) => {
+    if (!requireAuth()) {
+      return { ok: false, error: "You must be verified to delete comments." };
+    }
+
+    if (!postId || !commentId) {
+      return { ok: false, error: "Comment was not identified. Please refresh and try again." };
+    }
+
+    const existingComments = postComments?.[postId] || [];
+    const existingComment = existingComments.find((item) => getCommentId(item) === commentId);
+    const commentAuthorId = getCommentAuthorId(existingComment);
+    const isAdmin = currentUser?.role === "admin";
+    const ownsComment = Boolean(currentUser?.id && commentAuthorId === currentUser.id);
+
+    if (!isAdmin && !ownsComment) {
+      return { ok: false, error: "You can only delete your own comment." };
+    }
+
+    const previousComments = postComments;
+
+    setPostComments((map) => removeCommentFromMap(map, postId, commentId));
+    setPosts((arr) => updatePostInList(arr, postId, decrementCommentCount));
+    setMyPosts((arr) => updatePostInList(arr, postId, decrementCommentCount));
+    setNotifications((arr) => (arr || []).filter((item) => item.comment_id !== commentId));
+
+    if (SUPA) {
+      const { error } = await CommentsDB.deleteComment(commentId);
+
+      if (error) {
+        setPostComments(previousComments);
+        setPosts((arr) => updatePostInList(arr, postId, incrementCommentCount));
+        setMyPosts((arr) => updatePostInList(arr, postId, incrementCommentCount));
+
+        pushToast(error.message || "Could not delete comment.", "error");
+        return { ok: false, error: error.message || "Could not delete comment." };
+      }
+    }
+
+    pushToast("Comment deleted", "success");
+    return { ok: true };
+  };
+
   const editMyPost = async (postId, updates) => {
     if (!requireAuth()) {
       return { ok: false, error: "You must be verified to edit posts." };
@@ -393,6 +485,7 @@ export function usePostActions({
     reportPost,
     commentOnPost,
     loadCommentsForPost,
+    deleteComment,
     editMyPost,
     deleteMyPost,
   };
