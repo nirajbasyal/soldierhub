@@ -11,9 +11,21 @@ function getStore() {
 }
 
 function getClientIp(request) {
+  // Trusted Vercel header first
+  const vercelIp = request.headers.get("x-vercel-forwarded-for");
+  if (vercelIp) {
+    return vercelIp.trim();
+  }
+
+  // Fallback to the RIGHTMOST forwarded IP (closest trusted proxy)
   const forwardedFor = request.headers.get("x-forwarded-for");
   if (forwardedFor) {
-    return forwardedFor.split(",")[0]?.trim() || "unknown";
+    const parts = forwardedFor
+      .split(",")
+      .map((part) => part.trim())
+      .filter(Boolean);
+
+    return parts[parts.length - 1] || "unknown";
   }
 
   return (
