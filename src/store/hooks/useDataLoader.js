@@ -10,6 +10,8 @@ const FEED_PAGE_SIZE = 30;
 const NOTIFICATION_PAGE_SIZE = 30;
 const FEED_CACHE_KEY = "soldierhub_feed_cache_v2";
 const FEED_CACHE_MAX_AGE_MS = 1000 * 60 * 5;
+const PROFILE_CACHE_KEY = "soldierhub_current_profile_v1";
+const PROFILE_CACHE_MAX_AGE_MS = 1000 * 60 * 30;
 
 function getNextCursor(items = []) {
   const lastItem = items[items.length - 1];
@@ -68,6 +70,60 @@ function writeFeedCache(posts = []) {
   } catch {
     // Local cache is only a speed boost. Ignore storage errors safely.
   }
+}
+
+function isSafeCachedProfile(profile) {
+  return Boolean(profile?.id && getProfileStatus(profile) === "verified");
+}
+
+function readProfileCache() {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = window.localStorage.getItem(PROFILE_CACHE_KEY);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw);
+    const profile = parsed?.profile || null;
+    const savedAt = Number(parsed?.savedAt || 0);
+
+    if (
+      !savedAt ||
+      Date.now() - savedAt > PROFILE_CACHE_MAX_AGE_MS ||
+      !isSafeCachedProfile(profile)
+    ) {
+      window.localStorage.removeItem(PROFILE_CACHE_KEY);
+      return null;
+    }
+
+    return profile;
+  } catch {
+    window.localStorage.removeItem(PROFILE_CACHE_KEY);
+    return null;
+  }
+}
+
+function writeProfileCache(profile) {
+  if (typeof window === "undefined") return;
+
+  try {
+    if (!isSafeCachedProfile(profile)) {
+      window.localStorage.removeItem(PROFILE_CACHE_KEY);
+      return;
+    }
+
+    window.localStorage.setItem(
+      PROFILE_CACHE_KEY,
+      JSON.stringify({ profile, savedAt: Date.now() })
+    );
+  } catch {
+    // Profile cache is only used for faster first paint.
+  }
+}
+
+function clearProfileCache() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(PROFILE_CACHE_KEY);
 }
 
 function prependRealtimeNotification(currentNotifications = [], notification) {
@@ -269,6 +325,12 @@ export function useDataLoader({
     let cancelled = false;
     let unsubscribe;
 
+    const cachedProfile = readProfileCache();
+    if (cachedProfile) {
+      setCurrentUser(cachedProfile);
+      setAuthLoading(false);
+    }
+
     (async () => {
       const { profile } = await Auth.getCurrentUser();
       if (cancelled) return;
@@ -276,6 +338,7 @@ export function useDataLoader({
       const status = getProfileStatus(profile);
 
       if (status === "rejected" || status === "revoked") {
+        clearProfileCache();
         setCurrentUser(profile || null);
         setAuthLoading(false);
         setNotificationsLoading(false);
@@ -289,6 +352,12 @@ export function useDataLoader({
         return;
       }
 
+      if (profile) {
+        writeProfileCache(profile);
+      } else {
+        clearProfileCache();
+      }
+
       setCurrentUser(profile || null);
       setAuthLoading(false);
       if (!profile || status !== "verified") setNotificationsLoading(false);
@@ -296,6 +365,7 @@ export function useDataLoader({
 
     unsubscribe = Auth.onAuthChange(async (user) => {
       if (!user) {
+        clearProfileCache();
         setCurrentUser(null);
         setMyUpvotes(new Set());
         setMyReports(new Set());
@@ -311,6 +381,7 @@ export function useDataLoader({
       const status = getProfileStatus(profile);
 
       if (status === "rejected" || status === "revoked") {
+        clearProfileCache();
         setCurrentUser(profile || null);
         setMyUpvotes(new Set());
         setMyReports(new Set());
@@ -326,6 +397,12 @@ export function useDataLoader({
           replace: true,
         });
         return;
+      }
+
+      if (profile) {
+        writeProfileCache(profile);
+      } else {
+        clearProfileCache();
       }
 
       setCurrentUser(profile || null);
