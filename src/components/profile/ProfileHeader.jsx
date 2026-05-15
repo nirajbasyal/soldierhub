@@ -63,14 +63,18 @@ function InfoPill({ icon: Icon, label, value }) {
   );
 }
 
-function StatCard({ label, value, onClick, active = false }) {
+function StatCard({ label, value, onClick, active = false, loading = false }) {
   const content = (
     <>
       <div className="text-xl md:text-2xl font-extrabold tabular-nums" style={{ color: T.navy }}>
         {value}
       </div>
-      <div className="text-[10px] md:text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: T.textSubtle }}>
+      <div
+        className="text-[10px] md:text-[11px] font-bold uppercase tracking-[0.12em] flex items-center justify-center lg:justify-start gap-1"
+        style={{ color: T.textSubtle }}
+      >
         {label}
+        {loading ? <Loader2 size={10} className="animate-spin" /> : null}
       </div>
     </>
   );
@@ -479,8 +483,8 @@ export default function ProfileHeader() {
     setPasswordSuccess("Password updated successfully.");
   };
 
-  const followerValue = followLoading ? "…" : followSummary.followersCount || 0;
-  const followingValue = followLoading ? "…" : followSummary.followingCount || 0;
+  const followerValue = followSummary.followersCount || 0;
+  const followingValue = followSummary.followingCount || 0;
 
   return (
     <section
@@ -713,12 +717,14 @@ export default function ProfileHeader() {
               <StatCard
                 label="Followers"
                 value={followerValue}
+                loading={followLoading}
                 onClick={() => openConnections("followers")}
                 active={connectionsTab === "followers"}
               />
               <StatCard
                 label="Following"
                 value={followingValue}
+                loading={followLoading}
                 onClick={() => openConnections("following")}
                 active={connectionsTab === "following"}
               />
