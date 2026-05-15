@@ -11,6 +11,7 @@ import {
   Search,
   Shield,
   UserPlus,
+  X,
 } from "lucide-react";
 import { findProfileByEmailForSearch } from "@/lib/db/profiles";
 import { T } from "@/lib/theme";
@@ -20,7 +21,7 @@ import Button from "@/components/ui/Button";
 
 const EMAIL_SEARCH_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const SEARCH_ACTIVE_COLOR = "#B31942";
-const LOGO_SRC = "/brand/soldierhub-logo-connect.svg";
+const LOGO_SRC = "/brand/soldierhub-logo-header.svg";
 
 function isEmailSearch(value) {
   return EMAIL_SEARCH_PATTERN.test(String(value || "").trim().toLowerCase());
@@ -29,6 +30,7 @@ function isEmailSearch(value) {
 export default function TopNav() {
   const router = useRouter();
   const [profileSearchLoading, setProfileSearchLoading] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
   const app = useApp() || {};
   const {
@@ -43,20 +45,37 @@ export default function TopNav() {
 
   const safeUser = currentUser || null;
   const displayName = safeUser?.full_name || safeUser?.email || "SoldierHub user";
+  const displayEmail = safeUser?.email || safeUser?.personal_email || "";
   const firstName = displayName.split(" ")[0] || "Profile";
+  const userStatus = safeUser?.status || safeUser?.verification_status || "pending";
   const notificationCount = Math.max(0, Number(unreadCount) || 0);
-  const showNotificationBadge = Boolean(safeUser) && notificationCount > 0;
+  const showNotificationBadge =
+    Boolean(safeUser) && userStatus === "verified" && notificationCount > 0;
   const notificationBadgeText = notificationCount > 99 ? "99+" : String(notificationCount);
   const hasSearchText = String(search || "").trim().length > 0;
   const searchIconColor = hasSearchText ? SEARCH_ACTIVE_COLOR : T.textSubtle;
 
   const goProfile = () => {
     if (!safeUser) return setAuthModal("login");
+
+    if (userStatus !== "verified") {
+      return router.push(
+        `/pending-review?email=${encodeURIComponent(displayEmail)}&name=${encodeURIComponent(displayName)}&found=1`
+      );
+    }
+
     router.push("/profile");
   };
 
   const goNotifications = () => {
     if (!safeUser) return setAuthModal("login");
+
+    if (userStatus !== "verified") {
+      return router.push(
+        `/pending-review?email=${encodeURIComponent(displayEmail)}&name=${encodeURIComponent(displayName)}&found=1`
+      );
+    }
+
     router.push("/notifications");
   };
 
@@ -76,8 +95,22 @@ export default function TopNav() {
       return;
     }
 
+    if (!safeUser) {
+      setAuthModal("login");
+      pushToast("Please sign in to search member profiles by email.", "info");
+      return;
+    }
+
+    if (userStatus !== "verified") {
+      router.push(
+        `/pending-review?email=${encodeURIComponent(displayEmail)}&name=${encodeURIComponent(displayName)}&found=1`
+      );
+      return;
+    }
+
     try {
       setProfileSearchLoading(true);
+
       const { data, error } = await findProfileByEmailForSearch(q);
 
       if (error || !data?.id) {
@@ -86,13 +119,74 @@ export default function TopNav() {
       }
 
       setSearch("");
-      router.push(`/profile/${encodeURIComponent(data.id)}`);
+      setMobileSearchOpen(false);
+
+      if (data.id === safeUser.id) {
+        router.push("/profile");
+        return;
+      }
+
+      router.push(
+        `/profile/${encodeURIComponent(data.id)}?name=${encodeURIComponent(
+          data.full_name || "SoldierHub member"
+        )}`
+      );
     } catch {
       pushToast("Could not search right now. Please try again.", "error");
     } finally {
       setProfileSearchLoading(false);
     }
   };
+
+  const renderSearchSubmitIcon = (size = 17) => {
+    if (profileSearchLoading) {
+      return <Loader2 size={size} className="animate-spin" aria-hidden="true" />;
+    }
+
+    return <Search size={size} aria-hidden="true" />;
+  };
+
+  const searchForm = (mode = "desktop") => (
+    <form onSubmit={handleSearchSubmit} className={mode === "desktop" ? "hidden md:flex flex-1 max-w-sm ml-1" : "w-full"}>
+      <div className="relative w-full">
+        <Search
+          size={17}
+          className="absolute left-4 top-1/2 -translate-y-1/2 transition-colors"
+          style={{ color: searchIconColor }}
+        />
+
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          onFocus={() => mode === "mobile" && setMobileSearchOpen(true)}
+          placeholder={mode === "mobile" ? "Search posts or exact email…" : "Search posts or email"}
+          autoComplete="off"
+          inputMode="search"
+          className="w-full h-11 pl-11 pr-16 rounded-2xl text-sm outline-none border shadow-sm transition-all"
+          style={{
+            borderColor: T.border,
+            backgroundColor: "rgba(253,254,255,0.92)",
+            color: T.text,
+          }}
+        />
+
+        <button
+          type="submit"
+          disabled={profileSearchLoading}
+          className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-xl border transition-all active:scale-95 disabled:cursor-wait disabled:opacity-80"
+          style={{
+            color: searchIconColor,
+            borderColor: hasSearchText ? "rgba(179,25,66,0.35)" : T.borderSoft,
+            backgroundColor: hasSearchText ? "rgba(179,25,66,0.08)" : T.surface,
+          }}
+          aria-label={profileSearchLoading ? "Searching profile" : "Run search"}
+          title={profileSearchLoading ? "Searching profile..." : "Search"}
+        >
+          {renderSearchSubmitIcon(16)}
+        </button>
+      </div>
+    </form>
+  );
 
   return (
     <div
@@ -103,79 +197,57 @@ export default function TopNav() {
           "linear-gradient(180deg, rgba(253,254,255,0.96) 0%, rgba(243,246,251,0.92) 100%)",
       }}
     >
-      <div className="h-1 w-full bg-gradient-to-r from-[#B31942] via-[#FDFEFF] to-[#1E4E8C]" />
-
-      <div className="max-w-6xl mx-auto px-4 md:px-6 h-[84px] flex items-center gap-5">
+      <div className="max-w-6xl mx-auto px-4 md:px-6 h-[84px] flex items-center gap-4 md:gap-5">
         <Link href="/" className="flex items-center shrink-0 min-w-0">
           <Image
             src={LOGO_SRC}
             alt="SoldierHub"
-            width={250}
-            height={100}
+            width={220}
+            height={90}
             priority
-            className="h-16 md:h-[72px] w-auto object-contain"
+            className="h-14 md:h-16 w-auto object-contain"
           />
         </Link>
 
-        <form onSubmit={handleSearchSubmit} className="hidden md:flex flex-1 max-w-sm ml-1">
-          <div className="relative w-full">
-            <Search
-              size={17}
-              className="absolute left-4 top-1/2 -translate-y-1/2"
-              style={{ color: searchIconColor }}
-            />
-
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search posts or email"
-              autoComplete="off"
-              inputMode="search"
-              className="w-full h-11 pl-11 pr-14 rounded-2xl text-sm outline-none border shadow-sm"
-              style={{
-                borderColor: T.border,
-                backgroundColor: "rgba(253,254,255,0.90)",
-                color: T.text,
-              }}
-            />
-
-            <button
-              type="submit"
-              disabled={profileSearchLoading}
-              className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-xl border"
-              style={{
-                color: searchIconColor,
-                borderColor: hasSearchText ? "rgba(179,25,66,0.35)" : T.borderSoft,
-                backgroundColor: hasSearchText ? "rgba(179,25,66,0.08)" : T.surface,
-              }}
-            >
-              {profileSearchLoading ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : (
-                <Search size={16} />
-              )}
-            </button>
-          </div>
-        </form>
+        {searchForm("desktop")}
 
         <div className="flex-1" />
+
+        <button
+          type="button"
+          onClick={() => setMobileSearchOpen((open) => !open)}
+          className="md:hidden w-10 h-10 rounded-2xl border flex items-center justify-center shrink-0 transition-all active:scale-95"
+          style={{
+            borderColor: hasSearchText || mobileSearchOpen ? "rgba(179,25,66,0.35)" : T.border,
+            backgroundColor: hasSearchText || mobileSearchOpen ? "rgba(179,25,66,0.08)" : T.card,
+            color: hasSearchText || mobileSearchOpen ? SEARCH_ACTIVE_COLOR : T.navy,
+          }}
+          aria-label={mobileSearchOpen ? "Close search" : "Open search"}
+        >
+          {mobileSearchOpen ? <X size={18} /> : <Search size={18} />}
+        </button>
 
         <div className="hidden md:flex items-center gap-2">
           <button
             type="button"
             onClick={goNotifications}
-            className="relative w-11 h-11 rounded-2xl border flex items-center justify-center"
+            className="relative w-11 h-11 rounded-2xl border flex items-center justify-center transition-all hover:-translate-y-0.5 hover:shadow-sm"
             style={{
               borderColor: T.border,
               backgroundColor: "rgba(253,254,255,0.92)",
               color: T.navy,
             }}
+            aria-label={
+              showNotificationBadge
+                ? `Open notifications, ${notificationCount} unread`
+                : "Open notifications"
+            }
           >
             <Bell size={17} />
 
             {showNotificationBadge && (
               <span
-                className="absolute -right-1.5 -top-1.5 min-w-[19px] h-[19px] px-1 rounded-full border flex items-center justify-center text-[10px] font-bold"
+                className="absolute -right-1.5 -top-1.5 min-w-[19px] h-[19px] px-1 rounded-full border flex items-center justify-center text-[10px] font-bold leading-none shadow-sm"
                 style={{
                   backgroundColor: "#B31942",
                   borderColor: "rgba(255,255,255,0.95)",
@@ -213,7 +285,7 @@ export default function TopNav() {
             <button
               type="button"
               onClick={goProfile}
-              className="rounded-2xl border p-1 pr-3 flex items-center gap-2"
+              className="rounded-2xl border p-1 pr-3 flex items-center gap-2 hover:shadow-md hover:-translate-y-0.5 transition-all"
               style={{
                 borderColor: T.border,
                 backgroundColor: "rgba(253,254,255,0.95)",
@@ -246,6 +318,17 @@ export default function TopNav() {
           )}
         </div>
       </div>
+
+      {mobileSearchOpen ? (
+        <div className="md:hidden px-4 pb-4 -mt-1">
+          <div
+            className="rounded-[22px] border p-2 shadow-sm"
+            style={{ backgroundColor: T.card, borderColor: T.border }}
+          >
+            {searchForm("mobile")}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
