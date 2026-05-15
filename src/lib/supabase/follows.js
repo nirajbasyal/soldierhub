@@ -4,12 +4,17 @@ function getFriendlyError(error, fallback = "Something went wrong. Please try ag
   if (!error) return null;
 
   const message = error.message || fallback;
+  const lowerMessage = message.toLowerCase();
 
-  if (message.toLowerCase().includes("relation") || message.toLowerCase().includes("does not exist")) {
+  if (
+    lowerMessage.includes("relation") ||
+    lowerMessage.includes("does not exist") ||
+    lowerMessage.includes("function")
+  ) {
     return {
       ...error,
       message:
-        "Follow system is not ready yet. Please run the follower SQL migration in Supabase first.",
+        "Follow system is not ready yet. Please run the latest follower SQL in Supabase first.",
     };
   }
 
@@ -21,6 +26,12 @@ function normalizeFollowCountRow(row = {}) {
     followersCount: Number(row.followers_count || row.follower_count || 0),
     followingCount: Number(row.following_count || 0),
   };
+}
+
+function cleanLimit(limit) {
+  const parsed = Number(limit);
+  if (!Number.isFinite(parsed) || parsed <= 0) return 100;
+  return Math.min(Math.floor(parsed), 100);
 }
 
 async function getCurrentUserId(supabase) {
@@ -140,18 +151,20 @@ export async function listFollowConnections(type, profileId, { limit = 100 } = {
     return { data: [], error: { message: "Follow system is not available." } };
   }
 
-  const normalizedType = type === "following" ? "following" : "followers";
-  const profileColumn = normalizedType === "following" ? "following_id" : "follower_id";
-  const filterColumn = normalizedType === "following" ? "follower_id" : "following_id";
+  const { userId, error: userError } = await getCurrentUserId(supabase);
+  if (userError || !userId) return { data: [], error: getFriendlyError(userError, "Please log in again.") };
 
-  const { data, error } = await supabase
-    .from("profile_follows")
-    .select(
-      `${profileColumn}, created_at, profile:profiles!profile_follows_${profileColumn}_fkey(id, full_name, avatar_color, avatar_url, base, status, verification_status)`
-    )
-    .eq(filterColumn, profileId)
-    .order("created_at", { ascending: false })
-    .limit(limit);
+  if (userId !== profileId) {
+    return { data: [], error: { message: "You can only view your own followers and following list." } };
+  }
+
+  const normalizedType = type === "following" ? "following" : "followers";
+  const safeLimit = cleanLimit(limit);
+
+  const { data, error } = await supabase.rpc("list_my_follow_connections", {
+    p_list_type: normalizedType,
+    p_limit: safeLimit,
+  });
 
   if (error) {
     return { data: [], error: getFriendlyError(error, "Could not load follow list.") };
@@ -160,9 +173,15 @@ export async function listFollowConnections(type, profileId, { limit = 100 } = {
   return {
     data: (data || [])
       .map((row) => ({
-        id: row?.profile?.id || row?.[profileColumn] || null,
-        created_at: row.created_at,
-        profile: row.profile || null,
+        id: row.profile_id,
+        created_at: row.followed_at,
+        profile: {
+          id: row.profile_id,
+          full_name: row.full_name || "SoldierHub member",
+          avatar_color: row.avatar_color || "#314A66",
+          avatar_url: row.avatar_url || null,
+          base: row.base || "Fort Bliss",
+        },
       }))
       .filter((row) => row.profile?.id),
     error: null,
