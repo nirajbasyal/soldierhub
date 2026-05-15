@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  Activity,
   BookMarked,
   Calculator,
   ChevronRight,
@@ -314,7 +315,7 @@ export default function MobileMenu() {
               className="text-[11px] font-semibold uppercase tracking-wider px-1 mb-2"
               style={{ color: T.textSubtle }}
             >
-              Base Info
+              Soldier Tools & Info
             </div>
 
             <div className="flex flex-col gap-2">
@@ -330,6 +331,14 @@ export default function MobileMenu() {
                 label="Gate Hours"
                 hint="Fort Bliss gate schedule"
                 onClick={() => go("/tools/gates")}
+              />
+
+              <MenuItem
+                icon={Activity}
+                label="AFT Score Calculator"
+                hint="Army fitness score tool"
+                badge="Coming Soon"
+                disabled
               />
             </div>
           </div>
