@@ -86,11 +86,16 @@ async function attachCountsToPosts(supabase, rows = []) {
   const postIds = [...new Set(rows.map((row) => row.id).filter(Boolean))];
   if (postIds.length === 0) return rows;
 
-  const { data: comments } = await supabase
+  const { data: comments, error } = await supabase
     .from("comments")
     .select("post_id")
     .in("post_id", postIds)
     .is("deleted_at", null);
+
+  if (error) {
+    console.error("Attach visible comment counts failed:", error);
+    return rows;
+  }
 
   const commentCounts = new Map();
 
@@ -98,10 +103,15 @@ async function attachCountsToPosts(supabase, rows = []) {
     commentCounts.set(row.post_id, (commentCounts.get(row.post_id) || 0) + 1)
   );
 
-  return rows.map((row) => ({
-    ...row,
-    comment_count: commentCounts.get(row.id) || row.comment_count || 0,
-  }));
+  return rows.map((row) => {
+    const visibleCommentCount = commentCounts.get(row.id) ?? 0;
+
+    return {
+      ...row,
+      comment_count: visibleCommentCount,
+      reply_count: visibleCommentCount,
+    };
+  });
 }
 
 async function hydrateTablePosts(supabase, rows = []) {
@@ -145,7 +155,9 @@ async function listPostsFromRpc(
 
     if (!result.error && Array.isArray(result.data)) {
       if (!usingCursor) workingPublicPostsRpcMode = mode;
-      return { data: result.data.map(normalizePostRow), error: null };
+      const normalizedRows = result.data.map(normalizePostRow);
+      const rowsWithVisibleCounts = await attachCountsToPosts(supabase, normalizedRows);
+      return { data: rowsWithVisibleCounts, error: null };
     }
 
     lastError = result.error || lastError;
