@@ -5,7 +5,7 @@ import { T, TONE_STYLES } from "@/lib/theme";
 
 export default function CategoryStrip({ selected, counts, onSelect }) {
   return (
-    <div className="overflow-x-auto no-scrollbar -mx-4 md:mx-0 px-4 md:px-0">
+    <div className="w-full overflow-x-auto no-scrollbar">
       <div className="w-max min-w-full">
         <div
           className="inline-flex min-w-full items-center gap-2 rounded-[22px] border p-2 shadow-sm"
