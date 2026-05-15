@@ -22,6 +22,55 @@ function updatePostInList(list = [], postId, updater) {
   );
 }
 
+function addPostToTop(list = [], post = {}) {
+  const postId = getPostId(post);
+  if (!postId) return list || [];
+  return [post, ...removePostFromList(list, postId)];
+}
+
+function normalizeCreatedPostForState(row = {}, currentUser, fallback = {}) {
+  const postId = getPostId(row) || fallback.id || uid();
+  const isAnonymous = Boolean(row.anonymous ?? fallback.anonymous);
+  const commentCount = row.comment_count ?? row.comments_count ?? row.reply_count ?? 0;
+
+  return {
+    ...row,
+    id: postId,
+    post_id: postId,
+    category: row.category || fallback.category || "General Q&A",
+    title: row.title || fallback.title || "",
+    body: row.body ?? fallback.body ?? "",
+    anonymous: isAnonymous,
+    author_id: row.author_id || currentUser?.id || null,
+    author_name: row.author_name || row.author_name_cached || currentUser?.full_name || "Member",
+    author_color: row.author_color || row.author_color_cached || currentUser?.avatar_color || "#314A66",
+    upvote_count: row.upvote_count ?? row.upvotes_count ?? 0,
+    comment_count: commentCount,
+    reply_count: row.reply_count ?? commentCount,
+    report_count: row.report_count ?? 0,
+    status: row.status || "active",
+    edited: Boolean(row.edited),
+    created_at: row.created_at || new Date().toISOString(),
+    updated_at: row.updated_at || row.created_at || new Date().toISOString(),
+  };
+}
+
+function makeFeedSafePost(post = {}) {
+  if (!post.anonymous) return post;
+
+  return {
+    ...post,
+    author_id: null,
+    author_user_id: null,
+    user_id: null,
+    profile_id: null,
+    author_name: null,
+    author_color: null,
+    author_name_cached: null,
+    author_color_cached: null,
+  };
+}
+
 function decrementCommentCount(post) {
   const currentCommentCount = post.comment_count ?? post.reply_count ?? 0;
 
@@ -234,6 +283,41 @@ export function usePostActions({
       return { ok: false, error: "Please slow down before posting again." };
     }
 
+    if (SUPA) {
+      const { data, error } = await PostsDB.createPost({
+        category,
+        title,
+        body,
+        anonymous,
+      });
+
+      if (error) {
+        pushToast(error.message, "error");
+        return { ok: false, error: error.message };
+      }
+
+      const savedPost = normalizeCreatedPostForState(data, currentUser, {
+        id,
+        title,
+        body,
+        category,
+        anonymous,
+      });
+      const feedPost = makeFeedSafePost(savedPost);
+
+      setPosts((arr) => {
+        const next = addPostToTop(arr, feedPost);
+        writeCachedFeedPosts(next);
+        return next;
+      });
+      setMyPosts((arr) => addPostToTop(arr, savedPost));
+
+      pushToast("Posted to feed", "success");
+      reloadPosts?.({ silent: true });
+      reloadMyPosts?.();
+      return { ok: true };
+    }
+
     const postId = id || uid();
     const optimisticPost = {
       id: postId,
@@ -260,28 +344,6 @@ export function usePostActions({
       return next;
     });
     setMyPosts((arr) => [optimisticPost, ...arr]);
-
-    if (SUPA) {
-      const { error } = await PostsDB.createPost({
-        id: postId,
-        author_id: currentUser.id,
-        category,
-        title,
-        body,
-        anonymous,
-      });
-      if (error) {
-        setPosts((arr) => removePostFromList(arr, postId));
-        setMyPosts((arr) => removePostFromList(arr, postId));
-        removeCachedFeedPost(postId);
-        pushToast(error.message, "error");
-        return { ok: false, error: error.message };
-      }
-      pushToast("Posted to feed", "success");
-      reloadPosts?.({ silent: true });
-      reloadMyPosts?.();
-      return { ok: true };
-    }
 
     pushToast("Posted to feed", "success");
     return { ok: true };
