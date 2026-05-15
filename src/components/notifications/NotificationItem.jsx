@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, MessageCircle, ThumbsUp } from "lucide-react";
+import { ArrowRight, MessageCircle, ThumbsUp, UserPlus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { T } from "@/lib/theme";
 import { timeAgo } from "@/lib/helpers";
@@ -67,6 +67,10 @@ function getCommentText(notification) {
   );
 }
 
+function isFollowNotification(notification) {
+  return String(notification?.type || "").toLowerCase() === "follow";
+}
+
 function trimWords(value, maxWords = 4) {
   const words = String(value || "")
     .replace(/\s+/g, " ")
@@ -94,6 +98,7 @@ function uniqueActors(notifications = []) {
 
 function buildSummary(group) {
   const notifications = group?.notifications || [];
+  const follows = notifications.filter(isFollowNotification);
   const comments = notifications.filter((item) => item.type === "comment");
   const upvotes = notifications.filter((item) => item.type === "upvote");
   const latest = notifications[0] || {};
@@ -102,6 +107,12 @@ function buildSummary(group) {
   const otherCount = Math.max(actors.length - 1, 0);
   const hasComments = comments.length > 0;
   const hasUpvotes = upvotes.length > 0;
+  const hasFollows = follows.length > 0;
+
+  if (hasFollows) {
+    if (follows.length === 1) return `${firstName} followed your profile`;
+    return `${firstName}${otherCount ? ` and ${otherCount} other${otherCount > 1 ? "s" : ""}` : ""} followed your profile`;
+  }
 
   if (hasComments && hasUpvotes) {
     return `${firstName}${otherCount ? ` and ${otherCount} other${otherCount > 1 ? "s" : ""}` : ""} replied to and upvoted your post`;
@@ -126,6 +137,7 @@ export default function NotificationItem({ notification, group }) {
   const notifications = isGroup ? group.notifications : [notification].filter(Boolean);
   const latest = notifications[0] || notification || {};
   const unread = isGroup ? notifications.some((item) => !item.read) : !latest.read;
+  const isFollow = isFollowNotification(latest);
   const postId = latest.post_id || group?.postId;
   const fallbackPost = group?.post || null;
   const postText = getPostText(latest, fallbackPost);
@@ -136,12 +148,19 @@ export default function NotificationItem({ notification, group }) {
   const firstActor = actors[0] || { id: getActorId(latest), name: getActorName(latest) };
   const latestTime = latest.created_at;
   const summary = isGroup ? buildSummary(group) : buildSummary({ notifications });
-  const visibleActivityCount = (latestComment ? 1 : 0) + (upvoteItems.length > 0 ? upvoteItems.length : 0);
-  const hiddenCount = Math.max(notifications.length - visibleActivityCount, 0);
+  const visibleActivityCount = isFollow ? notifications.length : (latestComment ? 1 : 0) + (upvoteItems.length > 0 ? upvoteItems.length : 0);
+  const hiddenCount = isFollow ? 0 : Math.max(notifications.length - visibleActivityCount, 0);
   const firstActorFallbackName = getProfileLinkName(firstActor.name);
   const latestCommentFallbackName = getProfileLinkName(getActorName(latestComment));
+  const notificationIcon = isFollow ? UserPlus : upvoteItems.length > 0 && !latestComment ? ThumbsUp : MessageCircle;
+  const NotificationIcon = notificationIcon;
 
   const openNotification = () => {
+    if (isFollow && firstActor.id) {
+      router.push(`/profile/${encodeURIComponent(firstActor.id)}`);
+      return;
+    }
+
     if (postId) {
       router.push(`/post/${encodeURIComponent(postId)}?replies=1`);
       return;
@@ -193,14 +212,10 @@ export default function NotificationItem({ notification, group }) {
           style={{
             backgroundColor: "#FFFFFF",
             borderColor: "#FFFFFF",
-            color: upvoteItems.length > 0 && !latestComment ? T.gold : T.blue,
+            color: isFollow ? THEME_RED : upvoteItems.length > 0 && !latestComment ? T.gold : T.blue,
           }}
         >
-          {upvoteItems.length > 0 && !latestComment ? (
-            <ThumbsUp size={13} strokeWidth={2.5} />
-          ) : (
-            <MessageCircle size={13} strokeWidth={2.5} />
-          )}
+          <NotificationIcon size={13} strokeWidth={2.5} />
         </div>
       </ProfileIdentityLink>
 
@@ -214,23 +229,33 @@ export default function NotificationItem({ notification, group }) {
               {summary}
             </p>
 
-            <div
-              className="mt-2 rounded-2xl border px-3 py-2"
-              style={{
-                backgroundColor: unread ? "#F7FAFD" : "rgba(247,250,253,0.72)",
-                borderColor: unread ? "#C8D8EA" : "#DEE8F2",
-              }}
-            >
-              <div className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: THEME_RED }}>
-                Your post
-              </div>
-              <p
-                className={`mt-1 text-sm leading-6 ${unread ? "font-bold" : "font-medium"}`}
-                style={{ color: unread ? T.text : T.textMuted }}
+            {isFollow ? (
+              <div
+                className="mt-2 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold"
+                style={{ backgroundColor: "#FBE8EE", borderColor: "#F5C6D4", color: THEME_RED }}
               >
-                {trimWords(postText, 3)}
-              </p>
-            </div>
+                <UserPlus size={13} strokeWidth={2.5} />
+                View profile
+              </div>
+            ) : (
+              <div
+                className="mt-2 rounded-2xl border px-3 py-2"
+                style={{
+                  backgroundColor: unread ? "#F7FAFD" : "rgba(247,250,253,0.72)",
+                  borderColor: unread ? "#C8D8EA" : "#DEE8F2",
+                }}
+              >
+                <div className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: THEME_RED }}>
+                  Your post
+                </div>
+                <p
+                  className={`mt-1 text-sm leading-6 ${unread ? "font-bold" : "font-medium"}`}
+                  style={{ color: unread ? T.text : T.textMuted }}
+                >
+                  {trimWords(postText, 3)}
+                </p>
+              </div>
+            )}
 
             {latestComment ? (
               <div className="mt-3 flex gap-2">
