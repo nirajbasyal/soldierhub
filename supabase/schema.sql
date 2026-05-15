@@ -43,7 +43,6 @@ create table if not exists public.posts (
   author_name_cached    text,
   author_color_cached   text,
   category              text not null,
-  title                 text not null,
   body                  text default '',
   anonymous             boolean not null default false,
   status                text not null default 'active'    check (status in ('active', 'reported', 'removed')),
@@ -303,8 +302,8 @@ create trigger report_marks_post
   for each row execute procedure public.tg_mark_post_reported();
 
 -- ─── Notify post author when someone commented ────────────────────────────
--- Caches actor_name and post_title at insert time so the recipient can read
--- their notifications without joining `profiles`.
+-- Caches actor_name and a short post preview at insert time so the recipient
+-- can read their notifications without joining `profiles`.
 create or replace function public.tg_notify_on_comment()
 returns trigger
 language plpgsql
@@ -313,10 +312,10 @@ set search_path = public
 as $$
 declare
   post_author      uuid;
-  post_title_local text;
+  post_preview_local text;
   actor_name_local text;
 begin
-  select author_id, title into post_author, post_title_local
+  select author_id, left(coalesce(body, ''), 120) into post_author, post_preview_local
   from public.posts
   where id = new.post_id;
 
@@ -332,7 +331,7 @@ begin
   insert into public.notifications
     (recipient_user_id, actor_user_id, actor_name_cached, type, post_id, post_title_cached, comment_id)
   values
-    (post_author, new.author_id, actor_name_local, 'comment', new.post_id, post_title_local, new.id);
+    (post_author, new.author_id, actor_name_local, 'comment', new.post_id, post_preview_local, new.id);
 
   return new;
 end $$;
@@ -358,7 +357,6 @@ select
   p.id,
   case when p.anonymous then null else p.author_id end as author_id,
   p.category,
-  p.title,
   p.body,
   p.anonymous,
   p.status,
@@ -386,7 +384,6 @@ select
   p.id,
   p.author_id,
   p.category,
-  p.title,
   p.body,
   p.anonymous,
   p.status,
@@ -432,7 +429,6 @@ returns table (
   id uuid,
   author_id uuid,
   category text,
-  title text,
   body text,
   anonymous boolean,
   status text,
@@ -454,7 +450,6 @@ as $$
     p.id,
     case when p.anonymous then null else p.author_id end as author_id,
     p.category,
-    p.title,
     p.body,
     p.anonymous,
     p.status,
