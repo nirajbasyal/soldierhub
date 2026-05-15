@@ -1,5 +1,9 @@
 import { createClient } from "./client";
 
+const FOLLOW_SUMMARY_CACHE_PREFIX = "soldierhub_follow_summary_v1:";
+const FOLLOW_CONNECTIONS_CACHE_PREFIX = "soldierhub_follow_connections_v1:";
+const FOLLOW_CACHE_MAX_AGE_MS = 1000 * 60 * 5;
+
 function getFriendlyError(error, fallback = "Something went wrong. Please try again.") {
   if (!error) return null;
 
@@ -23,8 +27,9 @@ function getFriendlyError(error, fallback = "Something went wrong. Please try ag
 
 function normalizeFollowCountRow(row = {}) {
   return {
-    followersCount: Number(row.followers_count || row.follower_count || 0),
-    followingCount: Number(row.following_count || 0),
+    followersCount: Number(row.followersCount ?? row.followers_count ?? row.follower_count ?? 0),
+    followingCount: Number(row.followingCount ?? row.following_count ?? 0),
+    isFollowing: Boolean(row.isFollowing ?? row.is_following ?? false),
   };
 }
 
@@ -32,6 +37,108 @@ function cleanLimit(limit) {
   const parsed = Number(limit);
   if (!Number.isFinite(parsed) || parsed <= 0) return 100;
   return Math.min(Math.floor(parsed), 100);
+}
+
+function safeCacheKey(prefix, ...parts) {
+  return `${prefix}${parts.map((part) => encodeURIComponent(String(part || "none"))).join(":")}`;
+}
+
+function readCache(key, maxAgeMs = FOLLOW_CACHE_MAX_AGE_MS) {
+  if (typeof window === "undefined" || !key) return null;
+
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw);
+    const savedAt = Number(parsed?.savedAt || 0);
+
+    if (!savedAt || Date.now() - savedAt > maxAgeMs) {
+      window.localStorage.removeItem(key);
+      return null;
+    }
+
+    return parsed?.value ?? null;
+  } catch {
+    window.localStorage.removeItem(key);
+    return null;
+  }
+}
+
+function writeCache(key, value) {
+  if (typeof window === "undefined" || !key) return;
+
+  try {
+    window.localStorage.setItem(key, JSON.stringify({ value, savedAt: Date.now() }));
+  } catch {
+    // Cache is only a speed boost. Ignore quota/private-mode errors safely.
+  }
+}
+
+function removeCache(key) {
+  if (typeof window === "undefined" || !key) return;
+  window.localStorage.removeItem(key);
+}
+
+function followSummaryCacheKey(profileId, viewerId = null) {
+  return safeCacheKey(FOLLOW_SUMMARY_CACHE_PREFIX, profileId, viewerId || "viewerless");
+}
+
+function followConnectionsCacheKey(type, profileId) {
+  const normalizedType = type === "following" ? "following" : "followers";
+  return safeCacheKey(FOLLOW_CONNECTIONS_CACHE_PREFIX, normalizedType, profileId);
+}
+
+export function getCachedFollowSummary(profileId, viewerId = null) {
+  if (!profileId) return null;
+  const cached = readCache(followSummaryCacheKey(profileId, viewerId));
+  return cached ? normalizeFollowCountRow(cached) : null;
+}
+
+export function cacheFollowSummary(profileId, viewerId = null, summary = null) {
+  if (!profileId || !summary) return;
+  writeCache(followSummaryCacheKey(profileId, viewerId), normalizeFollowCountRow(summary));
+}
+
+export function updateCachedFollowSummary(profileId, viewerId = null, updater) {
+  if (!profileId || typeof updater !== "function") return null;
+
+  const key = followSummaryCacheKey(profileId, viewerId);
+  const current = getCachedFollowSummary(profileId, viewerId) || {
+    followersCount: 0,
+    followingCount: 0,
+    isFollowing: false,
+  };
+  const next = normalizeFollowCountRow(updater(current));
+  writeCache(key, next);
+  return next;
+}
+
+export function getCachedFollowConnections(type, profileId) {
+  if (!profileId) return null;
+  const cached = readCache(followConnectionsCacheKey(type, profileId));
+  return Array.isArray(cached) ? cached : null;
+}
+
+export function cacheFollowConnections(type, profileId, items = []) {
+  if (!profileId) return;
+  writeCache(followConnectionsCacheKey(type, profileId), Array.isArray(items) ? items : []);
+}
+
+export function removeProfileFromCachedFollowing(profileId, targetProfileId) {
+  if (!profileId || !targetProfileId) return;
+
+  const key = followConnectionsCacheKey("following", profileId);
+  const cached = getCachedFollowConnections("following", profileId);
+  if (!cached) return;
+
+  const next = cached.filter((item) => (item.profile?.id || item.id) !== targetProfileId);
+  writeCache(key, next);
+}
+
+export function clearCachedFollowConnections(type, profileId) {
+  if (!profileId) return;
+  removeCache(followConnectionsCacheKey(type, profileId));
 }
 
 async function getCurrentUserId(supabase) {
@@ -87,11 +194,15 @@ export async function getFollowSummary(profileId, viewerId = null) {
       };
     }
 
+    const summary = {
+      ...normalizeFollowCountRow(countRow),
+      isFollowing: Boolean(followingResult?.data),
+    };
+
+    cacheFollowSummary(profileId, viewerId, summary);
+
     return {
-      data: {
-        ...normalizeFollowCountRow(countRow),
-        isFollowing: Boolean(followingResult?.data),
-      },
+      data: summary,
       error: null,
     };
   } catch (error) {
@@ -124,6 +235,21 @@ export async function followUser(targetProfileId) {
     .select("follower_id, following_id, created_at")
     .maybeSingle();
 
+  if (!error) {
+    updateCachedFollowSummary(targetProfileId, userId, (current) => ({
+      ...current,
+      isFollowing: true,
+      followersCount: current.isFollowing
+        ? current.followersCount
+        : current.followersCount + 1,
+    }));
+    updateCachedFollowSummary(userId, userId, (current) => ({
+      ...current,
+      followingCount: current.followingCount + 1,
+    }));
+    clearCachedFollowConnections("following", userId);
+  }
+
   return { data, error: getFriendlyError(error, "Could not follow this member.") };
 }
 
@@ -141,6 +267,19 @@ export async function unfollowUser(targetProfileId) {
     .delete()
     .eq("follower_id", userId)
     .eq("following_id", targetProfileId);
+
+  if (!error) {
+    updateCachedFollowSummary(targetProfileId, userId, (current) => ({
+      ...current,
+      isFollowing: false,
+      followersCount: Math.max(0, current.followersCount - 1),
+    }));
+    updateCachedFollowSummary(userId, userId, (current) => ({
+      ...current,
+      followingCount: Math.max(0, current.followingCount - 1),
+    }));
+    removeProfileFromCachedFollowing(userId, targetProfileId);
+  }
 
   return { error: getFriendlyError(error, "Could not unfollow this member.") };
 }
@@ -170,20 +309,24 @@ export async function listFollowConnections(type, profileId, { limit = 100 } = {
     return { data: [], error: getFriendlyError(error, "Could not load follow list.") };
   }
 
-  return {
-    data: (data || [])
-      .map((row) => ({
+  const rows = (data || [])
+    .map((row) => ({
+      id: row.profile_id,
+      created_at: row.followed_at,
+      profile: {
         id: row.profile_id,
-        created_at: row.followed_at,
-        profile: {
-          id: row.profile_id,
-          full_name: row.full_name || "SoldierHub member",
-          avatar_color: row.avatar_color || "#314A66",
-          avatar_url: row.avatar_url || null,
-          base: row.base || "Fort Bliss",
-        },
-      }))
-      .filter((row) => row.profile?.id),
+        full_name: row.full_name || "SoldierHub member",
+        avatar_color: row.avatar_color || "#314A66",
+        avatar_url: row.avatar_url || null,
+        base: row.base || "Fort Bliss",
+      },
+    }))
+    .filter((row) => row.profile?.id);
+
+  cacheFollowConnections(normalizedType, profileId, rows);
+
+  return {
+    data: rows,
     error: null,
   };
 }
