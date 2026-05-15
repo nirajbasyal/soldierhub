@@ -449,9 +449,23 @@ export function usePostActions({
         return { ok: false, error: error.message };
       }
 
+      const savedCommentId = getCommentId(data);
+      const savedAuthorId = getCommentAuthorId(data) || currentUser.id;
+      const savedComment = {
+        ...optimisticComment,
+        ...(data || {}),
+        id: savedCommentId || optimisticComment.id,
+        comment_id: savedCommentId || optimisticComment.id,
+        author_id: savedAuthorId,
+        author_user_id: savedAuthorId,
+        author_name_cached: data?.author_name_cached || optimisticComment.author_name_cached,
+        author_color_cached: data?.author_color_cached || optimisticComment.author_color_cached,
+        viewer_is_author: true,
+      };
+
       setPostComments((m) => {
         const nextComments = (m[postId] || []).map((item) =>
-          getCommentId(item) === optimisticComment.id ? data : item
+          getCommentId(item) === optimisticComment.id ? savedComment : item
         );
         writeCachedComments(postId, nextComments);
         return { ...m, [postId]: nextComments };
