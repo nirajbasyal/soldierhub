@@ -1,0 +1,21 @@
+<svg width="441" height="171" viewBox="0 0 441 171" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="441" height="171" rx="32" fill="transparent"/>
+  <rect x="24" y="34" width="103" height="103" rx="30" fill="#071B33"/>
+  <circle cx="75.5" cy="85.5" r="37" fill="#FDFEFF"/>
+  <path d="M56.5 90.5C64.5 80.5 86.5 80.5 94.5 90.5" stroke="#B31942" stroke-width="8" stroke-linecap="round"/>
+  <path d="M62.5 73.5C70.5 64.5 84.5 64.5 92.5 73.5" stroke="#1E4E8C" stroke-width="7" stroke-linecap="round"/>
+  <path d="M64 103.5C70.5 110 80.5 110 87 103.5" stroke="#071B33" stroke-width="7" stroke-linecap="round"/>
+  <circle cx="54" cy="94" r="10" fill="#B31942"/>
+  <circle cx="97" cy="94" r="10" fill="#B31942"/>
+  <circle cx="75.5" cy="68" r="9.5" fill="#1E4E8C"/>
+  <circle cx="75.5" cy="109" r="9.5" fill="#071B33"/>
+  <circle cx="54" cy="94" r="4.5" fill="#FDFEFF"/>
+  <circle cx="97" cy="94" r="4.5" fill="#FDFEFF"/>
+  <circle cx="75.5" cy="68" r="4.2" fill="#FDFEFF"/>
+  <circle cx="75.5" cy="109" r="4.2" fill="#FDFEFF"/>
+  <text x="145" y="80" font-family="Arial, Helvetica, sans-serif" font-size="46" font-weight="800" fill="#071B33" letter-spacing="-1.8">Soldier</text>
+  <text x="303" y="80" font-family="Arial, Helvetica, sans-serif" font-size="46" font-weight="800" fill="#B31942" letter-spacing="-1.8">Hub</text>
+  <text x="148" y="111" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="800" fill="#43556B" letter-spacing="2.2">CONNECT . SHARE . SUPPORT</text>
+  <rect x="145" y="121" width="205" height="5" rx="2.5" fill="#B31942"/>
+  <rect x="358" y="121" width="36" height="5" rx="2.5" fill="#1E4E8C"/>
+</svg>
