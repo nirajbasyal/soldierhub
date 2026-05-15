@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, FileText, Loader2, UserCheck, UserPlus, UserRound } from "lucide-react";
 import { T } from "@/lib/theme";
@@ -15,6 +15,7 @@ import Avatar from "@/components/ui/Avatar";
 import EmptyState from "@/components/ui/EmptyState";
 import PostCard from "@/components/feed/PostCard";
 import PostSkeleton from "@/components/ui/PostSkeleton";
+import ShareProfileButton from "@/components/profile/ShareProfileButton";
 
 function getAuthorId(item = {}) {
   return (
@@ -330,12 +331,12 @@ export default function VisitorProfilePage() {
                       {profile.bio || "This member has not added a bio yet."}
                     </p>
 
-                    <div className="mt-4 flex justify-center md:justify-start">
+                    <div className="mt-4 flex flex-col sm:flex-row justify-center md:justify-start gap-2">
                       <button
                         type="button"
                         onClick={handleFollowToggle}
                         disabled={followLoading}
-                        className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold transition hover:-translate-y-0.5 disabled:opacity-60"
+                        className="inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-bold transition hover:-translate-y-0.5 disabled:opacity-60"
                         style={{
                           backgroundColor: followSummary.isFollowing ? "rgba(220,232,247,0.96)" : T.navy,
                           borderColor: followSummary.isFollowing ? "#BCD0EA" : "rgba(7,27,51,0.18)",
@@ -351,6 +352,12 @@ export default function VisitorProfilePage() {
                         )}
                         {followSummary.isFollowing ? "Following" : "Follow"}
                       </button>
+
+                      <ShareProfileButton
+                        profileId={profileId}
+                        profileName={profile.full_name}
+                        pushToast={pushToast}
+                      />
                     </div>
                   </div>
 
