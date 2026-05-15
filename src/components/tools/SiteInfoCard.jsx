@@ -5,6 +5,8 @@ import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
 import { T } from "@/lib/theme";
 
+const SIDEBAR_LOGO_SRC = "/brand/soldierhub-logo-sidebar.svg";
+
 export default function SiteInfoCard({ onNavigate }) {
   const handleNavigate = () => {
     if (typeof onNavigate === "function") {
@@ -29,13 +31,13 @@ export default function SiteInfoCard({ onNavigate }) {
         <div className="absolute left-0 top-0 h-full w-1.5 bg-[#B31942]" />
         <div className="absolute right-0 top-0 h-full w-1.5 bg-[#1E4E8C]" />
 
-        <div className="flex flex-col items-start pl-2">
+        <div className="flex flex-col items-start pl-1">
           <Image
-            src="/brand/soldierhub-logo.png"
+            src={SIDEBAR_LOGO_SRC}
             alt="SoldierHub logo"
-            width={240}
-            height={80}
-            className="h-12 sm:h-14 w-auto object-contain"
+            width={260}
+            height={120}
+            className="h-20 w-auto object-contain"
             priority={false}
           />
         </div>
