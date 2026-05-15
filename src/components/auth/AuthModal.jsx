@@ -164,7 +164,6 @@ export default function AuthModal() {
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [militaryEmail, setMilitaryEmail] = useState("");
   const [phone, setPhone] = useState("");
 
   const [password, setPassword] = useState("");
@@ -181,15 +180,9 @@ export default function AuthModal() {
   const [resetSent, setResetSent] = useState(false);
 
   const trimmedEmail = email.trim().toLowerCase();
-  const trimmedMilitaryEmail = militaryEmail.trim().toLowerCase();
 
   const emailIsInvalid =
     trimmedEmail.length > 0 && !isValidEmail(trimmedEmail);
-
-  const militaryEmailIsInvalid =
-    tab === "signup" &&
-    trimmedMilitaryEmail.length > 0 &&
-    !isValidEmail(trimmedMilitaryEmail);
 
   const phoneIsInvalid =
     tab === "signup" && phone.length > 0 && phone.length !== 10;
@@ -254,7 +247,6 @@ export default function AuthModal() {
 
     const fullName = name.trim();
     const personalEmail = email.trim().toLowerCase();
-    const optionalMilitaryEmail = militaryEmail.trim().toLowerCase();
     const optionalPhone = phone.replace(/\D/g, "");
     const cleanBio = bio.trim();
 
@@ -269,10 +261,6 @@ export default function AuthModal() {
 
       if (!isValidEmail(personalEmail)) {
         return setError("Please enter valid email address.");
-      }
-
-      if (optionalMilitaryEmail && !isValidEmail(optionalMilitaryEmail)) {
-        return setError("Please enter valid military email address or leave it blank.");
       }
 
       if (optionalPhone && optionalPhone.length !== 10) {
@@ -317,7 +305,6 @@ export default function AuthModal() {
         const result = await handleSignup({
           name: fullName,
           email: personalEmail,
-          militaryEmail: optionalMilitaryEmail,
           phone: optionalPhone,
           bio: cleanBio,
           password,
@@ -464,28 +451,17 @@ export default function AuthModal() {
           />
 
           {tab === "signup" && (
-            <>
-              <EmailField
-                label="Military email (optional)"
-                value={militaryEmail}
-                onChange={(e) => setMilitaryEmail(e.target.value)}
-                placeholder="first.last.mil@army.mil"
-                invalid={militaryEmailIsInvalid}
-                errorText="Please enter valid military email address."
-              />
-
-              <PhoneField
-                label="Phone number (optional)"
-                value={phone}
-                onChange={(e) => {
-                  const numbersOnly = e.target.value.replace(/\D/g, "");
-                  setPhone(numbersOnly);
-                }}
-                placeholder="9151234567"
-                invalid={phoneIsInvalid}
-                errorText="Please enter a valid 10-digit phone number."
-              />
-            </>
+            <PhoneField
+              label="Phone number (optional)"
+              value={phone}
+              onChange={(e) => {
+                const numbersOnly = e.target.value.replace(/\D/g, "");
+                setPhone(numbersOnly);
+              }}
+              placeholder="9151234567"
+              invalid={phoneIsInvalid}
+              errorText="Please enter a valid 10-digit phone number."
+            />
           )}
 
           {tab !== "forgot" && (
