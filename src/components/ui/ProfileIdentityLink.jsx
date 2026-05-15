@@ -2,33 +2,14 @@
 
 import Link from "next/link";
 import { useApp } from "@/store/AppContext";
+import { getProfileHref, writeProfilePreview } from "@/lib/profileLinks";
 
-function cleanFallbackName(value) {
-  const name = String(value || "").trim();
-  if (!name || name === "Member" || name === "Someone") return "";
-  return name.slice(0, 80);
-}
-
-function normalizeUserId(value) {
-  const id = String(value || "").trim();
-  if (!id || id === "null" || id === "undefined") return "";
-  return id;
-}
-
-export function getProfileHref(userId, currentUser, fallbackName = "") {
-  const safeUserId = normalizeUserId(userId);
-  const safeName = cleanFallbackName(fallbackName);
-
-  if (!safeUserId) return "";
-  if (currentUser?.id && safeUserId === currentUser.id) return "/profile";
-
-  const query = safeName ? `?name=${encodeURIComponent(safeName)}` : "";
-  return `/profile/${encodeURIComponent(safeUserId)}${query}`;
-}
+export { getProfileHref };
 
 export default function ProfileIdentityLink({
   userId,
   fallbackName = "",
+  profile,
   disabled = false,
   children,
   className = "",
@@ -55,6 +36,15 @@ export default function ProfileIdentityLink({
     if (!currentUser) {
       event.preventDefault();
       setAuthModal?.("login");
+      return;
+    }
+
+    if (userId && href !== "/profile") {
+      writeProfilePreview(userId, {
+        id: userId,
+        full_name: fallbackName,
+        ...(profile || {}),
+      });
     }
   };
 
