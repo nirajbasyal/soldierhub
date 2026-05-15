@@ -1,5 +1,5 @@
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const PROFILE_PREVIEW_CACHE_PREFIX = "soldierhub_profile_preview_v1:";
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const PROFILE_PREVIEW_CACHE_PREFIX = "soldierhub_profile_preview_v2:";
 const PROFILE_PREVIEW_CACHE_MAX_AGE_MS = 1000 * 60 * 60 * 6;
 
 export function isValidProfileId(value) {
