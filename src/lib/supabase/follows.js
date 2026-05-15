@@ -13,7 +13,10 @@ function getFriendlyError(error, fallback = "Something went wrong. Please try ag
   if (
     lowerMessage.includes("relation") ||
     lowerMessage.includes("does not exist") ||
-    lowerMessage.includes("function")
+    lowerMessage.includes("function") ||
+    lowerMessage.includes("profile_follows") ||
+    lowerMessage.includes("profile_follow_counts") ||
+    lowerMessage.includes("list_my_follow_connections")
   ) {
     return {
       ...error,
@@ -87,6 +90,53 @@ function followSummaryCacheKey(profileId, viewerId = null) {
 function followConnectionsCacheKey(type, profileId) {
   const normalizedType = type === "following" ? "following" : "followers";
   return safeCacheKey(FOLLOW_CONNECTIONS_CACHE_PREFIX, normalizedType, profileId);
+}
+
+async function getAccessTokenForApi(supabase) {
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
+
+  if (error || !session?.access_token) {
+    return { accessToken: null, error: error || { message: "Please log in again." } };
+  }
+
+  return { accessToken: session.access_token, error: null };
+}
+
+async function postJsonToApi(path, accessToken, payload, fallbackMessage) {
+  const response = await fetch(path, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  let result = null;
+
+  try {
+    result = await response.json();
+  } catch {
+    result = null;
+  }
+
+  if (!response.ok) {
+    return {
+      data: null,
+      error: {
+        message:
+          result?.error ||
+          (response.status === 429
+            ? "You are updating follows too quickly. Please try again shortly."
+            : fallbackMessage),
+      },
+    };
+  }
+
+  return { data: result || null, error: null };
 }
 
 export function getCachedFollowSummary(profileId, viewerId = null) {
@@ -225,29 +275,30 @@ export async function followUser(targetProfileId) {
     return { data: null, error: { message: "Follow system is not available." } };
   }
 
-  const { userId, error: userError } = await getCurrentUserId(supabase);
+  const [{ userId, error: userError }, { accessToken, error: tokenError }] = await Promise.all([
+    getCurrentUserId(supabase),
+    getAccessTokenForApi(supabase),
+  ]);
+
   if (userError || !userId) return { data: null, error: getFriendlyError(userError, "Please log in again.") };
+  if (tokenError || !accessToken) return { data: null, error: getFriendlyError(tokenError, "Please log in again.") };
 
   if (userId === targetProfileId) {
     return { data: null, error: { message: "You cannot follow your own profile." } };
   }
 
-  const { data, error } = await supabase
-    .from("profile_follows")
-    .upsert(
-      { follower_id: userId, following_id: targetProfileId },
-      { onConflict: "follower_id,following_id", ignoreDuplicates: true }
-    )
-    .select("follower_id, following_id, created_at")
-    .maybeSingle();
+  const { data, error } = await postJsonToApi(
+    "/api/profiles/follow",
+    accessToken,
+    { target_profile_id: targetProfileId, action: "follow" },
+    "Could not follow this member."
+  );
 
   if (!error) {
     updateCachedFollowSummary(targetProfileId, userId, (current) => ({
       ...current,
       isFollowing: true,
-      followersCount: current.isFollowing
-        ? current.followersCount
-        : current.followersCount + 1,
+      followersCount: current.isFollowing ? current.followersCount : current.followersCount + 1,
     }));
     updateCachedFollowSummary(userId, userId, (current) => ({
       ...current,
@@ -265,14 +316,20 @@ export async function unfollowUser(targetProfileId) {
     return { error: { message: "Follow system is not available." } };
   }
 
-  const { userId, error: userError } = await getCurrentUserId(supabase);
-  if (userError || !userId) return { error: getFriendlyError(userError, "Please log in again.") };
+  const [{ userId, error: userError }, { accessToken, error: tokenError }] = await Promise.all([
+    getCurrentUserId(supabase),
+    getAccessTokenForApi(supabase),
+  ]);
 
-  const { error } = await supabase
-    .from("profile_follows")
-    .delete()
-    .eq("follower_id", userId)
-    .eq("following_id", targetProfileId);
+  if (userError || !userId) return { error: getFriendlyError(userError, "Please log in again.") };
+  if (tokenError || !accessToken) return { error: getFriendlyError(tokenError, "Please log in again.") };
+
+  const { error } = await postJsonToApi(
+    "/api/profiles/follow",
+    accessToken,
+    { target_profile_id: targetProfileId, action: "unfollow" },
+    "Could not unfollow this member."
+  );
 
   if (!error) {
     updateCachedFollowSummary(targetProfileId, userId, (current) => ({
