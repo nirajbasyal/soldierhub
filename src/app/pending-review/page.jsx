@@ -21,10 +21,6 @@ import Footer from "@/components/layout/Footer";
 
 const ADMIN_CONTACT_EMAIL = "niraj.basyal2054@gmail.com";
 
-function isValidEmail(value) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-}
-
 function PendingReviewContent() {
   const router = useRouter();
   const params = useSearchParams();
@@ -49,7 +45,6 @@ function PendingReviewContent() {
   const [resending, setResending] = useState(false);
   const [resendMessage, setResendMessage] = useState("");
 
-  const [rereviewMilitaryEmail, setRereviewMilitaryEmail] = useState("");
   const [rereviewPhone, setRereviewPhone] = useState("");
   const [rereviewing, setRereviewing] = useState(false);
   const [rereviewMessage, setRereviewMessage] = useState("");
@@ -58,10 +53,6 @@ function PendingReviewContent() {
   const isRevoked = profileStatus === "revoked";
   const isApproved = profileStatus === "verified";
   const isAccessBlocked = isRejected || isRevoked;
-
-  const militaryEmailInvalid =
-    rereviewMilitaryEmail.trim().length > 0 &&
-    !isValidEmail(rereviewMilitaryEmail.trim());
 
   const phoneInvalid =
     rereviewPhone.trim().length > 0 && rereviewPhone.trim().length !== 10;
@@ -101,9 +92,7 @@ function PendingReviewContent() {
 
         const { data: profile } = await supabase
           .from("profiles")
-          .select(
-            "id, email, personal_email, full_name, military_email, phone, status, verification_status"
-          )
+          .select("id, email, personal_email, full_name, phone, status, verification_status")
           .eq("id", user.id)
           .maybeSingle();
 
@@ -125,7 +114,6 @@ function PendingReviewContent() {
         setProfileStatus(liveStatus);
         setCurrentEmail(profileEmail);
         setCurrentName(profileName);
-        setRereviewMilitaryEmail(profile?.military_email || "");
         setRereviewPhone(profile?.phone || "");
         setHasUserSession(true);
         setEmailVerified(Boolean(user.email_confirmed_at || user.confirmed_at));
@@ -187,13 +175,7 @@ function PendingReviewContent() {
         return;
       }
 
-      const cleanMilitaryEmail = rereviewMilitaryEmail.trim().toLowerCase();
       const cleanPhone = rereviewPhone.trim();
-
-      if (cleanMilitaryEmail && !isValidEmail(cleanMilitaryEmail)) {
-        setRereviewMessage("Please enter a valid military email address.");
-        return;
-      }
 
       if (cleanPhone && cleanPhone.length !== 10) {
         setRereviewMessage("Please enter a valid 10-digit phone number.");
@@ -203,7 +185,6 @@ function PendingReviewContent() {
       setRereviewing(true);
 
       const result = await requestRereview({
-        militaryEmail: cleanMilitaryEmail,
         phone: cleanPhone,
       });
 
@@ -395,9 +376,7 @@ function PendingReviewContent() {
                     </p>
 
                     <p className="text-xs leading-relaxed mt-2" style={{ color: T.textMuted }}>
-                      You can request another review using the same account. Please make sure
-                      your profile includes helpful information such as your military email and
-                      phone number, or contact the admin for help.
+                      You can request another review using the same account. Add or update your phone number if you want admin to have another way to verify your account, or contact admin for help.
                     </p>
 
                     <p className="text-xs leading-relaxed mt-2" style={{ color: T.textMuted }}>
@@ -428,39 +407,6 @@ function PendingReviewContent() {
                   Add or update optional information below. This will move your account back to
                   pending admin review.
                 </p>
-
-                <label className="block mb-3">
-                  <span className="block text-xs font-medium mb-1.5" style={{ color: T.textMuted }}>
-                    Military email optional
-                  </span>
-
-                  <div className="relative">
-                    <span
-                      className="absolute left-3 top-1/2 -translate-y-1/2"
-                      style={{ color: militaryEmailInvalid ? T.red : T.textSubtle }}
-                    >
-                      <Mail size={16} />
-                    </span>
-
-                    <input
-                      value={rereviewMilitaryEmail}
-                      onChange={(e) => setRereviewMilitaryEmail(e.target.value)}
-                      placeholder="first.last.mil@army.mil"
-                      className="w-full h-11 rounded-xl border text-sm outline-none pl-10 pr-3"
-                      style={{
-                        backgroundColor: T.card,
-                        borderColor: militaryEmailInvalid ? T.red : T.border,
-                        color: T.text,
-                      }}
-                    />
-                  </div>
-
-                  {militaryEmailInvalid && (
-                    <p className="mt-1 text-xs font-medium" style={{ color: T.red }}>
-                      Please enter a valid military email address.
-                    </p>
-                  )}
-                </label>
 
                 <label className="block">
                   <span className="block text-xs font-medium mb-1.5" style={{ color: T.textMuted }}>
@@ -513,7 +459,7 @@ function PendingReviewContent() {
                   variant="primary"
                   icon={RefreshCw}
                   onClick={handleRequestRereview}
-                  disabled={rereviewing || militaryEmailInvalid || phoneInvalid}
+                  disabled={rereviewing || phoneInvalid}
                 >
                   {rereviewing ? "Submitting..." : "Request re-review"}
                 </Button>
