@@ -22,6 +22,7 @@ export default function TopNav() {
   const app = useApp() || {};
   const {
     currentUser,
+    isAdmin = false,
     unreadCount = 0,
     search = "",
     setSearch = () => {},
@@ -131,14 +132,38 @@ export default function TopNav() {
         <div className="flex-1 md:flex-none" />
 
         <div className="hidden md:flex items-center gap-2">
-          <Link
-            href="/resources"
-            className="px-3 h-11 rounded-2xl text-sm font-semibold flex items-center gap-1.5 transition-all hover:shadow-sm"
-            style={{ color: T.navy }}
-          >
-            <BookMarked size={16} />
-            Resources
-          </Link>
+          {isAdmin ? (
+            <Link
+              href="/resources"
+              className="px-3 h-11 rounded-2xl text-sm font-semibold flex items-center gap-1.5 transition-all hover:shadow-sm"
+              style={{ color: T.navy }}
+            >
+              <BookMarked size={16} />
+              Resources
+            </Link>
+          ) : (
+            <button
+              type="button"
+              disabled
+              className="px-3 h-11 rounded-2xl text-sm font-semibold flex items-center gap-1.5 cursor-not-allowed opacity-80"
+              style={{ color: T.navy }}
+              aria-disabled="true"
+              title="Resources are coming soon"
+            >
+              <BookMarked size={16} />
+              Resources
+              <span
+                className="rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+                style={{
+                  backgroundColor: T.amberBg,
+                  borderColor: "#F2D29A",
+                  color: T.amber,
+                }}
+              >
+                Coming Soon
+              </span>
+            </button>
+          )}
 
           {safeUser ? (
             <>
