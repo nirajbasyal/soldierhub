@@ -7,7 +7,8 @@
     "dev:turbo": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "load:test": "node tests/load/soldierhub-load-test.mjs"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.22.0",
