@@ -166,7 +166,7 @@ export default function PostComposer() {
             openComposer();
           }
         }}
-        className="w-full rounded-[24px] border p-4 md:p-5 flex items-center gap-3 text-left transition-all hover:shadow-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2"
+        className="w-full rounded-[26px] border p-5 md:p-6 flex items-center gap-3.5 text-left transition-all hover:shadow-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2"
         style={{
           backgroundColor: T.card,
           borderColor: T.border,
@@ -176,14 +176,14 @@ export default function PostComposer() {
         <Avatar
           name={currentUser.full_name}
           color={currentUser.avatar_color}
-          size={42}
+          size={46}
         />
 
         <div
-          className="flex-1 min-w-0 rounded-full border px-4 py-3"
+          className="flex-1 min-w-0 rounded-full border px-4 py-4"
           style={{ backgroundColor: "#F4F8FD", borderColor: T.borderSoft || T.border }}
         >
-          <div className="text-[15px] truncate" style={{ color: T.textMuted }}>
+          <div className="text-[15px] md:text-[16px] truncate font-medium" style={{ color: T.textMuted }}>
             What do you want to ask or share?
           </div>
         </div>
