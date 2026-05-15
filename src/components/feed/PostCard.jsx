@@ -209,8 +209,8 @@ function CommentRow({
   const name = anonymousAuthor ? anonymousName : getDisplayName(comment, "Member");
   const color = anonymousAuthor ? "#5C6470" : getDisplayColor(comment, name);
   const isMine = viewerOwnsComment(comment, currentUser);
-  const isSavingComment = isTemporaryCommentId(commentId);
-  const canDeleteComment = Boolean(commentId && !isSavingComment && currentUser?.id && (isAdmin || isMine));
+  const isReplyingComment = isTemporaryCommentId(commentId);
+  const canDeleteComment = Boolean(commentId && !isReplyingComment && currentUser?.id && (isAdmin || isMine));
 
   return (
     <div className="group flex items-start gap-2.5">
@@ -230,7 +230,7 @@ function CommentRow({
               </span>
             </AuthorAvatarName>
             {isMine ? <span className="shrink-0" style={{ color: T.textSubtle }}>(you)</span> : null}
-            {isSavingComment ? <span className="shrink-0" style={{ color: T.textSubtle }}>Saving…</span> : null}
+            {isReplyingComment ? <span className="shrink-0" style={{ color: T.textSubtle }}>Replying…</span> : null}
           </div>
 
           <p className="mt-1 whitespace-pre-wrap text-sm leading-6" style={{ color: T.textMuted }}>
@@ -480,7 +480,7 @@ export default function PostCard({ post, openRepliesDefault = false }) {
 
     if (isTemporaryCommentId(commentId)) {
       setCommentToDelete(null);
-      pushToast?.("Please wait until the comment finishes saving.", "info");
+      pushToast?.("Please wait until the reply finishes posting.", "info");
       return;
     }
 
