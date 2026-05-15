@@ -16,11 +16,36 @@ function getNotificationTime(notification) {
   return Number.isFinite(time) ? time : 0;
 }
 
-function groupNotificationsByPost(notifications = [], unreadSnapshotIds = new Set()) {
+function isFollowNotification(notification) {
+  return String(notification?.type || "").toLowerCase() === "follow";
+}
+
+function getActorKey(notification) {
+  return (
+    notification?.actor_user_id ||
+    notification?.actor_id ||
+    notification?.user_id ||
+    notification?.profile_id ||
+    notification?.created_by ||
+    notification?.id ||
+    "unknown"
+  );
+}
+
+function getNotificationGroupKey(notification) {
+  if (isFollowNotification(notification)) {
+    return `follow:${getActorKey(notification)}`;
+  }
+
+  if (notification?.post_id) return `post:${notification.post_id}`;
+  return `notification:${notification?.id || Math.random().toString(36).slice(2)}`;
+}
+
+function groupNotificationsByActivity(notifications = [], unreadSnapshotIds = new Set()) {
   const groups = new Map();
 
   notifications.forEach((notification) => {
-    const key = notification?.post_id || notification?.id;
+    const key = getNotificationGroupKey(notification);
     if (!key) return;
 
     const wasUnread = unreadSnapshotIds.has(notification.id) || notification.read === false;
@@ -30,7 +55,7 @@ function groupNotificationsByPost(notifications = [], unreadSnapshotIds = new Se
     if (!existing) {
       groups.set(key, {
         id: key,
-        postId: notification.post_id,
+        postId: notification.post_id || null,
         post: notification.post || null,
         latestAt: notification.created_at,
         notifications: [safeNotification],
@@ -99,7 +124,7 @@ export default function NotificationsPage() {
   }, [authLoading, currentUser, markNotificationsRead, notifications, notificationsLoading]);
 
   const groupedNotifications = useMemo(() => {
-    return groupNotificationsByPost(notifications, unreadSnapshotRef.current);
+    return groupNotificationsByActivity(notifications, unreadSnapshotRef.current);
   }, [notifications]);
 
   const unreadGroupCount = groupedNotifications.filter((group) =>
@@ -137,8 +162,8 @@ export default function NotificationsPage() {
                 </h1>
                 <p className="mt-1 text-sm" style={{ color: T.muted }}>
                   {unreadGroupCount > 0
-                    ? `${unreadGroupCount} post${unreadGroupCount > 1 ? "s" : ""} with new activity.`
-                    : "Replies and activity from your SoldierHub posts."}
+                    ? `${unreadGroupCount} new notification${unreadGroupCount > 1 ? "s" : ""}.`
+                    : "Replies, upvotes, and new followers from the SoldierHub community."}
                 </p>
               </div>
             </div>
@@ -149,7 +174,7 @@ export default function NotificationsPage() {
               <EmptyState
                 icon={Bell}
                 title="You're all caught up"
-                body="When someone replies to your posts or upvotes them, you'll see it here."
+                body="When someone replies to your posts, upvotes them, or follows your profile, you'll see it here."
               />
             </div>
           ) : (
