@@ -56,6 +56,21 @@ function getAuthorId(item) {
   );
 }
 
+function viewerOwnsComment(comment = {}, currentUser) {
+  const authorId = getAuthorId(comment);
+
+  return Boolean(
+    currentUser?.id &&
+      (authorId === currentUser.id ||
+        comment?.viewer_is_author === true ||
+        comment?.viewer_is_owner === true ||
+        comment?.viewer_owns_comment === true ||
+        comment?.viewer_can_delete === true ||
+        comment?.can_delete === true ||
+        comment?.is_mine === true)
+  );
+}
+
 function getDisplayName(item, fallback = "Member") {
   return (
     item?.author_name_cached ||
@@ -189,7 +204,7 @@ function CommentRow({
   );
   const name = anonymousAuthor ? anonymousName : getDisplayName(comment, "Member");
   const color = anonymousAuthor ? "#5C6470" : getDisplayColor(comment, name);
-  const isMine = Boolean(currentUser?.id && commentAuthorId === currentUser.id);
+  const isMine = viewerOwnsComment(comment, currentUser);
   const canDeleteComment = Boolean(commentId && currentUser?.id && (isAdmin || isMine));
 
   return (
@@ -198,44 +213,43 @@ function CommentRow({
         <Avatar name={name} color={color} size={30} />
       </AuthorAvatarName>
       <div className="min-w-0 flex-1">
-        <div className="flex items-start gap-1.5">
-          <div
-            className="min-w-0 flex-1 rounded-2xl px-3 py-2"
-            style={{ backgroundColor: "rgba(244,248,253,0.95)" }}
-          >
-            <div className="flex items-center gap-1.5 text-xs font-bold" style={{ color: T.text }}>
-              {anonymousAuthor ? <Lock size={11} /> : null}
-              <AuthorAvatarName userId={commentAuthorId} fallbackName={name} name={name} color={color} size={30} anonymous={anonymousAuthor}>
-                <span className={anonymousAuthor || !commentAuthorId ? "" : "cursor-pointer transition hover:opacity-80"}>
-                  {name}
-                </span>
-              </AuthorAvatarName>
-              {isMine ? <span style={{ color: T.textSubtle }}>(you)</span> : null}
-            </div>
-            <p className="mt-1 whitespace-pre-wrap text-sm leading-6" style={{ color: T.textMuted }}>
-              {comment?.body || comment?.content || comment?.text || ""}
-            </p>
+        <div
+          className="relative min-w-0 rounded-2xl px-3 py-2 pr-10"
+          style={{ backgroundColor: "rgba(244,248,253,0.95)" }}
+        >
+          <div className="flex min-w-0 items-center gap-1.5 text-xs font-bold" style={{ color: T.text }}>
+            {anonymousAuthor ? <Lock size={11} className="shrink-0" /> : null}
+            <AuthorAvatarName userId={commentAuthorId} fallbackName={name} name={name} color={color} size={30} anonymous={anonymousAuthor}>
+              <span className={anonymousAuthor || !commentAuthorId ? "truncate" : "truncate cursor-pointer transition hover:opacity-80"}>
+                {name}
+              </span>
+            </AuthorAvatarName>
+            {isMine ? <span className="shrink-0" style={{ color: T.textSubtle }}>(you)</span> : null}
           </div>
 
+          <p className="mt-1 whitespace-pre-wrap text-sm leading-6" style={{ color: T.textMuted }}>
+            {comment?.body || comment?.content || comment?.text || ""}
+          </p>
+
           {canDeleteComment ? (
-            <div className="relative shrink-0">
+            <div className="absolute right-1.5 top-1.5 z-20">
               <button
                 type="button"
                 onClick={(event) => {
                   event.stopPropagation();
                   onToggleMenu?.(commentId);
                 }}
-                className="h-8 w-8 rounded-full flex items-center justify-center opacity-70 transition hover:bg-black/[0.04] hover:opacity-100"
+                className="h-7 w-7 rounded-full flex items-center justify-center opacity-70 transition hover:bg-black/[0.05] hover:opacity-100"
                 style={{ color: T.textMuted }}
                 aria-label="Comment options"
               >
-                <MoreHorizontal size={17} />
+                <MoreHorizontal size={16} />
               </button>
 
               {menuOpen ? (
                 <div
                   onClick={(event) => event.stopPropagation()}
-                  className="absolute right-0 top-9 z-30 w-44 overflow-hidden rounded-2xl border shadow-xl"
+                  className="absolute right-0 top-8 z-30 w-44 overflow-hidden rounded-2xl border shadow-xl"
                   style={{ backgroundColor: T.card, borderColor: T.border }}
                 >
                   <MenuButton icon={Trash2} danger onClick={() => onDeleteRequest?.(comment)}>
