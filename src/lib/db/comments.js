@@ -179,5 +179,41 @@ export async function deleteComment(commentId) {
   const supabase = createClient();
   if (!supabase) return { error: null };
 
-  return supabase.from("comments").delete().eq("id", commentId);
+  const {
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession();
+
+  if (sessionError || !session?.access_token) {
+    return {
+      error: sessionError || { message: "Please log in again before deleting this comment." },
+    };
+  }
+
+  const response = await fetch("/api/comments/delete", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({ comment_id: commentId }),
+  });
+
+  let result = null;
+
+  try {
+    result = await response.json();
+  } catch {
+    result = null;
+  }
+
+  if (!response.ok) {
+    return {
+      error: {
+        message: result?.error || "Could not delete comment.",
+      },
+    };
+  }
+
+  return { error: null };
 }
