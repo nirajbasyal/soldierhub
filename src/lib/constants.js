@@ -2,15 +2,15 @@ export const ADMIN_EMAIL = "niraj.basyal2054@gmail.com";
 
 // Add or rename categories here — they will appear everywhere automatically.
 export const CATEGORIES = [
-  { key: "All",             label: "All",             tone: "navy" },
-  { key: "General Q&A",     label: "General Q&A",     tone: "indigo" },
-  { key: "Housing",         label: "Housing",         tone: "amber" },
-  { key: "Neighborhoods",   label: "Neighborhoods",   tone: "green" },
-  { key: "Gate & Traffic",  label: "Gate & Traffic",  tone: "blue" },
-  { key: "Local Business",  label: "Local Business",  tone: "violet" },
-  { key: "New Arrival",     label: "New Arrival",     tone: "rose" },
-  { key: "Family & Spouse", label: "Family & Spouse", tone: "teal" },
-  { key: "Warnings",        label: "Warnings",        tone: "red" },
+  { key: "All",                 label: "All",                 tone: "navy" },
+  { key: "General Q&A",         label: "General Q&A",         tone: "indigo" },
+  { key: "New Soldier Help",    label: "New Soldier Help",    tone: "blue" },
+  { key: "Single Soldier Guide", label: "Single Soldier Guide", tone: "amber" },
+  { key: "Local Help",          label: "Local Help",          tone: "violet" },
+  { key: "Things To Do",        label: "Things To Do",        tone: "teal" },
+  { key: "On-Base Guide",       label: "On-Base Guide",       tone: "navy" },
+  { key: "Resources & Support", label: "Resources & Support", tone: "rose" },
+  { key: "Events & Community",  label: "Events & Community",  tone: "blue" },
 ];
 
 export const GATES = [
