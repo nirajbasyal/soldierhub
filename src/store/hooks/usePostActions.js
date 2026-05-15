@@ -62,6 +62,21 @@ function getCommentAuthorId(comment = {}) {
   );
 }
 
+function viewerOwnsComment(comment = {}, currentUser) {
+  const authorId = getCommentAuthorId(comment);
+
+  return Boolean(
+    currentUser?.id &&
+      (authorId === currentUser.id ||
+        comment?.viewer_is_author === true ||
+        comment?.viewer_is_owner === true ||
+        comment?.viewer_owns_comment === true ||
+        comment?.viewer_can_delete === true ||
+        comment?.can_delete === true ||
+        comment?.is_mine === true)
+  );
+}
+
 function removeCommentFromMap(map = {}, postId, commentId) {
   return {
     ...map,
@@ -366,11 +381,10 @@ export function usePostActions({
 
     const existingComments = postComments?.[postId] || [];
     const existingComment = existingComments.find((item) => getCommentId(item) === commentId);
-    const commentAuthorId = getCommentAuthorId(existingComment);
     const isAdmin = currentUser?.role === "admin";
-    const ownsComment = Boolean(currentUser?.id && commentAuthorId === currentUser.id);
+    const ownsComment = viewerOwnsComment(existingComment, currentUser);
 
-    if (!isAdmin && !ownsComment) {
+    if (!SUPA && !isAdmin && !ownsComment) {
       return { ok: false, error: "You can only delete your own comment." };
     }
 
