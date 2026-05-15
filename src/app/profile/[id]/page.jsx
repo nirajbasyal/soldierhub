@@ -7,6 +7,7 @@ import { T } from "@/lib/theme";
 import { colorFromString } from "@/lib/helpers";
 import { useApp } from "@/store/AppContext";
 import { createClient } from "@/lib/supabase/client";
+import { findProfileByEmailForSearch } from "@/lib/db/profiles";
 import * as Follows from "@/lib/supabase/follows";
 import AppShell from "@/components/layout/AppShell";
 import Footer from "@/components/layout/Footer";
@@ -17,8 +18,9 @@ import PostCard from "@/components/feed/PostCard";
 import PostSkeleton from "@/components/ui/PostSkeleton";
 import ShareProfileButton from "@/components/profile/ShareProfileButton";
 
-const VISITOR_PROFILE_CACHE_PREFIX = "soldierhub_visitor_profile_v2:";
+const VISITOR_PROFILE_CACHE_PREFIX = "soldierhub_visitor_profile_v3:";
 const VISITOR_PROFILE_CACHE_MAX_AGE_MS = 1000 * 60 * 5;
+const EMAIL_LOOKUP_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function getAuthorId(item = {}) {
   return (
@@ -32,6 +34,15 @@ function getAuthorId(item = {}) {
     item.user?.id ||
     null
   );
+}
+
+function getSafeProfileId(value) {
+  const cleaned = String(value || "").trim();
+  return Follows.isValidProfileId?.(cleaned) ? cleaned : "";
+}
+
+function isEmailLookup(value) {
+  return EMAIL_LOOKUP_PATTERN.test(String(value || "").trim().toLowerCase());
 }
 
 function normalizePostRow(row = {}) {
@@ -68,7 +79,7 @@ function normalizeProfile(row = {}, fallbackPost = null, fallbackName = "") {
     "SoldierHub member";
 
   return {
-    id: row?.id || fallbackPost?.author_id || null,
+    id: getSafeProfileId(row?.id || row?.profile_id || fallbackPost?.author_id),
     full_name: name,
     bio: row?.bio || "",
     avatar_color:
@@ -82,18 +93,18 @@ function normalizeProfile(row = {}, fallbackPost = null, fallbackName = "") {
   };
 }
 
-function readVisitorProfileCache(profileId) {
-  if (typeof window === "undefined" || !profileId) return null;
+function readVisitorProfileCache(cacheKey) {
+  if (typeof window === "undefined" || !cacheKey) return null;
 
   try {
-    const raw = window.localStorage.getItem(`${VISITOR_PROFILE_CACHE_PREFIX}${profileId}`);
+    const raw = window.localStorage.getItem(`${VISITOR_PROFILE_CACHE_PREFIX}${cacheKey}`);
     if (!raw) return null;
 
     const parsed = JSON.parse(raw);
     const savedAt = Number(parsed?.savedAt || 0);
 
     if (!savedAt || Date.now() - savedAt > VISITOR_PROFILE_CACHE_MAX_AGE_MS) {
-      window.localStorage.removeItem(`${VISITOR_PROFILE_CACHE_PREFIX}${profileId}`);
+      window.localStorage.removeItem(`${VISITOR_PROFILE_CACHE_PREFIX}${cacheKey}`);
       return null;
     }
 
@@ -103,22 +114,54 @@ function readVisitorProfileCache(profileId) {
       posts: Array.isArray(parsed.posts) ? parsed.posts : [],
     };
   } catch {
-    window.localStorage.removeItem(`${VISITOR_PROFILE_CACHE_PREFIX}${profileId}`);
+    window.localStorage.removeItem(`${VISITOR_PROFILE_CACHE_PREFIX}${cacheKey}`);
     return null;
   }
 }
 
-function writeVisitorProfileCache(profileId, profile, posts = []) {
-  if (typeof window === "undefined" || !profileId || !profile) return;
+function writeVisitorProfileCache(cacheKey, profile, posts = []) {
+  if (typeof window === "undefined" || !cacheKey || !profile) return;
 
   try {
     window.localStorage.setItem(
-      `${VISITOR_PROFILE_CACHE_PREFIX}${profileId}`,
+      `${VISITOR_PROFILE_CACHE_PREFIX}${cacheKey}`,
       JSON.stringify({ profile, posts: posts.slice(0, 30), savedAt: Date.now() })
     );
   } catch {
     // Cache is only used to make profile navigation feel instant.
   }
+}
+
+async function resolveProfileIdFromLookup(rawLookup) {
+  const lookup = String(rawLookup || "").trim();
+  const uuidProfileId = getSafeProfileId(lookup);
+
+  if (uuidProfileId) {
+    return { profileId: uuidProfileId, profilePreview: null };
+  }
+
+  if (!isEmailLookup(lookup)) {
+    return { profileId: "", profilePreview: null };
+  }
+
+  const { data, error } = await findProfileByEmailForSearch(lookup);
+
+  if (error || !data?.id || !getSafeProfileId(data.id)) {
+    return { profileId: "", profilePreview: null };
+  }
+
+  return {
+    profileId: data.id,
+    profilePreview: {
+      id: data.id,
+      full_name: data.full_name || "SoldierHub member",
+      bio: "",
+      avatar_color: data.avatar_color || "#314A66",
+      avatar_url: data.avatar_url || null,
+      base: data.base || "Fort Bliss",
+      status: "verified",
+    },
+  };
 }
 
 function StatCard({ label, value }) {
@@ -149,13 +192,14 @@ export default function VisitorProfilePage() {
     setAuthModal,
     pushToast,
   } = useApp();
-  const profileId = typeof params?.id === "string" ? decodeURIComponent(params.id) : "";
+  const routeProfileLookup = typeof params?.id === "string" ? decodeURIComponent(params.id).trim() : "";
   const fallbackName = cleanFallbackName(searchParams?.get("name") || "");
 
   const [profile, setProfile] = useState(null);
   const [userPosts, setUserPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshingProfile, setRefreshingProfile] = useState(false);
+  const [resolvedProfileId, setResolvedProfileId] = useState(getSafeProfileId(routeProfileLookup));
   const [followSummary, setFollowSummary] = useState({
     followersCount: 0,
     followingCount: 0,
@@ -163,7 +207,13 @@ export default function VisitorProfilePage() {
   });
   const [followLoading, setFollowLoading] = useState(false);
 
-  const isOwnProfile = Boolean(profileId && currentUser?.id === profileId);
+  const targetProfileId = getSafeProfileId(profile?.id) || getSafeProfileId(resolvedProfileId) || getSafeProfileId(routeProfileLookup);
+  const isOwnProfile = Boolean(targetProfileId && currentUser?.id === targetProfileId);
+
+  useEffect(() => {
+    const routeUuid = getSafeProfileId(routeProfileLookup);
+    if (routeUuid) setResolvedProfileId(routeUuid);
+  }, [routeProfileLookup]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -181,10 +231,10 @@ export default function VisitorProfilePage() {
 
   const loadFollowSummary = useCallback(
     async ({ silent = false, skipCache = false } = {}) => {
-      if (!profileId || isOwnProfile) return;
+      if (!targetProfileId || isOwnProfile) return;
 
       if (!silent) {
-        const cachedSummary = Follows.getCachedFollowSummary?.(profileId, currentUser?.id || null);
+        const cachedSummary = Follows.getCachedFollowSummary?.(targetProfileId, currentUser?.id || null);
         if (cachedSummary) {
           setFollowSummary(cachedSummary);
         } else {
@@ -192,7 +242,7 @@ export default function VisitorProfilePage() {
         }
       }
 
-      const { data, error } = await Follows.getFollowSummary(profileId, currentUser?.id || null, {
+      const { data, error } = await Follows.getFollowSummary(targetProfileId, currentUser?.id || null, {
         skipCache,
       });
 
@@ -202,38 +252,43 @@ export default function VisitorProfilePage() {
         setFollowSummary(data);
       }
     },
-    [currentUser?.id, isOwnProfile, profileId]
+    [currentUser?.id, isOwnProfile, targetProfileId]
   );
 
   useEffect(() => {
     loadFollowSummary();
   }, [loadFollowSummary]);
 
-  const localPostsForProfile = useMemo(
-    () =>
-      posts
-        .filter((post) => getAuthorId(post) === profileId && !post?.anonymous)
-        .map(normalizePostRow)
-        .filter((post) => post.id),
-    [posts, profileId]
-  );
+  const localPostsForProfile = useMemo(() => {
+    const safeLookupId = targetProfileId || getSafeProfileId(routeProfileLookup);
+    if (!safeLookupId) return [];
+
+    return posts
+      .filter((post) => getAuthorId(post) === safeLookupId && !post?.anonymous)
+      .map(normalizePostRow)
+      .filter((post) => post.id);
+  }, [posts, routeProfileLookup, targetProfileId]);
 
   useEffect(() => {
-    if (authLoading || !profileId || isOwnProfile) return;
+    if (authLoading || !routeProfileLookup || isOwnProfile) return;
 
     let cancelled = false;
 
     async function loadVisitorProfile() {
-      const cached = readVisitorProfileCache(profileId);
+      const cacheKey = targetProfileId || routeProfileLookup;
+      const cached = readVisitorProfileCache(cacheKey);
       const hasCache = Boolean(cached?.profile);
 
       if (hasCache) {
+        const cachedId = getSafeProfileId(cached.profile?.id);
+        if (cachedId) setResolvedProfileId(cachedId);
         setProfile(cached.profile);
         setUserPosts(cached.posts || []);
         setLoading(false);
         setRefreshingProfile(true);
       } else if (localPostsForProfile.length > 0) {
         const fallbackProfile = normalizeProfile(null, localPostsForProfile[0], fallbackName);
+        if (fallbackProfile.id) setResolvedProfileId(fallbackProfile.id);
         setProfile(fallbackProfile);
         setUserPosts(localPostsForProfile);
         setLoading(false);
@@ -242,11 +297,24 @@ export default function VisitorProfilePage() {
         setLoading(true);
       }
 
-      let profileRow = null;
-      let postRows = localPostsForProfile;
+      let resolvedLookup = targetProfileId;
+      let previewProfile = null;
+
+      if (!resolvedLookup) {
+        const resolved = await resolveProfileIdFromLookup(routeProfileLookup);
+        resolvedLookup = resolved.profileId;
+        previewProfile = resolved.profilePreview;
+
+        if (resolvedLookup && !cancelled) {
+          setResolvedProfileId(resolvedLookup);
+        }
+      }
+
+      let profileRow = previewProfile;
+      let postRows = resolvedLookup ? localPostsForProfile : [];
 
       try {
-        if (isLiveMode) {
+        if (isLiveMode && resolvedLookup) {
           const supabase = createClient();
 
           if (supabase) {
@@ -254,34 +322,34 @@ export default function VisitorProfilePage() {
               supabase
                 .from("profiles")
                 .select("id, full_name, bio, avatar_color, avatar_url, base, status, verification_status")
-                .eq("id", profileId)
+                .eq("id", resolvedLookup)
                 .maybeSingle(),
               supabase
                 .from("posts_with_meta")
                 .select("*")
-                .eq("author_id", profileId)
+                .eq("author_id", resolvedLookup)
                 .eq("anonymous", false)
                 .order("created_at", { ascending: false })
                 .limit(30),
             ]);
 
-            profileRow = profileData || null;
+            profileRow = profileData || previewProfile || null;
             postRows = Array.isArray(livePosts)
               ? livePosts.map(normalizePostRow).filter((post) => post.id)
               : localPostsForProfile;
           }
         }
       } catch {
-        profileRow = null;
-        postRows = localPostsForProfile;
+        profileRow = previewProfile || null;
+        postRows = resolvedLookup ? localPostsForProfile : [];
       }
 
       if (cancelled) return;
 
       const fallbackPost = postRows[0] || localPostsForProfile[0] || null;
-      const safeFallbackProfile = fallbackName
+      const safeFallbackProfile = fallbackName && resolvedLookup
         ? {
-            id: profileId,
+            id: resolvedLookup,
             full_name: fallbackName,
             bio: "",
             avatar_color: colorFromString(fallbackName),
@@ -301,8 +369,10 @@ export default function VisitorProfilePage() {
       setLoading(false);
       setRefreshingProfile(false);
 
-      if (nextProfile) {
-        writeVisitorProfileCache(profileId, nextProfile, postRows);
+      if (nextProfile?.id) {
+        setResolvedProfileId(nextProfile.id);
+        writeVisitorProfileCache(routeProfileLookup, nextProfile, postRows);
+        writeVisitorProfileCache(nextProfile.id, nextProfile, postRows);
       }
     }
 
@@ -311,7 +381,7 @@ export default function VisitorProfilePage() {
     return () => {
       cancelled = true;
     };
-  }, [authLoading, fallbackName, isLiveMode, isOwnProfile, localPostsForProfile, profileId]);
+  }, [authLoading, fallbackName, isLiveMode, isOwnProfile, localPostsForProfile, routeProfileLookup, targetProfileId]);
 
   const handleFollowToggle = async () => {
     if (!currentUser) {
@@ -319,7 +389,14 @@ export default function VisitorProfilePage() {
       return;
     }
 
-    if (!profileId || followLoading || isOwnProfile) return;
+    const safeTargetProfileId = getSafeProfileId(profile?.id) || getSafeProfileId(resolvedProfileId) || getSafeProfileId(routeProfileLookup);
+
+    if (!safeTargetProfileId) {
+      pushToast?.("Profile is still loading. Please try again in a moment.", "info");
+      return;
+    }
+
+    if (followLoading || currentUser.id === safeTargetProfileId) return;
 
     setFollowLoading(true);
     const wasFollowing = followSummary.isFollowing;
@@ -331,11 +408,11 @@ export default function VisitorProfilePage() {
     };
 
     setFollowSummary(optimisticSummary);
-    Follows.cacheFollowSummary?.(profileId, currentUser.id, optimisticSummary);
+    Follows.cacheFollowSummary?.(safeTargetProfileId, currentUser.id, optimisticSummary);
 
     const result = wasFollowing
-      ? await Follows.unfollowUser(profileId)
-      : await Follows.followUser(profileId);
+      ? await Follows.unfollowUser(safeTargetProfileId)
+      : await Follows.followUser(safeTargetProfileId);
 
     setFollowLoading(false);
 
@@ -346,7 +423,7 @@ export default function VisitorProfilePage() {
         followersCount: Math.max(0, (optimisticSummary.followersCount || 0) + (wasFollowing ? 1 : -1)),
       };
       setFollowSummary(rollbackSummary);
-      Follows.cacheFollowSummary?.(profileId, currentUser.id, rollbackSummary);
+      Follows.cacheFollowSummary?.(safeTargetProfileId, currentUser.id, rollbackSummary);
       pushToast?.(result.error.message || "Could not update follow status.", "error");
       return;
     }
@@ -356,6 +433,7 @@ export default function VisitorProfilePage() {
   };
 
   const publicPostCount = userPosts.length;
+  const canUseFollowButton = Boolean(targetProfileId) && !isOwnProfile;
 
   return (
     <AppShell hideNav>
@@ -426,7 +504,7 @@ export default function VisitorProfilePage() {
                       <button
                         type="button"
                         onClick={handleFollowToggle}
-                        disabled={followLoading}
+                        disabled={followLoading || !canUseFollowButton}
                         className="inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-bold transition hover:-translate-y-0.5 disabled:opacity-60"
                         style={{
                           backgroundColor: followSummary.isFollowing ? "rgba(220,232,247,0.96)" : T.navy,
@@ -445,7 +523,7 @@ export default function VisitorProfilePage() {
                       </button>
 
                       <ShareProfileButton
-                        profileId={profileId}
+                        profileId={targetProfileId || profile?.id || routeProfileLookup}
                         profileName={profile.full_name}
                         pushToast={pushToast}
                       />
