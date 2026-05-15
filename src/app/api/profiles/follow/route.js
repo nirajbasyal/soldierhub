@@ -37,6 +37,39 @@ function isValidUuid(value) {
   );
 }
 
+function normalizeSummary(row = {}, isFollowing = false) {
+  return {
+    followersCount: Math.max(0, Number(row.followers_count ?? row.followersCount ?? 0) || 0),
+    followingCount: Math.max(0, Number(row.following_count ?? row.followingCount ?? 0) || 0),
+    isFollowing: Boolean(isFollowing),
+  };
+}
+
+async function getFollowSummaryForApi(supabase, profileId, viewerId) {
+  if (!supabase || !isValidUuid(profileId)) {
+    return { followersCount: 0, followingCount: 0, isFollowing: false };
+  }
+
+  const [{ data: countRow }, { data: followingRow }] = await Promise.all([
+    supabase
+      .from("profile_follow_counts")
+      .select("profile_id, followers_count, following_count")
+      .eq("profile_id", profileId)
+      .maybeSingle(),
+    isValidUuid(viewerId) && viewerId !== profileId
+      ? supabase
+          .from("profile_follows")
+          .select("follower_id")
+          .eq("follower_id", viewerId)
+          .eq("following_id", profileId)
+          .limit(1)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+
+  return normalizeSummary(countRow, Boolean(followingRow));
+}
+
 async function createFollowNotification({ supabase, targetProfileId, actorUserId, actorName }) {
   if (!supabase || !targetProfileId || !actorUserId || targetProfileId === actorUserId) return;
 
@@ -178,27 +211,6 @@ export async function POST(request) {
     );
   }
 
-  if (action === "unfollow") {
-    const { data, error } = await supabase
-      .from("profile_follows")
-      .delete()
-      .eq("follower_id", user.id)
-      .eq("following_id", targetProfileId)
-      .select("follower_id, following_id");
-
-    if (error) {
-      return NextResponse.json(
-        { error: error.message || "Could not unfollow this member." },
-        { status: 500, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
-      );
-    }
-
-    return NextResponse.json(
-      { action: "unfollow", removed: Array.isArray(data) ? data.length > 0 : false },
-      { status: 200, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
-    );
-  }
-
   const { data: targetProfile, error: targetProfileError } = await supabase
     .from("profiles")
     .select("id, status, verification_status")
@@ -219,6 +231,37 @@ export async function POST(request) {
     );
   }
 
+  if (action === "unfollow") {
+    const { data, error } = await supabase
+      .from("profile_follows")
+      .delete()
+      .eq("follower_id", user.id)
+      .eq("following_id", targetProfileId)
+      .select("follower_id, following_id");
+
+    if (error) {
+      return NextResponse.json(
+        { error: error.message || "Could not unfollow this member." },
+        { status: 500, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
+      );
+    }
+
+    const [summary, viewer_summary] = await Promise.all([
+      getFollowSummaryForApi(supabase, targetProfileId, user.id),
+      getFollowSummaryForApi(supabase, user.id, user.id),
+    ]);
+
+    return NextResponse.json(
+      {
+        action: "unfollow",
+        removed: Array.isArray(data) ? data.length > 0 : false,
+        summary,
+        viewer_summary,
+      },
+      { status: 200, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
+    );
+  }
+
   const { data, error } = await supabase
     .from("profile_follows")
     .upsert(
@@ -229,28 +272,36 @@ export async function POST(request) {
     .maybeSingle();
 
   if (error) {
-    if (error.code === "23505") {
+    if (error.code !== "23505") {
       return NextResponse.json(
-        { action: "follow", follow: null, already_following: true },
-        { status: 200, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
+        { error: error.message || "Could not follow this member." },
+        { status: 500, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
       );
     }
-
-    return NextResponse.json(
-      { error: error.message || "Could not follow this member." },
-      { status: 500, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
-    );
   }
 
-  await createFollowNotification({
-    supabase,
-    targetProfileId,
-    actorUserId: user.id,
-    actorName: profile.full_name || user.email || "Someone",
-  });
+  if (data) {
+    await createFollowNotification({
+      supabase,
+      targetProfileId,
+      actorUserId: user.id,
+      actorName: profile.full_name || user.email || "Someone",
+    });
+  }
+
+  const [summary, viewer_summary] = await Promise.all([
+    getFollowSummaryForApi(supabase, targetProfileId, user.id),
+    getFollowSummaryForApi(supabase, user.id, user.id),
+  ]);
 
   return NextResponse.json(
-    { action: "follow", follow: data, already_following: !data },
+    {
+      action: "follow",
+      follow: data || null,
+      already_following: !data,
+      summary,
+      viewer_summary,
+    },
     { status: data ? 201 : 200, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
   );
 }
