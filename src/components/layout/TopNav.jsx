@@ -32,6 +32,7 @@ export default function TopNav() {
   const router = useRouter();
   const [profileSearchLoading, setProfileSearchLoading] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false);
 
   const app = useApp() || {};
   const {
@@ -55,6 +56,8 @@ export default function TopNav() {
   const notificationBadgeText = notificationCount > 99 ? "99+" : String(notificationCount);
   const hasSearchText = String(search || "").trim().length > 0;
   const searchIconColor = hasSearchText ? SEARCH_ACTIVE_COLOR : SEARCH_IDLE_COLOR;
+  const rightSearchButtonActive = hasSearchText || searchFocused;
+  const rightSearchButtonColor = rightSearchButtonActive ? "#8F1534" : SEARCH_IDLE_COLOR;
 
   const goProfile = () => {
     if (!safeUser) return setAuthModal("login");
@@ -121,6 +124,7 @@ export default function TopNav() {
 
       setSearch("");
       setMobileSearchOpen(false);
+      setSearchFocused(false);
 
       if (data.id === safeUser.id) {
         router.push("/profile");
@@ -147,47 +151,59 @@ export default function TopNav() {
     return <Search size={size} aria-hidden="true" />;
   };
 
-  const searchForm = (mode = "desktop") => (
-    <form onSubmit={handleSearchSubmit} className={mode === "desktop" ? "hidden md:flex flex-1 max-w-sm ml-1" : "w-full"}>
-      <div className="relative w-full">
-        <Search
-          size={17}
-          className="absolute left-4 top-1/2 -translate-y-1/2 transition-colors"
-          style={{ color: searchIconColor }}
-        />
+  const searchForm = (mode = "desktop") => {
+    const hideLeftIcon = mode === "mobile" && searchFocused;
 
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          onFocus={() => mode === "mobile" && setMobileSearchOpen(true)}
-          placeholder={mode === "mobile" ? "Search posts or exact email…" : "Search posts or email"}
-          autoComplete="off"
-          inputMode="search"
-          className="w-full h-11 pl-11 pr-16 rounded-2xl text-sm outline-none border shadow-sm transition-all"
-          style={{
-            borderColor: T.border,
-            backgroundColor: "rgba(253,254,255,0.92)",
-            color: T.text,
-          }}
-        />
+    return (
+      <form onSubmit={handleSearchSubmit} className={mode === "desktop" ? "hidden md:flex flex-1 max-w-sm ml-1" : "w-full"}>
+        <div className="relative w-full">
+          {!hideLeftIcon ? (
+            <Search
+              size={17}
+              className="absolute left-4 top-1/2 -translate-y-1/2 transition-colors"
+              style={{ color: searchIconColor }}
+            />
+          ) : null}
 
-        <button
-          type="submit"
-          disabled={profileSearchLoading}
-          className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-xl border transition-all active:scale-95 disabled:cursor-wait disabled:opacity-80"
-          style={{
-            color: searchIconColor,
-            borderColor: hasSearchText ? "rgba(179,25,66,0.35)" : "rgba(159,60,85,0.28)",
-            backgroundColor: hasSearchText ? "rgba(179,25,66,0.08)" : "rgba(179,25,66,0.045)",
-          }}
-          aria-label={profileSearchLoading ? "Searching profile" : "Run search"}
-          title={profileSearchLoading ? "Searching profile..." : "Search"}
-        >
-          {renderSearchSubmitIcon(16)}
-        </button>
-      </div>
-    </form>
-  );
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onFocus={() => {
+              setSearchFocused(true);
+              if (mode === "mobile") setMobileSearchOpen(true);
+            }}
+            onBlur={() => setSearchFocused(false)}
+            placeholder={mode === "mobile" ? "Search posts or exact email…" : "Search posts or email"}
+            autoComplete="off"
+            inputMode="search"
+            enterKeyHint="go"
+            className={`w-full h-11 ${hideLeftIcon ? "pl-4" : "pl-11"} pr-16 rounded-2xl text-sm outline-none border shadow-sm transition-all`}
+            style={{
+              borderColor: searchFocused ? "rgba(179,25,66,0.34)" : T.border,
+              backgroundColor: "rgba(253,254,255,0.92)",
+              color: T.text,
+              boxShadow: searchFocused ? "0 0 0 4px rgba(179,25,66,0.08)" : undefined,
+            }}
+          />
+
+          <button
+            type="submit"
+            disabled={profileSearchLoading}
+            className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-xl border transition-all active:scale-95 disabled:cursor-wait disabled:opacity-80"
+            style={{
+              color: rightSearchButtonColor,
+              borderColor: rightSearchButtonActive ? "rgba(143,21,52,0.42)" : "rgba(159,60,85,0.28)",
+              backgroundColor: rightSearchButtonActive ? "rgba(179,25,66,0.13)" : "rgba(179,25,66,0.045)",
+            }}
+            aria-label={profileSearchLoading ? "Searching profile" : "Run search"}
+            title={profileSearchLoading ? "Searching profile..." : "Search"}
+          >
+            {renderSearchSubmitIcon(16)}
+          </button>
+        </div>
+      </form>
+    );
+  };
 
   return (
     <div
