@@ -32,7 +32,7 @@ function cleanText(value) {
 }
 
 function isValidUuid(value) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i.test(
     String(value || "")
   );
 }
@@ -158,23 +158,15 @@ export async function POST(request) {
     );
   }
 
-  const [{ data: profile, error: profileError }, { data: targetProfile, error: targetProfileError }] =
-    await Promise.all([
-      supabase
-        .from("profiles")
-        .select("id, full_name, status, verification_status")
-        .eq("id", user.id)
-        .maybeSingle(),
-      supabase
-        .from("profiles")
-        .select("id, status, verification_status")
-        .eq("id", targetProfileId)
-        .maybeSingle(),
-    ]);
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("id, full_name, status, verification_status")
+    .eq("id", user.id)
+    .maybeSingle();
 
-  if (profileError || targetProfileError) {
+  if (profileError) {
     return NextResponse.json(
-      { error: "Could not verify the profile. Please try again." },
+      { error: "Could not verify your profile. Please try again." },
       { status: 500, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
     );
   }
@@ -183,13 +175,6 @@ export async function POST(request) {
     return NextResponse.json(
       { error: "Your profile must be verified before following members." },
       { status: 403, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
-    );
-  }
-
-  if (!targetProfile || getProfileStatus(targetProfile) !== "verified") {
-    return NextResponse.json(
-      { error: "That member profile is not available." },
-      { status: 404, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
     );
   }
 
@@ -211,6 +196,26 @@ export async function POST(request) {
     return NextResponse.json(
       { action: "unfollow", removed: Array.isArray(data) ? data.length > 0 : false },
       { status: 200, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
+    );
+  }
+
+  const { data: targetProfile, error: targetProfileError } = await supabase
+    .from("profiles")
+    .select("id, status, verification_status")
+    .eq("id", targetProfileId)
+    .maybeSingle();
+
+  if (targetProfileError) {
+    return NextResponse.json(
+      { error: "Could not verify the member profile. Please try again." },
+      { status: 500, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
+    );
+  }
+
+  if (!targetProfile || getProfileStatus(targetProfile) !== "verified") {
+    return NextResponse.json(
+      { error: "That member profile is not available." },
+      { status: 404, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
     );
   }
 
