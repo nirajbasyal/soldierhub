@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { listCommentsForPost } from "@/lib/db/comments";
 
 const POST_SELECT =
   "id, author_id, author_name_cached, author_color_cached, category, body, anonymous, status, edited, created_at, updated_at";
@@ -8,6 +9,7 @@ const POST_SELECT =
 const RPC_MODE_FULL = "full";
 const RPC_MODE_LIMIT = "limit";
 const RPC_MODE_EMPTY = "empty";
+const COMMENT_COUNT_LIMIT = 200;
 
 let workingPublicPostsRpcMode = null;
 
@@ -80,36 +82,40 @@ async function attachProfilesToPosts(supabase, rows = []) {
   );
 }
 
-async function attachCountsToPosts(supabase, rows = []) {
-  if (!Array.isArray(rows) || rows.length === 0) return [];
+async function countVisibleCommentsForPost(postId) {
+  if (!postId) return 0;
 
-  const postIds = [...new Set(rows.map((row) => row.id).filter(Boolean))];
-  if (postIds.length === 0) return rows;
-
-  const { data: comments, error } = await supabase
-    .from("comments")
-    .select("post_id")
-    .in("post_id", postIds)
-    .is("deleted_at", null);
+  const { data, error } = await listCommentsForPost(postId, {
+    limit: COMMENT_COUNT_LIMIT,
+  });
 
   if (error) {
-    console.error("Attach visible comment counts failed:", error);
-    return rows;
+    console.error("Attach visible comment count failed:", error);
+    return null;
   }
 
-  const commentCounts = new Map();
+  return (data || []).length;
+}
 
-  (comments || []).forEach((row) =>
-    commentCounts.set(row.post_id, (commentCounts.get(row.post_id) || 0) + 1)
+async function attachCountsToPosts(_supabase, rows = []) {
+  if (!Array.isArray(rows) || rows.length === 0) return [];
+
+  const normalizedRows = rows.map(normalizePostRow);
+
+  const countPairs = await Promise.all(
+    normalizedRows.map(async (row) => [row.id, await countVisibleCommentsForPost(row.id)])
   );
 
-  return rows.map((row) => {
-    const visibleCommentCount = commentCounts.get(row.id) ?? 0;
+  const commentCounts = new Map(countPairs.filter(([, count]) => typeof count === "number"));
+
+  return normalizedRows.map((row) => {
+    const visibleCommentCount = commentCounts.get(row.id);
+    const safeCount = typeof visibleCommentCount === "number" ? visibleCommentCount : 0;
 
     return {
       ...row,
-      comment_count: visibleCommentCount,
-      reply_count: visibleCommentCount,
+      comment_count: safeCount,
+      reply_count: safeCount,
     };
   });
 }
