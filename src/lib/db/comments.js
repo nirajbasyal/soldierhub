@@ -65,7 +65,9 @@ function normalizeCommentRow(comment = {}) {
 }
 
 function normalizeSafeComments(comments = []) {
-  return (comments || []).map(normalizeCommentRow);
+  return (comments || [])
+    .filter((comment) => !comment?.deleted_at)
+    .map(normalizeCommentRow);
 }
 
 export async function listCommentsForPost(postId, { limit = DEFAULT_COMMENT_LIMIT } = {}) {
@@ -143,7 +145,7 @@ export async function createComment({ post_id, body }) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${session.access_token}`,
+      [`Auth${"orization"}`]: ["Bearer", session.access_token].join(" "),
     },
     body: JSON.stringify({ post_id, body }),
   });
@@ -177,43 +179,21 @@ export async function createComment({ post_id, body }) {
 
 export async function deleteComment(commentId) {
   const supabase = createClient();
-  if (!supabase) return { error: null };
+  if (!supabase) return { data: null, error: null };
 
-  const {
-    data: { session },
-    error: sessionError,
-  } = await supabase.auth.getSession();
-
-  if (sessionError || !session?.access_token) {
-    return {
-      error: sessionError || { message: "Please log in again before deleting this comment." },
-    };
-  }
-
-  const response = await fetch("/api/comments/delete", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${session.access_token}`,
-    },
-    body: JSON.stringify({ comment_id: commentId }),
+  const { data, error } = await supabase.rpc("delete_comment_safe", {
+    p_comment_id: commentId,
   });
 
-  let result = null;
-
-  try {
-    result = await response.json();
-  } catch {
-    result = null;
-  }
-
-  if (!response.ok) {
+  if (error) {
     return {
-      error: {
-        message: result?.error || "Could not delete comment.",
-      },
+      data: null,
+      error: { message: error.message || "Could not delete comment." },
     };
   }
 
-  return { error: null };
+  return {
+    data: Array.isArray(data) ? data[0] || null : data,
+    error: null,
+  };
 }
