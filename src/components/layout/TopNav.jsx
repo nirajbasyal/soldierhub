@@ -7,6 +7,7 @@ import Link from "next/link";
 import {
   Bell,
   BookMarked,
+  Loader2,
   Menu,
   Search,
   Shield,
@@ -19,6 +20,7 @@ import Avatar from "@/components/ui/Avatar";
 import Button from "@/components/ui/Button";
 
 const EMAIL_SEARCH_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const SEARCH_ACTIVE_COLOR = "#B31942";
 
 function isEmailSearch(value) {
   return EMAIL_SEARCH_PATTERN.test(String(value || "").trim().toLowerCase());
@@ -50,6 +52,8 @@ export default function TopNav() {
     Boolean(safeUser) && userStatus === "verified" && notificationCount > 0;
   const notificationBadgeText =
     notificationCount > 99 ? "99+" : String(notificationCount);
+  const hasSearchText = String(search || "").trim().length > 0;
+  const searchIconColor = hasSearchText ? SEARCH_ACTIVE_COLOR : T.textSubtle;
 
   const goProfile = () => {
     if (!safeUser) return setAuthModal("login");
@@ -136,6 +140,14 @@ export default function TopNav() {
     }
   };
 
+  const renderSearchSubmitIcon = (size = 17) => {
+    if (profileSearchLoading) {
+      return <Loader2 size={size} className="animate-spin" aria-hidden="true" />;
+    }
+
+    return <Search size={size} aria-hidden="true" />;
+  };
+
   return (
     <div
       className="sticky top-0 z-40 border-b backdrop-blur-xl"
@@ -164,7 +176,7 @@ export default function TopNav() {
             <Search
               size={17}
               className="absolute left-4 top-1/2 -translate-y-1/2 transition-colors"
-              style={{ color: T.textSubtle }}
+              style={{ color: searchIconColor }}
             />
 
             <input
@@ -173,7 +185,7 @@ export default function TopNav() {
               placeholder="Search posts or exact email…"
               autoComplete="off"
               inputMode="search"
-              className="w-full h-12 pl-11 pr-20 rounded-2xl text-sm outline-none border shadow-sm transition-all"
+              className="w-full h-12 pl-11 pr-16 rounded-2xl text-sm outline-none border shadow-sm transition-all"
               style={{
                 borderColor: T.border,
                 backgroundColor: "rgba(253,254,255,0.88)",
@@ -192,15 +204,16 @@ export default function TopNav() {
             <button
               type="submit"
               disabled={profileSearchLoading}
-              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-xl border px-2 py-1 text-[11px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-70"
+              className="absolute right-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-xl border transition-all hover:-translate-y-[52%] hover:shadow-sm disabled:cursor-wait disabled:opacity-80"
               style={{
-                color: T.textSubtle,
-                borderColor: T.borderSoft,
-                backgroundColor: T.surface,
+                color: searchIconColor,
+                borderColor: hasSearchText ? "rgba(179,25,66,0.35)" : T.borderSoft,
+                backgroundColor: hasSearchText ? "rgba(179,25,66,0.08)" : T.surface,
               }}
-              aria-label="Run search"
+              aria-label={profileSearchLoading ? "Searching profile" : "Run search"}
+              title={profileSearchLoading ? "Searching profile..." : "Search"}
             >
-              {profileSearchLoading ? "..." : "Enter"}
+              {renderSearchSubmitIcon(16)}
             </button>
           </div>
         </form>
@@ -341,8 +354,8 @@ export default function TopNav() {
         <form onSubmit={handleSearchSubmit} className="relative">
           <Search
             size={16}
-            className="absolute left-3.5 top-1/2 -translate-y-1/2"
-            style={{ color: T.textSubtle }}
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors"
+            style={{ color: searchIconColor }}
           />
 
           <input
@@ -351,7 +364,7 @@ export default function TopNav() {
             placeholder="Search posts or exact email…"
             autoComplete="off"
             inputMode="search"
-            className="w-full h-11 pl-10 pr-16 rounded-2xl text-sm outline-none border shadow-sm"
+            className="w-full h-11 pl-10 pr-14 rounded-2xl text-sm outline-none border shadow-sm"
             style={{
               borderColor: T.border,
               backgroundColor: T.card,
@@ -362,15 +375,16 @@ export default function TopNav() {
           <button
             type="submit"
             disabled={profileSearchLoading}
-            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-xl border px-2.5 py-1 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-70"
+            className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-xl border transition-all active:scale-95 disabled:cursor-wait disabled:opacity-80"
             style={{
-              color: T.textSubtle,
-              borderColor: T.borderSoft,
-              backgroundColor: T.surface,
+              color: searchIconColor,
+              borderColor: hasSearchText ? "rgba(179,25,66,0.35)" : T.borderSoft,
+              backgroundColor: hasSearchText ? "rgba(179,25,66,0.08)" : T.surface,
             }}
-            aria-label="Run search"
+            aria-label={profileSearchLoading ? "Searching profile" : "Run search"}
+            title={profileSearchLoading ? "Searching profile..." : "Search"}
           >
-            {profileSearchLoading ? "..." : "Go"}
+            {renderSearchSubmitIcon(16)}
           </button>
         </form>
       </div>
