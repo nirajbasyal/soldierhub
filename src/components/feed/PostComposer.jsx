@@ -45,6 +45,7 @@ export default function PostComposer() {
 
   const bodyRef = useRef(null);
   const anonymousToggleAtRef = useRef(0);
+  const anonymousTouchActiveRef = useRef(false);
 
   useEffect(() => {
     if (open && bodyRef.current) {
@@ -67,7 +68,7 @@ export default function PostComposer() {
 
     window.setTimeout(() => {
       bodyRef.current?.focus({ preventScroll: true });
-    }, 60);
+    }, 80);
   };
 
   const selectCategory = (nextCategory) => {
@@ -77,19 +78,50 @@ export default function PostComposer() {
     focusComposerField();
   };
 
-  const toggleAnonymousWithoutBlur = (event) => {
-    if (submitting) return;
-
-    event?.preventDefault?.();
-    event?.stopPropagation?.();
-
+  const toggleAnonymousState = () => {
     const now = Date.now();
-    if (now - anonymousToggleAtRef.current < 250) return;
+    if (now - anonymousToggleAtRef.current < 220) return;
     anonymousToggleAtRef.current = now;
 
-    bodyRef.current?.focus({ preventScroll: true });
     setAnonymous((value) => !value);
     keepComposerKeyboardOpen();
+  };
+
+  const holdComposerFocus = (event) => {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    bodyRef.current?.focus({ preventScroll: true });
+  };
+
+  const handleAnonymousTouchStart = (event) => {
+    if (submitting) return;
+
+    anonymousTouchActiveRef.current = true;
+    holdComposerFocus(event);
+  };
+
+  const handleAnonymousTouchEnd = (event) => {
+    if (submitting) return;
+
+    holdComposerFocus(event);
+    toggleAnonymousState();
+
+    window.setTimeout(() => {
+      anonymousTouchActiveRef.current = false;
+    }, 260);
+  };
+
+  const handleAnonymousMouseDown = (event) => {
+    if (submitting) return;
+
+    holdComposerFocus(event);
+
+    if (anonymousTouchActiveRef.current) return;
+    toggleAnonymousState();
+  };
+
+  const handleAnonymousClick = (event) => {
+    holdComposerFocus(event);
   };
 
   const closeComposer = () => {
@@ -352,20 +384,28 @@ export default function PostComposer() {
         className="flex items-center justify-between gap-2 pt-3 mt-2 border-t"
         style={{ borderColor: T.borderSoft }}
       >
-        <button
-          type="button"
-          aria-pressed={anonymous}
-          disabled={submitting}
-          onPointerDown={toggleAnonymousWithoutBlur}
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
+        <div
+          role="switch"
+          aria-checked={anonymous}
+          aria-disabled={submitting}
+          tabIndex={0}
+          onTouchStart={handleAnonymousTouchStart}
+          onTouchEnd={handleAnonymousTouchEnd}
+          onMouseDown={handleAnonymousMouseDown}
+          onClick={handleAnonymousClick}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              holdComposerFocus(event);
+              toggleAnonymousState();
+            }
           }}
-          className="flex items-center gap-2 text-sm cursor-pointer select-none disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex items-center gap-2 text-sm cursor-pointer select-none"
           style={{
             color: anonymous ? T.text : T.textMuted,
+            opacity: submitting ? 0.6 : 1,
+            pointerEvents: submitting ? "none" : "auto",
             WebkitTapHighlightColor: "transparent",
-            touchAction: "none",
+            touchAction: "manipulation",
             userSelect: "none",
           }}
         >
@@ -381,7 +421,7 @@ export default function PostComposer() {
             {anonymous ? "✓" : ""}
           </span>
           Post anonymously
-        </button>
+        </div>
 
         <div className="flex gap-2">
           <Button variant="ghost" onClick={closeComposer} disabled={submitting}>
