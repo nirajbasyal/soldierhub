@@ -7,6 +7,8 @@ export function useNotificationActions({
   currentUser,
   notifications,
   setNotifications,
+  unreadCount,
+  setUnreadCount,
 }) {
   const userNotifications = useMemo(() => {
     if (!currentUser) return [];
@@ -20,7 +22,10 @@ export function useNotificationActions({
       );
   }, [SUPA, notifications, currentUser]);
 
-  const unreadCount = userNotifications.filter((n) => !n.read).length;
+  const localUnreadCount = userNotifications.filter((n) => !n.read).length;
+  const safeUnreadCount = SUPA
+    ? Math.max(0, Number(unreadCount) || 0)
+    : localUnreadCount;
 
   const markNotificationsRead = useCallback(async () => {
     if (!currentUser) return;
@@ -30,6 +35,7 @@ export function useNotificationActions({
       const { error } = await NotificationsDB.markAllNotificationsRead();
       if (error) return;
 
+      setUnreadCount(0);
       setNotifications((arr) => arr.map((n) => ({ ...n, read: true })));
       return;
     }
@@ -39,7 +45,11 @@ export function useNotificationActions({
         n.recipient_user_id === currentUser.id ? { ...n, read: true } : n
       )
     );
-  }, [SUPA, currentUser, setNotifications]);
+  }, [SUPA, currentUser, setNotifications, setUnreadCount]);
 
-  return { userNotifications, unreadCount, markNotificationsRead };
+  return {
+    userNotifications,
+    unreadCount: safeUnreadCount,
+    markNotificationsRead,
+  };
 }
