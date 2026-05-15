@@ -1,8 +1,25 @@
 import { createClient } from "./client";
 
-const FOLLOW_SUMMARY_CACHE_PREFIX = "soldierhub_follow_summary_v1:";
-const FOLLOW_CONNECTIONS_CACHE_PREFIX = "soldierhub_follow_connections_v1:";
+const FOLLOW_SUMMARY_CACHE_PREFIX = "soldierhub_follow_summary_v2:";
+const FOLLOW_CONNECTIONS_CACHE_PREFIX = "soldierhub_follow_connections_v2:";
 const FOLLOW_CACHE_MAX_AGE_MS = 1000 * 60 * 5;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i;
+
+export function isValidProfileId(value) {
+  return UUID_PATTERN.test(String(value || "").trim());
+}
+
+export function getConnectionProfileId(item = {}) {
+  const profileId =
+    item?.profile?.id ||
+    item?.profile_id ||
+    item?.id ||
+    item?.following_id ||
+    item?.follower_id ||
+    null;
+
+  return isValidProfileId(profileId) ? String(profileId).trim() : "";
+}
 
 function getFriendlyError(error, fallback = "Something went wrong. Please try again.") {
   if (!error) return null;
@@ -25,6 +42,16 @@ function getFriendlyError(error, fallback = "Something went wrong. Please try ag
     };
   }
 
+  if (
+    lowerMessage.includes("profile was not identified") ||
+    lowerMessage.includes("invalid input syntax for type uuid")
+  ) {
+    return {
+      ...error,
+      message: "This profile link needs to refresh. Please reload the page and try again.",
+    };
+  }
+
   return { ...error, message };
 }
 
@@ -33,6 +60,26 @@ function normalizeFollowCountRow(row = {}) {
     followersCount: Number(row.followersCount ?? row.followers_count ?? row.follower_count ?? 0),
     followingCount: Number(row.followingCount ?? row.following_count ?? 0),
     isFollowing: Boolean(row.isFollowing ?? row.is_following ?? false),
+  };
+}
+
+function normalizeConnectionRow(row = {}) {
+  const profileId = getConnectionProfileId(row);
+  if (!profileId) return null;
+
+  const profile = row.profile || row.profiles || row.author || row.user || {};
+
+  return {
+    ...row,
+    id: profileId,
+    profile_id: profileId,
+    profile: {
+      id: profileId,
+      full_name: profile.full_name || row.full_name || "SoldierHub member",
+      avatar_color: profile.avatar_color || row.avatar_color || "#314A66",
+      avatar_url: profile.avatar_url || row.avatar_url || null,
+      base: profile.base || row.base || "Fort Bliss",
+    },
   };
 }
 
@@ -150,18 +197,18 @@ async function postJsonToApi(path, accessToken, payload, fallbackMessage) {
 }
 
 export function getCachedFollowSummary(profileId, viewerId = null) {
-  if (!profileId) return null;
+  if (!isValidProfileId(profileId)) return null;
   const cached = readCache(followSummaryCacheKey(profileId, viewerId));
   return cached ? normalizeFollowCountRow(cached) : null;
 }
 
 export function cacheFollowSummary(profileId, viewerId = null, summary = null) {
-  if (!profileId || !summary) return;
+  if (!isValidProfileId(profileId) || !summary) return;
   writeCache(followSummaryCacheKey(profileId, viewerId), normalizeFollowCountRow(summary));
 }
 
 export function updateCachedFollowSummary(profileId, viewerId = null, updater) {
-  if (!profileId || typeof updater !== "function") return null;
+  if (!isValidProfileId(profileId) || typeof updater !== "function") return null;
 
   const key = followSummaryCacheKey(profileId, viewerId);
   const current = getCachedFollowSummary(profileId, viewerId) || {
@@ -175,29 +222,35 @@ export function updateCachedFollowSummary(profileId, viewerId = null, updater) {
 }
 
 export function getCachedFollowConnections(type, profileId) {
-  if (!profileId) return null;
+  if (!isValidProfileId(profileId)) return null;
   const cached = readCache(followConnectionsCacheKey(type, profileId));
-  return Array.isArray(cached) ? cached : null;
+  if (!Array.isArray(cached)) return null;
+
+  const normalizedRows = cached.map(normalizeConnectionRow).filter(Boolean);
+  return normalizedRows.length > 0 ? normalizedRows : null;
 }
 
 export function cacheFollowConnections(type, profileId, items = []) {
-  if (!profileId) return;
-  writeCache(followConnectionsCacheKey(type, profileId), Array.isArray(items) ? items : []);
+  if (!isValidProfileId(profileId)) return;
+  const normalizedRows = (Array.isArray(items) ? items : [])
+    .map(normalizeConnectionRow)
+    .filter(Boolean);
+  writeCache(followConnectionsCacheKey(type, profileId), normalizedRows);
 }
 
 export function removeProfileFromCachedFollowing(profileId, targetProfileId) {
-  if (!profileId || !targetProfileId) return;
+  if (!isValidProfileId(profileId) || !isValidProfileId(targetProfileId)) return;
 
   const key = followConnectionsCacheKey("following", profileId);
   const cached = getCachedFollowConnections("following", profileId);
   if (!cached) return;
 
-  const next = cached.filter((item) => (item.profile?.id || item.id) !== targetProfileId);
+  const next = cached.filter((item) => getConnectionProfileId(item) !== targetProfileId);
   writeCache(key, next);
 }
 
 export function clearCachedFollowConnections(type, profileId) {
-  if (!profileId) return;
+  if (!isValidProfileId(profileId)) return;
   removeCache(followConnectionsCacheKey(type, profileId));
 }
 
@@ -212,13 +265,20 @@ async function getCurrentUserId(supabase) {
 }
 
 export async function getFollowSummary(profileId, viewerId = null, options = {}) {
+  if (!isValidProfileId(profileId)) {
+    return {
+      data: { followersCount: 0, followingCount: 0, isFollowing: false },
+      error: null,
+    };
+  }
+
   const cached = options.skipCache ? null : getCachedFollowSummary(profileId, viewerId);
   if (cached) {
     return { data: cached, error: null, cached: true };
   }
 
   const supabase = createClient();
-  if (!supabase || !profileId) {
+  if (!supabase) {
     return {
       data: { followersCount: 0, followingCount: 0, isFollowing: false },
       error: null,
@@ -232,7 +292,7 @@ export async function getFollowSummary(profileId, viewerId = null, options = {})
         .select("profile_id, followers_count, following_count")
         .eq("profile_id", profileId)
         .maybeSingle(),
-      viewerId && viewerId !== profileId
+      isValidProfileId(viewerId) && viewerId !== profileId
         ? supabase
             .from("profile_follows")
             .select("follower_id")
@@ -278,8 +338,12 @@ export async function getFollowSummary(profileId, viewerId = null, options = {})
 
 export async function followUser(targetProfileId) {
   const supabase = createClient();
-  if (!supabase || !targetProfileId) {
+  if (!supabase) {
     return { data: null, error: { message: "Follow system is not available." } };
+  }
+
+  if (!isValidProfileId(targetProfileId)) {
+    return { data: null, error: { message: "This profile link needs to refresh. Please reload the page and try again." } };
   }
 
   const [{ userId, error: userError }, { accessToken, error: tokenError }] = await Promise.all([
@@ -319,8 +383,12 @@ export async function followUser(targetProfileId) {
 
 export async function unfollowUser(targetProfileId) {
   const supabase = createClient();
-  if (!supabase || !targetProfileId) {
+  if (!supabase) {
     return { error: { message: "Follow system is not available." } };
+  }
+
+  if (!isValidProfileId(targetProfileId)) {
+    return { error: { message: "This profile link needs to refresh. Please reload the page and try again." } };
   }
 
   const [{ userId, error: userError }, { accessToken, error: tokenError }] = await Promise.all([
@@ -356,13 +424,18 @@ export async function unfollowUser(targetProfileId) {
 
 export async function listFollowConnections(type, profileId, { limit = 100, skipCache = false } = {}) {
   const normalizedType = type === "following" ? "following" : "followers";
+
+  if (!isValidProfileId(profileId)) {
+    return { data: [], error: { message: "Profile was not identified. Please refresh and try again." } };
+  }
+
   const cached = skipCache ? null : getCachedFollowConnections(normalizedType, profileId);
   if (cached) {
     return { data: cached, error: null, cached: true };
   }
 
   const supabase = createClient();
-  if (!supabase || !profileId) {
+  if (!supabase) {
     return { data: [], error: { message: "Follow system is not available." } };
   }
 
@@ -385,18 +458,18 @@ export async function listFollowConnections(type, profileId, { limit = 100, skip
   }
 
   const rows = (data || [])
-    .map((row) => ({
-      id: row.profile_id,
-      created_at: row.followed_at,
-      profile: {
+    .map((row) =>
+      normalizeConnectionRow({
         id: row.profile_id,
+        profile_id: row.profile_id,
+        created_at: row.followed_at,
         full_name: row.full_name || "SoldierHub member",
         avatar_color: row.avatar_color || "#314A66",
         avatar_url: row.avatar_url || null,
         base: row.base || "Fort Bliss",
-      },
-    }))
-    .filter((row) => row.profile?.id);
+      })
+    )
+    .filter(Boolean);
 
   cacheFollowConnections(normalizedType, profileId, rows);
 
