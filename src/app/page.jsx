@@ -270,19 +270,23 @@ export default function HomePage() {
 
   return (
     <AppShell>
-      <main className="max-w-6xl mx-auto px-2 md:px-5 py-3 md:py-6 pb-24 md:pb-10">
+      <main className="max-w-6xl mx-auto pl-2 pr-0 md:px-5 py-3 md:py-6 pb-24 md:pb-10">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-2 lg:gap-4">
           <div className="flex flex-col gap-2 min-w-0">
-            <div className="block lg:hidden mt-2">
+            <div className="block lg:hidden mt-2 pr-2">
               <MobileWeatherStrip />
             </div>
 
-            <FeedHero currentUser={currentUser} postCount={feedPosts.length} />
+            <div className="pr-2 md:pr-0">
+              <FeedHero currentUser={currentUser} postCount={feedPosts.length} />
+            </div>
 
-            <PostComposer />
+            <div className="pr-2 md:pr-0">
+              <PostComposer />
+            </div>
 
             <div
-              className="sticky top-[68px] md:top-[85px] z-20 -mx-2 md:mx-0 px-2 md:px-0 py-1.5 backdrop-blur-xl"
+              className="sticky top-[68px] md:top-[85px] z-20 -ml-2 mr-0 md:mx-0 pl-2 pr-0 md:px-0 py-1.5 backdrop-blur-xl"
               style={{
                 background:
                   "linear-gradient(180deg, rgba(234,240,248,0.96) 0%, rgba(234,240,248,0.82) 100%)",
@@ -319,14 +323,14 @@ export default function HomePage() {
             ) : null}
 
             {showInitialSkeleton ? (
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1 pr-2 md:pr-0">
                 <PostSkeleton />
                 <PostSkeleton />
                 <PostSkeleton />
               </div>
             ) : filtered.length === 0 ? (
               <div
-                className="rounded-[24px] border p-6 sh-card-premium"
+                className="rounded-[24px] border p-6 sh-card-premium mr-2 md:mr-0"
                 style={{ backgroundColor: T.card, borderColor: T.border }}
               >
                 <EmptyState
@@ -341,7 +345,7 @@ export default function HomePage() {
               </div>
             ) : (
               <>
-                <div className="-mx-2 md:mx-0 flex flex-col gap-0 sh-feed-post-list">
+                <div className="-ml-2 mr-0 md:mx-0 flex flex-col gap-1 sh-feed-post-list">
                   {visibleFiltered.map((post) => {
                     const normalizedPost = normalizeFeedPostForCard(post);
                     return <PostCard key={normalizedPost.id} post={normalizedPost} />;
@@ -349,7 +353,7 @@ export default function HomePage() {
                 </div>
 
                 {showLoadMore ? (
-                  <div className="flex justify-center pt-1">
+                  <div className="flex justify-center pt-1 pr-2 md:pr-0">
                     <button
                       type="button"
                       onClick={handleLoadMore}
