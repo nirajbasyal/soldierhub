@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, ChevronRight, Pencil, Plus, Send } from "lucide-react";
+import { AlertTriangle, ChevronRight, Pencil, Plus } from "lucide-react";
 import { CATEGORIES } from "@/lib/constants";
 import { T, TONE_STYLES } from "@/lib/theme";
 import { moderateAsync } from "@/lib/moderation-client";
@@ -17,6 +17,14 @@ const RED = "#B31942";
 const DARK_RED = "#9F1239";
 const PUBLISH_SCROLL_KEY = "soldierhub_scroll_to_latest_post";
 const COMPOSE_SUBMIT_EVENT = "soldierhub-compose-submit";
+const COMPOSE_STATE_EVENT = "soldierhub-compose-state";
+
+const COMPOSER_CATEGORY_LABELS = {
+  "General Q&A": "Q&A",
+  "Resources & Support": "Resources",
+  "New Soldier Help": "New Soldier",
+  "Things To Do": "Things To Do",
+};
 
 function getAnonymousDisplayName(seed) {
   const source = String(seed || "anonymous");
@@ -51,6 +59,8 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   const anonymousValueRef = useRef(anonymous);
   const submittingValueRef = useRef(submitting);
 
+  const canPublish = useMemo(() => body.trim().length > 0, [body]);
+
   useEffect(() => {
     bodyValueRef.current = body;
   }, [body]);
@@ -68,6 +78,19 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   }, [submitting]);
 
   useEffect(() => {
+    if (!pageMode || typeof window === "undefined") return;
+
+    window.dispatchEvent(
+      new CustomEvent(COMPOSE_STATE_EVENT, {
+        detail: {
+          canPublish,
+          submitting,
+        },
+      })
+    );
+  }, [canPublish, submitting, pageMode]);
+
+  useEffect(() => {
     if (open && !pageMode && bodyRef.current) {
       bodyRef.current.focus();
     }
@@ -80,9 +103,9 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     const resizeTextarea = () => {
       const viewportHeight =
         typeof window !== "undefined" ? window.visualViewport?.height || window.innerHeight : 760;
-      const minHeight = pageMode ? 220 : 180;
+      const minHeight = pageMode ? 190 : 180;
       const maxHeight = pageMode
-        ? Math.max(260, Math.min(460, Math.round(viewportHeight * 0.42)))
+        ? Math.max(240, Math.min(420, Math.round(viewportHeight * 0.38)))
         : 360;
 
       textarea.style.height = "auto";
@@ -281,25 +304,26 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
       }
       style={{ backgroundColor: T.card, borderColor: T.border }}
     >
-      <div className="mb-5 flex items-center gap-3">
+      <div className="mb-4 flex items-center gap-3">
         <Avatar name={composerDisplayName} color={composerDisplayColor} size={46} />
 
         <div className="min-w-0 flex-1">
           <div className="truncate text-[18px] font-extrabold" style={{ color: T.text }}>
             {composerDisplayName}
           </div>
-          <div className="text-sm" style={{ color: T.textSubtle }}>
-            Posting to SoldierHub
+          <div className="text-xs font-semibold uppercase tracking-[0.16em]" style={{ color: T.textSubtle }}>
+            {body.length.toLocaleString()} characters
           </div>
         </div>
       </div>
 
-      <div className="relative -mx-1 mb-5">
+      <div className="relative -mx-1 mb-4">
         <div className="overflow-x-auto no-scrollbar scroll-smooth">
           <div className="flex w-max gap-2 px-1 pr-14">
             {CATEGORIES.filter((c) => c.key !== "All").map((c) => {
               const active = c.key === category;
               const s = TONE_STYLES[c.tone];
+              const label = COMPOSER_CATEGORY_LABELS[c.label] || COMPOSER_CATEGORY_LABELS[c.key] || c.label;
 
               return (
                 <button
@@ -314,7 +338,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
                     boxShadow: active ? "0 10px 20px rgba(11,28,44,0.06)" : "none",
                   }}
                 >
-                  {c.label}
+                  {label}
                 </button>
               );
             })}
@@ -357,99 +381,85 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
       )}
 
       <div
-        className="mt-3 rounded-[24px] border p-3 backdrop-blur-xl md:p-4"
+        className="mt-3 rounded-[22px] border px-3 py-3"
         style={{
           borderColor: T.borderSoft,
-          backgroundColor: "rgba(255,255,255,0.96)",
-          boxShadow: "0 14px 34px rgba(11,28,44,0.08)",
+          backgroundColor: "rgba(248,250,253,0.94)",
         }}
       >
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 pr-2">
-            <div className="text-sm font-extrabold" style={{ color: T.navy }}>
-              Post anonymously
-            </div>
-            <div className="mt-1 text-xs leading-5" style={{ color: T.textSubtle }}>
-              Hide your name publicly while posting safely.
-            </div>
-          </div>
-
+        <div className="flex items-center justify-between gap-3">
           <button
             type="button"
-            role="switch"
-            aria-checked={anonymous}
-            disabled={submitting}
             onClick={toggleAnonymous}
-            className="relative inline-flex h-9 w-[72px] shrink-0 items-center rounded-full border"
-            style={{
-              borderColor: anonymous ? "rgba(159,18,57,0.18)" : T.border,
-              backgroundColor: anonymous ? DARK_RED : "rgba(213,226,242,0.72)",
-            }}
-          >
-            <span
-              className="absolute left-3 text-[10px] font-black"
-              style={{ color: "#FFFFFF", opacity: anonymous ? 1 : 0 }}
-            >
-              ON
-            </span>
-
-            <span
-              className="absolute right-2.5 text-[10px] font-black"
-              style={{ color: T.textSubtle, opacity: anonymous ? 0 : 1 }}
-            >
-              OFF
-            </span>
-
-            <span
-              className="absolute left-[3px] top-[3px] h-[30px] w-[30px] rounded-full transition-transform duration-200"
-              style={{
-                transform: anonymous ? "translateX(36px)" : "translateX(0)",
-                backgroundColor: "#FFFFFF",
-              }}
-            />
-          </button>
-        </div>
-
-        {anonymous && (
-          <div
-            className="mt-3 rounded-2xl border px-3 py-2.5 text-xs"
-            style={{
-              backgroundColor: "rgba(255,241,245,0.96)",
-              borderColor: "rgba(179,25,66,0.18)",
-              color: DARK_RED,
-            }}
-          >
-            Your name will show as {composerDisplayName}. Avoid typing personal details inside the post.
-          </div>
-        )}
-
-        <div className="mt-3 grid grid-cols-2 gap-2.5">
-          <button
-            type="button"
-            onClick={closeComposer}
             disabled={submitting}
-            className="h-12 rounded-full border text-sm font-bold"
-            style={{ backgroundColor: "#FFFFFF", borderColor: T.border, color: T.navy }}
+            className="sh-tap flex min-w-0 flex-1 items-center justify-between gap-3 text-left"
           >
-            Clear
+            <div className="min-w-0">
+              <div className="text-sm font-extrabold" style={{ color: T.navy }}>
+                Post anonymously
+              </div>
+              <div className="mt-0.5 truncate text-xs" style={{ color: T.textSubtle }}>
+                {anonymous ? `Public name: ${composerDisplayName}` : "Your name will be shown publicly"}
+              </div>
+            </div>
+
+            <span
+              className="relative inline-flex h-8 w-[66px] shrink-0 items-center rounded-full border"
+              style={{
+                borderColor: anonymous ? "rgba(159,18,57,0.18)" : T.border,
+                backgroundColor: anonymous ? DARK_RED : "rgba(213,226,242,0.72)",
+              }}
+            >
+              <span
+                className="absolute left-3 text-[9px] font-black"
+                style={{ color: "#FFFFFF", opacity: anonymous ? 1 : 0 }}
+              >
+                ON
+              </span>
+
+              <span
+                className="absolute right-2.5 text-[9px] font-black"
+                style={{ color: T.textSubtle, opacity: anonymous ? 0 : 1 }}
+              >
+                OFF
+              </span>
+
+              <span
+                className="absolute left-[3px] top-[3px] h-[24px] w-[24px] rounded-full transition-transform duration-200"
+                style={{
+                  transform: anonymous ? "translateX(36px)" : "translateX(0)",
+                  backgroundColor: "#FFFFFF",
+                }}
+              />
+            </span>
           </button>
 
-          <button
-            type="button"
-            onClick={submit}
-            disabled={submitting || !body.trim()}
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-full text-sm font-bold"
-            style={{
-              backgroundColor: RED,
-              color: "#FFFFFF",
-              boxShadow: "0 10px 22px rgba(179,25,66,0.22)",
-            }}
-          >
-            <Send size={16} />
-            {submitting ? "Checking…" : "Publish"}
-          </button>
+          {body.trim() && (
+            <button
+              type="button"
+              onClick={closeComposer}
+              disabled={submitting}
+              className="sh-tap h-10 shrink-0 rounded-full border px-4 text-xs font-extrabold"
+              style={{ backgroundColor: "#FFFFFF", borderColor: T.border, color: T.navy }}
+            >
+              Clear
+            </button>
+          )}
         </div>
       </div>
+
+      {anonymous && (
+        <div
+          className="mt-2 rounded-2xl border px-3 py-2.5 text-xs"
+          style={{
+            backgroundColor: "rgba(255,241,245,0.96)",
+            borderColor: "rgba(179,25,66,0.18)",
+            color: DARK_RED,
+          }}
+        >
+          Avoid typing personal details inside the post. Your real name stays hidden publicly.
+        </div>
+      )}
     </div>
   );
 }
