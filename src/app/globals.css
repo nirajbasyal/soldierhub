@@ -61,6 +61,35 @@ a:focus-visible,
   outline-offset: 3px;
 }
 
+/* App-wide launch polish: smoother touch feedback without changing the existing UI design. */
+:where(button, a[href], [role="button"]) {
+  transition-duration: 165ms;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  transition-property: background-color, border-color, color, box-shadow, opacity, filter, transform;
+}
+
+:where(button, a[href], [role="button"]):disabled,
+:where(button, a[href], [role="button"])[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :where(button, a[href], [role="button"]):not(:disabled):not([aria-disabled="true"]):hover {
+    filter: brightness(0.99);
+  }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  :where(button, a[href], [role="button"]):not(:disabled):not([aria-disabled="true"]):not([class*="translate"]):active {
+    transform: scale(0.975);
+    filter: brightness(0.985);
+  }
+
+  :where(button, a[href], [role="button"]):not(:disabled):not([aria-disabled="true"]):active {
+    opacity: 0.92;
+  }
+}
+
 /* Remove the red active/focus border from form fields app-wide. */
 input:focus,
 input:focus-visible,
