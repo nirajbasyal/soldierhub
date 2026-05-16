@@ -174,6 +174,44 @@ input[placeholder="Write a reply..."]:focus-visible {
   text-decoration: underline;
 }
 
+/* Launch polish: keep the current post card design, but make touch/menu interactions feel finished. */
+.sh-feed-post-list > article {
+  transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.sh-feed-post-list > article button {
+  transform: translateZ(0);
+  transition:
+    transform 135ms ease,
+    background-color 135ms ease,
+    color 135ms ease,
+    opacity 135ms ease,
+    box-shadow 135ms ease;
+}
+
+.sh-feed-post-list > article button:active:not(:disabled) {
+  transform: scale(0.965);
+}
+
+.sh-feed-post-list > article button:disabled {
+  cursor: not-allowed;
+}
+
+.sh-feed-post-list > article [aria-label="Post options"],
+.sh-feed-post-list > article [aria-label="Comment options"] {
+  margin-top: -1px;
+}
+
+.sh-feed-post-list > article [class*="shadow-xl"] {
+  transform-origin: top right;
+  animation: menuPop 145ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  box-shadow: 0 16px 38px rgba(7, 27, 51, 0.16) !important;
+}
+
+.sh-feed-post-list > article > div:first-child {
+  padding-bottom: 0.7rem;
+}
+
 /* Facebook-style mobile feed: posts touch both sides of the phone screen. */
 @media (max-width: 767px) {
   .sh-feed-post-list > article {
@@ -181,6 +219,10 @@ input[placeholder="Write a reply..."]:focus-visible {
     border-right: 0 !important;
     border-radius: 0 !important;
     box-shadow: 0 8px 18px rgba(7, 27, 51, 0.045) !important;
+  }
+
+  .sh-feed-post-list > article > div:first-child {
+    padding-top: 0.9rem;
   }
 }
 
