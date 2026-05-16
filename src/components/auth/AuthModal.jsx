@@ -368,346 +368,326 @@ export default function AuthModal() {
 
   return (
     <Modal open onClose={close} maxWidth={500}>
-      <div className="relative overflow-hidden">
-        <div
-          className="absolute -right-20 -top-24 h-48 w-48 rounded-full blur-3xl"
-          style={{ backgroundColor: "rgba(30,78,140,0.14)" }}
-        />
-        <div
-          className="absolute -bottom-24 -left-20 h-52 w-52 rounded-full blur-3xl"
-          style={{ backgroundColor: "rgba(179,25,66,0.08)" }}
-        />
-
-        <div className="relative p-4 md:p-5">
-          <div
-            className="rounded-[28px] border p-4 md:p-5"
-            style={{
-              backgroundColor: "rgba(255,255,255,0.86)",
-              borderColor: "rgba(207,218,232,0.88)",
-              boxShadow: "0 18px 42px rgba(7,27,51,0.08)",
-            }}
-          >
-            <div className="mb-4 flex items-start justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <div className="mb-3 flex items-center gap-2">
-                  <span
-                    className="text-[26px] font-black leading-none tracking-[-0.04em]"
-                    style={{ color: T.navy }}
-                  >
-                    Soldier
-                  </span>
-                  <span
-                    className="text-[26px] font-black leading-none tracking-[-0.04em]"
-                    style={{ color: T.red }}
-                  >
-                    Hub
-                  </span>
-                </div>
-
-                <h2
-                  className="text-2xl font-black leading-tight tracking-[-0.03em]"
-                  style={{ color: T.navy }}
-                >
-                  {title}
-                </h2>
-
-                <p
-                  className="mt-1.5 max-w-[360px] text-sm leading-6"
-                  style={{ color: T.textMuted }}
-                >
-                  <AuthSubtitle tab={tab} />
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={close}
-                className="sh-tap flex h-9 w-9 shrink-0 items-center justify-center rounded-full border"
-                style={{
-                  backgroundColor: "rgba(255,255,255,0.9)",
-                  borderColor: T.borderSoft,
-                  color: T.textMuted,
-                }}
+      <div className="p-4 md:p-5">
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="mb-3 flex items-center gap-2">
+              <span
+                className="text-[26px] font-black leading-none tracking-[-0.04em]"
+                style={{ color: T.navy }}
               >
-                <X size={18} />
-              </button>
+                Soldier
+              </span>
+              <span
+                className="text-[26px] font-black leading-none tracking-[-0.04em]"
+                style={{ color: T.red }}
+              >
+                Hub
+              </span>
             </div>
 
-            {tab !== "forgot" && (
-              <div
-                className="mb-4 grid grid-cols-2 gap-1.5 rounded-2xl border p-1.5"
-                style={{
-                  backgroundColor: "rgba(234,240,248,0.78)",
-                  borderColor: T.borderSoft,
-                }}
+            <h2
+              className="text-2xl font-black leading-tight tracking-[-0.03em]"
+              style={{ color: T.navy }}
+            >
+              {title}
+            </h2>
+
+            <p
+              className="mt-1.5 max-w-[360px] text-sm leading-6"
+              style={{ color: T.textMuted }}
+            >
+              <AuthSubtitle tab={tab} />
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={close}
+            className="sh-tap flex h-9 w-9 shrink-0 items-center justify-center rounded-full border"
+            style={{
+              backgroundColor: "rgba(248,250,253,0.96)",
+              borderColor: T.borderSoft,
+              color: T.textMuted,
+            }}
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {tab !== "forgot" && (
+          <div
+            className="mb-4 grid grid-cols-2 gap-1.5 rounded-2xl border p-1.5"
+            style={{
+              backgroundColor: "rgba(234,240,248,0.78)",
+              borderColor: T.borderSoft,
+            }}
+          >
+            {["login", "signup"].map((k) => {
+              const active = tab === k;
+
+              return (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => {
+                    setTab(k);
+                    setError("");
+                    setResetSent(false);
+                  }}
+                  className="sh-tap h-10 rounded-xl text-sm font-extrabold transition-all"
+                  style={{
+                    backgroundColor: active ? "#FFFFFF" : "transparent",
+                    color: active ? T.navy : T.textMuted,
+                    boxShadow: active ? "0 8px 18px rgba(7,27,51,0.08)" : "none",
+                    border: active ? `1px solid ${T.borderSoft}` : "1px solid transparent",
+                  }}
+                >
+                  {k === "login" ? "Sign in" : "Create account"}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {tab === "forgot" && (
+          <button
+            type="button"
+            onClick={() => {
+              setTab("login");
+              setError("");
+              setResetSent(false);
+            }}
+            className="sh-tap mb-4 inline-flex h-9 items-center rounded-full border px-3 text-xs font-extrabold"
+            style={{
+              backgroundColor: "rgba(248,250,253,0.96)",
+              borderColor: T.borderSoft,
+              color: T.navy,
+            }}
+          >
+            Back to sign in
+          </button>
+        )}
+
+        <div className="flex flex-col gap-3">
+          {tab === "forgot" && (
+            <div
+              className="rounded-2xl border px-3 py-3 text-sm leading-relaxed"
+              style={{
+                backgroundColor: "rgba(248,250,253,0.96)",
+                borderColor: T.borderSoft,
+                color: T.textMuted,
+              }}
+            >
+              Use the same email connected to your Soldier Hub account. The reset link will be sent to your inbox.
+            </div>
+          )}
+
+          {tab === "signup" && (
+            <TextInput
+              label={<RequiredLabel>Full name</RequiredLabel>}
+              icon={User}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Your full name"
+              className="h-12 rounded-2xl bg-transparent"
+            />
+          )}
+
+          <EmailField
+            label={tab === "signup" ? "Personal email" : "Email"}
+            required
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setResetSent(false);
+            }}
+            placeholder="you@example.com"
+            invalid={emailIsInvalid}
+            errorText="Please enter valid email address."
+          />
+
+          {tab === "signup" && (
+            <PhoneField
+              label="Phone number (optional)"
+              value={phone}
+              onChange={(e) => {
+                const numbersOnly = e.target.value.replace(/\D/g, "");
+                setPhone(numbersOnly);
+              }}
+              placeholder="9151234567"
+              invalid={phoneIsInvalid}
+              errorText="Please enter a valid 10-digit phone number."
+            />
+          )}
+
+          {tab !== "forgot" && (
+            <label className="block">
+              <span
+                className="mb-1.5 block text-xs font-bold"
+                style={{ color: T.textMuted }}
               >
-                {["login", "signup"].map((k) => {
-                  const active = tab === k;
+                Password <span style={{ color: T.red }}>*</span>
+              </span>
 
-                  return (
-                    <button
-                      key={k}
-                      type="button"
-                      onClick={() => {
-                        setTab(k);
-                        setError("");
-                        setResetSent(false);
-                      }}
-                      className="sh-tap h-10 rounded-xl text-sm font-extrabold transition-all"
-                      style={{
-                        backgroundColor: active ? "#FFFFFF" : "transparent",
-                        color: active ? T.navy : T.textMuted,
-                        boxShadow: active ? "0 8px 18px rgba(7,27,51,0.08)" : "none",
-                        border: active ? `1px solid ${T.borderSoft}` : "1px solid transparent",
-                      }}
-                    >
-                      {k === "login" ? "Sign in" : "Create account"}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+              <FieldShell>
+                <span
+                  className="absolute left-3 top-1/2 -translate-y-1/2"
+                  style={{ color: T.textSubtle }}
+                >
+                  <Lock size={16} strokeWidth={2.25} />
+                </span>
 
-            {tab === "forgot" && (
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder={tab === "signup" ? "Create a password" : "Your password"}
+                  className="h-12 w-full rounded-2xl border-0 bg-transparent pl-10 pr-11 text-sm outline-none placeholder:text-[#A8ABB2]"
+                  style={{ color: T.text }}
+                />
+
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2"
+                  style={{ color: T.textSubtle }}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </FieldShell>
+            </label>
+          )}
+
+          {tab === "login" && (
+            <div className="flex justify-end -mt-1">
               <button
                 type="button"
                 onClick={() => {
-                  setTab("login");
+                  setTab("forgot");
+                  setPassword("");
                   setError("");
                   setResetSent(false);
                 }}
-                className="sh-tap mb-4 inline-flex h-9 items-center rounded-full border px-3 text-xs font-extrabold"
-                style={{
-                  backgroundColor: "rgba(248,250,253,0.96)",
-                  borderColor: T.borderSoft,
-                  color: T.navy,
-                }}
+                className="text-xs font-extrabold hover:underline"
+                style={{ color: T.red }}
               >
-                Back to sign in
+                Forgot password?
               </button>
-            )}
+            </div>
+          )}
 
-            <div className="flex flex-col gap-3">
-              {tab === "forgot" && (
-                <div
-                  className="rounded-2xl border px-3 py-3 text-sm leading-relaxed"
-                  style={{
-                    backgroundColor: "rgba(248,250,253,0.96)",
-                    borderColor: T.borderSoft,
-                    color: T.textMuted,
-                  }}
+          {tab === "signup" && (
+            <>
+              <label className="block">
+                <span
+                  className="mb-1.5 block text-xs font-bold"
+                  style={{ color: T.textMuted }}
                 >
-                  Use the same email connected to your Soldier Hub account. The reset link will be sent to your inbox.
-                </div>
-              )}
+                  Confirm password <span style={{ color: T.red }}>*</span>
+                </span>
 
-              {tab === "signup" && (
-                <TextInput
-                  label={<RequiredLabel>Full name</RequiredLabel>}
-                  icon={User}
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Your full name"
-                  className="h-12 rounded-2xl bg-transparent"
-                />
-              )}
-
-              <EmailField
-                label={tab === "signup" ? "Personal email" : "Email"}
-                required
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  setResetSent(false);
-                }}
-                placeholder="you@example.com"
-                invalid={emailIsInvalid}
-                errorText="Please enter valid email address."
-              />
-
-              {tab === "signup" && (
-                <PhoneField
-                  label="Phone number (optional)"
-                  value={phone}
-                  onChange={(e) => {
-                    const numbersOnly = e.target.value.replace(/\D/g, "");
-                    setPhone(numbersOnly);
-                  }}
-                  placeholder="9151234567"
-                  invalid={phoneIsInvalid}
-                  errorText="Please enter a valid 10-digit phone number."
-                />
-              )}
-
-              {tab !== "forgot" && (
-                <label className="block">
+                <FieldShell invalid={passwordsDoNotMatch}>
                   <span
-                    className="mb-1.5 block text-xs font-bold"
-                    style={{ color: T.textMuted }}
+                    className="absolute left-3 top-1/2 -translate-y-1/2"
+                    style={{ color: passwordsDoNotMatch ? T.red : T.textSubtle }}
                   >
-                    Password <span style={{ color: T.red }}>*</span>
+                    <Lock size={16} strokeWidth={2.25} />
                   </span>
 
-                  <FieldShell>
-                    <span
-                      className="absolute left-3 top-1/2 -translate-y-1/2"
-                      style={{ color: T.textSubtle }}
-                    >
-                      <Lock size={16} strokeWidth={2.25} />
-                    </span>
-
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder={tab === "signup" ? "Create a password" : "Your password"}
-                      className="h-12 w-full rounded-2xl border-0 bg-transparent pl-10 pr-11 text-sm outline-none placeholder:text-[#A8ABB2]"
-                      style={{ color: T.text }}
-                    />
-
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword((v) => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2"
-                      style={{ color: T.textSubtle }}
-                    >
-                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </FieldShell>
-                </label>
-              )}
-
-              {tab === "login" && (
-                <div className="flex justify-end -mt-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTab("forgot");
-                      setPassword("");
-                      setError("");
-                      setResetSent(false);
-                    }}
-                    className="text-xs font-extrabold hover:underline"
-                    style={{ color: T.red }}
-                  >
-                    Forgot password?
-                  </button>
-                </div>
-              )}
-
-              {tab === "signup" && (
-                <>
-                  <label className="block">
-                    <span
-                      className="mb-1.5 block text-xs font-bold"
-                      style={{ color: T.textMuted }}
-                    >
-                      Confirm password <span style={{ color: T.red }}>*</span>
-                    </span>
-
-                    <FieldShell invalid={passwordsDoNotMatch}>
-                      <span
-                        className="absolute left-3 top-1/2 -translate-y-1/2"
-                        style={{ color: passwordsDoNotMatch ? T.red : T.textSubtle }}
-                      >
-                        <Lock size={16} strokeWidth={2.25} />
-                      </span>
-
-                      <input
-                        type={showConfirmPassword ? "text" : "password"}
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="Re-enter your password"
-                        className="h-12 w-full rounded-2xl border-0 bg-transparent pl-10 pr-11 text-sm outline-none placeholder:text-[#A8ABB2]"
-                        style={{ color: T.text }}
-                      />
-
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirmPassword((v) => !v)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2"
-                        style={{ color: T.textSubtle }}
-                      >
-                        {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                      </button>
-                    </FieldShell>
-
-                    {passwordsDoNotMatch && (
-                      <p className="mt-1 text-xs font-semibold" style={{ color: T.red }}>
-                        Passwords do not match.
-                      </p>
-                    )}
-                  </label>
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Re-enter your password"
+                    className="h-12 w-full rounded-2xl border-0 bg-transparent pl-10 pr-11 text-sm outline-none placeholder:text-[#A8ABB2]"
+                    style={{ color: T.text }}
+                  />
 
                   <button
                     type="button"
-                    onClick={() => setShowBio((v) => !v)}
-                    className="sh-tap rounded-full px-1 text-left text-xs font-extrabold"
-                    style={{ color: T.navy }}
+                    onClick={() => setShowConfirmPassword((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2"
+                    style={{ color: T.textSubtle }}
                   >
-                    {showBio ? "Hide optional bio" : "+ Add optional bio"}
+                    {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
+                </FieldShell>
 
-                  {showBio && (
-                    <TextArea
-                      label="Bio (optional)"
-                      value={bio}
-                      onChange={(e) => setBio(e.target.value)}
-                      placeholder="Unit, role, interests, or anything helpful for the community."
-                    />
-                  )}
-                </>
-              )}
+                {passwordsDoNotMatch && (
+                  <p className="mt-1 text-xs font-semibold" style={{ color: T.red }}>
+                    Passwords do not match.
+                  </p>
+                )}
+              </label>
 
-              {error && (
-                <div
-                  className="flex items-start gap-2 rounded-2xl border px-3 py-2.5 text-xs font-semibold"
-                  style={{
-                    backgroundColor: T.redBg,
-                    borderColor: "rgba(179,25,66,0.16)",
-                    color: T.red,
-                  }}
-                >
-                  <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-                  <span>{error}</span>
-                </div>
-              )}
-
-              {resetSent && (
-                <div
-                  className="flex items-start gap-2 rounded-2xl border px-3 py-2.5 text-xs font-semibold"
-                  style={{
-                    backgroundColor: T.greenBg,
-                    borderColor: "rgba(36,113,81,0.16)",
-                    color: T.green,
-                  }}
-                >
-                  <ShieldCheck size={14} className="mt-0.5 shrink-0" />
-                  <span>Password reset email sent. Check your inbox and follow the secure link.</span>
-                </div>
-              )}
-
-              <Button
-                variant="primary"
-                icon={tab === "signup" ? UserPlus : tab === "forgot" ? Send : LogIn}
-                onClick={submit}
-                disabled={submitting}
-                className="mt-1 w-full rounded-2xl"
+              <button
+                type="button"
+                onClick={() => setShowBio((v) => !v)}
+                className="sh-tap rounded-full px-1 text-left text-xs font-extrabold"
+                style={{ color: T.navy }}
               >
-                {submitting
-                  ? tab === "forgot"
-                    ? "Sending..."
-                    : tab === "signup"
-                    ? "Creating..."
-                    : "Signing in..."
-                  : tab === "signup"
-                  ? "Create account"
-                  : tab === "forgot"
-                  ? "Send reset link"
-                  : "Sign in"}
-              </Button>
+                {showBio ? "Hide optional bio" : "+ Add optional bio"}
+              </button>
+
+              {showBio && (
+                <TextArea
+                  label="Bio (optional)"
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  placeholder="Unit, role, interests, or anything helpful for the community."
+                />
+              )}
+            </>
+          )}
+
+          {error && (
+            <div
+              className="flex items-start gap-2 rounded-2xl border px-3 py-2.5 text-xs font-semibold"
+              style={{
+                backgroundColor: T.redBg,
+                borderColor: "rgba(179,25,66,0.16)",
+                color: T.red,
+              }}
+            >
+              <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+              <span>{error}</span>
             </div>
-          </div>
+          )}
+
+          {resetSent && (
+            <div
+              className="flex items-start gap-2 rounded-2xl border px-3 py-2.5 text-xs font-semibold"
+              style={{
+                backgroundColor: T.greenBg,
+                borderColor: "rgba(36,113,81,0.16)",
+                color: T.green,
+              }}
+            >
+              <ShieldCheck size={14} className="mt-0.5 shrink-0" />
+              <span>Password reset email sent. Check your inbox and follow the secure link.</span>
+            </div>
+          )}
+
+          <Button
+            variant="primary"
+            icon={tab === "signup" ? UserPlus : tab === "forgot" ? Send : LogIn}
+            onClick={submit}
+            disabled={submitting}
+            className="mt-1 w-full rounded-2xl"
+          >
+            {submitting
+              ? tab === "forgot"
+                ? "Sending..."
+                : tab === "signup"
+                ? "Creating..."
+                : "Signing in..."
+              : tab === "signup"
+              ? "Create account"
+              : tab === "forgot"
+              ? "Send reset link"
+              : "Sign in"}
+          </Button>
         </div>
       </div>
     </Modal>
