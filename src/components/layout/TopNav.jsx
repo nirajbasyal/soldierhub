@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
+  AlertCircle,
   Bell,
   BookMarked,
   Loader2,
@@ -33,6 +34,7 @@ export default function TopNav() {
   const [profileSearchLoading, setProfileSearchLoading] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
+  const [searchNotice, setSearchNotice] = useState(null);
 
   const app = useApp() || {};
   const {
@@ -58,6 +60,15 @@ export default function TopNav() {
   const searchIconColor = hasSearchText ? SEARCH_ACTIVE_COLOR : SEARCH_IDLE_COLOR;
   const rightSearchButtonActive = hasSearchText || searchFocused;
   const rightSearchButtonColor = rightSearchButtonActive ? "#8F1534" : SEARCH_IDLE_COLOR;
+
+  const clearSearchNotice = () => {
+    if (searchNotice) setSearchNotice(null);
+  };
+
+  const showSearchNotice = ({ title, message, type = "error" }) => {
+    setSearchNotice({ title, message, type });
+    setMobileSearchOpen(true);
+  };
 
   const goProfile = () => {
     if (!safeUser) return setAuthModal("login");
@@ -89,23 +100,39 @@ export default function TopNav() {
     const q = String(search || "").trim();
 
     if (!q) {
+      clearSearchNotice();
       setSearch("");
       router.push("/");
       return;
     }
 
     if (!isEmailSearch(q)) {
+      if (q.includes("@")) {
+        showSearchNotice({
+          title: "Invalid email format",
+          message: "Enter the full email address, like name@example.com.",
+        });
+        return;
+      }
+
+      clearSearchNotice();
       router.push("/");
       return;
     }
 
     if (!safeUser) {
+      showSearchNotice({
+        title: "Sign in required",
+        message: "Please sign in to search member profiles by email.",
+        type: "info",
+      });
       setAuthModal("login");
       pushToast("Please sign in to search member profiles by email.", "info");
       return;
     }
 
     if (userStatus !== "verified") {
+      clearSearchNotice();
       router.push(
         `/pending-review?email=${encodeURIComponent(displayEmail)}&name=${encodeURIComponent(displayName)}&found=1`
       );
@@ -114,17 +141,22 @@ export default function TopNav() {
 
     try {
       setProfileSearchLoading(true);
+      clearSearchNotice();
 
       const { data, error } = await findProfileByEmailForSearch(q);
 
       if (error || !data?.id) {
-        pushToast(error?.message || "User not found.", "error");
+        showSearchNotice({
+          title: "User not found",
+          message: "No verified SoldierHub profile matched that email. Please check the spelling and try again.",
+        });
         return;
       }
 
       setSearch("");
       setMobileSearchOpen(false);
       setSearchFocused(false);
+      setSearchNotice(null);
 
       if (data.id === safeUser.id) {
         router.push("/profile");
@@ -137,7 +169,10 @@ export default function TopNav() {
         )}`
       );
     } catch {
-      pushToast("Could not search right now. Please try again.", "error");
+      showSearchNotice({
+        title: "Search unavailable",
+        message: "Could not search right now. Please try again in a moment.",
+      });
     } finally {
       setProfileSearchLoading(false);
     }
@@ -151,55 +186,121 @@ export default function TopNav() {
     return <Search size={size} aria-hidden="true" />;
   };
 
-  const searchForm = (mode = "desktop") => {
-    const hideLeftIcon = mode === "mobile" && searchFocused;
+  const renderSearchNotice = () => {
+    if (!searchNotice) return null;
+
+    const isInfo = searchNotice.type === "info";
 
     return (
-      <form onSubmit={handleSearchSubmit} className={mode === "desktop" ? "hidden md:flex flex-1 max-w-sm ml-1" : "w-full"}>
-        <div className="relative w-full">
-          {!hideLeftIcon ? (
-            <Search
-              size={17}
-              className="absolute left-4 top-1/2 -translate-y-1/2 transition-colors"
-              style={{ color: searchIconColor }}
-            />
-          ) : null}
-
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onFocus={() => {
-              setSearchFocused(true);
-              if (mode === "mobile") setMobileSearchOpen(true);
-            }}
-            onBlur={() => setSearchFocused(false)}
-            placeholder={mode === "mobile" ? "Search posts or exact email…" : "Search posts or email"}
-            autoComplete="off"
-            inputMode="search"
-            enterKeyHint="go"
-            className={`w-full h-11 ${hideLeftIcon ? "pl-4" : "pl-11"} pr-16 rounded-2xl text-sm outline-none border shadow-sm transition-all`}
+      <div
+        className="mt-2 rounded-2xl border px-3.5 py-3 shadow-sm"
+        style={{
+          backgroundColor: isInfo ? "rgba(239,246,255,0.96)" : "rgba(255,241,245,0.96)",
+          borderColor: isInfo ? "rgba(63,95,125,0.24)" : "rgba(179,25,66,0.22)",
+          boxShadow: isInfo
+            ? "0 10px 24px rgba(63,95,125,0.08)"
+            : "0 10px 24px rgba(179,25,66,0.08)",
+        }}
+        role="status"
+        aria-live="polite"
+      >
+        <div className="flex items-start gap-2.5">
+          <div
+            className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
             style={{
-              borderColor: searchFocused ? "rgba(179,25,66,0.34)" : T.border,
-              backgroundColor: "rgba(253,254,255,0.92)",
-              color: T.text,
-              boxShadow: searchFocused ? "0 0 0 4px rgba(179,25,66,0.08)" : undefined,
+              backgroundColor: isInfo ? "rgba(63,95,125,0.12)" : "rgba(179,25,66,0.1)",
+              color: isInfo ? T.navy : SEARCH_ACTIVE_COLOR,
             }}
-          />
+          >
+            <AlertCircle size={17} aria-hidden="true" />
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <div
+              className="text-sm font-extrabold leading-5"
+              style={{ color: isInfo ? T.navy : SEARCH_ACTIVE_COLOR }}
+            >
+              {searchNotice.title}
+            </div>
+            <div className="mt-0.5 text-xs leading-5" style={{ color: T.textSubtle }}>
+              {searchNotice.message}
+            </div>
+          </div>
 
           <button
-            type="submit"
-            disabled={profileSearchLoading}
-            className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-xl border transition-all active:scale-95 disabled:cursor-wait disabled:opacity-80"
-            style={{
-              color: rightSearchButtonColor,
-              borderColor: rightSearchButtonActive ? "rgba(143,21,52,0.42)" : "rgba(159,60,85,0.28)",
-              backgroundColor: rightSearchButtonActive ? "rgba(179,25,66,0.13)" : "rgba(179,25,66,0.045)",
-            }}
-            aria-label={profileSearchLoading ? "Searching profile" : "Run search"}
-            title={profileSearchLoading ? "Searching profile..." : "Search"}
+            type="button"
+            onClick={() => setSearchNotice(null)}
+            className="-mr-1 -mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-all active:scale-95"
+            style={{ color: T.textSubtle }}
+            aria-label="Dismiss search message"
           >
-            {renderSearchSubmitIcon(16)}
+            <X size={15} aria-hidden="true" />
           </button>
+        </div>
+      </div>
+    );
+  };
+
+  const searchForm = (mode = "desktop") => {
+    const hideLeftIcon = mode === "mobile" && searchFocused;
+    const isMobile = mode === "mobile";
+
+    return (
+      <form
+        onSubmit={handleSearchSubmit}
+        className={mode === "desktop" ? "hidden md:flex flex-1 max-w-sm ml-1" : "w-full"}
+      >
+        <div className="w-full">
+          <div className="relative w-full">
+            {!hideLeftIcon ? (
+              <Search
+                size={17}
+                className="absolute left-4 top-1/2 -translate-y-1/2 transition-colors"
+                style={{ color: searchIconColor }}
+              />
+            ) : null}
+
+            <input
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                clearSearchNotice();
+              }}
+              onFocus={() => {
+                setSearchFocused(true);
+                if (mode === "mobile") setMobileSearchOpen(true);
+              }}
+              onBlur={() => setSearchFocused(false)}
+              placeholder={mode === "mobile" ? "Search posts or exact email…" : "Search posts or email"}
+              autoComplete="off"
+              inputMode="search"
+              enterKeyHint="go"
+              className={`w-full h-11 ${hideLeftIcon ? "pl-4" : "pl-11"} pr-16 rounded-2xl text-sm outline-none border shadow-sm transition-all`}
+              style={{
+                borderColor: searchFocused ? "rgba(179,25,66,0.34)" : T.border,
+                backgroundColor: "rgba(253,254,255,0.92)",
+                color: T.text,
+                boxShadow: searchFocused ? "0 0 0 4px rgba(179,25,66,0.08)" : undefined,
+              }}
+            />
+
+            <button
+              type="submit"
+              disabled={profileSearchLoading}
+              className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-xl border transition-all active:scale-95 disabled:cursor-wait disabled:opacity-80"
+              style={{
+                color: rightSearchButtonColor,
+                borderColor: rightSearchButtonActive ? "rgba(143,21,52,0.42)" : "rgba(159,60,85,0.28)",
+                backgroundColor: rightSearchButtonActive ? "rgba(179,25,66,0.13)" : "rgba(179,25,66,0.045)",
+              }}
+              aria-label={profileSearchLoading ? "Searching profile" : "Run search"}
+              title={profileSearchLoading ? "Searching profile..." : "Search"}
+            >
+              {renderSearchSubmitIcon(16)}
+            </button>
+          </div>
+
+          {isMobile ? renderSearchNotice() : null}
         </div>
       </form>
     );
@@ -233,7 +334,10 @@ export default function TopNav() {
 
           <button
             type="button"
-            onClick={() => setMobileSearchOpen((open) => !open)}
+            onClick={() => {
+              setMobileSearchOpen((open) => !open);
+              if (mobileSearchOpen) setSearchNotice(null);
+            }}
             className="md:hidden w-9 h-9 rounded-2xl border flex items-center justify-center shrink-0 transition-all active:scale-95"
             style={{
               borderColor: hasSearchText || mobileSearchOpen ? "rgba(179,25,66,0.35)" : "rgba(159,60,85,0.28)",
@@ -340,8 +444,14 @@ export default function TopNav() {
         {mobileSearchOpen ? (
           <div className="md:hidden px-4 pb-3 -mt-1">
             <div
-              className="rounded-[20px] border p-2 shadow-sm"
-              style={{ backgroundColor: T.card, borderColor: T.border }}
+              className="rounded-[24px] border p-2 shadow-sm"
+              style={{
+                backgroundColor: T.card,
+                borderColor: searchNotice ? "rgba(179,25,66,0.18)" : T.border,
+                boxShadow: searchNotice
+                  ? "0 16px 36px rgba(179,25,66,0.08)"
+                  : "0 12px 28px rgba(11,28,44,0.06)",
+              }}
             >
               {searchForm("mobile")}
             </div>
