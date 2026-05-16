@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Inbox, RefreshCw } from "lucide-react";
 import { CATEGORIES } from "@/lib/constants";
 import { T } from "@/lib/theme";
@@ -23,6 +23,7 @@ const LEGACY_FEED_CACHE_KEYS = ["soldierhub_feed_cache_v1"];
 const FEED_CACHE_MAX_AGE_MS = 1000 * 60 * 5;
 const INITIAL_RENDERED_POSTS = 20;
 const RENDER_INCREMENT = 20;
+const PUBLISH_SCROLL_KEY = "soldierhub_scroll_to_latest_post";
 
 function getRealPostId(post) {
   return post?.post_id || post?.postId || post?.post?.id || post?.id || null;
@@ -121,6 +122,8 @@ export default function HomePage() {
   const [renderLimit, setRenderLimit] = useState(INITIAL_RENDERED_POSTS);
   const [refreshingFeed, setRefreshingFeed] = useState(false);
   const [feedRealtimeActive, setFeedRealtimeActive] = useState(false);
+  const postListRef = useRef(null);
+  const hasHandledPublishScrollRef = useRef(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -243,6 +246,46 @@ export default function HomePage() {
     return filtered.slice(0, renderLimit);
   }, [filtered, renderLimit]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (hasHandledPublishScrollRef.current) return;
+    if (showInitialSkeleton || visibleFiltered.length === 0) return;
+
+    let shouldScroll = false;
+
+    try {
+      shouldScroll = window.sessionStorage.getItem(PUBLISH_SCROLL_KEY) === "1";
+    } catch {
+      shouldScroll = false;
+    }
+
+    if (!shouldScroll) return;
+
+    hasHandledPublishScrollRef.current = true;
+
+    try {
+      window.sessionStorage.removeItem(PUBLISH_SCROLL_KEY);
+    } catch {
+      // Ignore storage failures.
+    }
+
+    const scrollToLatestPost = () => {
+      const target = postListRef.current;
+      if (!target) return;
+
+      const top = target.getBoundingClientRect().top + window.scrollY - 92;
+      window.scrollTo({ top: Math.max(top, 0), behavior: "smooth" });
+    };
+
+    const quickTimer = window.setTimeout(scrollToLatestPost, 120);
+    const finalTimer = window.setTimeout(scrollToLatestPost, 520);
+
+    return () => {
+      window.clearTimeout(quickTimer);
+      window.clearTimeout(finalTimer);
+    };
+  }, [showInitialSkeleton, visibleFiltered.length]);
+
   const hasMoreRenderedPosts = visibleFiltered.length < filtered.length;
   const canLoadFromServer = !search.trim() && category === "All" && hasMorePosts;
   const showLoadMore = feedPosts.length > 0 && (hasMoreRenderedPosts || canLoadFromServer);
@@ -345,7 +388,7 @@ export default function HomePage() {
               </div>
             ) : (
               <>
-                <div className="mx-0 flex w-full flex-col gap-[3px] sh-feed-post-list">
+                <div ref={postListRef} className="mx-0 flex w-full flex-col gap-[3px] sh-feed-post-list scroll-mt-24">
                   {visibleFiltered.map((post) => {
                     const normalizedPost = normalizeFeedPostForCard(post);
                     return <PostCard key={normalizedPost.id} post={normalizedPost} />;
