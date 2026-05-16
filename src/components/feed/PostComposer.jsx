@@ -308,6 +308,19 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
               ? "Posting anonymously to SoldierHub"
               : "Posting to SoldierHub"}
           </div>
+
+          {pageMode && (
+            <div className="mt-1.5 inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.12em]"
+              style={{
+                backgroundColor: "rgba(244,248,253,0.86)",
+                borderColor: T.borderSoft || T.border,
+                color: T.textSubtle,
+              }}
+            >
+              Select category
+              <span style={{ color: RED }}>below</span>
+            </div>
+          )}
         </div>
 
         <button
@@ -322,41 +335,76 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
         </button>
       </div>
 
-      <div className="-mx-1 mb-4 overflow-x-auto no-scrollbar">
-        <div className="flex gap-1.5 px-1 pb-1">
-          {CATEGORIES.filter((c) => c.key !== "All").map((c) => {
-            const active = c.key === category;
-            const s = TONE_STYLES[c.tone];
+      <div className="-mx-1 mb-5">
+        <div className="mb-2 flex items-center justify-between gap-3 px-1">
+          <div className="text-[11px] font-black uppercase tracking-[0.14em]" style={{ color: T.navy }}>
+            Category
+          </div>
+          <div className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-bold"
+            style={{ backgroundColor: "rgba(220,232,247,0.55)", color: T.textSubtle }}
+          >
+            Swipe for more
+            <ChevronRight size={12} />
+          </div>
+        </div>
 
-            return (
-              <button
-                key={c.key}
-                type="button"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  selectCategory(c.key);
-                }}
-                onTouchStart={(e) => {
-                  e.preventDefault();
-                  selectCategory(c.key);
-                }}
-                onClick={(e) => {
-                  e.preventDefault();
-                }}
-                disabled={submitting}
-                className="h-10 whitespace-nowrap rounded-full border px-4 text-sm font-bold transition-all disabled:opacity-60"
-                style={{
-                  backgroundColor: active ? s.bg : T.card,
-                  color: active ? s.text : T.textMuted,
-                  borderColor: active ? s.border : T.border,
-                  WebkitTapHighlightColor: "transparent",
-                  touchAction: "manipulation",
-                }}
-              >
-                {c.label}
-              </button>
-            );
-          })}
+        <div className="relative">
+          <div className="overflow-x-auto no-scrollbar scroll-smooth">
+            <div className="flex w-max gap-2 px-1 pb-1 pr-12">
+              {CATEGORIES.filter((c) => c.key !== "All").map((c) => {
+                const active = c.key === category;
+                const s = TONE_STYLES[c.tone];
+
+                return (
+                  <button
+                    key={c.key}
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      selectCategory(c.key);
+                    }}
+                    onTouchStart={(e) => {
+                      e.preventDefault();
+                      selectCategory(c.key);
+                    }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                    }}
+                    disabled={submitting}
+                    className="h-10 shrink-0 whitespace-nowrap rounded-full border px-4 text-sm font-bold transition-all active:scale-[0.98] disabled:opacity-60"
+                    style={{
+                      backgroundColor: active ? s.bg : "rgba(255,255,255,0.92)",
+                      color: active ? s.text : T.textMuted,
+                      borderColor: active ? s.border : T.border,
+                      boxShadow: active ? "0 8px 18px rgba(11,28,44,0.06)" : "none",
+                      WebkitTapHighlightColor: "transparent",
+                      touchAction: "manipulation",
+                    }}
+                  >
+                    {c.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div
+            className="pointer-events-none absolute bottom-1 right-0 top-0 w-14 rounded-r-2xl"
+            style={{
+              background:
+                "linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.92) 58%, rgba(255,255,255,1) 100%)",
+            }}
+          />
+          <div
+            className="pointer-events-none absolute right-1 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border shadow-sm"
+            style={{
+              backgroundColor: "rgba(255,255,255,0.96)",
+              borderColor: T.borderSoft || T.border,
+              color: RED,
+            }}
+          >
+            <ChevronRight size={15} />
+          </div>
         </div>
       </div>
 
@@ -368,7 +416,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
           setError("");
         }}
         disabled={submitting}
-        placeholder="Ask a question, share an update, or help the Fort Bliss community..."
+        placeholder="Ask a question, share an update, or help the SoldierHub community..."
         rows={pageMode ? 10 : 5}
         className={textareaClassName}
         style={{ color: T.text }}
