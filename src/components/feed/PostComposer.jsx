@@ -221,7 +221,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
 
       <div className="relative -mx-1 mb-6">
         <div className="overflow-x-auto no-scrollbar scroll-smooth">
-          <div className="flex w-max gap-2 px-1 pr-14">
+          <div className="flex w-max gap-2 px-1 pr-16">
             {CATEGORIES.filter((c) => c.key !== "All").map((c) => {
               const active = c.key === category;
               const s = TONE_STYLES[c.tone];
@@ -247,22 +247,23 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
         </div>
 
         <div
-          className="pointer-events-none absolute bottom-0 right-0 top-0 w-16"
+          className="pointer-events-none absolute inset-y-0 right-0 z-10 flex w-16 items-center justify-end"
           style={{
             background:
-              "linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.92) 60%, rgba(255,255,255,1) 100%)",
-          }}
-        />
-
-        <div
-          className="pointer-events-none absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border shadow-sm"
-          style={{
-            backgroundColor: "#FFFFFF",
-            borderColor: T.border,
-            color: RED,
+              "linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.9) 58%, rgba(255,255,255,1) 100%)",
           }}
         >
-          <ChevronRight size={17} />
+          <div
+            className="mr-1 flex h-9 w-9 items-center justify-center rounded-full border shadow-sm"
+            style={{
+              backgroundColor: "#FFFFFF",
+              borderColor: T.border,
+              color: RED,
+              boxShadow: "0 8px 18px rgba(11,28,44,0.08)",
+            }}
+          >
+            <ChevronRight size={17} />
+          </div>
         </div>
       </div>
 
