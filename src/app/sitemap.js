@@ -1,10 +1,12 @@
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://soldierhub.com";
 
 export default function sitemap() {
+  const now = new Date();
+
   return [
-    { url: SITE_URL,                   lastModified: new Date(), changeFrequency: "daily",   priority: 1.0 },
-    { url: `${SITE_URL}/resources`,    lastModified: new Date(), changeFrequency: "weekly",  priority: 0.8 },
-    { url: `${SITE_URL}/tools/bah`,    lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
-    { url: `${SITE_URL}/tools/gates`,  lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
+    { url: SITE_URL, lastModified: now, changeFrequency: "daily", priority: 1.0 },
+    { url: `${SITE_URL}/resources`, lastModified: now, changeFrequency: "weekly", priority: 0.85 },
+    { url: `${SITE_URL}/tools/bah`, lastModified: now, changeFrequency: "monthly", priority: 0.85 },
+    { url: `${SITE_URL}/tools/gates`, lastModified: now, changeFrequency: "weekly", priority: 0.85 },
   ];
 }
