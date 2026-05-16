@@ -15,6 +15,10 @@
   --sh-border: #CFDAE8;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 html, body {
   min-height: 100%;
   -webkit-font-smoothing: antialiased;
@@ -43,12 +47,85 @@ body::before {
   background: rgba(179, 25, 66, 0.18);
 }
 
+button,
+a,
+[role="button"] {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+button:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 3px solid rgba(179, 25, 66, 0.24);
+  outline-offset: 3px;
+}
+
 /* Hide scrollbar on horizontal category strips while keeping scroll behavior */
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 
 .sh-card-premium {
   box-shadow: 0 18px 45px rgba(7, 27, 51, 0.08);
+}
+
+.sh-card-hover {
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, background-color 180ms ease;
+}
+
+.sh-interactive {
+  transform: translateZ(0);
+  transition: transform 160ms ease, box-shadow 160ms ease, background-color 160ms ease, border-color 160ms ease, color 160ms ease, opacity 160ms ease;
+}
+
+.sh-interactive:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.sh-interactive:active:not(:disabled) {
+  transform: scale(0.975);
+}
+
+.sh-tap {
+  transform: translateZ(0);
+  transition: transform 150ms ease, opacity 150ms ease, background-color 150ms ease, box-shadow 150ms ease;
+}
+
+.sh-tap:active:not(:disabled) {
+  transform: scale(0.965);
+}
+
+.sh-focus-ring:focus-visible {
+  outline: 3px solid rgba(179, 25, 66, 0.22);
+  outline-offset: 3px;
+}
+
+.sh-menu-pop {
+  transform-origin: top right;
+  animation: menuPop 160ms ease-out both;
+}
+
+.sh-toast-card {
+  animation: toastIn 220ms ease-out both;
+}
+
+.sh-comment-in {
+  animation: commentIn 180ms ease-out both;
+}
+
+.sh-modal-card {
+  animation: modalIn 210ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.sh-modal-backdrop {
+  animation: fadeIn 160ms ease-out both;
+}
+
+.sh-post-fab {
+  animation: postFabIn 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .sh-flag-glow {
@@ -78,14 +155,21 @@ body::before {
   }
 }
 
+@media (min-width: 768px) {
+  .sh-card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 18px 36px rgba(7, 27, 51, 0.08);
+  }
+}
+
 /* Animations referenced by Modal, ToastHost, MobileMenu, ScrollToTop */
 @keyframes modalIn {
-  from { transform: translateY(8px); opacity: 0; }
-  to   { transform: translateY(0);    opacity: 1; }
+  from { transform: translateY(12px) scale(0.985); opacity: 0; }
+  to   { transform: translateY(0) scale(1);       opacity: 1; }
 }
 @keyframes toastIn {
-  from { transform: translateY(8px); opacity: 0; }
-  to   { transform: translateY(0);   opacity: 1; }
+  from { transform: translateY(10px) scale(0.98); opacity: 0; }
+  to   { transform: translateY(0) scale(1);       opacity: 1; }
 }
 @keyframes slideIn {
   from { transform: translateX(100%); }
@@ -94,4 +178,31 @@ body::before {
 @keyframes fadeIn {
   from { opacity: 0; }
   to   { opacity: 1; }
+}
+@keyframes menuPop {
+  from { transform: translateY(-4px) scale(0.98); opacity: 0; }
+  to   { transform: translateY(0) scale(1);       opacity: 1; }
+}
+@keyframes commentIn {
+  from { transform: translateY(4px); opacity: 0; }
+  to   { transform: translateY(0);   opacity: 1; }
+}
+@keyframes postFabIn {
+  from { transform: translateY(10px) scale(0.9); opacity: 0; }
+  to   { transform: translateY(0) scale(1);      opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }
