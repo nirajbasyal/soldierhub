@@ -446,68 +446,158 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
         </div>
       )}
 
-      <div
-        ref={composerActionsRef}
-        className={`${pageMode ? "sticky bottom-[78px] -mx-1 rounded-[24px] border px-3 py-3 shadow-sm backdrop-blur-xl md:static md:mx-0 md:rounded-none md:border-0 md:px-0 md:shadow-none" : ""} mt-2 flex items-center justify-between gap-2 border-t pt-3`}
-        style={{
-          borderColor: T.borderSoft,
-          backgroundColor: pageMode ? "rgba(255,255,255,0.92)" : undefined,
-        }}
-      >
+      {pageMode ? (
         <div
-          role="switch"
-          aria-checked={anonymous}
-          aria-disabled={submitting}
-          tabIndex={0}
-          onTouchStart={handleAnonymousTouchStart}
-          onTouchEnd={handleAnonymousTouchEnd}
-          onMouseDown={handleAnonymousMouseDown}
-          onClick={handleAnonymousClick}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === " ") {
-              holdComposerFocus(event);
-              toggleAnonymousState();
-            }
-          }}
-          className="flex cursor-pointer select-none items-center gap-2 text-sm"
+          ref={composerActionsRef}
+          className="sticky bottom-[78px] mt-3 rounded-[24px] border p-3 shadow-sm backdrop-blur-xl md:bottom-4 md:p-4"
           style={{
-            color: anonymous ? T.text : T.textMuted,
-            opacity: submitting ? 0.6 : 1,
-            pointerEvents: submitting ? "none" : "auto",
-            WebkitTapHighlightColor: "transparent",
-            touchAction: "manipulation",
-            userSelect: "none",
+            borderColor: T.borderSoft,
+            backgroundColor: "rgba(255,255,255,0.94)",
+            boxShadow: "0 12px 30px rgba(11,28,44,0.08)",
           }}
         >
-          <span
-            className="flex h-5 w-5 items-center justify-center rounded border text-[11px] font-bold leading-none"
-            style={{
-              backgroundColor: anonymous ? T.navy : T.card,
-              borderColor: anonymous ? T.navy : T.border,
-              color: "#FFFFFF",
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0 pr-2">
+              <div className="text-sm font-extrabold" style={{ color: T.navy }}>
+                Post anonymously
+              </div>
+              <div className="mt-0.5 text-xs leading-5" style={{ color: T.textSubtle }}>
+                Hide your name publicly while still posting safely inside the community.
+              </div>
+            </div>
+
+            <button
+              type="button"
+              role="switch"
+              aria-checked={anonymous}
+              aria-disabled={submitting}
+              tabIndex={0}
+              onTouchStart={handleAnonymousTouchStart}
+              onTouchEnd={handleAnonymousTouchEnd}
+              onMouseDown={handleAnonymousMouseDown}
+              onClick={handleAnonymousClick}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  holdComposerFocus(event);
+                  toggleAnonymousState();
+                }
+              }}
+              className="relative inline-flex h-8 w-14 shrink-0 items-center rounded-full border transition-all"
+              style={{
+                borderColor: anonymous ? "rgba(179,25,66,0.28)" : T.border,
+                backgroundColor: anonymous ? "rgba(179,25,66,0.18)" : "rgba(213,226,242,0.45)",
+                opacity: submitting ? 0.6 : 1,
+                pointerEvents: submitting ? "none" : "auto",
+                WebkitTapHighlightColor: "transparent",
+                touchAction: "manipulation",
+              }}
+              aria-label="Toggle anonymous posting"
+            >
+              <span
+                className="absolute left-1 top-1 h-6 w-6 rounded-full transition-transform duration-200"
+                style={{
+                  transform: anonymous ? "translateX(24px)" : "translateX(0)",
+                  backgroundColor: "#FFFFFF",
+                  boxShadow: anonymous
+                    ? "0 4px 12px rgba(179,25,66,0.24)"
+                    : "0 4px 12px rgba(11,28,44,0.12)",
+                }}
+              />
+            </button>
+          </div>
+
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={closeComposer}
+              disabled={submitting}
+              className="inline-flex h-12 items-center justify-center rounded-full border px-4 text-sm font-bold transition-all active:scale-[0.99] disabled:opacity-60"
+              style={{
+                backgroundColor: "#FFFFFF",
+                borderColor: T.border,
+                color: T.navy,
+              }}
+            >
+              Clear
+            </button>
+
+            <button
+              type="button"
+              onClick={submit}
+              disabled={submitting || !body.trim()}
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-full px-4 text-sm font-bold transition-all active:scale-[0.99] disabled:opacity-60"
+              style={{
+                backgroundColor: "#B31942",
+                color: "#FFFFFF",
+                boxShadow: "0 10px 22px rgba(179,25,66,0.22)",
+              }}
+            >
+              <Send size={16} />
+              {submitting ? "Checking…" : "Publish"}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div
+          ref={composerActionsRef}
+          className="mt-2 flex items-center justify-between gap-2 border-t pt-3"
+          style={{ borderColor: T.borderSoft }}
+        >
+          <div
+            role="switch"
+            aria-checked={anonymous}
+            aria-disabled={submitting}
+            tabIndex={0}
+            onTouchStart={handleAnonymousTouchStart}
+            onTouchEnd={handleAnonymousTouchEnd}
+            onMouseDown={handleAnonymousMouseDown}
+            onClick={handleAnonymousClick}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                holdComposerFocus(event);
+                toggleAnonymousState();
+              }
             }}
-            aria-hidden="true"
+            className="flex cursor-pointer select-none items-center gap-2 text-sm"
+            style={{
+              color: anonymous ? T.text : T.textMuted,
+              opacity: submitting ? 0.6 : 1,
+              pointerEvents: submitting ? "none" : "auto",
+              WebkitTapHighlightColor: "transparent",
+              touchAction: "manipulation",
+              userSelect: "none",
+            }}
           >
-            {anonymous ? "✓" : ""}
-          </span>
-          <span className="leading-5">Post anonymously</span>
-        </div>
+            <span
+              className="flex h-5 w-5 items-center justify-center rounded border text-[11px] font-bold leading-none"
+              style={{
+                backgroundColor: anonymous ? T.navy : T.card,
+                borderColor: anonymous ? T.navy : T.border,
+                color: "#FFFFFF",
+              }}
+              aria-hidden="true"
+            >
+              {anonymous ? "✓" : ""}
+            </span>
+            <span className="leading-5">Post anonymously</span>
+          </div>
 
-        <div className="flex gap-2">
-          <Button variant="ghost" onClick={closeComposer} disabled={submitting}>
-            {startOpen ? "Clear" : "Cancel"}
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="ghost" onClick={closeComposer} disabled={submitting}>
+              {startOpen ? "Clear" : "Cancel"}
+            </Button>
 
-          <Button
-            variant="primary"
-            onClick={submit}
-            icon={Send}
-            disabled={submitting || !body.trim()}
-          >
-            {submitting ? "Checking…" : "Publish"}
-          </Button>
+            <Button
+              variant="primary"
+              onClick={submit}
+              icon={Send}
+              disabled={submitting || !body.trim()}
+            >
+              {submitting ? "Checking…" : "Publish"}
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
