@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Home, Menu } from "lucide-react";
+import { Bell, Home, User } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { T } from "@/lib/theme";
 import { useApp } from "@/store/AppContext";
@@ -14,7 +14,6 @@ export default function BottomNav() {
     currentUser,
     unreadCount = 0,
     setAuthModal = () => {},
-    setMobileMenu = () => {},
   } = app;
 
   const safeUser = currentUser || null;
@@ -26,6 +25,20 @@ export default function BottomNav() {
     Boolean(safeUser) && userStatus === "verified" && notificationCount > 0;
   const notificationBadgeText =
     notificationCount > 99 ? "99+" : String(notificationCount);
+
+  const goProfile = () => {
+    if (!safeUser) {
+      return setAuthModal("login");
+    }
+
+    if (userStatus !== "verified") {
+      return router.push(
+        `/pending-review?email=${encodeURIComponent(displayEmail)}&name=${encodeURIComponent(displayName)}&found=1`
+      );
+    }
+
+    router.push("/profile");
+  };
 
   const goNotifications = () => {
     if (!safeUser) {
@@ -40,15 +53,6 @@ export default function BottomNav() {
 
     router.push("/notifications");
   };
-
-  const menuActive =
-    pathname.startsWith("/admin") ||
-    pathname.startsWith("/tools") ||
-    pathname.startsWith("/resources") ||
-    pathname.startsWith("/pending-review") ||
-    pathname.startsWith("/profile") ||
-    pathname.startsWith("/privacy") ||
-    pathname.startsWith("/terms");
 
   const tabs = [
     {
@@ -70,11 +74,11 @@ export default function BottomNav() {
         : "Notifications",
     },
     {
-      k: "menu",
-      label: "Menu",
-      icon: Menu,
-      active: menuActive,
-      onClick: () => setMobileMenu(true),
+      k: "profile",
+      label: "Profile",
+      icon: User,
+      active: pathname.startsWith("/profile") || pathname.startsWith("/pending-review"),
+      onClick: goProfile,
     },
   ];
 
