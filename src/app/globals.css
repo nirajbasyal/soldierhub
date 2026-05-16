@@ -56,12 +56,24 @@ a,
 
 button:focus-visible,
 a:focus-visible,
-[role="button"]:focus-visible,
-input:focus-visible,
-textarea:focus-visible,
-select:focus-visible {
+[role="button"]:focus-visible {
   outline: 3px solid rgba(179, 25, 66, 0.24);
   outline-offset: 3px;
+}
+
+/* Remove the red active/focus border from form fields app-wide. */
+input:focus,
+input:focus-visible,
+textarea:focus,
+textarea:focus-visible,
+select:focus,
+select:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: var(--sh-border) !important;
+  --tw-ring-color: transparent !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+  --tw-ring-offset-shadow: 0 0 #0000 !important;
 }
 
 /* Keep reply/comment fields clean. The send button already shows the action state. */
