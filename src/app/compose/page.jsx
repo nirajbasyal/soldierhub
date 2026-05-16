@@ -80,7 +80,7 @@ export default function ComposePage() {
               }}
             >
               <Send size={16} />
-              {isSubmitting ? "Publishing…" : "Publish"}
+              {isSubmitting ? "Publishing…" : "Publish post"}
             </button>
           </div>
 
