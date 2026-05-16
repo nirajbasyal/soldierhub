@@ -33,7 +33,7 @@ function getAnonymousDisplayName(seed) {
   return `Anonymous${number}`;
 }
 
-export default function PostComposer({ startOpen = false }) {
+export default function PostComposer({ startOpen = false, pageMode = false }) {
   const { currentUser, requireAuth, createPost } = useApp();
 
   const [open, setOpen] = useState(startOpen);
@@ -328,25 +328,31 @@ export default function PostComposer({ startOpen = false }) {
     : currentUser.full_name;
 
   const composerDisplayColor = anonymous ? "#5C6470" : currentUser.avatar_color;
+  const rootClassName = pageMode
+    ? "flex h-full min-h-[calc(100vh-178px)] flex-col rounded-[30px] border p-4 shadow-sm md:min-h-[620px] md:p-6"
+    : "rounded-[26px] border p-4 md:p-5 shadow-sm";
+  const textareaClassName = pageMode
+    ? "min-h-[44vh] flex-1 w-full resize-none outline-none text-[20px] md:text-[22px] leading-9 border-0 bg-transparent placeholder:text-[#A8ABB2] disabled:opacity-70"
+    : "w-full resize-none outline-none text-[17px] md:text-[18px] leading-8 border-0 bg-transparent placeholder:text-[#A8ABB2] disabled:opacity-70";
 
   return (
     <div
-      className="rounded-[26px] border p-4 md:p-5 shadow-sm"
+      className={rootClassName}
       style={{ backgroundColor: T.card, borderColor: T.border }}
     >
-      <div className="flex items-center gap-3 mb-4">
-        <Avatar name={composerDisplayName} color={composerDisplayColor} size={38} />
+      <div className="mb-4 flex items-center gap-3">
+        <Avatar name={composerDisplayName} color={composerDisplayColor} size={pageMode ? 44 : 38} />
 
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0 flex-1">
           <div
-            className="text-sm font-semibold truncate flex items-center gap-1.5"
+            className="flex items-center gap-1.5 truncate text-base font-extrabold md:text-lg"
             style={{ color: T.text }}
           >
             {anonymous && <Lock size={12} strokeWidth={2.5} />}
-            <span>{composerDisplayName}</span>
+            <span className="truncate">{composerDisplayName}</span>
           </div>
 
-          <div className="text-xs" style={{ color: T.textSubtle }}>
+          <div className="text-xs md:text-sm" style={{ color: T.textSubtle }}>
             {anonymous
               ? "Posting anonymously to SoldierHub"
               : "Posting to SoldierHub"}
@@ -357,15 +363,15 @@ export default function PostComposer({ startOpen = false }) {
           type="button"
           onClick={closeComposer}
           disabled={submitting}
-          className="w-9 h-9 rounded-full flex items-center justify-center disabled:opacity-50 transition hover:bg-black/[0.04]"
+          className="flex h-10 w-10 items-center justify-center rounded-full transition hover:bg-black/[0.04] disabled:opacity-50"
           style={{ color: T.textMuted }}
           aria-label={startOpen ? "Clear post composer" : "Close post composer"}
         >
-          <X size={17} />
+          <X size={18} />
         </button>
       </div>
 
-      <div className="-mx-1 mb-3 overflow-x-auto no-scrollbar">
+      <div className="-mx-1 mb-4 overflow-x-auto no-scrollbar">
         <div className="flex gap-1.5 px-1 pb-1">
           {CATEGORIES.filter((c) => c.key !== "All").map((c) => {
             const active = c.key === category;
@@ -387,7 +393,7 @@ export default function PostComposer({ startOpen = false }) {
                   e.preventDefault();
                 }}
                 disabled={submitting}
-                className="px-3 h-8 rounded-full text-xs font-medium border whitespace-nowrap transition-all disabled:opacity-60"
+                className="h-10 whitespace-nowrap rounded-full border px-4 text-sm font-bold transition-all disabled:opacity-60"
                 style={{
                   backgroundColor: active ? s.bg : T.card,
                   color: active ? s.text : T.textMuted,
@@ -412,17 +418,17 @@ export default function PostComposer({ startOpen = false }) {
         }}
         disabled={submitting}
         placeholder="Ask a question, share an update, or help the Fort Bliss community..."
-        rows={5}
-        className="w-full resize-none outline-none text-[17px] md:text-[18px] leading-8 border-0 bg-transparent placeholder:text-[#A8ABB2] disabled:opacity-70"
+        rows={pageMode ? 10 : 5}
+        className={textareaClassName}
         style={{ color: T.text }}
       />
 
       {anonymous && (
         <div
-          className="text-xs px-3 py-2 rounded-xl flex items-start gap-2 my-3"
+          className="my-3 flex items-start gap-2 rounded-xl px-3 py-2 text-xs"
           style={{ backgroundColor: T.goldBg, color: T.gold }}
         >
-          <Lock size={14} className="shrink-0 mt-0.5" />
+          <Lock size={14} className="mt-0.5 shrink-0" />
           <span>
             Your name will be hidden publicly as {composerDisplayName}. Avoid
             typing details that identify you inside the post.
@@ -432,18 +438,21 @@ export default function PostComposer({ startOpen = false }) {
 
       {error && (
         <div
-          className="text-xs px-3 py-2 rounded-xl flex items-start gap-2 my-3"
+          className="my-3 flex items-start gap-2 rounded-xl px-3 py-2 text-xs"
           style={{ backgroundColor: T.redBg, color: T.red }}
         >
-          <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+          <AlertTriangle size={14} className="mt-0.5 shrink-0" />
           <span>{error}</span>
         </div>
       )}
 
       <div
         ref={composerActionsRef}
-        className="flex items-center justify-between gap-2 pt-3 mt-2 border-t"
-        style={{ borderColor: T.borderSoft }}
+        className={`${pageMode ? "sticky bottom-[78px] -mx-1 rounded-[24px] border px-3 py-3 shadow-sm backdrop-blur-xl md:static md:mx-0 md:rounded-none md:border-0 md:px-0 md:shadow-none" : ""} mt-2 flex items-center justify-between gap-2 border-t pt-3`}
+        style={{
+          borderColor: T.borderSoft,
+          backgroundColor: pageMode ? "rgba(255,255,255,0.92)" : undefined,
+        }}
       >
         <div
           role="switch"
@@ -460,7 +469,7 @@ export default function PostComposer({ startOpen = false }) {
               toggleAnonymousState();
             }
           }}
-          className="flex items-center gap-2 text-sm cursor-pointer select-none"
+          className="flex cursor-pointer select-none items-center gap-2 text-sm"
           style={{
             color: anonymous ? T.text : T.textMuted,
             opacity: submitting ? 0.6 : 1,
@@ -471,7 +480,7 @@ export default function PostComposer({ startOpen = false }) {
           }}
         >
           <span
-            className="w-4 h-4 rounded border flex items-center justify-center text-[11px] font-bold leading-none"
+            className="flex h-5 w-5 items-center justify-center rounded border text-[11px] font-bold leading-none"
             style={{
               backgroundColor: anonymous ? T.navy : T.card,
               borderColor: anonymous ? T.navy : T.border,
@@ -481,7 +490,7 @@ export default function PostComposer({ startOpen = false }) {
           >
             {anonymous ? "✓" : ""}
           </span>
-          Post anonymously
+          <span className="leading-5">Post anonymously</span>
         </div>
 
         <div className="flex gap-2">
