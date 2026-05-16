@@ -9,6 +9,7 @@ import {
   Bell,
   BookMarked,
   Loader2,
+  Menu,
   Search,
   Shield,
   UserPlus,
@@ -44,6 +45,8 @@ export default function TopNav() {
     search = "",
     setSearch = () => {},
     setAuthModal = () => {},
+    setMobileMenu = () => {},
+    mobileMenu = false,
     pushToast = () => {},
   } = app;
 
@@ -332,22 +335,38 @@ export default function TopNav() {
 
           <div className="flex-1" />
 
-          <button
-            type="button"
-            onClick={() => {
-              setMobileSearchOpen((open) => !open);
-              if (mobileSearchOpen) setSearchNotice(null);
-            }}
-            className="md:hidden w-9 h-9 rounded-2xl border flex items-center justify-center shrink-0 transition-all active:scale-95"
-            style={{
-              borderColor: hasSearchText || mobileSearchOpen ? "rgba(179,25,66,0.35)" : "rgba(159,60,85,0.28)",
-              backgroundColor: hasSearchText || mobileSearchOpen ? "rgba(179,25,66,0.08)" : "rgba(179,25,66,0.045)",
-              color: hasSearchText || mobileSearchOpen ? SEARCH_ACTIVE_COLOR : SEARCH_IDLE_COLOR,
-            }}
-            aria-label={mobileSearchOpen ? "Close search" : "Open search"}
-          >
-            {mobileSearchOpen ? <X size={17} /> : <Search size={17} />}
-          </button>
+          <div className="md:hidden flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                setMobileSearchOpen((open) => !open);
+                if (mobileSearchOpen) setSearchNotice(null);
+              }}
+              className="w-9 h-9 rounded-2xl border flex items-center justify-center shrink-0 transition-all active:scale-95"
+              style={{
+                borderColor: hasSearchText || mobileSearchOpen ? "rgba(179,25,66,0.35)" : "rgba(159,60,85,0.28)",
+                backgroundColor: hasSearchText || mobileSearchOpen ? "rgba(179,25,66,0.08)" : "rgba(179,25,66,0.045)",
+                color: hasSearchText || mobileSearchOpen ? SEARCH_ACTIVE_COLOR : SEARCH_IDLE_COLOR,
+              }}
+              aria-label={mobileSearchOpen ? "Close search" : "Open search"}
+            >
+              {mobileSearchOpen ? <X size={17} /> : <Search size={17} />}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setMobileMenu(true)}
+              className="w-9 h-9 rounded-2xl border flex items-center justify-center shrink-0 transition-all active:scale-95"
+              style={{
+                borderColor: mobileMenu ? "rgba(179,25,66,0.35)" : T.border,
+                backgroundColor: mobileMenu ? "rgba(179,25,66,0.08)" : "rgba(253,254,255,0.92)",
+                color: mobileMenu ? SEARCH_ACTIVE_COLOR : T.navy,
+              }}
+              aria-label="Open menu"
+            >
+              <Menu size={18} />
+            </button>
+          </div>
 
           <div className="hidden md:flex items-center gap-2">
             <button
