@@ -66,6 +66,7 @@ select:focus-visible {
 
 /* Keep reply/comment fields clean. The send button already shows the action state. */
 div:has(> input[placeholder="Write a reply..."]) {
+  background-color: rgba(7, 27, 51, 0.035) !important;
   border-color: transparent !important;
   box-shadow: none !important;
 }
