@@ -22,6 +22,7 @@ const SAFETY_MESSAGE =
   "This content may violate SoldierHub community safety rules. Please revise it and try again.";
 const RED = "#B31942";
 const DARK_RED = "#9F1239";
+const PUBLISH_SCROLL_KEY = "soldierhub_scroll_to_latest_post";
 
 function getAnonymousDisplayName(seed) {
   const source = String(seed || "anonymous");
@@ -133,6 +134,15 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
       }
 
       resetComposer();
+
+      if (typeof window !== "undefined") {
+        try {
+          window.sessionStorage.setItem(PUBLISH_SCROLL_KEY, "1");
+        } catch {
+          // Ignore storage failures and still return the user to the feed.
+        }
+      }
+
       setFeedCategory?.("All");
       router.push("/");
     } catch (err) {
