@@ -355,6 +355,37 @@ export default function TopNav() {
 
             <button
               type="button"
+              onClick={goNotifications}
+              className="relative w-9 h-9 rounded-2xl border flex items-center justify-center shrink-0 transition-all active:scale-95"
+              style={{
+                borderColor: showNotificationBadge ? "rgba(179,25,66,0.35)" : T.border,
+                backgroundColor: showNotificationBadge ? "rgba(179,25,66,0.08)" : "rgba(253,254,255,0.92)",
+                color: showNotificationBadge ? SEARCH_ACTIVE_COLOR : T.navy,
+              }}
+              aria-label={
+                showNotificationBadge
+                  ? `Open notifications, ${notificationCount} unread`
+                  : "Open notifications"
+              }
+            >
+              <Bell size={17} />
+
+              {showNotificationBadge && (
+                <span
+                  className="absolute -right-1.5 -top-1.5 min-w-[18px] h-[18px] px-1 rounded-full border flex items-center justify-center text-[9px] font-bold leading-none shadow-sm"
+                  style={{
+                    backgroundColor: "#B31942",
+                    borderColor: "rgba(255,255,255,0.95)",
+                    color: "#FFFFFF",
+                  }}
+                >
+                  {notificationBadgeText}
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
               onClick={() => setMobileMenu(true)}
               className="w-9 h-9 rounded-2xl border flex items-center justify-center shrink-0 transition-all active:scale-95"
               style={{
