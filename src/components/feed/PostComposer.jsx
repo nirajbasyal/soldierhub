@@ -31,9 +31,7 @@ function getAnonymousDisplayName(seed) {
     total += source.charCodeAt(i) * (i + 1);
   }
 
-  const number = String(total % 10000).padStart(4, "0");
-
-  return `Anonymous${number}`;
+  return `Anonymous${String(total % 10000).padStart(4, "0")}`;
 }
 
 export default function PostComposer({ startOpen = false, pageMode = false }) {
@@ -53,9 +51,6 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   const [submitting, setSubmitting] = useState(false);
 
   const bodyRef = useRef(null);
-  const composerActionsRef = useRef(null);
-  const anonymousToggleAtRef = useRef(0);
-  const anonymousTouchActiveRef = useRef(false);
 
   useEffect(() => {
     if (open && bodyRef.current) {
@@ -69,69 +64,19 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     });
   };
 
-  const keepComposerKeyboardOpen = () => {
-    bodyRef.current?.focus({ preventScroll: true });
-
-    window.requestAnimationFrame(() => {
-      bodyRef.current?.focus({ preventScroll: true });
-    });
-
-    window.setTimeout(() => {
-      bodyRef.current?.focus({ preventScroll: true });
-    }, 80);
-  };
-
   const selectCategory = (nextCategory) => {
     if (submitting) return;
-
     setCategory(nextCategory);
     focusComposerField();
   };
 
-  const toggleAnonymousState = () => {
-    const now = Date.now();
-    if (now - anonymousToggleAtRef.current < 220) return;
-    anonymousToggleAtRef.current = now;
-
-    setAnonymous((value) => !value);
-    keepComposerKeyboardOpen();
-  };
-
-  const holdComposerFocus = (event) => {
+  const toggleAnonymous = (event) => {
     event?.preventDefault?.();
     event?.stopPropagation?.();
-    bodyRef.current?.focus({ preventScroll: true });
-  };
-
-  const handleAnonymousTouchStart = (event) => {
     if (submitting) return;
 
-    anonymousTouchActiveRef.current = true;
-    holdComposerFocus(event);
-  };
-
-  const handleAnonymousTouchEnd = (event) => {
-    if (submitting) return;
-
-    holdComposerFocus(event);
-    toggleAnonymousState();
-
-    window.setTimeout(() => {
-      anonymousTouchActiveRef.current = false;
-    }, 260);
-  };
-
-  const handleAnonymousMouseDown = (event) => {
-    if (submitting) return;
-
-    holdComposerFocus(event);
-
-    if (anonymousTouchActiveRef.current) return;
-    toggleAnonymousState();
-  };
-
-  const handleAnonymousClick = (event) => {
-    holdComposerFocus(event);
+    setAnonymous((value) => !value);
+    focusComposerField();
   };
 
   const closeComposer = () => {
@@ -141,7 +86,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
       setBody("");
       setAnonymous(false);
       setError("");
-      bodyRef.current?.focus({ preventScroll: true });
+      focusComposerField();
       return;
     }
 
@@ -160,21 +105,20 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     if (submitting) return;
 
     setError("");
-
     const cleanedBody = body.trim();
 
     if (!cleanedBody) {
-      return setError("Write something before publishing.");
+      setError("Write something before publishing.");
+      return;
     }
 
     try {
       setSubmitting(true);
 
       const mod = await moderateAsync(cleanedBody);
-
       if (!mod.allowed) {
-        setSubmitting(false);
-        return setError(mod.reason || SAFETY_MESSAGE);
+        setError(mod.reason || SAFETY_MESSAGE);
+        return;
       }
 
       const result = await createPost({
@@ -183,10 +127,9 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
         anonymous,
       });
 
-      setSubmitting(false);
-
       if (result?.ok === false) {
-        return setError(result.error || "Could not create post. Try again.");
+        setError(result.error || "Could not create post. Try again.");
+        return;
       }
 
       resetComposer();
@@ -194,8 +137,9 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
       router.push("/");
     } catch (err) {
       console.error("Post submit failed:", err);
-      setSubmitting(false);
       setError("Could not create post. Try again.");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -204,11 +148,11 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
       <button
         type="button"
         onClick={requireAuth}
-        className="w-full rounded-[24px] border p-5 flex items-center gap-3 text-left transition-shadow hover:shadow-sm"
+        className="flex w-full items-center gap-3 rounded-[24px] border p-5 text-left transition-shadow hover:shadow-sm"
         style={{ backgroundColor: T.card, borderColor: T.border }}
       >
         <div
-          className="w-10 h-10 rounded-full flex items-center justify-center"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
           style={{ backgroundColor: T.goldBg }}
         >
           <Pencil size={16} style={{ color: T.gold }} />
@@ -218,7 +162,6 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
           <div className="text-sm font-medium" style={{ color: T.text }}>
             Share a question or update
           </div>
-
           <div className="text-xs" style={{ color: T.textSubtle }}>
             Sign in as a verified member to post.
           </div>
@@ -240,30 +183,26 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
         role="button"
         tabIndex={0}
         onClick={openComposer}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
             openComposer();
           }
         }}
-        className="w-full rounded-[26px] border p-5 md:p-6 flex items-center gap-3.5 text-left transition-all hover:shadow-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2"
+        className="flex w-full cursor-pointer items-center gap-3.5 rounded-[26px] border p-5 text-left transition-all hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 md:p-6"
         style={{
           backgroundColor: T.card,
           borderColor: T.border,
           "--tw-ring-color": T.navy,
         }}
       >
-        <Avatar
-          name={currentUser.full_name}
-          color={currentUser.avatar_color}
-          size={46}
-        />
+        <Avatar name={currentUser.full_name} color={currentUser.avatar_color} size={46} />
 
         <div
-          className="flex-1 min-w-0 rounded-full border px-4 py-4"
+          className="min-w-0 flex-1 rounded-full border px-4 py-4"
           style={{ backgroundColor: "#F4F8FD", borderColor: T.borderSoft || T.border }}
         >
-          <div className="text-[15px] md:text-[16px] truncate font-medium" style={{ color: T.textMuted }}>
+          <div className="truncate text-[15px] font-medium md:text-[16px]" style={{ color: T.textMuted }}>
             What do you want to ask or share?
           </div>
         </div>
@@ -272,8 +211,8 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
           variant="primary"
           icon={Plus}
           size="md"
-          onClick={(e) => {
-            e.stopPropagation();
+          onClick={(event) => {
+            event.stopPropagation();
             openComposer();
           }}
         >
@@ -286,20 +225,17 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   const composerDisplayName = anonymous
     ? getAnonymousDisplayName(currentUser.id)
     : currentUser.full_name;
-
   const composerDisplayColor = anonymous ? "#5C6470" : currentUser.avatar_color;
+
   const rootClassName = pageMode
     ? "flex h-full min-h-[calc(100vh-178px)] flex-col rounded-[30px] border p-4 shadow-sm md:min-h-[620px] md:p-6"
-    : "rounded-[26px] border p-4 md:p-5 shadow-sm";
+    : "rounded-[26px] border p-4 shadow-sm md:p-5";
   const textareaClassName = pageMode
-    ? "min-h-[44vh] flex-1 w-full resize-none outline-none text-[20px] md:text-[22px] leading-9 border-0 bg-transparent placeholder:text-[#A8ABB2] disabled:opacity-70"
-    : "w-full resize-none outline-none text-[17px] md:text-[18px] leading-8 border-0 bg-transparent placeholder:text-[#A8ABB2] disabled:opacity-70";
+    ? "min-h-[44vh] flex-1 w-full resize-none border-0 bg-transparent text-[20px] leading-9 outline-none placeholder:text-[#A8ABB2] disabled:opacity-70 md:text-[22px]"
+    : "w-full resize-none border-0 bg-transparent text-[17px] leading-8 outline-none placeholder:text-[#A8ABB2] disabled:opacity-70 md:text-[18px]";
 
   return (
-    <div
-      className={rootClassName}
-      style={{ backgroundColor: T.card, borderColor: T.border }}
-    >
+    <div className={rootClassName} style={{ backgroundColor: T.card, borderColor: T.border }}>
       <div className="mb-4 flex items-center gap-3">
         <Avatar name={composerDisplayName} color={composerDisplayColor} size={pageMode ? 44 : 38} />
 
@@ -311,32 +247,16 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
             {anonymous && <Lock size={12} strokeWidth={2.5} />}
             <span className="truncate">{composerDisplayName}</span>
           </div>
-
           <div className="text-xs md:text-sm" style={{ color: T.textSubtle }}>
-            {anonymous
-              ? "Posting anonymously to SoldierHub"
-              : "Posting to SoldierHub"}
+            {anonymous ? "Posting anonymously to SoldierHub" : "Posting to SoldierHub"}
           </div>
-
-          {pageMode && (
-            <div className="mt-1.5 inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.12em]"
-              style={{
-                backgroundColor: "rgba(244,248,253,0.86)",
-                borderColor: T.borderSoft || T.border,
-                color: T.textSubtle,
-              }}
-            >
-              Select category
-              <span style={{ color: RED }}>below</span>
-            </div>
-          )}
         </div>
 
         <button
           type="button"
           onClick={closeComposer}
           disabled={submitting}
-          className="flex h-10 w-10 items-center justify-center rounded-full transition hover:bg-black/[0.04] disabled:opacity-50"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition hover:bg-black/[0.04] disabled:opacity-50"
           style={{ color: T.textMuted }}
           aria-label={startOpen ? "Clear post composer" : "Close post composer"}
         >
@@ -345,18 +265,6 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
       </div>
 
       <div className="-mx-1 mb-5">
-        <div className="mb-2 flex items-center justify-between gap-3 px-1">
-          <div className="text-[11px] font-black uppercase tracking-[0.14em]" style={{ color: T.navy }}>
-            Category
-          </div>
-          <div className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-bold"
-            style={{ backgroundColor: "rgba(220,232,247,0.55)", color: T.textSubtle }}
-          >
-            Swipe for more
-            <ChevronRight size={12} />
-          </div>
-        </div>
-
         <div className="relative">
           <div className="overflow-x-auto no-scrollbar scroll-smooth">
             <div className="flex w-max gap-2 px-1 pb-1 pr-12">
@@ -368,17 +276,15 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
                   <button
                     key={c.key}
                     type="button"
-                    onMouseDown={(e) => {
-                      e.preventDefault();
+                    onMouseDown={(event) => {
+                      event.preventDefault();
                       selectCategory(c.key);
                     }}
-                    onTouchStart={(e) => {
-                      e.preventDefault();
+                    onTouchStart={(event) => {
+                      event.preventDefault();
                       selectCategory(c.key);
                     }}
-                    onClick={(e) => {
-                      e.preventDefault();
-                    }}
+                    onClick={(event) => event.preventDefault()}
                     disabled={submitting}
                     className="h-10 shrink-0 whitespace-nowrap rounded-full border px-4 text-sm font-bold transition-all active:scale-[0.98] disabled:opacity-60"
                     style={{
@@ -398,21 +304,21 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
           </div>
 
           <div
-            className="pointer-events-none absolute bottom-1 right-0 top-0 w-14 rounded-r-2xl"
+            className="pointer-events-none absolute bottom-1 right-0 top-0 w-16 rounded-r-2xl"
             style={{
               background:
                 "linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.92) 58%, rgba(255,255,255,1) 100%)",
             }}
           />
           <div
-            className="pointer-events-none absolute right-1 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border shadow-sm"
+            className="pointer-events-none absolute right-1 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border shadow-sm"
             style={{
-              backgroundColor: "rgba(255,255,255,0.96)",
+              backgroundColor: "rgba(255,255,255,0.98)",
               borderColor: T.borderSoft || T.border,
               color: RED,
             }}
           >
-            <ChevronRight size={15} />
+            <ChevronRight size={16} />
           </div>
         </div>
       </div>
@@ -420,8 +326,8 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
       <textarea
         ref={bodyRef}
         value={body}
-        onChange={(e) => {
-          setBody(e.target.value);
+        onChange={(event) => {
+          setBody(event.target.value);
           setError("");
         }}
         disabled={submitting}
@@ -438,8 +344,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
         >
           <Lock size={14} className="mt-0.5 shrink-0" />
           <span>
-            Your name will be hidden publicly as {composerDisplayName}. Avoid
-            typing details that identify you inside the post.
+            Your name will be hidden publicly as {composerDisplayName}. Avoid typing details that identify you inside the post.
           </span>
         </div>
       )}
@@ -456,7 +361,6 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
 
       {pageMode ? (
         <div
-          ref={composerActionsRef}
           className="sticky bottom-[78px] mt-3 rounded-[26px] border p-3.5 shadow-sm backdrop-blur-xl md:bottom-4 md:p-4"
           style={{
             borderColor: T.borderSoft,
@@ -478,24 +382,13 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
               type="button"
               role="switch"
               aria-checked={anonymous}
-              aria-disabled={submitting}
-              tabIndex={0}
-              onTouchStart={handleAnonymousTouchStart}
-              onTouchEnd={handleAnonymousTouchEnd}
-              onMouseDown={handleAnonymousMouseDown}
-              onClick={handleAnonymousClick}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  holdComposerFocus(event);
-                  toggleAnonymousState();
-                }
-              }}
-              className="relative inline-flex h-9 w-[72px] shrink-0 items-center rounded-full border transition-all duration-200"
+              disabled={submitting}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={toggleAnonymous}
+              className="relative inline-flex h-9 w-[72px] shrink-0 items-center rounded-full border transition-all duration-200 disabled:opacity-60"
               style={{
                 borderColor: anonymous ? "rgba(159,18,57,0.18)" : T.border,
                 backgroundColor: anonymous ? DARK_RED : "rgba(213,226,242,0.72)",
-                opacity: submitting ? 0.6 : 1,
-                pointerEvents: submitting ? "none" : "auto",
                 WebkitTapHighlightColor: "transparent",
                 touchAction: "manipulation",
               }}
@@ -503,19 +396,13 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
             >
               <span
                 className="absolute left-3 text-[10px] font-black tracking-wide transition-opacity"
-                style={{
-                  color: "#FFFFFF",
-                  opacity: anonymous ? 1 : 0,
-                }}
+                style={{ color: "#FFFFFF", opacity: anonymous ? 1 : 0 }}
               >
                 ON
               </span>
               <span
                 className="absolute right-2.5 text-[10px] font-black tracking-wide transition-opacity"
-                style={{
-                  color: T.textSubtle,
-                  opacity: anonymous ? 0 : 1,
-                }}
+                style={{ color: T.textSubtle, opacity: anonymous ? 0 : 1 }}
               >
                 OFF
               </span>
@@ -562,11 +449,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
               onClick={closeComposer}
               disabled={submitting}
               className="inline-flex h-12 items-center justify-center rounded-full border px-4 text-sm font-bold transition-all active:scale-[0.99] disabled:opacity-60"
-              style={{
-                backgroundColor: "#FFFFFF",
-                borderColor: T.border,
-                color: T.navy,
-              }}
+              style={{ backgroundColor: "#FFFFFF", borderColor: T.border, color: T.navy }}
             >
               Clear
             </button>
@@ -589,34 +472,18 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
         </div>
       ) : (
         <div
-          ref={composerActionsRef}
           className="mt-2 flex items-center justify-between gap-2 border-t pt-3"
           style={{ borderColor: T.borderSoft }}
         >
-          <div
+          <button
+            type="button"
             role="switch"
             aria-checked={anonymous}
-            aria-disabled={submitting}
-            tabIndex={0}
-            onTouchStart={handleAnonymousTouchStart}
-            onTouchEnd={handleAnonymousTouchEnd}
-            onMouseDown={handleAnonymousMouseDown}
-            onClick={handleAnonymousClick}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                holdComposerFocus(event);
-                toggleAnonymousState();
-              }
-            }}
-            className="flex cursor-pointer select-none items-center gap-2 text-sm"
-            style={{
-              color: anonymous ? T.text : T.textMuted,
-              opacity: submitting ? 0.6 : 1,
-              pointerEvents: submitting ? "none" : "auto",
-              WebkitTapHighlightColor: "transparent",
-              touchAction: "manipulation",
-              userSelect: "none",
-            }}
+            disabled={submitting}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={toggleAnonymous}
+            className="flex cursor-pointer select-none items-center gap-2 text-sm disabled:opacity-60"
+            style={{ color: anonymous ? T.text : T.textMuted }}
           >
             <span
               className="flex h-5 w-5 items-center justify-center rounded border text-[11px] font-bold leading-none"
@@ -630,19 +497,13 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
               {anonymous ? "✓" : ""}
             </span>
             <span className="leading-5">Post anonymously</span>
-          </div>
+          </button>
 
           <div className="flex gap-2">
             <Button variant="ghost" onClick={closeComposer} disabled={submitting}>
               {startOpen ? "Clear" : "Cancel"}
             </Button>
-
-            <Button
-              variant="primary"
-              onClick={submit}
-              icon={Send}
-              disabled={submitting || !body.trim()}
-            >
+            <Button variant="primary" onClick={submit} icon={Send} disabled={submitting || !body.trim()}>
               {submitting ? "Checking…" : "Publish"}
             </Button>
           </div>
