@@ -425,7 +425,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
           setError("");
         }}
         disabled={submitting}
-        placeholder="Ask a question, share an update, or help the SoldierHub community..."
+        placeholder="Ask a question, share an update, or help the Soldier Hub community..."
         rows={pageMode ? 10 : 5}
         className={textareaClassName}
         style={{ color: T.text }}
