@@ -120,6 +120,32 @@ function getPostCreatedAt(post) {
   );
 }
 
+function getPostUpdatedAt(post) {
+  return (
+    post?.updated_at ||
+    post?.updatedAt ||
+    post?.edited_at ||
+    post?.editedAt ||
+    post?.modified_at ||
+    post?.modifiedAt ||
+    null
+  );
+}
+
+function isPostEdited(post) {
+  if (post?.edited === true || post?.is_edited === true) return true;
+
+  const createdAt = getPostCreatedAt(post);
+  const updatedAt = getPostUpdatedAt(post);
+  if (!createdAt || !updatedAt) return false;
+
+  const createdMs = new Date(createdAt).getTime();
+  const updatedMs = new Date(updatedAt).getTime();
+  if (!Number.isFinite(createdMs) || !Number.isFinite(updatedMs)) return false;
+
+  return updatedMs - createdMs > 30000;
+}
+
 function getAnonymousDisplayName(postId) {
   const source = String(postId || "anonymous");
   let total = 0;
@@ -293,6 +319,8 @@ export default function PostCard({ post, openRepliesDefault = false }) {
 
   const postId = getPostId(post);
   const postCreatedAt = getPostCreatedAt(post);
+  const postUpdatedAt = getPostUpdatedAt(post);
+  const editedPost = isPostEdited(post);
   const safePost = useMemo(() => ({ ...post, id: postId, post_id: postId }), [post, postId]);
   const [showComments, setShowComments] = useState(Boolean(openRepliesDefault));
   const [commentsLoading, setCommentsLoading] = useState(false);
@@ -548,6 +576,20 @@ export default function PostCard({ post, openRepliesDefault = false }) {
                   <span className="text-xs" style={{ color: T.textSubtle }}>
                     <ClientTimeAgo date={postCreatedAt} />
                   </span>
+                  {editedPost ? (
+                    <>
+                      <span className="text-[10px] leading-none" style={{ color: "rgba(102,112,133,0.45)" }}>
+                        •
+                      </span>
+                      <span
+                        className="text-[11px] font-semibold leading-none"
+                        style={{ color: "rgba(102,112,133,0.62)" }}
+                        title={postUpdatedAt ? `Edited ${new Date(postUpdatedAt).toLocaleString()}` : "Edited"}
+                      >
+                        edited
+                      </span>
+                    </>
+                  ) : null}
                 </div>
                 <div className="mt-1 flex flex-wrap items-center gap-1.5">
                   <span
