@@ -4,7 +4,7 @@ import { T } from "@/lib/theme";
 export default function TextInput({ icon: Icon, label, hint, error, className = "", ...props }) {
   return (
     <label className="block">
-      {label && <span className="block text-xs font-medium mb-1.5" style={{ color: T.textMuted }}>{label}</span>}
+      {label && <span className="block text-xs font-bold mb-1.5" style={{ color: T.textMuted }}>{label}</span>}
       <div className="relative">
         {Icon && (
           <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: T.textSubtle }}>
