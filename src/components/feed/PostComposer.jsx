@@ -8,6 +8,7 @@ import {
   Pencil,
   Plus,
   Send,
+  Sparkles,
   X,
 } from "lucide-react";
 import { CATEGORIES } from "@/lib/constants";
@@ -236,22 +237,31 @@ export default function PostComposer() {
       <button
         type="button"
         onClick={requireAuth}
-        className="w-full rounded-[24px] border p-5 flex items-center gap-3 text-left transition-shadow hover:shadow-sm"
-        style={{ backgroundColor: T.card, borderColor: T.border }}
+        className="relative w-full overflow-hidden rounded-[26px] border p-5 flex items-center gap-3 text-left transition-all hover:-translate-y-0.5 hover:shadow-md"
+        style={{
+          backgroundColor: T.card,
+          borderColor: "rgba(179,25,66,0.2)",
+          boxShadow: "0 16px 42px rgba(179,25,66,0.12), 0 8px 22px rgba(7,27,51,0.06)",
+        }}
       >
         <div
-          className="w-10 h-10 rounded-full flex items-center justify-center"
-          style={{ backgroundColor: T.goldBg }}
+          className="absolute inset-x-5 top-0 h-1 rounded-b-full"
+          style={{ background: "linear-gradient(90deg, #B31942, #E8A020, #3F5F7D)" }}
+        />
+
+        <div
+          className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+          style={{ backgroundColor: "rgba(179,25,66,0.09)" }}
         >
-          <Pencil size={16} style={{ color: T.gold }} />
+          <Pencil size={16} style={{ color: "#B31942" }} />
         </div>
 
-        <div className="flex-1">
-          <div className="text-sm font-medium" style={{ color: T.text }}>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-extrabold" style={{ color: T.navy }}>
             Share a question or update
           </div>
 
-          <div className="text-xs" style={{ color: T.textSubtle }}>
+          <div className="text-xs leading-5" style={{ color: T.textSubtle }}>
             Sign in as a verified member to post.
           </div>
         </div>
@@ -278,39 +288,66 @@ export default function PostComposer() {
             openComposer();
           }
         }}
-        className="w-full rounded-[26px] border p-5 md:p-6 flex items-center gap-3.5 text-left transition-all hover:shadow-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2"
+        className="group relative w-full overflow-hidden rounded-[30px] border p-4 md:p-5 text-left transition-all hover:-translate-y-0.5 cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2"
         style={{
-          backgroundColor: T.card,
-          borderColor: T.border,
-          "--tw-ring-color": T.navy,
+          background:
+            "linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(255,246,248,0.96) 48%, rgba(244,248,253,0.98) 100%)",
+          borderColor: "rgba(179,25,66,0.22)",
+          boxShadow:
+            "0 20px 50px rgba(179,25,66,0.16), 0 10px 24px rgba(7,27,51,0.07)",
+          "--tw-ring-color": "#B31942",
         }}
       >
-        <Avatar
-          name={currentUser.full_name}
-          color={currentUser.avatar_color}
-          size={46}
+        <div
+          className="absolute inset-x-6 top-0 h-1.5 rounded-b-full"
+          style={{ background: "linear-gradient(90deg, #B31942 0%, #E8A020 48%, #3F5F7D 100%)" }}
         />
 
         <div
-          className="flex-1 min-w-0 rounded-full border px-4 py-4"
-          style={{ backgroundColor: "#F4F8FD", borderColor: T.borderSoft || T.border }}
-        >
-          <div className="text-[15px] md:text-[16px] truncate font-medium" style={{ color: T.textMuted }}>
-            What do you want to ask or share?
-          </div>
-        </div>
+          className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full"
+          style={{ backgroundColor: "rgba(179,25,66,0.08)" }}
+        />
 
-        <Button
-          variant="primary"
-          icon={Plus}
-          size="md"
-          onClick={(e) => {
-            e.stopPropagation();
-            openComposer();
-          }}
-        >
-          Post
-        </Button>
+        <div className="relative flex items-center gap-3 md:gap-3.5">
+          <div
+            className="rounded-2xl p-1"
+            style={{ backgroundColor: "rgba(179,25,66,0.08)" }}
+          >
+            <Avatar
+              name={currentUser.full_name}
+              color={currentUser.avatar_color}
+              size={44}
+            />
+          </div>
+
+          <div
+            className="flex-1 min-w-0 rounded-2xl border px-4 py-3.5"
+            style={{
+              backgroundColor: "rgba(255,255,255,0.86)",
+              borderColor: "rgba(179,25,66,0.16)",
+            }}
+          >
+            <div className="flex items-center gap-2 text-[15px] md:text-[16px] truncate font-extrabold" style={{ color: T.navy }}>
+              <Sparkles size={16} className="shrink-0" style={{ color: "#B31942" }} />
+              <span className="truncate">What do you want to ask or share?</span>
+            </div>
+            <div className="mt-1 text-xs leading-5" style={{ color: T.textMuted }}>
+              Help the Fort Bliss community with a question, update, or useful tip.
+            </div>
+          </div>
+
+          <Button
+            variant="primary"
+            icon={Plus}
+            size="md"
+            onClick={(e) => {
+              e.stopPropagation();
+              openComposer();
+            }}
+          >
+            Post
+          </Button>
+        </div>
       </div>
     );
   }
@@ -323,10 +360,19 @@ export default function PostComposer() {
 
   return (
     <div
-      className="rounded-[26px] border p-4 md:p-5 shadow-sm"
-      style={{ backgroundColor: T.card, borderColor: T.border }}
+      className="relative overflow-hidden rounded-[30px] border p-4 md:p-5"
+      style={{
+        backgroundColor: T.card,
+        borderColor: "rgba(179,25,66,0.22)",
+        boxShadow: "0 22px 54px rgba(179,25,66,0.16), 0 12px 26px rgba(7,27,51,0.07)",
+      }}
     >
-      <div className="flex items-center gap-3 mb-4">
+      <div
+        className="absolute inset-x-6 top-0 h-1.5 rounded-b-full"
+        style={{ background: "linear-gradient(90deg, #B31942 0%, #E8A020 48%, #3F5F7D 100%)" }}
+      />
+
+      <div className="flex items-center gap-3 mb-4 pt-1">
         <Avatar name={composerDisplayName} color={composerDisplayColor} size={38} />
 
         <div className="flex-1 min-w-0">
