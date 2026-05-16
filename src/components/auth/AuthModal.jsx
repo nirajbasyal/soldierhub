@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useState } from "react";
 import {
   AlertTriangle,
@@ -371,54 +370,38 @@ export default function AuthModal() {
     <Modal open onClose={close} maxWidth={500}>
       <div className="relative overflow-hidden">
         <div
-          className="absolute inset-x-0 top-0 h-1"
-          style={{
-            background:
-              "linear-gradient(90deg, #071B33 0%, #1E4E8C 48%, #B31942 100%)",
-          }}
-        />
-
-        <div
           className="absolute -right-20 -top-24 h-48 w-48 rounded-full blur-3xl"
-          style={{ backgroundColor: "rgba(30,78,140,0.16)" }}
+          style={{ backgroundColor: "rgba(30,78,140,0.14)" }}
         />
         <div
           className="absolute -bottom-24 -left-20 h-52 w-52 rounded-full blur-3xl"
-          style={{ backgroundColor: "rgba(179,25,66,0.10)" }}
+          style={{ backgroundColor: "rgba(179,25,66,0.08)" }}
         />
 
         <div className="relative p-4 md:p-5">
           <div
             className="rounded-[28px] border p-4 md:p-5"
             style={{
-              backgroundColor: "rgba(255,255,255,0.82)",
+              backgroundColor: "rgba(255,255,255,0.86)",
               borderColor: "rgba(207,218,232,0.88)",
               boxShadow: "0 18px 42px rgba(7,27,51,0.08)",
             }}
           >
             <div className="mb-4 flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <div
-                  className="mb-4 inline-flex max-w-full items-center rounded-2xl border px-3 py-2"
-                  style={{
-                    backgroundColor: "rgba(248,250,253,0.95)",
-                    borderColor: T.borderSoft,
-                  }}
-                >
-                  <Image
-                    src="/brand/soldierhub-logo.png"
-                    alt="Soldier Hub"
-                    width={236}
-                    height={95}
-                    className="h-10 w-auto object-contain"
-                  />
-                </div>
-
-                <div
-                  className="mb-2 inline-flex rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em]"
-                  style={{ backgroundColor: T.goldBg, color: T.red }}
-                >
-                  Verified community access
+                <div className="mb-3 flex items-center gap-2">
+                  <span
+                    className="text-[26px] font-black leading-none tracking-[-0.04em]"
+                    style={{ color: T.navy }}
+                  >
+                    Soldier
+                  </span>
+                  <span
+                    className="text-[26px] font-black leading-none tracking-[-0.04em]"
+                    style={{ color: T.red }}
+                  >
+                    Hub
+                  </span>
                 </div>
 
                 <h2
