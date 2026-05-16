@@ -145,10 +145,10 @@ function FollowListPanel({
 
   return (
     <div
-      className="mt-4 rounded-3xl border p-3 md:p-4"
+      className="mt-4 min-w-0 overflow-hidden rounded-3xl border p-3 md:p-4"
       style={{ backgroundColor: "rgba(244,248,253,0.92)", borderColor: "#D5E2F2" }}
     >
-      <div className="flex items-center justify-between gap-3 mb-3">
+      <div className="flex items-center justify-between gap-3 mb-3 min-w-0">
         <div className="flex items-center gap-2 min-w-0">
           <div
             className="h-9 w-9 rounded-2xl flex items-center justify-center shrink-0"
@@ -157,11 +157,11 @@ function FollowListPanel({
             <UsersRound size={17} />
           </div>
           <div className="min-w-0">
-            <h3 className="text-sm md:text-base font-extrabold flex items-center gap-2" style={{ color: T.navy }}>
+            <h3 className="text-sm md:text-base font-extrabold flex items-center gap-2 truncate" style={{ color: T.navy }}>
               {title}
-              {refreshing ? <Loader2 size={13} className="animate-spin" style={{ color: T.textSubtle }} /> : null}
+              {refreshing ? <Loader2 size={13} className="animate-spin shrink-0" style={{ color: T.textSubtle }} /> : null}
             </h3>
-            <p className="text-xs" style={{ color: T.textMuted }}>
+            <p className="text-xs leading-5" style={{ color: T.textMuted }}>
               Only you can see this full list on your profile.
             </p>
           </div>
@@ -171,11 +171,11 @@ function FollowListPanel({
       {loading ? (
         <div className="grid gap-2">
           {[0, 1, 2].map((item) => (
-            <div key={item} className="rounded-2xl border px-3 py-3 flex items-center gap-3" style={{ backgroundColor: "#FFFFFF", borderColor: "#D5E2F2" }}>
-              <div className="h-[42px] w-[42px] rounded-full animate-pulse bg-[#DDE6EF]" />
+            <div key={item} className="rounded-2xl border px-3 py-3 flex items-center gap-3 min-w-0" style={{ backgroundColor: "#FFFFFF", borderColor: "#D5E2F2" }}>
+              <div className="h-[42px] w-[42px] rounded-full animate-pulse bg-[#DDE6EF] shrink-0" />
               <div className="min-w-0 flex-1">
-                <div className="h-4 w-36 animate-pulse rounded-full bg-[#DDE6EF]" />
-                <div className="mt-2 h-3 w-24 animate-pulse rounded-full bg-[#E8EEF5]" />
+                <div className="h-4 w-36 max-w-full animate-pulse rounded-full bg-[#DDE6EF]" />
+                <div className="mt-2 h-3 w-24 max-w-full animate-pulse rounded-full bg-[#E8EEF5]" />
               </div>
             </div>
           ))}
@@ -189,7 +189,7 @@ function FollowListPanel({
           {emptyBody}
         </div>
       ) : (
-        <div className="grid gap-2">
+        <div className="grid gap-2 min-w-0">
           {safeItems.map((item) => {
             const profile = normalizeFollowProfile(item);
             const profileHref = `/profile/${profile.id}?name=${encodeURIComponent(profile.full_name)}`;
@@ -197,16 +197,18 @@ function FollowListPanel({
             return (
               <div
                 key={profile.id || item.created_at || profile.full_name}
-                className="rounded-2xl border px-3 py-3 flex items-center gap-3"
+                className="grid w-full min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-2xl border px-2.5 py-3 sm:gap-3 sm:px-3"
                 style={{ backgroundColor: "#FFFFFF", borderColor: "#D5E2F2" }}
               >
-                <Avatar name={profile.full_name} color={profile.avatar_color} src={profile.avatar_url} size={42} />
+                <div className="shrink-0">
+                  <Avatar name={profile.full_name} color={profile.avatar_color} src={profile.avatar_url} size={42} />
+                </div>
 
-                <Link href={profileHref} className="min-w-0 flex-1 text-left">
-                  <div className="text-sm font-extrabold truncate" style={{ color: T.navy }}>
+                <Link href={profileHref} className="min-w-0 text-left">
+                  <div className="truncate text-sm font-extrabold leading-5" style={{ color: T.navy }}>
                     {profile.full_name}
                   </div>
-                  <div className="text-xs truncate" style={{ color: T.textMuted }}>
+                  <div className="truncate text-xs leading-5" style={{ color: T.textMuted }}>
                     {profile.base}
                   </div>
                 </Link>
@@ -216,11 +218,12 @@ function FollowListPanel({
                     type="button"
                     onClick={() => onUnfollow(profile.id)}
                     disabled={unfollowingId === profile.id}
-                    className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition hover:-translate-y-0.5 disabled:opacity-60"
+                    className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-full border px-2.5 text-xs font-bold transition hover:-translate-y-0.5 disabled:opacity-60 min-[390px]:px-3"
                     style={{ backgroundColor: "rgba(253,236,240,0.95)", borderColor: "#F3C7D1", color: "#B31942" }}
+                    aria-label={`Unfollow ${profile.full_name}`}
                   >
                     {unfollowingId === profile.id ? <Loader2 size={13} className="animate-spin" /> : <UserMinus size={13} />}
-                    Unfollow
+                    <span className="hidden min-[390px]:inline">Unfollow</span>
                   </button>
                 )}
               </div>
@@ -537,7 +540,7 @@ export default function ProfileHeader() {
 
   return (
     <section
-      className="rounded-[24px] md:rounded-[30px] border relative"
+      className="rounded-[24px] md:rounded-[30px] border relative min-w-0 overflow-hidden"
       style={{
         borderColor: "#D5E2F2",
         backgroundColor: "rgba(255,255,255,0.92)",
