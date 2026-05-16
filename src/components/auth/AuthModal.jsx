@@ -48,10 +48,10 @@ function AuthSubtitle({ tab }) {
   return "Sign in to post, comment, and use verified community features.";
 }
 
-function FieldShell({ children, invalid = false }) {
+function FieldShell({ children, invalid = false, compact = false }) {
   return (
     <div
-      className="relative rounded-2xl border transition-colors"
+      className={`relative border transition-colors ${compact ? "rounded-xl sm:rounded-2xl" : "rounded-2xl"}`}
       style={{
         backgroundColor: "rgba(248,250,253,0.96)",
         borderColor: invalid ? "rgba(179,25,66,0.36)" : "rgba(207,218,232,0.9)",
@@ -70,17 +70,18 @@ function EmailField({
   required = false,
   invalid = false,
   errorText = "Please enter valid email address.",
+  compact = false,
 }) {
   return (
     <label className="block">
       <span
-        className="mb-1.5 block text-xs font-bold"
+        className={`${compact ? "mb-1" : "mb-1.5"} block text-xs font-bold`}
         style={{ color: T.textMuted }}
       >
         {required ? <RequiredLabel>{label}</RequiredLabel> : label}
       </span>
 
-      <FieldShell invalid={invalid}>
+      <FieldShell invalid={invalid} compact={compact}>
         <span
           className="absolute left-3 top-1/2 -translate-y-1/2"
           style={{ color: invalid ? T.red : T.textSubtle }}
@@ -93,7 +94,7 @@ function EmailField({
           value={value}
           onChange={onChange}
           placeholder={placeholder}
-          className="h-12 w-full rounded-2xl border-0 bg-transparent pl-10 pr-3 text-sm outline-none placeholder:text-[#A8ABB2]"
+          className={`${compact ? "h-10 rounded-xl sm:h-12 sm:rounded-2xl" : "h-12 rounded-2xl"} w-full border-0 bg-transparent pl-10 pr-3 text-sm outline-none placeholder:text-[#A8ABB2]`}
           style={{ color: T.text }}
         />
       </FieldShell>
@@ -114,17 +115,18 @@ function PhoneField({
   placeholder,
   invalid = false,
   errorText = "Please enter a valid 10-digit phone number.",
+  compact = false,
 }) {
   return (
     <label className="block">
       <span
-        className="mb-1.5 block text-xs font-bold"
+        className={`${compact ? "mb-1" : "mb-1.5"} block text-xs font-bold`}
         style={{ color: T.textMuted }}
       >
         {label}
       </span>
 
-      <FieldShell invalid={invalid}>
+      <FieldShell invalid={invalid} compact={compact}>
         <span
           className="absolute left-3 top-1/2 -translate-y-1/2"
           style={{ color: invalid ? T.red : T.textSubtle }}
@@ -140,7 +142,7 @@ function PhoneField({
           value={value}
           onChange={onChange}
           placeholder={placeholder}
-          className="h-12 w-full rounded-2xl border-0 bg-transparent pl-10 pr-3 text-sm outline-none placeholder:text-[#A8ABB2]"
+          className={`${compact ? "h-10 rounded-xl sm:h-12 sm:rounded-2xl" : "h-12 rounded-2xl"} w-full border-0 bg-transparent pl-10 pr-3 text-sm outline-none placeholder:text-[#A8ABB2]`}
           style={{ color: T.text }}
         />
       </FieldShell>
@@ -366,20 +368,22 @@ export default function AuthModal() {
       ? "Reset password"
       : "Welcome back";
 
+  const compactSignup = tab === "signup";
+
   return (
     <Modal open onClose={close} maxWidth={500}>
-      <div className="p-4 md:p-5">
-        <div className="mb-4 flex items-start justify-between gap-3">
+      <div className={compactSignup ? "px-4 py-3 sm:p-5" : "p-4 md:p-5"}>
+        <div className={compactSignup ? "mb-2 flex items-start justify-between gap-3 sm:mb-4" : "mb-4 flex items-start justify-between gap-3"}>
           <div className="min-w-0 flex-1">
-            <div className="mb-3 flex items-center gap-2">
+            <div className={compactSignup ? "mb-2 flex items-center gap-2 sm:mb-3" : "mb-3 flex items-center gap-2"}>
               <span
-                className="text-[26px] font-black leading-none tracking-[-0.04em]"
+                className={compactSignup ? "text-[22px] font-black leading-none tracking-[-0.04em] sm:text-[26px]" : "text-[26px] font-black leading-none tracking-[-0.04em]"}
                 style={{ color: T.navy }}
               >
                 Soldier
               </span>
               <span
-                className="text-[26px] font-black leading-none tracking-[-0.04em]"
+                className={compactSignup ? "text-[22px] font-black leading-none tracking-[-0.04em] sm:text-[26px]" : "text-[26px] font-black leading-none tracking-[-0.04em]"}
                 style={{ color: T.red }}
               >
                 Hub
@@ -387,14 +391,14 @@ export default function AuthModal() {
             </div>
 
             <h2
-              className="text-2xl font-black leading-tight tracking-[-0.03em]"
+              className={compactSignup ? "text-xl font-black leading-tight tracking-[-0.03em] sm:text-2xl" : "text-2xl font-black leading-tight tracking-[-0.03em]"}
               style={{ color: T.navy }}
             >
               {title}
             </h2>
 
             <p
-              className="mt-1.5 max-w-[360px] text-sm leading-6"
+              className={`${compactSignup ? "hidden sm:block" : ""} mt-1.5 max-w-[360px] text-sm leading-6`}
               style={{ color: T.textMuted }}
             >
               <AuthSubtitle tab={tab} />
@@ -404,7 +408,7 @@ export default function AuthModal() {
           <button
             type="button"
             onClick={close}
-            className="sh-tap flex h-9 w-9 shrink-0 items-center justify-center rounded-full border"
+            className={compactSignup ? "sh-tap flex h-8 w-8 shrink-0 items-center justify-center rounded-full border sm:h-9 sm:w-9" : "sh-tap flex h-9 w-9 shrink-0 items-center justify-center rounded-full border"}
             style={{
               backgroundColor: "rgba(248,250,253,0.96)",
               borderColor: T.borderSoft,
@@ -417,7 +421,7 @@ export default function AuthModal() {
 
         {tab !== "forgot" && (
           <div
-            className="mb-4 grid grid-cols-2 gap-1.5 rounded-2xl border p-1.5"
+            className={compactSignup ? "mb-2 grid grid-cols-2 gap-1.5 rounded-2xl border p-1 sm:mb-4 sm:p-1.5" : "mb-4 grid grid-cols-2 gap-1.5 rounded-2xl border p-1.5"}
             style={{
               backgroundColor: "rgba(234,240,248,0.78)",
               borderColor: T.borderSoft,
@@ -435,7 +439,7 @@ export default function AuthModal() {
                     setError("");
                     setResetSent(false);
                   }}
-                  className="sh-tap h-10 rounded-xl text-sm font-extrabold transition-all"
+                  className={compactSignup ? "sh-tap h-9 rounded-xl text-sm font-extrabold transition-all sm:h-10" : "sh-tap h-10 rounded-xl text-sm font-extrabold transition-all"}
                   style={{
                     backgroundColor: active ? "#FFFFFF" : "transparent",
                     color: active ? T.navy : T.textMuted,
@@ -469,7 +473,7 @@ export default function AuthModal() {
           </button>
         )}
 
-        <div className="flex flex-col gap-3">
+        <div className={compactSignup ? "flex flex-col gap-2 sm:gap-3" : "flex flex-col gap-3"}>
           {tab === "forgot" && (
             <div
               className="rounded-2xl border px-3 py-3 text-sm leading-relaxed"
@@ -490,7 +494,7 @@ export default function AuthModal() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Your full name"
-              className="h-12 rounded-2xl bg-transparent"
+              className="h-10 rounded-xl bg-transparent sm:h-12 sm:rounded-2xl"
             />
           )}
 
@@ -505,6 +509,7 @@ export default function AuthModal() {
             placeholder="you@example.com"
             invalid={emailIsInvalid}
             errorText="Please enter valid email address."
+            compact={compactSignup}
           />
 
           {tab === "signup" && (
@@ -518,19 +523,20 @@ export default function AuthModal() {
               placeholder="9151234567"
               invalid={phoneIsInvalid}
               errorText="Please enter a valid 10-digit phone number."
+              compact={compactSignup}
             />
           )}
 
           {tab !== "forgot" && (
             <label className="block">
               <span
-                className="mb-1.5 block text-xs font-bold"
+                className={`${compactSignup ? "mb-1" : "mb-1.5"} block text-xs font-bold`}
                 style={{ color: T.textMuted }}
               >
                 Password <span style={{ color: T.red }}>*</span>
               </span>
 
-              <FieldShell>
+              <FieldShell compact={compactSignup}>
                 <span
                   className="absolute left-3 top-1/2 -translate-y-1/2"
                   style={{ color: T.textSubtle }}
@@ -543,7 +549,7 @@ export default function AuthModal() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder={tab === "signup" ? "Create a password" : "Your password"}
-                  className="h-12 w-full rounded-2xl border-0 bg-transparent pl-10 pr-11 text-sm outline-none placeholder:text-[#A8ABB2]"
+                  className={`${compactSignup ? "h-10 rounded-xl sm:h-12 sm:rounded-2xl" : "h-12 rounded-2xl"} w-full border-0 bg-transparent pl-10 pr-11 text-sm outline-none placeholder:text-[#A8ABB2]`}
                   style={{ color: T.text }}
                 />
 
@@ -581,13 +587,13 @@ export default function AuthModal() {
             <>
               <label className="block">
                 <span
-                  className="mb-1.5 block text-xs font-bold"
+                  className="mb-1 block text-xs font-bold sm:mb-1.5"
                   style={{ color: T.textMuted }}
                 >
                   Confirm password <span style={{ color: T.red }}>*</span>
                 </span>
 
-                <FieldShell invalid={passwordsDoNotMatch}>
+                <FieldShell invalid={passwordsDoNotMatch} compact={compactSignup}>
                   <span
                     className="absolute left-3 top-1/2 -translate-y-1/2"
                     style={{ color: passwordsDoNotMatch ? T.red : T.textSubtle }}
@@ -600,7 +606,7 @@ export default function AuthModal() {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Re-enter your password"
-                    className="h-12 w-full rounded-2xl border-0 bg-transparent pl-10 pr-11 text-sm outline-none placeholder:text-[#A8ABB2]"
+                    className="h-10 w-full rounded-xl border-0 bg-transparent pl-10 pr-11 text-sm outline-none placeholder:text-[#A8ABB2] sm:h-12 sm:rounded-2xl"
                     style={{ color: T.text }}
                   />
 
@@ -624,7 +630,7 @@ export default function AuthModal() {
               <button
                 type="button"
                 onClick={() => setShowBio((v) => !v)}
-                className="sh-tap rounded-full px-1 text-left text-xs font-extrabold"
+                className="sh-tap rounded-full px-1 text-left text-[11px] font-extrabold sm:text-xs"
                 style={{ color: T.navy }}
               >
                 {showBio ? "Hide optional bio" : "+ Add optional bio"}
@@ -669,25 +675,27 @@ export default function AuthModal() {
             </div>
           )}
 
-          <Button
-            variant="primary"
-            icon={tab === "signup" ? UserPlus : tab === "forgot" ? Send : LogIn}
-            onClick={submit}
-            disabled={submitting}
-            className="mt-1 w-full rounded-2xl"
-          >
-            {submitting
-              ? tab === "forgot"
-                ? "Sending..."
+          <div className={compactSignup ? "sticky bottom-0 z-10 -mx-4 mt-0 bg-gradient-to-t from-white via-white/95 to-transparent px-4 pt-2 pb-0 sm:static sm:mx-0 sm:bg-transparent sm:px-0 sm:pt-0" : ""}>
+            <Button
+              variant="primary"
+              icon={tab === "signup" ? UserPlus : tab === "forgot" ? Send : LogIn}
+              onClick={submit}
+              disabled={submitting}
+              className={`${compactSignup ? "w-full rounded-xl sm:rounded-2xl" : "mt-1 w-full rounded-2xl"}`}
+            >
+              {submitting
+                ? tab === "forgot"
+                  ? "Sending..."
+                  : tab === "signup"
+                  ? "Creating..."
+                  : "Signing in..."
                 : tab === "signup"
-                ? "Creating..."
-                : "Signing in..."
-              : tab === "signup"
-              ? "Create account"
-              : tab === "forgot"
-              ? "Send reset link"
-              : "Sign in"}
-          </Button>
+                ? "Create account"
+                : tab === "forgot"
+                ? "Send reset link"
+                : "Sign in"}
+            </Button>
+          </div>
         </div>
       </div>
     </Modal>
