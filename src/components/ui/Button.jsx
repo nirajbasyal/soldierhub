@@ -31,14 +31,16 @@ export default function Button({
       {...props}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      className={`inline-flex items-center justify-center font-semibold border transition-all duration-150 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${SIZES[size]} ${className}`}
+      className={`sh-interactive sh-focus-ring inline-flex items-center justify-center font-semibold border transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed ${SIZES[size]} ${className}`}
       style={{
         backgroundColor: hover && !props.disabled ? v.hover : v.bg,
         color: v.color,
         borderColor: v.border,
         boxShadow:
           variant === "primary" && !props.disabled
-            ? "0 10px 22px rgba(179,25,66,0.20)"
+            ? hover
+              ? "0 13px 26px rgba(179,25,66,0.24)"
+              : "0 10px 22px rgba(179,25,66,0.20)"
             : undefined,
       }}
     >
