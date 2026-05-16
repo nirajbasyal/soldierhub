@@ -52,6 +52,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   const [anonymous, setAnonymous] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [textFocused, setTextFocused] = useState(false);
 
   const bodyRef = useRef(null);
   const bodyValueRef = useRef(body);
@@ -134,6 +135,11 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     window.requestAnimationFrame(() => {
       bodyRef.current?.focus({ preventScroll: true });
     });
+  };
+
+  const dismissKeyboard = () => {
+    bodyRef.current?.blur();
+    setTextFocused(false);
   };
 
   const selectCategory = (nextCategory) => {
@@ -311,8 +317,8 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
           <div className="truncate text-[18px] font-extrabold" style={{ color: T.text }}>
             {composerDisplayName}
           </div>
-          <div className="text-xs font-semibold uppercase tracking-[0.16em]" style={{ color: T.textSubtle }}>
-            {body.length.toLocaleString()} characters
+          <div className="text-sm" style={{ color: T.textSubtle }}>
+            Posting to SoldierHub
           </div>
         </div>
       </div>
@@ -356,19 +362,38 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
         </div>
       </div>
 
-      <textarea
-        ref={bodyRef}
-        value={body}
-        onChange={(event) => {
-          setBody(event.target.value);
-          setError("");
-        }}
-        disabled={submitting}
-        placeholder="Ask a question, share an update, or help the Soldier Hub community..."
-        rows={6}
-        className="w-full resize-none appearance-none border-0 bg-transparent p-0 text-[20px] leading-9 shadow-none outline-none ring-0 placeholder:text-[#A8ABB2] focus:border-0 focus:outline-none focus:ring-0 disabled:opacity-70"
-        style={{ color: T.text, border: "none", boxShadow: "none" }}
-      />
+      <div className="relative">
+        {textFocused && (
+          <button
+            type="button"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={dismissKeyboard}
+            className="sh-tap absolute right-0 top-0 z-20 rounded-full px-3 py-1.5 text-xs font-extrabold"
+            style={{
+              backgroundColor: "rgba(179,25,66,0.08)",
+              color: RED,
+            }}
+          >
+            Done
+          </button>
+        )}
+
+        <textarea
+          ref={bodyRef}
+          value={body}
+          onFocus={() => setTextFocused(true)}
+          onBlur={() => window.setTimeout(() => setTextFocused(false), 120)}
+          onChange={(event) => {
+            setBody(event.target.value);
+            setError("");
+          }}
+          disabled={submitting}
+          placeholder="Ask a question, share an update, or help the Soldier Hub community..."
+          rows={6}
+          className="w-full resize-none appearance-none border-0 bg-transparent p-0 pr-14 text-[20px] leading-9 shadow-none outline-none ring-0 placeholder:text-[#A8ABB2] focus:border-0 focus:outline-none focus:ring-0 disabled:opacity-70"
+          style={{ color: T.text, border: "none", boxShadow: "none" }}
+        />
+      </div>
 
       {error && (
         <div
