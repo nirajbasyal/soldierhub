@@ -64,6 +64,22 @@ select:focus-visible {
   outline-offset: 3px;
 }
 
+/* Keep reply/comment fields clean. The send button already shows the action state. */
+div:has(> input[placeholder="Write a reply..."]) {
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+input[placeholder="Write a reply..."],
+input[placeholder="Write a reply..."]:focus,
+input[placeholder="Write a reply..."]:focus-visible {
+  border: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+  --tw-ring-offset-shadow: 0 0 #0000 !important;
+}
+
 /* Hide scrollbar on horizontal category strips while keeping scroll behavior */
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
