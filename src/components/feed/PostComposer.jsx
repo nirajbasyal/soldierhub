@@ -19,6 +19,8 @@ import Button from "@/components/ui/Button";
 
 const SAFETY_MESSAGE =
   "This content may violate SoldierHub community safety rules. Please revise it and try again.";
+const RED = "#B31942";
+const DARK_RED = "#9F1239";
 
 function getAnonymousDisplayName(seed) {
   const source = String(seed || "anonymous");
@@ -48,62 +50,11 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   const anonymousToggleAtRef = useRef(0);
   const anonymousTouchActiveRef = useRef(false);
 
-  const revealComposerActionsAboveKeyboard = (behavior = "smooth") => {
-    if (typeof window === "undefined") return;
-
-    const target = composerActionsRef.current;
-    if (!target) return;
-
-    try {
-      target.scrollIntoView({
-        behavior,
-        block: "center",
-        inline: "nearest",
-      });
-    } catch {
-      target.scrollIntoView(false);
-    }
-
-    window.requestAnimationFrame(() => {
-      const rect = target.getBoundingClientRect();
-      const visualViewport = window.visualViewport;
-      const visibleHeight = visualViewport?.height || window.innerHeight;
-      const safeBottom = visibleHeight - 24;
-      const hiddenByKeyboard = rect.bottom - safeBottom;
-
-      if (hiddenByKeyboard > 0) {
-        window.scrollBy({
-          top: hiddenByKeyboard + 28,
-          behavior,
-        });
-      }
-
-      bodyRef.current?.focus({ preventScroll: true });
-    });
-  };
-
   useEffect(() => {
     if (open && bodyRef.current) {
       bodyRef.current.focus();
     }
   }, [open]);
-
-  useEffect(() => {
-    if (!open || !anonymous) return undefined;
-
-    const firstScroll = window.setTimeout(() => {
-      revealComposerActionsAboveKeyboard("smooth");
-    }, 80);
-
-    const secondScroll = window.setTimeout(() => {
-      revealComposerActionsAboveKeyboard("auto");
-    }, 260);
-
-    return () => {
-      window.clearTimeout(firstScroll);
-      window.clearTimeout(secondScroll);
-    };
-  }, [open, anonymous]);
 
   const focusComposerField = () => {
     window.requestAnimationFrame(() => {
@@ -423,7 +374,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
         style={{ color: T.text }}
       />
 
-      {anonymous && (
+      {anonymous && !pageMode && (
         <div
           className="my-3 flex items-start gap-2 rounded-xl px-3 py-2 text-xs"
           style={{ backgroundColor: T.goldBg, color: T.gold }}
@@ -449,19 +400,19 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
       {pageMode ? (
         <div
           ref={composerActionsRef}
-          className="sticky bottom-[78px] mt-3 rounded-[24px] border p-3 shadow-sm backdrop-blur-xl md:bottom-4 md:p-4"
+          className="sticky bottom-[78px] mt-3 rounded-[26px] border p-3.5 shadow-sm backdrop-blur-xl md:bottom-4 md:p-4"
           style={{
             borderColor: T.borderSoft,
-            backgroundColor: "rgba(255,255,255,0.94)",
-            boxShadow: "0 12px 30px rgba(11,28,44,0.08)",
+            backgroundColor: "rgba(255,255,255,0.96)",
+            boxShadow: "0 14px 34px rgba(11,28,44,0.08)",
           }}
         >
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 pr-2">
-              <div className="text-sm font-extrabold" style={{ color: T.navy }}>
+              <div className="text-sm font-extrabold md:text-[15px]" style={{ color: T.navy }}>
                 Post anonymously
               </div>
-              <div className="mt-0.5 text-xs leading-5" style={{ color: T.textSubtle }}>
+              <div className="mt-1 text-xs leading-5 md:text-[13px]" style={{ color: T.textSubtle }}>
                 Hide your name publicly while still posting safely inside the community.
               </div>
             </div>
@@ -482,10 +433,10 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
                   toggleAnonymousState();
                 }
               }}
-              className="relative inline-flex h-8 w-14 shrink-0 items-center rounded-full border transition-all"
+              className="relative inline-flex h-9 w-[72px] shrink-0 items-center rounded-full border transition-all duration-200"
               style={{
-                borderColor: anonymous ? "rgba(179,25,66,0.28)" : T.border,
-                backgroundColor: anonymous ? "rgba(179,25,66,0.18)" : "rgba(213,226,242,0.45)",
+                borderColor: anonymous ? "rgba(159,18,57,0.18)" : T.border,
+                backgroundColor: anonymous ? DARK_RED : "rgba(213,226,242,0.72)",
                 opacity: submitting ? 0.6 : 1,
                 pointerEvents: submitting ? "none" : "auto",
                 WebkitTapHighlightColor: "transparent",
@@ -494,19 +445,61 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
               aria-label="Toggle anonymous posting"
             >
               <span
-                className="absolute left-1 top-1 h-6 w-6 rounded-full transition-transform duration-200"
+                className="absolute left-3 text-[10px] font-black tracking-wide transition-opacity"
                 style={{
-                  transform: anonymous ? "translateX(24px)" : "translateX(0)",
+                  color: "#FFFFFF",
+                  opacity: anonymous ? 1 : 0,
+                }}
+              >
+                ON
+              </span>
+              <span
+                className="absolute right-2.5 text-[10px] font-black tracking-wide transition-opacity"
+                style={{
+                  color: T.textSubtle,
+                  opacity: anonymous ? 0 : 1,
+                }}
+              >
+                OFF
+              </span>
+              <span
+                className="absolute left-[3px] top-[3px] h-[30px] w-[30px] rounded-full transition-transform duration-200"
+                style={{
+                  transform: anonymous ? "translateX(36px)" : "translateX(0)",
                   backgroundColor: "#FFFFFF",
                   boxShadow: anonymous
-                    ? "0 4px 12px rgba(179,25,66,0.24)"
-                    : "0 4px 12px rgba(11,28,44,0.12)",
+                    ? "0 5px 14px rgba(60,0,18,0.22)"
+                    : "0 4px 12px rgba(11,28,44,0.14)",
                 }}
               />
             </button>
           </div>
 
-          <div className="mt-3 grid grid-cols-2 gap-2">
+          {anonymous && (
+            <div
+              className="mt-3 flex items-start gap-2.5 rounded-2xl border px-3 py-2.5"
+              style={{
+                backgroundColor: "rgba(255,241,245,0.96)",
+                borderColor: "rgba(179,25,66,0.18)",
+                color: DARK_RED,
+              }}
+            >
+              <div
+                className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-xl"
+                style={{ backgroundColor: "rgba(179,25,66,0.1)" }}
+              >
+                <Lock size={14} />
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-extrabold">Anonymous mode is on</div>
+                <div className="mt-0.5 text-xs leading-5" style={{ color: "#9F3C55" }}>
+                  Your name will show as {composerDisplayName}. Avoid typing personal details inside the post.
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="mt-3 grid grid-cols-2 gap-2.5">
             <button
               type="button"
               onClick={closeComposer}
@@ -527,7 +520,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
               disabled={submitting || !body.trim()}
               className="inline-flex h-12 items-center justify-center gap-2 rounded-full px-4 text-sm font-bold transition-all active:scale-[0.99] disabled:opacity-60"
               style={{
-                backgroundColor: "#B31942",
+                backgroundColor: RED,
                 color: "#FFFFFF",
                 boxShadow: "0 10px 22px rgba(179,25,66,0.22)",
               }}
