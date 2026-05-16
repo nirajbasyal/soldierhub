@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { ArrowLeft, Send } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { T } from "@/lib/theme";
@@ -7,12 +8,28 @@ import AppShell from "@/components/layout/AppShell";
 import PostComposer from "@/components/feed/PostComposer";
 
 const COMPOSE_SUBMIT_EVENT = "soldierhub-compose-submit";
+const COMPOSE_STATE_EVENT = "soldierhub-compose-state";
 
 export default function ComposePage() {
   const router = useRouter();
+  const [canPublish, setCanPublish] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const handleComposeState = (event) => {
+      setCanPublish(Boolean(event.detail?.canPublish));
+      setIsSubmitting(Boolean(event.detail?.submitting));
+    };
+
+    window.addEventListener(COMPOSE_STATE_EVENT, handleComposeState);
+
+    return () => {
+      window.removeEventListener(COMPOSE_STATE_EVENT, handleComposeState);
+    };
+  }, []);
 
   const publishPost = () => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || !canPublish || isSubmitting) return;
     window.dispatchEvent(new CustomEvent(COMPOSE_SUBMIT_EVENT));
   };
 
@@ -50,16 +67,20 @@ export default function ComposePage() {
             <button
               type="button"
               onClick={publishPost}
-              className="sh-tap inline-flex h-11 items-center gap-2 rounded-full border px-4 text-sm font-extrabold shadow-sm"
+              disabled={!canPublish || isSubmitting}
+              className="sh-tap inline-flex h-11 items-center gap-2 rounded-full border px-4 text-sm font-extrabold shadow-sm disabled:cursor-not-allowed disabled:opacity-100"
               style={{
-                backgroundColor: "#B31942",
-                borderColor: "rgba(179,25,66,0.22)",
-                color: "#FFFFFF",
-                boxShadow: "0 12px 26px rgba(179,25,66,0.2)",
+                backgroundColor: canPublish && !isSubmitting ? "#B31942" : "#E5EAF1",
+                borderColor: canPublish && !isSubmitting ? "rgba(179,25,66,0.22)" : "#D5E2F2",
+                color: canPublish && !isSubmitting ? "#FFFFFF" : "#7A8491",
+                boxShadow:
+                  canPublish && !isSubmitting
+                    ? "0 12px 26px rgba(179,25,66,0.2)"
+                    : "0 8px 18px rgba(11,28,44,0.06)",
               }}
             >
               <Send size={16} />
-              Publish
+              {isSubmitting ? "Publishing…" : "Publish"}
             </button>
           </div>
         </div>
