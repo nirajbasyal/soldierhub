@@ -95,11 +95,11 @@ export default function BottomNav() {
                 key={t.k}
                 type="button"
                 onClick={t.onClick}
-                className="relative flex flex-col items-center justify-center px-1 pb-1 pt-0 gap-0.5 min-w-0"
+                className="sh-tap relative flex flex-col items-center justify-center px-1 pb-1 pt-0 gap-0.5 min-w-0"
                 aria-label={t.ariaLabel || t.label}
               >
                 <div
-                  className="-mt-7 mb-1 flex h-16 w-16 items-center justify-center rounded-full border-[5px] shadow-lg transition-transform active:scale-95"
+                  className="sh-post-fab -mt-7 mb-1 flex h-16 w-16 items-center justify-center rounded-full border-[5px] shadow-lg"
                   style={{
                     backgroundColor: POST_ACTION_COLOR,
                     borderColor: T.card,
@@ -124,14 +124,19 @@ export default function BottomNav() {
               key={t.k}
               type="button"
               onClick={t.onClick}
-              className="flex flex-col items-center justify-center py-2.5 px-1 gap-1 relative min-w-0"
+              className="sh-tap flex flex-col items-center justify-center py-2.5 px-1 gap-1 relative min-w-0"
               aria-label={t.ariaLabel || t.label}
             >
-              <Icon
-                size={21}
-                strokeWidth={t.active ? 2.6 : 2}
-                style={{ color: t.active ? T.gold : T.textMuted }}
-              />
+              <div
+                className="flex h-8 w-12 items-center justify-center rounded-full transition-colors duration-150"
+                style={{ backgroundColor: t.active ? "rgba(179,25,66,0.09)" : "transparent" }}
+              >
+                <Icon
+                  size={21}
+                  strokeWidth={t.active ? 2.6 : 2}
+                  style={{ color: t.active ? T.gold : T.textMuted }}
+                />
+              </div>
 
               <span
                 className="text-[10px] font-medium leading-none"
