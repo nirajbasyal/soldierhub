@@ -44,20 +44,23 @@ const FOLLOW_LIST_PREVIEW_LIMIT = 30;
 function InfoPill({ icon: Icon, label, value }) {
   return (
     <div
-      className="rounded-2xl border px-3 py-2.5 flex items-center gap-2.5 min-w-0"
-      style={{ backgroundColor: "rgba(255,255,255,0.92)", borderColor: "#D5E2F2" }}
+      className="flex min-w-0 items-center gap-3 rounded-[22px] border px-3.5 py-3"
+      style={{ backgroundColor: "rgba(244,248,253,0.86)", borderColor: T.border }}
     >
       <div
-        className="h-8 w-8 rounded-xl flex items-center justify-center shrink-0"
-        style={{ backgroundColor: "rgba(220,232,247,0.82)", color: T.blue }}
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl"
+        style={{ backgroundColor: T.blueSoft, color: T.blue }}
       >
-        <Icon size={15} />
+        <Icon size={18} />
       </div>
       <div className="min-w-0 text-left">
-        <div className="text-[10px] md:text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: T.textSubtle }}>
+        <div
+          className="text-[10px] font-extrabold uppercase tracking-[0.18em]"
+          style={{ color: T.textSubtle }}
+        >
           {label}
         </div>
-        <div className="text-xs md:text-sm font-semibold truncate" style={{ color: T.navy }}>
+        <div className="truncate text-sm font-bold leading-6" style={{ color: T.text }}>
           {value}
         </div>
       </div>
@@ -68,12 +71,12 @@ function InfoPill({ icon: Icon, label, value }) {
 function StatCard({ label, value, onClick, active = false, loading = false }) {
   const content = (
     <>
-      <div className="text-xl md:text-2xl font-extrabold tabular-nums" style={{ color: T.navy }}>
+      <div className="text-2xl font-black tabular-nums leading-none" style={{ color: T.navy }}>
         {value}
       </div>
       <div
-        className="text-[10px] md:text-[11px] font-bold uppercase tracking-[0.12em] flex items-center justify-center lg:justify-start gap-1"
-        style={{ color: T.textSubtle }}
+        className="mt-2 flex items-center justify-center gap-1 text-[10px] font-extrabold uppercase tracking-[0.16em]"
+        style={{ color: active ? T.blue : T.textSubtle }}
       >
         {label}
         {loading ? <Loader2 size={10} className="animate-spin" /> : null}
@@ -81,10 +84,11 @@ function StatCard({ label, value, onClick, active = false, loading = false }) {
     </>
   );
 
-  const sharedClass = "rounded-2xl border px-2 py-2.5 md:p-3 text-center lg:text-left transition";
+  const sharedClass = "rounded-[22px] border px-2 py-4 text-center transition-all";
   const sharedStyle = {
-    backgroundColor: active ? "rgba(220,232,247,0.98)" : "rgba(244,248,253,0.9)",
-    borderColor: active ? "#9DB9DA" : "#D5E2F2",
+    backgroundColor: active ? "rgba(220,232,247,0.96)" : "rgba(244,248,253,0.9)",
+    borderColor: active ? "#9DB9DA" : T.border,
+    boxShadow: active ? "0 10px 22px rgba(30,78,140,0.08)" : "none",
   };
 
   if (!onClick) {
@@ -145,21 +149,24 @@ function FollowListPanel({
 
   return (
     <div
-      className="mt-4 min-w-0 overflow-hidden rounded-3xl border p-3 md:p-4"
-      style={{ backgroundColor: "rgba(244,248,253,0.92)", borderColor: "#D5E2F2" }}
+      className="mt-4 min-w-0 overflow-hidden rounded-[26px] border p-3 md:p-4"
+      style={{ backgroundColor: "rgba(244,248,253,0.9)", borderColor: T.border }}
     >
-      <div className="flex items-center justify-between gap-3 mb-3 min-w-0">
-        <div className="flex items-center gap-2 min-w-0">
+      <div className="mb-3 flex min-w-0 items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2.5">
           <div
-            className="h-9 w-9 rounded-2xl flex items-center justify-center shrink-0"
-            style={{ backgroundColor: "rgba(220,232,247,0.96)", color: T.blue }}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl"
+            style={{ backgroundColor: T.blueSoft, color: T.blue }}
           >
-            <UsersRound size={17} />
+            <UsersRound size={18} />
           </div>
           <div className="min-w-0">
-            <h3 className="text-sm md:text-base font-extrabold flex items-center gap-2 truncate" style={{ color: T.navy }}>
+            <h3
+              className="flex items-center gap-2 truncate text-sm font-extrabold md:text-base"
+              style={{ color: T.navy }}
+            >
               {title}
-              {refreshing ? <Loader2 size={13} className="animate-spin shrink-0" style={{ color: T.textSubtle }} /> : null}
+              {refreshing ? <Loader2 size={13} className="shrink-0 animate-spin" style={{ color: T.textSubtle }} /> : null}
             </h3>
             <p className="text-xs leading-5" style={{ color: T.textMuted }}>
               Only you can see this full list on your profile.
@@ -171,8 +178,12 @@ function FollowListPanel({
       {loading ? (
         <div className="grid gap-2">
           {[0, 1, 2].map((item) => (
-            <div key={item} className="rounded-2xl border px-3 py-3 flex items-center gap-3 min-w-0" style={{ backgroundColor: "#FFFFFF", borderColor: "#D5E2F2" }}>
-              <div className="h-[42px] w-[42px] rounded-full animate-pulse bg-[#DDE6EF] shrink-0" />
+            <div
+              key={item}
+              className="flex min-w-0 items-center gap-3 rounded-2xl border px-3 py-3"
+              style={{ backgroundColor: T.card, borderColor: T.border }}
+            >
+              <div className="h-[42px] w-[42px] shrink-0 animate-pulse rounded-full bg-[#DDE6EF]" />
               <div className="min-w-0 flex-1">
                 <div className="h-4 w-36 max-w-full animate-pulse rounded-full bg-[#DDE6EF]" />
                 <div className="mt-2 h-3 w-24 max-w-full animate-pulse rounded-full bg-[#E8EEF5]" />
@@ -181,15 +192,21 @@ function FollowListPanel({
           ))}
         </div>
       ) : error ? (
-        <div className="rounded-2xl border px-3 py-3 text-sm" style={{ backgroundColor: "rgba(253,236,240,0.95)", borderColor: "#F3C7D1", color: "#B31942" }}>
+        <div
+          className="rounded-2xl border px-3 py-3 text-sm"
+          style={{ backgroundColor: T.redBg, borderColor: "#F3C7D1", color: T.red }}
+        >
           {error}
         </div>
       ) : safeItems.length === 0 ? (
-        <div className="rounded-2xl border px-3 py-3 text-sm" style={{ backgroundColor: "#FFFFFF", borderColor: "#D5E2F2", color: T.textMuted }}>
+        <div
+          className="rounded-2xl border px-3 py-3 text-sm"
+          style={{ backgroundColor: T.card, borderColor: T.border, color: T.textMuted }}
+        >
           {emptyBody}
         </div>
       ) : (
-        <div className="grid gap-2 min-w-0">
+        <div className="grid min-w-0 gap-2">
           {safeItems.map((item) => {
             const profile = normalizeFollowProfile(item);
             const profileHref = `/profile/${profile.id}?name=${encodeURIComponent(profile.full_name)}`;
@@ -198,11 +215,9 @@ function FollowListPanel({
               <div
                 key={profile.id || item.created_at || profile.full_name}
                 className="grid w-full min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-2xl border px-2.5 py-3 sm:gap-3 sm:px-3"
-                style={{ backgroundColor: "#FFFFFF", borderColor: "#D5E2F2" }}
+                style={{ backgroundColor: T.card, borderColor: T.border }}
               >
-                <div className="shrink-0">
-                  <Avatar name={profile.full_name} color={profile.avatar_color} src={profile.avatar_url} size={42} />
-                </div>
+                <Avatar name={profile.full_name} color={profile.avatar_color} src={profile.avatar_url} size={42} />
 
                 <Link href={profileHref} className="min-w-0 text-left">
                   <div className="truncate text-sm font-extrabold leading-5" style={{ color: T.navy }}>
@@ -219,7 +234,7 @@ function FollowListPanel({
                     onClick={() => onUnfollow(profile.id)}
                     disabled={unfollowingId === profile.id}
                     className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-full border px-2.5 text-xs font-bold transition hover:-translate-y-0.5 disabled:opacity-60 min-[390px]:px-3"
-                    style={{ backgroundColor: "rgba(253,236,240,0.95)", borderColor: "#F3C7D1", color: "#B31942" }}
+                    style={{ backgroundColor: T.redBg, borderColor: "#F3C7D1", color: T.red }}
                     aria-label={`Unfollow ${profile.full_name}`}
                   >
                     {unfollowingId === profile.id ? <Loader2 size={13} className="animate-spin" /> : <UserMinus size={13} />}
@@ -232,8 +247,8 @@ function FollowListPanel({
 
           {hasMoreHidden ? (
             <div
-              className="rounded-2xl border px-3 py-2 text-xs font-semibold text-center"
-              style={{ backgroundColor: "rgba(255,255,255,0.82)", borderColor: "#D5E2F2", color: T.textMuted }}
+              className="rounded-2xl border px-3 py-2 text-center text-xs font-semibold"
+              style={{ backgroundColor: "rgba(255,255,255,0.82)", borderColor: T.border, color: T.textMuted }}
             >
               Showing first {safeItems.length} of {safeTotalCount}. More loading can be added later if needed.
             </div>
@@ -540,282 +555,308 @@ export default function ProfileHeader() {
 
   return (
     <section
-      className="rounded-[24px] md:rounded-[30px] border relative min-w-0 overflow-hidden"
+      className="relative min-w-0 overflow-hidden rounded-[28px] border"
       style={{
-        borderColor: "#D5E2F2",
-        backgroundColor: "rgba(255,255,255,0.92)",
-        boxShadow: "0 14px 38px rgba(7,27,51,0.07)",
+        backgroundColor: T.card,
+        borderColor: T.border,
+        boxShadow: "0 18px 44px rgba(7,27,51,0.08)",
       }}
     >
-      <div
-        className="absolute left-5 right-5 top-0 h-1 rounded-b-full"
-        style={{ backgroundColor: "rgba(30,78,140,0.72)" }}
-      />
+      <div className="relative h-[78px] md:h-[104px]" style={{ backgroundColor: T.navy }}>
+        <div
+          className="absolute bottom-0 left-0 right-0 h-1.5"
+          style={{ backgroundColor: "rgba(179,25,66,0.88)" }}
+        />
+        <div
+          className="absolute right-5 top-5 hidden rounded-full border px-3 py-1 text-xs font-extrabold uppercase tracking-[0.16em] md:inline-flex"
+          style={{ backgroundColor: "rgba(255,255,255,0.08)", borderColor: "rgba(255,255,255,0.18)", color: "#FFFFFF" }}
+        >
+          Profile
+        </div>
+      </div>
 
-      <div className="px-4 py-5 md:p-7">
-        <div className="flex flex-col lg:flex-row gap-4 md:gap-6 lg:items-start lg:justify-between">
-          <div className="flex flex-col md:flex-row gap-3 md:gap-5 md:items-start min-w-0">
-            <div className="flex flex-col items-center md:items-start gap-2 md:gap-3 shrink-0">
-              <div
-                className="rounded-[22px] md:rounded-[26px] p-1.5 md:p-2 border"
-                style={{ backgroundColor: "#FFFFFF", borderColor: "#D5E2F2" }}
-              >
-                <div className="md:hidden">
-                  <Avatar name={editing ? name : displayName} color={editing ? color : displayColor} size={64} />
-                </div>
-                <div className="hidden md:block">
-                  <Avatar name={editing ? name : displayName} color={editing ? color : displayColor} size={88} />
-                </div>
-              </div>
-
-              {editing && (
-                <div className="flex flex-wrap gap-1.5 justify-center md:justify-start max-w-[180px]">
-                  {COLOR_OPTIONS.map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => setColor(c)}
-                      className="w-7 h-7 rounded-full border-2 transition-transform hover:scale-110"
-                      style={{
-                        backgroundColor: c,
-                        borderColor: c === color ? "#FFFFFF" : "rgba(255,255,255,0.45)",
-                        boxShadow: c === color ? "0 0 0 2px #1E4E8C" : "none",
-                      }}
-                      aria-label={`Choose profile color ${c}`}
-                    />
-                  ))}
-                </div>
-              )}
+      <div className="px-4 pb-5 md:px-6 md:pb-6">
+        <div className="-mt-10 flex items-end justify-between gap-3">
+          <div
+            className="rounded-[24px] border p-1.5 shadow-sm md:rounded-[28px] md:p-2"
+            style={{ backgroundColor: T.card, borderColor: T.border }}
+          >
+            <div className="md:hidden">
+              <Avatar name={editing ? name : displayName} color={editing ? color : displayColor} size={72} />
             </div>
-
-            <div className="flex-1 min-w-0 text-center md:text-left">
-              {!editing ? (
-                <>
-                  <div
-                    className="inline-flex items-center gap-1.5 md:gap-2 rounded-full border px-2.5 md:px-3 py-1 md:py-1.5 text-[10px] md:text-xs font-bold uppercase tracking-[0.12em]"
-                    style={{ backgroundColor: "rgba(244,248,253,0.95)", borderColor: "#D5E2F2", color: T.blue }}
-                  >
-                    <UserRound size={13} />
-                    My Profile
-                  </div>
-
-                  <div className="mt-3 md:mt-4 flex items-center justify-center md:justify-start gap-2 flex-wrap">
-                    <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-[-0.04em] leading-[0.95]" style={{ color: T.navy }}>
-                      {displayName}
-                    </h1>
-
-                    {safeUser.role === "admin" && (
-                      <Badge tone="amber" icon={Shield}>
-                        Admin
-                      </Badge>
-                    )}
-
-                    {isVerified && (
-                      <Badge tone="blue" icon={ShieldCheck}>
-                        Verified
-                      </Badge>
-                    )}
-                  </div>
-
-                  <div className="mt-2 md:mt-3 max-w-xl mx-auto md:mx-0">
-                    {displayBio ? (
-                      <p className="text-sm md:text-base leading-6 md:leading-7" style={{ color: T.text }}>
-                        {displayBio}
-                      </p>
-                    ) : (
-                      <p className="text-sm md:text-base leading-6 md:leading-7" style={{ color: T.textMuted }}>
-                        Add a short bio so other verified community members know who you are.
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="mt-3 md:mt-4 max-w-xl mx-auto md:mx-0">
-                    <InfoPill icon={Mail} label="Email" value={displayEmail} />
-                  </div>
-                </>
-              ) : (
-                <div
-                  className="rounded-3xl border p-4 md:p-5 text-left"
-                  style={{ backgroundColor: "rgba(255,255,255,0.96)", borderColor: "#D5E2F2" }}
-                >
-                  <div className="flex items-start justify-between gap-3 mb-4">
-                    <div>
-                      <h2 className="text-xl font-extrabold" style={{ color: T.navy }}>
-                        Edit profile
-                      </h2>
-                      <p className="text-sm mt-1" style={{ color: T.textMuted }}>
-                        Update your display name, bio, and avatar color.
-                      </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={cancel}
-                      className="h-9 w-9 rounded-full border flex items-center justify-center shrink-0"
-                      style={{ backgroundColor: T.card, borderColor: "#D5E2F2", color: T.textMuted }}
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-
-                  <div className="grid gap-3">
-                    <TextInput label="Display name" value={name} onChange={(e) => setName(e.target.value)} />
-                    <TextArea label="Bio" value={bio} onChange={(e) => setBio(e.target.value)} />
-                    <div className="rounded-2xl border px-3 py-2 text-xs" style={{ backgroundColor: "rgba(244,248,253,0.95)", borderColor: "#D5E2F2", color: T.textSubtle }}>
-                      Verified email: {displayEmail} · email cannot be changed after verification.
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row gap-2 mt-4">
-                    <Button variant="primary" onClick={save} icon={Check}>
-                      Save profile changes
-                    </Button>
-                    <Button variant="ghost" onClick={cancel}>
-                      Cancel
-                    </Button>
-                  </div>
-
-                  {!showPasswordForm ? (
-                    <button
-                      type="button"
-                      onClick={openPasswordForm}
-                      className="mt-4 inline-flex items-center gap-2 rounded-full px-1 py-1 text-sm font-bold transition hover:translate-x-0.5"
-                      style={{ color: "#B31942" }}
-                    >
-                      <KeyRound size={15} />
-                      Change current password
-                    </button>
-                  ) : (
-                    <div
-                      className="mt-4 rounded-3xl border p-4"
-                      style={{
-                        backgroundColor: "rgba(244,248,253,0.95)",
-                        borderColor: "#D5E2F2",
-                      }}
-                    >
-                      <div className="flex items-start justify-between gap-3 mb-3">
-                        <div className="flex items-start gap-3">
-                          <div
-                            className="h-10 w-10 rounded-2xl flex items-center justify-center shrink-0"
-                            style={{ backgroundColor: "rgba(220,232,247,0.95)", color: T.blue }}
-                          >
-                            <KeyRound size={18} />
-                          </div>
-                          <div>
-                            <h3 className="text-base font-extrabold" style={{ color: T.navy }}>
-                              Change password
-                            </h3>
-                            <p className="text-xs leading-5 mt-0.5" style={{ color: T.textMuted }}>
-                              Enter your current password first, then choose a new password.
-                            </p>
-                          </div>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={closePasswordForm}
-                          className="h-8 w-8 rounded-full border flex items-center justify-center shrink-0"
-                          style={{ backgroundColor: T.card, borderColor: "#D5E2F2", color: T.textMuted }}
-                          aria-label="Close password form"
-                        >
-                          <X size={14} />
-                        </button>
-                      </div>
-
-                      <div className="grid gap-3">
-                        <TextInput label="Current password" type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} autoComplete="current-password" />
-                        <TextInput label="New password" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} autoComplete="new-password" />
-                        <TextInput label="Confirm new password" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} autoComplete="new-password" />
-                      </div>
-
-                      {passwordError && (
-                        <div
-                          className="text-xs px-3 py-2 rounded-2xl flex items-start gap-2 mt-3 border"
-                          style={{ backgroundColor: "rgba(253,236,240,0.95)", borderColor: "#F3C7D1", color: "#B31942" }}
-                        >
-                          <AlertTriangle size={14} className="shrink-0 mt-0.5" />
-                          {passwordError}
-                        </div>
-                      )}
-
-                      {passwordSuccess && (
-                        <div
-                          className="text-xs px-3 py-2 rounded-2xl flex items-start gap-2 mt-3 border"
-                          style={{ backgroundColor: "rgba(220,232,247,0.95)", borderColor: "#BCD0EA", color: T.blue }}
-                        >
-                          <Check size={14} className="shrink-0 mt-0.5" />
-                          {passwordSuccess}
-                        </div>
-                      )}
-
-                      <div className="mt-3 flex flex-col sm:flex-row gap-2">
-                        <Button variant="ghost" onClick={changePassword} icon={KeyRound} disabled={passwordSaving}>
-                          {passwordSaving ? "Updating password…" : "Update password"}
-                        </Button>
-                        <Button variant="ghost" onClick={closePasswordForm}>
-                          Cancel
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
+            <div className="hidden md:block">
+              <Avatar name={editing ? name : displayName} color={editing ? color : displayColor} size={96} />
             </div>
           </div>
 
           {!editing && (
-            <div className="grid grid-cols-3 lg:grid-cols-1 gap-2 lg:min-w-[150px]">
-              <StatCard label="Posts" value={visiblePosts.length} />
-              <StatCard
-                label="Followers"
-                value={followerValue}
-                loading={followLoading}
-                onClick={() => openConnections("followers")}
-                active={connectionsTab === "followers"}
-              />
-              <StatCard
-                label="Following"
-                value={followingValue}
-                loading={followLoading}
-                onClick={() => openConnections("following")}
-                active={connectionsTab === "following"}
+            <div className="hidden items-center gap-2 md:flex">
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className="inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-bold transition hover:-translate-y-0.5"
+                style={{ backgroundColor: T.navy, borderColor: "rgba(7,27,51,0.18)", color: "#FFFFFF" }}
+              >
+                <Edit3 size={16} />
+                Edit profile
+              </button>
+
+              <ShareProfileButton
+                profileId={currentUser?.id}
+                profileName={displayName}
+                pushToast={pushToast}
               />
             </div>
           )}
         </div>
 
-        {!editing && (
-          <div className="mt-4 md:mt-5 flex flex-col sm:flex-row items-center justify-center md:justify-start gap-2">
-            <button
-              type="button"
-              onClick={() => setEditing(true)}
-              className="inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-bold transition hover:-translate-y-0.5 w-full sm:w-auto"
-              style={{ backgroundColor: T.navy, borderColor: "rgba(7,27,51,0.18)", color: "#FFFFFF" }}
-            >
-              <Edit3 size={16} />
-              Edit profile
-            </button>
-
-            <ShareProfileButton
-              profileId={currentUser?.id}
-              profileName={displayName}
-              pushToast={pushToast}
-              className="w-full sm:w-auto"
-            />
+        {editing && (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {COLOR_OPTIONS.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setColor(c)}
+                className="h-7 w-7 rounded-full border-2 transition-transform hover:scale-110"
+                style={{
+                  backgroundColor: c,
+                  borderColor: c === color ? "#FFFFFF" : "rgba(255,255,255,0.45)",
+                  boxShadow: c === color ? `0 0 0 2px ${T.blue}` : "none",
+                }}
+                aria-label={`Choose profile color ${c}`}
+              />
+            ))}
           </div>
         )}
 
-        {!editing && connectionsTab && (
-          <FollowListPanel
-            type={connectionsTab}
-            items={connections}
-            loading={connectionsLoading}
-            refreshing={connectionsRefreshing}
-            error={connectionsError}
-            onUnfollow={handleUnfollowFromList}
-            unfollowingId={unfollowingId}
-            totalCount={activeConnectionsTotal}
-          />
+        {!editing ? (
+          <>
+            <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <div
+                    className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.16em]"
+                    style={{ backgroundColor: "rgba(244,248,253,0.95)", borderColor: T.border, color: T.blue }}
+                  >
+                    <UserRound size={13} />
+                    My Profile
+                  </div>
+
+                  {safeUser.role === "admin" && (
+                    <Badge tone="amber" icon={Shield}>
+                      Admin
+                    </Badge>
+                  )}
+
+                  {isVerified && (
+                    <Badge tone="blue" icon={ShieldCheck}>
+                      Verified
+                    </Badge>
+                  )}
+                </div>
+
+                <h1
+                  className="mt-3 text-[32px] font-black leading-[1.02] tracking-[-0.045em] sm:text-4xl md:text-5xl"
+                  style={{ color: T.navy }}
+                >
+                  {displayName}
+                </h1>
+
+                <div className="mt-3 max-w-2xl">
+                  {displayBio ? (
+                    <p className="text-[15px] leading-7" style={{ color: T.text }}>
+                      {displayBio}
+                    </p>
+                  ) : (
+                    <p className="text-[15px] leading-7" style={{ color: T.textMuted }}>
+                      Add a short bio so other verified community members know who you are.
+                    </p>
+                  )}
+                </div>
+
+                <div className="mt-4 max-w-xl">
+                  <InfoPill icon={Mail} label="Email" value={displayEmail} />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 lg:grid-cols-1">
+                <StatCard label="Posts" value={visiblePosts.length} />
+                <StatCard
+                  label="Followers"
+                  value={followerValue}
+                  loading={followLoading}
+                  onClick={() => openConnections("followers")}
+                  active={connectionsTab === "followers"}
+                />
+                <StatCard
+                  label="Following"
+                  value={followingValue}
+                  loading={followLoading}
+                  onClick={() => openConnections("following")}
+                  active={connectionsTab === "following"}
+                />
+              </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 gap-2 md:hidden">
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-full border px-4 py-3 text-sm font-bold transition active:scale-[0.99]"
+                style={{ backgroundColor: T.navy, borderColor: "rgba(7,27,51,0.18)", color: "#FFFFFF" }}
+              >
+                <Edit3 size={16} />
+                Edit profile
+              </button>
+
+              <ShareProfileButton
+                profileId={currentUser?.id}
+                profileName={displayName}
+                pushToast={pushToast}
+                className="w-full"
+              />
+            </div>
+
+            {connectionsTab && (
+              <FollowListPanel
+                type={connectionsTab}
+                items={connections}
+                loading={connectionsLoading}
+                refreshing={connectionsRefreshing}
+                error={connectionsError}
+                onUnfollow={handleUnfollowFromList}
+                unfollowingId={unfollowingId}
+                totalCount={activeConnectionsTotal}
+              />
+            )}
+          </>
+        ) : (
+          <div
+            className="mt-4 rounded-[26px] border p-4 text-left md:p-5"
+            style={{ backgroundColor: "rgba(244,248,253,0.82)", borderColor: T.border }}
+          >
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-black" style={{ color: T.navy }}>
+                  Edit profile
+                </h2>
+                <p className="mt-1 text-sm" style={{ color: T.textMuted }}>
+                  Update your display name, bio, and avatar color.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={cancel}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border"
+                style={{ backgroundColor: T.card, borderColor: T.border, color: T.textMuted }}
+                aria-label="Cancel profile editing"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="grid gap-3">
+              <TextInput label="Display name" value={name} onChange={(e) => setName(e.target.value)} />
+              <TextArea label="Bio" value={bio} onChange={(e) => setBio(e.target.value)} />
+              <div
+                className="rounded-2xl border px-3 py-2 text-xs"
+                style={{ backgroundColor: T.card, borderColor: T.border, color: T.textSubtle }}
+              >
+                Verified email: {displayEmail} · email cannot be changed after verification.
+              </div>
+            </div>
+
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+              <Button variant="primary" onClick={save} icon={Check}>
+                Save profile changes
+              </Button>
+              <Button variant="ghost" onClick={cancel}>
+                Cancel
+              </Button>
+            </div>
+
+            {!showPasswordForm ? (
+              <button
+                type="button"
+                onClick={openPasswordForm}
+                className="mt-4 inline-flex items-center gap-2 rounded-full px-1 py-1 text-sm font-bold transition hover:translate-x-0.5"
+                style={{ color: T.red }}
+              >
+                <KeyRound size={15} />
+                Change current password
+              </button>
+            ) : (
+              <div
+                className="mt-4 rounded-[24px] border p-4"
+                style={{ backgroundColor: T.card, borderColor: T.border }}
+              >
+                <div className="mb-3 flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <div
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl"
+                      style={{ backgroundColor: T.blueSoft, color: T.blue }}
+                    >
+                      <KeyRound size={18} />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-extrabold" style={{ color: T.navy }}>
+                        Change password
+                      </h3>
+                      <p className="mt-0.5 text-xs leading-5" style={{ color: T.textMuted }}>
+                        Enter your current password first, then choose a new password.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={closePasswordForm}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border"
+                    style={{ backgroundColor: T.card, borderColor: T.border, color: T.textMuted }}
+                    aria-label="Close password form"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+
+                <div className="grid gap-3">
+                  <TextInput label="Current password" type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} autoComplete="current-password" />
+                  <TextInput label="New password" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} autoComplete="new-password" />
+                  <TextInput label="Confirm new password" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} autoComplete="new-password" />
+                </div>
+
+                {passwordError && (
+                  <div
+                    className="mt-3 flex items-start gap-2 rounded-2xl border px-3 py-2 text-xs"
+                    style={{ backgroundColor: T.redBg, borderColor: "#F3C7D1", color: T.red }}
+                  >
+                    <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+                    {passwordError}
+                  </div>
+                )}
+
+                {passwordSuccess && (
+                  <div
+                    className="mt-3 flex items-start gap-2 rounded-2xl border px-3 py-2 text-xs"
+                    style={{ backgroundColor: T.blueSoft, borderColor: "#BCD0EA", color: T.blue }}
+                  >
+                    <Check size={14} className="mt-0.5 shrink-0" />
+                    {passwordSuccess}
+                  </div>
+                )}
+
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                  <Button variant="ghost" onClick={changePassword} icon={KeyRound} disabled={passwordSaving}>
+                    {passwordSaving ? "Updating password…" : "Update password"}
+                  </Button>
+                  <Button variant="ghost" onClick={closePasswordForm}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </div>
     </section>
