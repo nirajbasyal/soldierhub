@@ -42,14 +42,14 @@ export default function ComposePage() {
             "radial-gradient(circle at top left, rgba(220,232,247,0.95) 0%, rgba(234,240,248,0.92) 34%, rgba(248,247,244,0.96) 100%)",
         }}
       >
-        <div
-          className="fixed inset-x-0 top-0 z-[90] px-3 py-2 backdrop-blur-xl md:static md:px-0 md:py-0 md:backdrop-blur-none"
-          style={{
-            background:
-              "linear-gradient(180deg, rgba(234,240,248,0.98) 0%, rgba(234,240,248,0.94) 82%, rgba(234,240,248,0) 100%)",
-          }}
-        >
-          <div className="mx-auto flex w-full max-w-4xl items-center justify-between gap-3 md:px-6 md:pt-7">
+        <div className="mx-auto flex min-h-[100dvh] w-full max-w-4xl flex-col px-3 pt-2 md:px-6 md:pt-7">
+          <div
+            className="sticky top-0 z-[90] -mx-3 mb-3 flex items-center justify-between gap-3 px-3 py-2 backdrop-blur-xl md:static md:mx-0 md:mb-5 md:px-0 md:py-0 md:backdrop-blur-none"
+            style={{
+              background:
+                "linear-gradient(180deg, rgba(234,240,248,0.98) 0%, rgba(234,240,248,0.94) 82%, rgba(234,240,248,0) 100%)",
+            }}
+          >
             <button
               type="button"
               onClick={() => router.push("/")}
@@ -83,9 +83,7 @@ export default function ComposePage() {
               {isSubmitting ? "Publishing…" : "Publish"}
             </button>
           </div>
-        </div>
 
-        <div className="mx-auto flex min-h-[100dvh] w-full max-w-4xl flex-col px-3 pt-[66px] md:px-6 md:pt-5">
           <section
             className="flex-1 rounded-[34px] border p-2.5 shadow-sm md:p-4"
             style={{
