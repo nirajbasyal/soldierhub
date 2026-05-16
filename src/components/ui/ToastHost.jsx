@@ -11,17 +11,25 @@ export default function ToastHost() {
         <div
           key={t.id}
           onClick={() => dismissToast(t.id)}
-          className="pointer-events-auto px-4 py-3 rounded-xl shadow-lg border flex items-center gap-2.5 min-w-[220px] max-w-md"
+          className="sh-toast-card sh-tap pointer-events-auto w-full md:w-auto px-4 py-3 rounded-2xl shadow-lg border flex items-center gap-2.5 min-w-[220px] max-w-md cursor-pointer"
           style={{
-            backgroundColor: T.card,
+            backgroundColor: "rgba(253,254,255,0.98)",
             borderColor: T.border,
-            animation: "toastIn 200ms ease-out",
+            boxShadow: "0 16px 34px rgba(7,27,51,0.13)",
           }}
         >
-          {t.tone === "success" && <Check size={16} style={{ color: T.green }} strokeWidth={2.5} />}
-          {t.tone === "error"   && <X size={16} style={{ color: T.red }} strokeWidth={2.5} />}
-          {t.tone === "info"    && <Sparkles size={16} style={{ color: T.gold }} strokeWidth={2.25} />}
-          <span className="text-sm" style={{ color: T.text }}>{t.text}</span>
+          <div
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
+            style={{
+              backgroundColor:
+                t.tone === "success" ? T.greenBg : t.tone === "error" ? T.redBg : T.goldBg,
+            }}
+          >
+            {t.tone === "success" && <Check size={15} style={{ color: T.green }} strokeWidth={2.7} />}
+            {t.tone === "error" && <X size={15} style={{ color: T.red }} strokeWidth={2.7} />}
+            {t.tone === "info" && <Sparkles size={15} style={{ color: T.gold }} strokeWidth={2.35} />}
+          </div>
+          <span className="text-sm font-semibold leading-5" style={{ color: T.text }}>{t.text}</span>
         </div>
       ))}
     </div>
