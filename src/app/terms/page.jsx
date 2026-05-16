@@ -53,7 +53,7 @@ const sections = [
     title: "5. Verification",
     body: [
       "Soldier Hub may offer verified access for certain users. Verification is used only to manage platform access and community trust. It is not an official confirmation of military status, rank, employment, unit assignment, identity, security clearance, government affiliation, or eligibility for any benefit.",
-      "We may request information such as email, military email, phone number, role, base selection, or other details to review an account. Providing false, misleading, unauthorized, or impersonated information may result in denial, suspension, deletion, or other enforcement action."
+      "We may request information such as email, phone number, role, base selection, or other details to review an account. Providing false, misleading, unauthorized, or impersonated information may result in denial, suspension, deletion, or other enforcement action."
     ]
   },
   {
