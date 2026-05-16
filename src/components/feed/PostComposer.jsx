@@ -33,10 +33,10 @@ function getAnonymousDisplayName(seed) {
   return `Anonymous${number}`;
 }
 
-export default function PostComposer() {
+export default function PostComposer({ startOpen = false }) {
   const { currentUser, requireAuth, createPost } = useApp();
 
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(startOpen);
   const [category, setCategory] = useState("General Q&A");
   const [body, setBody] = useState("");
   const [anonymous, setAnonymous] = useState(false);
@@ -179,6 +179,14 @@ export default function PostComposer() {
   const closeComposer = () => {
     if (submitting) return;
 
+    if (startOpen) {
+      setBody("");
+      setAnonymous(false);
+      setError("");
+      bodyRef.current?.focus({ preventScroll: true });
+      return;
+    }
+
     setOpen(false);
     setError("");
   };
@@ -187,7 +195,7 @@ export default function PostComposer() {
     setBody("");
     setAnonymous(false);
     setError("");
-    setOpen(false);
+    setOpen(startOpen);
   };
 
   const submit = async () => {
@@ -351,7 +359,7 @@ export default function PostComposer() {
           disabled={submitting}
           className="w-9 h-9 rounded-full flex items-center justify-center disabled:opacity-50 transition hover:bg-black/[0.04]"
           style={{ color: T.textMuted }}
-          aria-label="Close post composer"
+          aria-label={startOpen ? "Clear post composer" : "Close post composer"}
         >
           <X size={17} />
         </button>
@@ -478,7 +486,7 @@ export default function PostComposer() {
 
         <div className="flex gap-2">
           <Button variant="ghost" onClick={closeComposer} disabled={submitting}>
-            Cancel
+            {startOpen ? "Clear" : "Cancel"}
           </Button>
 
           <Button
