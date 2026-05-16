@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, ChevronRight, Lock, Pencil, Plus, Send } from "lucide-react";
+import { AlertTriangle, ChevronRight, Pencil, Plus, Send } from "lucide-react";
 import { CATEGORIES } from "@/lib/constants";
 import { T, TONE_STYLES } from "@/lib/theme";
 import { moderateAsync } from "@/lib/moderation-client";
@@ -68,10 +68,44 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   }, [submitting]);
 
   useEffect(() => {
-    if (open && bodyRef.current) {
+    if (open && !pageMode && bodyRef.current) {
       bodyRef.current.focus();
     }
-  }, [open]);
+  }, [open, pageMode]);
+
+  useEffect(() => {
+    const textarea = bodyRef.current;
+    if (!textarea) return undefined;
+
+    const resizeTextarea = () => {
+      const viewportHeight =
+        typeof window !== "undefined" ? window.visualViewport?.height || window.innerHeight : 760;
+      const minHeight = pageMode ? 220 : 180;
+      const maxHeight = pageMode
+        ? Math.max(260, Math.min(460, Math.round(viewportHeight * 0.42)))
+        : 360;
+
+      textarea.style.height = "auto";
+      textarea.style.minHeight = `${minHeight}px`;
+      textarea.style.maxHeight = `${maxHeight}px`;
+      textarea.style.height = `${Math.min(Math.max(textarea.scrollHeight, minHeight), maxHeight)}px`;
+      textarea.style.overflowY = textarea.scrollHeight > maxHeight ? "auto" : "hidden";
+    };
+
+    resizeTextarea();
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("resize", resizeTextarea);
+      window.visualViewport?.addEventListener("resize", resizeTextarea);
+    }
+
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("resize", resizeTextarea);
+        window.visualViewport?.removeEventListener("resize", resizeTextarea);
+      }
+    };
+  }, [body, pageMode]);
 
   const focusComposerField = () => {
     window.requestAnimationFrame(() => {
@@ -242,7 +276,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   return (
     <div
       className={pageMode
-        ? "flex min-h-[calc(100dvh-190px)] flex-col rounded-[30px] border p-4 md:min-h-[620px] md:p-6"
+        ? "flex flex-col rounded-[30px] border p-4 md:min-h-[620px] md:p-6"
         : "rounded-[26px] border p-4"
       }
       style={{ backgroundColor: T.card, borderColor: T.border }}
@@ -260,7 +294,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
         </div>
       </div>
 
-      <div className="relative -mx-1 mb-6">
+      <div className="relative -mx-1 mb-5">
         <div className="overflow-x-auto no-scrollbar scroll-smooth">
           <div className="flex w-max gap-2 px-1 pr-14">
             {CATEGORIES.filter((c) => c.key !== "All").map((c) => {
@@ -307,8 +341,8 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
         }}
         disabled={submitting}
         placeholder="Ask a question, share an update, or help the Soldier Hub community..."
-        rows={10}
-        className="min-h-[38dvh] flex-1 resize-none appearance-none border-0 bg-transparent p-0 text-[20px] leading-9 shadow-none outline-none ring-0 placeholder:text-[#A8ABB2] focus:border-0 focus:outline-none focus:ring-0 disabled:opacity-70 md:min-h-[42vh]"
+        rows={6}
+        className="w-full resize-none appearance-none border-0 bg-transparent p-0 text-[20px] leading-9 shadow-none outline-none ring-0 placeholder:text-[#A8ABB2] focus:border-0 focus:outline-none focus:ring-0 disabled:opacity-70"
         style={{ color: T.text, border: "none", boxShadow: "none" }}
       />
 
@@ -323,7 +357,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
       )}
 
       <div
-        className="mt-4 rounded-[26px] border p-4 backdrop-blur-xl"
+        className="mt-3 rounded-[24px] border p-3 backdrop-blur-xl md:p-4"
         style={{
           borderColor: T.borderSoft,
           backgroundColor: "rgba(255,255,255,0.96)",
