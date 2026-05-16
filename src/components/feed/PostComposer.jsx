@@ -16,6 +16,7 @@ const SAFETY_MESSAGE =
 const RED = "#B31942";
 const DARK_RED = "#9F1239";
 const PUBLISH_SCROLL_KEY = "soldierhub_scroll_to_latest_post";
+const COMPOSE_SUBMIT_EVENT = "soldierhub-compose-submit";
 
 function getAnonymousDisplayName(seed) {
   const source = String(seed || "anonymous");
@@ -45,6 +46,26 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   const [submitting, setSubmitting] = useState(false);
 
   const bodyRef = useRef(null);
+  const bodyValueRef = useRef(body);
+  const categoryValueRef = useRef(category);
+  const anonymousValueRef = useRef(anonymous);
+  const submittingValueRef = useRef(submitting);
+
+  useEffect(() => {
+    bodyValueRef.current = body;
+  }, [body]);
+
+  useEffect(() => {
+    categoryValueRef.current = category;
+  }, [category]);
+
+  useEffect(() => {
+    anonymousValueRef.current = anonymous;
+  }, [anonymous]);
+
+  useEffect(() => {
+    submittingValueRef.current = submitting;
+  }, [submitting]);
 
   useEffect(() => {
     if (open && bodyRef.current) {
@@ -59,18 +80,18 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   };
 
   const selectCategory = (nextCategory) => {
-    if (submitting) return;
+    if (submittingValueRef.current) return;
     setCategory(nextCategory);
     focusComposerField();
   };
 
   const toggleAnonymous = () => {
-    if (submitting) return;
+    if (submittingValueRef.current) return;
     setAnonymous((value) => !value);
   };
 
   const closeComposer = () => {
-    if (submitting) return;
+    if (submittingValueRef.current) return;
 
     if (startOpen) {
       setBody("");
@@ -90,35 +111,39 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   };
 
   const submit = async () => {
-    if (submitting) return;
+    if (submittingValueRef.current) return;
 
     setError("");
 
-    const cleanedBody = body.trim();
+    const cleanedBody = bodyValueRef.current.trim();
 
     if (!cleanedBody) {
       setError("Write something before publishing.");
+      focusComposerField();
       return;
     }
 
     try {
       setSubmitting(true);
+      submittingValueRef.current = true;
 
       const mod = await moderateAsync(cleanedBody);
 
       if (!mod.allowed) {
         setError(mod.reason || SAFETY_MESSAGE);
+        focusComposerField();
         return;
       }
 
       const result = await createPost({
         body: cleanedBody,
-        category,
-        anonymous,
+        category: categoryValueRef.current,
+        anonymous: anonymousValueRef.current,
       });
 
       if (result?.ok === false) {
         setError(result.error || "Could not create post. Try again.");
+        focusComposerField();
         return;
       }
 
@@ -133,10 +158,26 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     } catch (err) {
       console.error(err);
       setError("Could not create post. Try again.");
+      focusComposerField();
     } finally {
       setSubmitting(false);
+      submittingValueRef.current = false;
     }
   };
+
+  useEffect(() => {
+    if (!pageMode) return undefined;
+
+    const handleExternalSubmit = () => {
+      submit();
+    };
+
+    window.addEventListener(COMPOSE_SUBMIT_EVENT, handleExternalSubmit);
+
+    return () => {
+      window.removeEventListener(COMPOSE_SUBMIT_EVENT, handleExternalSubmit);
+    };
+  }, [pageMode]);
 
   if (!currentUser || currentUser.status !== "verified") {
     return (
@@ -201,7 +242,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   return (
     <div
       className={pageMode
-        ? "flex min-h-[calc(100vh-178px)] flex-col rounded-[30px] border p-4 md:p-6"
+        ? "flex min-h-[calc(100dvh-190px)] flex-col rounded-[30px] border p-4 md:min-h-[620px] md:p-6"
         : "rounded-[26px] border p-4"
       }
       style={{ backgroundColor: T.card, borderColor: T.border }}
@@ -267,7 +308,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
         disabled={submitting}
         placeholder="Ask a question, share an update, or help the Soldier Hub community..."
         rows={10}
-        className="min-h-[42vh] flex-1 resize-none appearance-none border-0 bg-transparent p-0 text-[20px] leading-9 shadow-none outline-none ring-0 placeholder:text-[#A8ABB2] focus:border-0 focus:outline-none focus:ring-0 disabled:opacity-70"
+        className="min-h-[38dvh] flex-1 resize-none appearance-none border-0 bg-transparent p-0 text-[20px] leading-9 shadow-none outline-none ring-0 placeholder:text-[#A8ABB2] focus:border-0 focus:outline-none focus:ring-0 disabled:opacity-70 md:min-h-[42vh]"
         style={{ color: T.text, border: "none", boxShadow: "none" }}
       />
 
@@ -282,7 +323,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
       )}
 
       <div
-        className="sticky bottom-[78px] mt-4 rounded-[26px] border p-4 backdrop-blur-xl"
+        className="mt-4 rounded-[26px] border p-4 backdrop-blur-xl"
         style={{
           borderColor: T.borderSoft,
           backgroundColor: "rgba(255,255,255,0.96)",
