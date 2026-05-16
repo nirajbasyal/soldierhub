@@ -281,7 +281,7 @@ export default function HomePage() {
               <FeedHero currentUser={currentUser} postCount={feedPosts.length} />
             </div>
 
-            <div className="px-2 md:px-0">
+            <div className="hidden md:block px-2 md:px-0">
               <PostComposer />
             </div>
 
