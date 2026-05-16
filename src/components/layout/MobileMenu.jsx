@@ -7,7 +7,6 @@ import {
   Activity,
   BookMarked,
   Calculator,
-  ChevronRight,
   Compass,
   Loader2,
   LogIn,
@@ -18,7 +17,6 @@ import {
 } from "lucide-react";
 import { T } from "@/lib/theme";
 import { useApp } from "@/store/AppContext";
-import Avatar from "@/components/ui/Avatar";
 import Button from "@/components/ui/Button";
 import MenuItem from "@/components/ui/MenuItem";
 import SiteInfoCard from "@/components/tools/SiteInfoCard";
@@ -102,9 +100,6 @@ export default function MobileMenu() {
   useEffect(() => {
     if (!mobileMenu) return;
 
-    router.prefetch?.("/profile");
-    router.prefetch?.("/notifications");
-
     if (isAdmin) {
       router.prefetch?.("/resources");
       router.prefetch?.("/admin");
@@ -145,28 +140,6 @@ export default function MobileMenu() {
     }, 0);
   };
 
-  const goProfile = () => {
-    if (!currentUser) {
-      openAuth("login");
-      return;
-    }
-
-    const userStatus =
-      currentUser?.status || currentUser?.verification_status || "pending";
-
-    if (userStatus !== "verified") {
-      const email = encodeURIComponent(currentUser?.email || "");
-      const name = encodeURIComponent(
-        currentUser?.full_name || "SoldierHub user"
-      );
-
-      go(`/pending-review?email=${email}&name=${name}&found=1`);
-      return;
-    }
-
-    go("/profile");
-  };
-
   const logout = async () => {
     setMobileMenu(false);
 
@@ -189,7 +162,6 @@ export default function MobileMenu() {
         style={{ backgroundColor: T.bg, animation: "slideIn 240ms ease-out" }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div
           className="sticky top-0 px-5 py-4 flex items-center justify-between border-b z-10"
           style={{ backgroundColor: T.bg, borderColor: T.border }}
@@ -220,9 +192,8 @@ export default function MobileMenu() {
           </button>
         </div>
 
-        {/* Body */}
         <div className="p-5 flex flex-col gap-4">
-          {!currentUser ? (
+          {!currentUser && (
             <div className="flex flex-col gap-2">
               <Button
                 variant="primary"
@@ -242,41 +213,6 @@ export default function MobileMenu() {
                 Create account
               </Button>
             </div>
-          ) : (
-            <button
-              type="button"
-              onClick={goProfile}
-              className="rounded-xl border p-3.5 flex items-center gap-3 text-left transition-shadow hover:shadow-sm"
-              style={{ backgroundColor: T.card, borderColor: T.border }}
-            >
-              <Avatar
-                name={currentUser?.full_name || "SoldierHub user"}
-                color={currentUser?.avatar_color}
-                size={42}
-              />
-
-              <div className="flex-1 min-w-0">
-                <div
-                  className="text-sm font-semibold truncate"
-                  style={{ color: T.text }}
-                >
-                  {currentUser?.full_name || "SoldierHub user"}
-                </div>
-
-                <div
-                  className="text-xs truncate"
-                  style={{ color: T.textSubtle }}
-                >
-                  {currentUser?.email || currentUser?.personal_email || ""}
-                </div>
-              </div>
-
-              <ChevronRight
-                size={16}
-                style={{ color: T.textSubtle }}
-                className="shrink-0"
-              />
-            </button>
           )}
 
           {isAdmin && (
