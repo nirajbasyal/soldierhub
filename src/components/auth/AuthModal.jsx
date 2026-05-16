@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import {
   AlertTriangle,
+  Check,
   Eye,
   EyeOff,
   Lock,
@@ -183,6 +184,7 @@ export default function AuthModal() {
   const [bio, setBio] = useState("");
   const [showBio, setShowBio] = useState(false);
 
+  const [legalAccepted, setLegalAccepted] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [resetSent, setResetSent] = useState(false);
@@ -205,6 +207,7 @@ export default function AuthModal() {
       setTab(authModal);
       setError("");
       setResetSent(false);
+      setLegalAccepted(false);
     }
   }, [authModal]);
 
@@ -289,6 +292,10 @@ export default function AuthModal() {
 
       if (password !== confirmPassword) {
         return setError("Password and confirm password must match.");
+      }
+
+      if (!legalAccepted) {
+        return setError("Please confirm you are 18 years or older and agree to the Terms of Use and acknowledge the Privacy Policy.");
       }
 
       if (
@@ -644,6 +651,41 @@ export default function AuthModal() {
                   placeholder="Unit, role, interests, or anything helpful for the community."
                 />
               )}
+
+              <label
+                className="sh-tap flex cursor-pointer items-start gap-2.5 rounded-xl border px-3 py-2.5 sm:rounded-2xl"
+                style={{
+                  backgroundColor: legalAccepted ? "rgba(179,25,66,0.06)" : "rgba(248,250,253,0.96)",
+                  borderColor: legalAccepted ? "rgba(179,25,66,0.26)" : T.borderSoft,
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={legalAccepted}
+                  onChange={(e) => {
+                    setLegalAccepted(e.target.checked);
+                    if (e.target.checked && error.toLowerCase().includes("terms")) {
+                      setError("");
+                    }
+                  }}
+                  className="sr-only"
+                />
+
+                <span
+                  className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-all"
+                  style={{
+                    backgroundColor: legalAccepted ? T.red : "#FFFFFF",
+                    borderColor: legalAccepted ? T.red : "rgba(154,169,188,0.75)",
+                    color: "#FFFFFF",
+                  }}
+                >
+                  {legalAccepted && <Check size={13} strokeWidth={3} />}
+                </span>
+
+                <span className="text-[11px] font-semibold leading-4 sm:text-xs sm:leading-5" style={{ color: T.textMuted }}>
+                  I am 18 years or older and I agree to the Terms of Use and acknowledge the Privacy Policy.
+                </span>
+              </label>
             </>
           )}
 
@@ -695,6 +737,30 @@ export default function AuthModal() {
                 ? "Send reset link"
                 : "Sign in"}
             </Button>
+
+            {tab === "signup" && (
+              <div className="mt-1.5 flex items-center justify-center gap-2 text-[11px] font-bold sm:text-xs" style={{ color: T.textMuted }}>
+                <a
+                  href="/terms"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:underline"
+                  style={{ color: T.navy }}
+                >
+                  Terms of Use
+                </a>
+                <span style={{ color: T.textSubtle }}>•</span>
+                <a
+                  href="/privacy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:underline"
+                  style={{ color: T.navy }}
+                >
+                  Privacy Policy
+                </a>
+              </div>
+            )}
           </div>
         </div>
       </div>
