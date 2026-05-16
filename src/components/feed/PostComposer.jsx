@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
   ChevronRight,
@@ -36,7 +37,13 @@ function getAnonymousDisplayName(seed) {
 }
 
 export default function PostComposer({ startOpen = false, pageMode = false }) {
-  const { currentUser, requireAuth, createPost } = useApp();
+  const router = useRouter();
+  const {
+    currentUser,
+    requireAuth,
+    createPost,
+    setCategory: setFeedCategory,
+  } = useApp();
 
   const [open, setOpen] = useState(startOpen);
   const [category, setCategory] = useState("General Q&A");
@@ -183,6 +190,8 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
       }
 
       resetComposer();
+      setFeedCategory?.("All");
+      router.push("/");
     } catch (err) {
       console.error("Post submit failed:", err);
       setSubmitting(false);
