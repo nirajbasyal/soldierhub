@@ -26,22 +26,22 @@ export default function Modal({ open, onClose, children, maxWidth = 480 }) {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto"
+      className="sh-modal-backdrop fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto"
       style={{
         backgroundColor: "rgba(11,28,44,0.45)",
-        backdropFilter: "blur(6px)",
+        backdropFilter: "blur(7px)",
       }}
       onClick={onClose}
     >
       <div
-        className="w-full rounded-2xl shadow-2xl border my-auto"
+        className="sh-modal-card w-full rounded-2xl shadow-2xl border my-auto"
         style={{
           maxWidth,
           maxHeight: "calc(100vh - 2rem)",
           backgroundColor: T.card,
           borderColor: T.border,
-          animation: "modalIn 200ms ease-out",
           overflowY: "auto",
+          boxShadow: "0 28px 70px rgba(7,27,51,0.22)",
         }}
         onClick={(e) => e.stopPropagation()}
       >
