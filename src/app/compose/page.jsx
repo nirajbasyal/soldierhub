@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, PenLine } from "lucide-react";
+import { ArrowLeft, HeartHandshake } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { T } from "@/lib/theme";
 import AppShell from "@/components/layout/AppShell";
@@ -42,8 +42,8 @@ export default function ComposePage() {
                 color: "#B31942",
               }}
             >
-              <PenLine size={17} />
-              New post
+              <HeartHandshake size={17} />
+              Be kind
             </div>
           </div>
 
