@@ -7,9 +7,9 @@ const quickLinks = [
   { label: "No official use", href: "#no-official-use" },
   { label: "Eligibility and verification", href: "#eligibility-and-accounts" },
   { label: "User content rules", href: "#user-content" },
+  { label: "Follow features", href: "#follow-features" },
   { label: "OPSEC protection", href: "#opsec-protection" },
   { label: "Moderation", href: "#moderation" },
-  { label: "Disclaimers", href: "#disclaimers" },
 ];
 
 const sections = [
@@ -17,7 +17,7 @@ const sections = [
     id: "acceptance",
     title: "1. Acceptance of Terms",
     body: [
-      "These Terms of Use govern your access to and use of Soldier Hub, including our website, app, posts, comments, profiles, resources, verification tools, marketplace features, reports, moderation tools, notifications, and related services.",
+      "These Terms of Use govern your access to and use of Soldier Hub, including our website, app, posts, comments, profiles, resources, verification tools, marketplace features, reports, follow and unfollow features, moderation tools, notifications, and related services.",
       "By accessing or using Soldier Hub, you agree to these Terms and our Privacy Policy. If you do not agree, do not use Soldier Hub."
     ]
   },
@@ -74,8 +74,17 @@ const sections = [
     ]
   },
   {
+    id: "follow-features",
+    title: "8. Follow and Unfollow Features",
+    body: [
+      "Soldier Hub may allow users to follow or unfollow other users for community connection purposes. Following another user does not create any official relationship, endorsement, affiliation, friendship, duty to respond, or military connection.",
+      "You may not use follow, unfollow, profile viewing, notifications, or other community features to harass, stalk, intimidate, monitor, impersonate, collect information about, or target another person.",
+      "Soldier Hub may limit, disable, remove, or restrict follow-related activity when needed for safety, privacy, moderation, abuse prevention, or platform integrity. Unfollowing a user does not automatically delete prior comments, posts, notifications, reports, logs, or moderation records."
+    ]
+  },
+  {
     id: "prohibited-content",
-    title: "8. Prohibited Content and Conduct",
+    title: "9. Prohibited Content and Conduct",
     body: ["You agree not to post, upload, share, promote, request, or engage in:"],
     bullets: [
       "Classified information, controlled unclassified information, OPSEC-sensitive information, troop movement information, deployment details, base security vulnerabilities, gate security procedures, access control weaknesses, or non-public military information.",
@@ -92,7 +101,7 @@ const sections = [
   },
   {
     id: "opsec-protection",
-    title: "9. OPSEC and Military-Sensitive Information",
+    title: "10. OPSEC and Military-Sensitive Information",
     body: [
       "Users must protect operational security, personal safety, and community trust. Do not post information that could expose service members, families, missions, units, facilities, movements, schedules, vulnerabilities, access control procedures, security practices, or other sensitive information.",
       "Soldier Hub may remove content, restrict accounts, preserve records, notify appropriate parties, or report content when we believe content creates a safety, security, legal, OPSEC, or community risk."
@@ -101,7 +110,7 @@ const sections = [
   },
   {
     id: "marketplace",
-    title: "10. Marketplace and Local Recommendations",
+    title: "11. Marketplace and Local Recommendations",
     body: [
       "If marketplace or local recommendation features are available, Soldier Hub only provides a place for users to share or discover information. Soldier Hub is not a party to transactions between users and does not guarantee any item, seller, buyer, business, service, price, quality, safety, legality, payment, delivery, or outcome.",
       "Users are responsible for complying with all applicable laws, installation rules, tax obligations, consumer protection rules, and safety practices. Meet safely, verify items, avoid scams, use secure payment judgment, and do not buy or sell prohibited items."
@@ -109,7 +118,7 @@ const sections = [
   },
   {
     id: "resources-links",
-    title: "11. Resources and External Links",
+    title: "12. Resources and External Links",
     body: [
       "Soldier Hub may provide links to public resources, official websites, local services, businesses, maps, weather, housing resources, benefit resources, BAH information, AFT tools, gate information, or community information. These links and tools are provided for convenience only.",
       "Soldier Hub does not control external websites and is not responsible for their accuracy, availability, security, privacy practices, content, products, or services. The appearance of external links does not constitute endorsement by Soldier Hub or endorsement of Soldier Hub by the linked website, the U.S. Government, the U.S. Department of Defense, the U.S. Army, Fort Bliss, or any installation."
@@ -117,7 +126,7 @@ const sections = [
   },
   {
     id: "moderation",
-    title: "12. Moderation and Enforcement",
+    title: "13. Moderation and Enforcement",
     body: [
       "Soldier Hub may review, moderate, edit for formatting, hide, restrict, label, remove, preserve, or report content at any time. We may also warn, limit, suspend, revoke, block, delete, or ban accounts at our discretion.",
       "We are not required to monitor all content and cannot guarantee that all harmful, inaccurate, offensive, illegal, or prohibited content will be removed immediately. Users should report concerning content through available reporting tools or contact support@soldierhub.com."
@@ -125,14 +134,14 @@ const sections = [
   },
   {
     id: "admins",
-    title: "13. Admins and Platform Decisions",
+    title: "14. Admins and Platform Decisions",
     body: [
-      "Admins may review pending users, reports, resources, account status, content, and platform safety issues. Admin decisions are made for platform safety and community management. Admin approval does not create any official status, government recognition, employment relationship, fiduciary duty, or legal right to use Soldier Hub."
+      "Admins may review pending users, reports, resources, account status, content, social connection abuse, and platform safety issues. Admin decisions are made for platform safety and community management. Admin approval does not create any official status, government recognition, employment relationship, fiduciary duty, or legal right to use Soldier Hub."
     ]
   },
   {
     id: "intellectual-property",
-    title: "14. Intellectual Property",
+    title: "15. Intellectual Property",
     body: [
       "Soldier Hub, including its name, branding, design, layout, features, original text, graphics, and software, is owned by Soldier Hub or its licensors. You may not copy, modify, distribute, sell, or exploit Soldier Hub materials except as allowed by these Terms or with written permission.",
       "You must not use official government seals, Army logos, military insignia, unit patches, protected trademarks, or other marks in a way that suggests endorsement, sponsorship, approval, official connection, or government authority."
@@ -140,21 +149,21 @@ const sections = [
   },
   {
     id: "privacy",
-    title: "15. Privacy",
+    title: "16. Privacy",
     body: ["Your use of Soldier Hub is also governed by our Privacy Policy. Please review it to understand how we collect, use, share, retain, and protect information."]
   },
   {
     id: "disclaimers",
-    title: "16. Disclaimers",
+    title: "17. Disclaimers",
     body: [
       "Soldier Hub is provided “as is” and “as available.” We do not guarantee that the platform will be accurate, secure, uninterrupted, error-free, current, available, or free of harmful content.",
-      "We do not guarantee the accuracy of posts, comments, resources, gate information, BAH estimates, AFT score estimates, weather, housing tips, marketplace listings, recommendations, or any other content. Always verify important information through official sources."
+      "We do not guarantee the accuracy of posts, comments, resources, gate information, BAH estimates, AFT score estimates, weather, housing tips, marketplace listings, recommendations, follower or following lists, social connections, or any other content. Always verify important information through official sources."
     ],
     tone: "danger"
   },
   {
     id: "liability",
-    title: "17. Limitation of Liability",
+    title: "18. Limitation of Liability",
     body: [
       "To the fullest extent permitted by law, Soldier Hub and its owners, operators, admins, moderators, service providers, and affiliates will not be liable for indirect, incidental, special, consequential, exemplary, or punitive damages, or for loss of data, profits, goodwill, safety, opportunity, reputation, or other intangible losses related to your use of or inability to use the platform.",
       "Some jurisdictions do not allow certain limitations of liability, so some limitations may not apply to you."
@@ -162,21 +171,21 @@ const sections = [
   },
   {
     id: "indemnity",
-    title: "18. User Responsibility and Indemnity",
+    title: "19. User Responsibility and Indemnity",
     body: [
       "To the extent permitted by law, you agree to be responsible for claims, losses, liabilities, damages, costs, and expenses arising from your content, your conduct, your violation of these Terms, your misuse of Soldier Hub, or your violation of another person’s rights."
     ]
   },
   {
     id: "changes",
-    title: "19. Changes to These Terms",
+    title: "20. Changes to These Terms",
     body: [
       "We may update these Terms from time to time. The updated version will be posted on this page with a new effective date. Your continued use of Soldier Hub after changes are posted means you accept the updated Terms."
     ]
   },
   {
     id: "contact-us",
-    title: "20. Contact Us",
+    title: "21. Contact Us",
     body: ["For questions about these Terms, safety concerns, or policy issues, contact support@soldierhub.com."]
   },
 ];
