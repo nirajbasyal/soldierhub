@@ -267,8 +267,8 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
         disabled={submitting}
         placeholder="Ask a question, share an update, or help the Soldier Hub community..."
         rows={10}
-        className="min-h-[42vh] flex-1 resize-none border-0 bg-transparent text-[20px] leading-9 outline-none placeholder:text-[#A8ABB2]"
-        style={{ color: T.text }}
+        className="min-h-[42vh] flex-1 resize-none appearance-none border-0 bg-transparent p-0 text-[20px] leading-9 shadow-none outline-none ring-0 placeholder:text-[#A8ABB2] focus:border-0 focus:outline-none focus:ring-0 disabled:opacity-70"
+        style={{ color: T.text, border: "none", boxShadow: "none" }}
       />
 
       {error && (
