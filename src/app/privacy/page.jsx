@@ -1,4 +1,4 @@
-import { ClipboardCheck, Database, EyeOff, FileText, LockKeyhole, ShieldCheck, UserCheck } from "lucide-react";
+import { Database, EyeOff, LockKeyhole, ShieldCheck, UserCheck } from "lucide-react";
 import LegalPageLayout from "@/components/legal/LegalPageLayout";
 
 const EFFECTIVE_DATE = "May 16, 2026";
@@ -27,7 +27,7 @@ const sections = [
     body: ["We may collect the following categories of information depending on how you use Soldier Hub:"],
     bullets: [
       "Account information, such as your name, email address, login information, base/community selection, profile information, avatar, account status, and verification status.",
-      "Optional verification information, such as military email, personal email, phone number, role, unit-related information you voluntarily provide, or other information needed to review account eligibility and community access.",
+      "Optional verification information, such as personal email, phone number, role, unit-related information you voluntarily provide, or other information needed to review account eligibility and community access.",
       "User-generated content, such as posts, comments, reports, profile text, resource suggestions, marketplace listings, images, and any other content you submit.",
       "Community activity information, such as likes, upvotes, comments, reports, moderation history, verification status, blocked status, admin actions, and notification-related activity.",
       "Technical and usage information, such as IP address, device type, browser type, operating system, approximate location derived from your device or network, log data, cookies, browser storage, session data, and similar usage information.",
@@ -67,7 +67,7 @@ const sections = [
     id: "verification",
     title: "5. Verification and Military Community Features",
     body: [
-      "Soldier Hub may use military email, personal email, phone number, base selection, role information, or other information you voluntarily provide to review whether an account should receive verified access. Verification is a platform access decision only.",
+      "Soldier Hub may use personal email, phone number, base selection, role information, or other information you voluntarily provide to review whether an account should receive verified access. Verification is a platform access decision only.",
       "Verification does not confirm official military status, security clearance, rank, unit assignment, employment, identity, eligibility for benefits, or any legal, official, or government status. Soldier Hub does not issue government credentials and does not replace official military systems, command channels, installation offices, military police, emergency services, housing offices, legal assistance offices, or family support programs."
     ]
   },
