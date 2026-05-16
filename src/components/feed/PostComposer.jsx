@@ -53,6 +53,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [textFocused, setTextFocused] = useState(false);
+  const [isPhoneScreen, setIsPhoneScreen] = useState(false);
 
   const bodyRef = useRef(null);
   const bodyValueRef = useRef(body);
@@ -77,6 +78,23 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   useEffect(() => {
     submittingValueRef.current = submitting;
   }, [submitting]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const phoneQuery = window.matchMedia("(max-width: 520px)");
+    const updatePhoneScreen = () => setIsPhoneScreen(phoneQuery.matches);
+
+    updatePhoneScreen();
+
+    if (phoneQuery.addEventListener) {
+      phoneQuery.addEventListener("change", updatePhoneScreen);
+      return () => phoneQuery.removeEventListener("change", updatePhoneScreen);
+    }
+
+    phoneQuery.addListener(updatePhoneScreen);
+    return () => phoneQuery.removeListener(updatePhoneScreen);
+  }, []);
 
   useEffect(() => {
     if (!pageMode || typeof window === "undefined") return;
@@ -363,7 +381,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
       </div>
 
       <div className="relative">
-        {textFocused && (
+        {textFocused && isPhoneScreen && (
           <button
             type="button"
             onMouseDown={(event) => event.preventDefault()}
