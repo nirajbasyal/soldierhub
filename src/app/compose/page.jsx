@@ -64,11 +64,23 @@ export default function ComposePage() {
               Feed
             </button>
 
+            <div
+              className="inline-flex h-11 items-center rounded-full border px-4 text-sm font-extrabold shadow-sm md:hidden"
+              style={{
+                backgroundColor: T.redBg,
+                borderColor: "rgba(179,25,66,0.16)",
+                color: T.red,
+                boxShadow: "0 10px 22px rgba(179,25,66,0.09)",
+              }}
+            >
+              Be kind
+            </div>
+
             <button
               type="button"
               onClick={publishPost}
               disabled={!canPublish || isSubmitting}
-              className="sh-tap inline-flex h-11 items-center gap-2 rounded-full border px-4 text-sm font-extrabold shadow-sm disabled:cursor-not-allowed disabled:opacity-100"
+              className="sh-tap hidden h-11 items-center gap-2 rounded-full border px-4 text-sm font-extrabold shadow-sm disabled:cursor-not-allowed disabled:opacity-100 md:inline-flex"
               style={{
                 backgroundColor: canPublish && !isSubmitting ? "#B31942" : "#E5EAF1",
                 borderColor: canPublish && !isSubmitting ? "rgba(179,25,66,0.22)" : "#D5E2F2",
