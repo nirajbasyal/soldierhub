@@ -315,16 +315,18 @@ div:has(> [aria-label="Write your SoldierHub post"] ol) > .pointer-events-none {
 [aria-label="Write your SoldierHub post"] blockquote,
 .sh-feed-post-list blockquote {
   position: relative;
-  margin: 0.65rem 0 !important;
+  width: fit-content !important;
+  max-width: calc(100% - 2.6rem) !important;
+  margin: 0.72rem 1.3rem !important;
   border: 0 !important;
   border-left: 0 !important;
   border-radius: 18px !important;
-  background: linear-gradient(135deg, rgba(221, 232, 243, 0.98), rgba(229, 238, 248, 0.96)) !important;
+  background: linear-gradient(135deg, rgba(205, 221, 237, 0.98), rgba(218, 231, 244, 0.98)) !important;
   color: #102033 !important;
-  padding: 0.85rem 2.1rem 0.85rem 2.45rem !important;
+  padding: 0.82rem 2.15rem 0.82rem 2.45rem !important;
   font-weight: 400 !important;
   line-height: 1.65 !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.58) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.52) !important;
 }
 
 [aria-label="Write your SoldierHub post"] blockquote::before,
@@ -332,23 +334,23 @@ div:has(> [aria-label="Write your SoldierHub post"] ol) > .pointer-events-none {
   content: "\201C";
   position: absolute;
   left: 0.8rem;
-  top: 0.45rem;
+  top: 0.42rem;
   font-family: 'Instrument Serif', Georgia, serif;
-  font-size: 2.1rem;
+  font-size: 2.15rem;
   line-height: 1;
-  color: rgba(63, 95, 125, 0.64);
+  color: rgba(31, 73, 112, 0.76);
 }
 
 [aria-label="Write your SoldierHub post"] blockquote::after,
 .sh-feed-post-list blockquote::after {
   content: "\201D";
   position: absolute;
-  right: 0.8rem;
-  bottom: 0.18rem;
+  right: 0.82rem;
+  bottom: 0.14rem;
   font-family: 'Instrument Serif', Georgia, serif;
-  font-size: 2.1rem;
+  font-size: 2.15rem;
   line-height: 1;
-  color: rgba(63, 95, 125, 0.48);
+  color: rgba(31, 73, 112, 0.62);
 }
 
 [aria-label="Write your SoldierHub post"] blockquote p,
@@ -402,7 +404,9 @@ div:has(> [aria-label="Write your SoldierHub post"] ol) > .pointer-events-none {
 
   [aria-label="Write your SoldierHub post"] blockquote,
   .sh-feed-post-list blockquote {
-    margin: 0.45rem 0 !important;
+    width: fit-content !important;
+    max-width: calc(100% - 1.4rem) !important;
+    margin: 0.5rem 0.7rem !important;
     border-radius: 15px !important;
     padding: 0.62rem 1.65rem 0.62rem 1.95rem !important;
     font-size: 0.95rem !important;
