@@ -317,7 +317,7 @@ export default function MobileWeatherStrip() {
                       <div className="text-[10px] font-semibold" style={{ color: T.textSubtle }}>
                         {item.label}
                       </div>
-                      <div className="text-xs font-semibold leading-snug" style={{ color: T.navy }}>
+                      <div className="text-xs font-semibold leading-snug sm:whitespace-nowrap" style={{ color: T.navy }}>
                         {item.title}
                       </div>
                     </div>
