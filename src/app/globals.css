@@ -315,8 +315,9 @@ div:has(> [aria-label="Write your SoldierHub post"] ol) > .pointer-events-none {
 [aria-label="Write your SoldierHub post"] blockquote,
 .sh-feed-post-list blockquote {
   position: relative;
-  width: fit-content !important;
-  max-width: calc(100% - 2.6rem) !important;
+  display: block !important;
+  width: auto !important;
+  max-width: none !important;
   margin: 0.72rem 1.3rem !important;
   border: 0 !important;
   border-left: 0 !important;
@@ -404,8 +405,9 @@ div:has(> [aria-label="Write your SoldierHub post"] ol) > .pointer-events-none {
 
   [aria-label="Write your SoldierHub post"] blockquote,
   .sh-feed-post-list blockquote {
-    width: fit-content !important;
-    max-width: calc(100% - 1.4rem) !important;
+    display: block !important;
+    width: auto !important;
+    max-width: none !important;
     margin: 0.5rem 0.7rem !important;
     border-radius: 15px !important;
     padding: 0.62rem 1.65rem 0.62rem 1.95rem !important;
