@@ -12,6 +12,7 @@ import {
   Pencil,
   Plus,
   Quote,
+  X,
 } from "lucide-react";
 import { CATEGORIES } from "@/lib/constants";
 import { T, TONE_STYLES } from "@/lib/theme";
@@ -513,6 +514,13 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     plainTextValueRef.current = "";
   };
 
+  const clearComposerInput = () => {
+    if (submittingValueRef.current) return;
+    clearEditor();
+    setError("");
+    focusComposerField();
+  };
+
   const closeComposer = () => {
     if (submittingValueRef.current) return;
     clearEditor();
@@ -656,9 +664,21 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
       }
       style={{ backgroundColor: T.card, borderColor: T.border }}
     >
-      <div
-        className="absolute right-4 top-4 rounded-full border px-3 py-1 text-[11px] font-extrabold"
+      <button
+        type="button"
+        onClick={closeComposer}
+        disabled={submitting}
+        aria-label="Close post composer"
+        title="Close"
+        className="sh-tap absolute right-4 top-4 hidden h-9 w-9 items-center justify-center rounded-full border md:flex"
         style={{ backgroundColor: "#F4F8FD", borderColor: T.borderSoft, color: T.textSubtle }}
+      >
+        <X size={16} strokeWidth={2.8} />
+      </button>
+
+      <div
+        className="absolute right-4 top-4 rounded-full border px-3 py-1 text-[11px] font-extrabold md:hidden"
+        style={{ backgroundColor: T.redBg, borderColor: "rgba(179, 25, 66, 0.16)", color: T.red }}
       >
         Be kind
       </div>
@@ -667,11 +687,11 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
         <Avatar name={composerDisplayName} color={composerDisplayColor} size={44} />
 
         <div className="min-w-0 flex-1">
-          <div className="truncate text-[17px] font-extrabold" style={{ color: T.text }}>
-            Create a post
+          <div className="truncate text-[16px] font-extrabold" style={{ color: T.text }}>
+            {composerDisplayName}
           </div>
-          <div className="truncate text-sm" style={{ color: T.textSubtle }}>
-            {anonymous ? composerDisplayName : currentUser.full_name}
+          <div className="truncate text-sm font-medium" style={{ color: T.textSubtle }}>
+            Posting on SoldierHub
           </div>
         </div>
       </div>
@@ -807,9 +827,9 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
             type="button"
             onClick={toggleAnonymous}
             disabled={submitting}
-            className="sh-tap flex min-w-0 flex-1 items-center justify-between gap-2 text-left"
+            className="sh-tap flex min-w-0 flex-1 flex-col items-start justify-center gap-2 rounded-[18px] px-1 py-1 text-left md:flex-row md:items-center md:justify-between md:gap-3"
           >
-            <span className="truncate text-sm font-extrabold" style={{ color: T.navy }}>
+            <span className="text-[13px] font-extrabold leading-tight md:text-sm" style={{ color: T.navy }}>
               Post anonymous
             </span>
 
@@ -833,28 +853,28 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
             </span>
           </button>
 
-          {canPublish && (
+          <div className="flex shrink-0 items-center gap-2">
             <button
               type="button"
-              onClick={closeComposer}
-              disabled={submitting}
-              className="sh-tap h-11 shrink-0 rounded-full border px-4 text-xs font-extrabold"
+              onClick={clearComposerInput}
+              disabled={!canPublish || submitting}
+              className="sh-tap h-11 shrink-0 rounded-full border px-4 text-xs font-extrabold disabled:opacity-45"
               style={{ backgroundColor: "#FFFFFF", borderColor: T.border, color: T.navy }}
             >
               Clear
             </button>
-          )}
 
-          <Button
-            type="button"
-            variant="primary"
-            size="lg"
-            onClick={submit}
-            disabled={!canPublish || submitting}
-            className="min-w-[116px] rounded-full px-5 md:min-w-[140px]"
-          >
-            {submitting ? "Publishing..." : "Publish"}
-          </Button>
+            <Button
+              type="button"
+              variant="primary"
+              size="lg"
+              onClick={submit}
+              disabled={!canPublish || submitting}
+              className="min-w-[104px] rounded-full px-4 md:min-w-[140px] md:px-5"
+            >
+              {submitting ? "Publishing..." : "Publish"}
+            </Button>
+          </div>
         </div>
       </div>
 
