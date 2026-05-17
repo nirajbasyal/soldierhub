@@ -111,13 +111,18 @@ function getPlainEditorText(editor) {
   return (editor?.innerText || "").replace(/\u00a0/g, " ").trim();
 }
 
-function selectionInsideTag(editor, tagName) {
-  if (typeof window === "undefined") return false;
+function getSelectionElement(editor) {
+  if (typeof window === "undefined") return null;
+
   const selection = window.getSelection?.();
   const anchorNode = selection?.anchorNode;
-  if (!editor || !anchorNode || !editor.contains(anchorNode)) return false;
-  const startElement = anchorNode.nodeType === Node.TEXT_NODE ? anchorNode.parentElement : anchorNode;
-  return Boolean(startElement?.closest?.(tagName));
+  if (!editor || !anchorNode || !editor.contains(anchorNode)) return null;
+
+  return anchorNode.nodeType === Node.TEXT_NODE ? anchorNode.parentElement : anchorNode;
+}
+
+function selectionInsideTag(editor, tagName) {
+  return Boolean(getSelectionElement(editor)?.closest?.(tagName));
 }
 
 function placeCaretInElement(element) {
@@ -145,6 +150,23 @@ function isEmptyEditableBlock(element) {
   if (!["p", "div"].includes(tagName)) return false;
 
   return !element.textContent?.replace(/\u00a0/g, " ").trim();
+}
+
+function isElementContentEmpty(element) {
+  if (!element) return false;
+  return !element.textContent?.replace(/\u00a0/g, " ").trim();
+}
+
+function getCurrentQuote(editor) {
+  const startElement = getSelectionElement(editor);
+  const quote = startElement?.closest?.("blockquote");
+  return quote && editor?.contains(quote) ? quote : null;
+}
+
+function getCurrentListItem(editor) {
+  const startElement = getSelectionElement(editor);
+  const listItem = startElement?.closest?.("li");
+  return listItem && editor?.contains(listItem) ? listItem : null;
 }
 
 function ensureQuoteExitSpace(editor) {
@@ -309,6 +331,73 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     });
   };
 
+  const clearBlockFormats = () => {
+    setActiveFormats((current) => ({ ...current, bullet: false, number: false, quote: false }));
+  };
+
+  const exitEmptyQuote = (quote) => {
+    const editor = editorRef.current;
+    if (!editor || !quote) return false;
+
+    const paragraph = createEmptyParagraph();
+    const nextElement = quote.nextElementSibling;
+
+    quote.parentNode?.insertBefore(paragraph, quote);
+    quote.remove();
+
+    if (isEmptyEditableBlock(nextElement)) {
+      nextElement.remove();
+    }
+
+    editor.focus({ preventScroll: true });
+    placeCaretInElement(paragraph);
+    clearBlockFormats();
+    window.requestAnimationFrame(syncEditorState);
+    return true;
+  };
+
+  const exitEmptyListItem = (listItem) => {
+    const editor = editorRef.current;
+    const list = listItem?.closest?.("ul,ol");
+    if (!editor || !listItem || !list) return false;
+
+    const paragraph = createEmptyParagraph();
+    const listHasOneItem = list.querySelectorAll(":scope > li").length <= 1;
+
+    if (listHasOneItem) {
+      list.parentNode?.insertBefore(paragraph, list);
+      list.remove();
+    } else {
+      list.parentNode?.insertBefore(paragraph, list.nextSibling);
+      listItem.remove();
+    }
+
+    editor.focus({ preventScroll: true });
+    placeCaretInElement(paragraph);
+    clearBlockFormats();
+    window.requestAnimationFrame(syncEditorState);
+    return true;
+  };
+
+  const exitEmptyStructureIfNeeded = (event) => {
+    const editor = editorRef.current;
+    if (!editor) return false;
+
+    const quote = getCurrentQuote(editor);
+    if (quote && isElementContentEmpty(quote)) {
+      event.preventDefault();
+      return exitEmptyQuote(quote);
+    }
+
+    const listItem = getCurrentListItem(editor);
+    if (listItem && isElementContentEmpty(listItem)) {
+      event.preventDefault();
+      return exitEmptyListItem(listItem);
+    }
+
+    return false;
+  };
+
   const applyFormatting = (action) => {
     if (submittingValueRef.current) return;
     const editor = editorRef.current;
@@ -373,14 +462,33 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     window.requestAnimationFrame(syncEditorState);
   };
 
-  const handleEditorKeyDown = (event) => {
+  const insertQuoteLineBreak = (event) => {
     const editor = editorRef.current;
-    if (!editor || event.key !== "Enter" || !selectionInsideTag(editor, "blockquote")) return;
+    if (!editor || !selectionInsideTag(editor, "blockquote")) return false;
 
     event.preventDefault();
     document.execCommand("insertHTML", false, "<br><br>");
     setManualFormatState("quote", true);
     window.requestAnimationFrame(syncEditorState);
+    return true;
+  };
+
+  const handleEditorBeforeInput = (event) => {
+    if (submittingValueRef.current) return;
+
+    if (event.nativeEvent?.inputType === "deleteContentBackward") {
+      exitEmptyStructureIfNeeded(event);
+      return;
+    }
+
+    if (event.nativeEvent?.inputType === "insertParagraph") {
+      insertQuoteLineBreak(event);
+    }
+  };
+
+  const handleEditorKeyDown = (event) => {
+    if (event.key === "Backspace" && exitEmptyStructureIfNeeded(event)) return;
+    if (event.key === "Enter") insertQuoteLineBreak(event);
   };
 
   const handlePaste = (event) => {
@@ -670,6 +778,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
           onFocus={() => window.requestAnimationFrame(syncQuoteState)}
           onPointerDown={handleEditorPointerDown}
           onInput={syncEditorState}
+          onBeforeInput={handleEditorBeforeInput}
           onKeyDown={handleEditorKeyDown}
           onKeyUp={syncQuoteState}
           onMouseUp={syncQuoteState}
