@@ -3,6 +3,71 @@
 import { useMemo, useState } from "react";
 import { T } from "@/lib/theme";
 
+const ALLOWED_RICH_TEXT_TAGS = new Set([
+  "B",
+  "BLOCKQUOTE",
+  "BR",
+  "DIV",
+  "EM",
+  "I",
+  "LI",
+  "OL",
+  "P",
+  "STRONG",
+  "UL",
+]);
+
+function looksLikeHtml(text = "") {
+  return /<\/?(p|div|strong|em|ul|ol|li|blockquote|br)\b/i.test(String(text));
+}
+
+function sanitizeRichTextHtml(html = "") {
+  if (typeof window === "undefined" || typeof DOMParser === "undefined") {
+    return String(html || "");
+  }
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(`<div>${html || ""}</div>`, "text/html");
+  const sourceRoot = doc.body.firstElementChild;
+  const outputDoc = document.implementation.createHTMLDocument("soldierhub-post");
+  const outputRoot = outputDoc.createElement("div");
+
+  const cleanNode = (node, parent) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      parent.appendChild(outputDoc.createTextNode(node.textContent || ""));
+      return;
+    }
+
+    if (node.nodeType !== Node.ELEMENT_NODE) return;
+
+    const tagName = node.tagName?.toUpperCase();
+
+    if (!ALLOWED_RICH_TEXT_TAGS.has(tagName)) {
+      Array.from(node.childNodes).forEach((child) => cleanNode(child, parent));
+      return;
+    }
+
+    const normalizedTag = tagName === "B" ? "strong" : tagName === "I" ? "em" : tagName.toLowerCase();
+    const nextElement = outputDoc.createElement(normalizedTag);
+    Array.from(node.childNodes).forEach((child) => cleanNode(child, nextElement));
+    parent.appendChild(nextElement);
+  };
+
+  Array.from(sourceRoot?.childNodes || []).forEach((child) => cleanNode(child, outputRoot));
+
+  return outputRoot.innerHTML.trim();
+}
+
+function htmlToPlainText(html = "") {
+  if (typeof window === "undefined" || typeof DOMParser === "undefined") {
+    return String(html || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+  }
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(`<div>${html || ""}</div>`, "text/html");
+  return (doc.body.textContent || "").replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
+}
+
 function renderInlineFormatting(text) {
   if (!text) return null;
 
@@ -172,6 +237,20 @@ function FormattedText({ text = "", className = "text-sm leading-relaxed", style
   );
 }
 
+function RichHtmlText({ html = "", className = "text-sm leading-relaxed", style = {} }) {
+  const safeHtml = useMemo(() => sanitizeRichTextHtml(html), [html]);
+
+  if (!safeHtml) return null;
+
+  return (
+    <div
+      className={`${className} space-y-3 [&_blockquote]:rounded-2xl [&_blockquote]:border-l-4 [&_blockquote]:border-[#0B1C2C] [&_blockquote]:bg-[#F4F8FD] [&_blockquote]:px-4 [&_blockquote]:py-3 [&_blockquote]:font-medium [&_em]:italic [&_li]:pl-1 [&_ol]:ml-5 [&_ol]:list-decimal [&_ol]:space-y-1.5 [&_p]:whitespace-pre-wrap [&_strong]:font-extrabold [&_ul]:ml-5 [&_ul]:list-disc [&_ul]:space-y-1.5`}
+      style={style}
+      dangerouslySetInnerHTML={{ __html: safeHtml }}
+    />
+  );
+}
+
 export default function ExpandableText({
   text = "",
   previewLength = 260,
@@ -182,18 +261,30 @@ export default function ExpandableText({
   const [expanded, setExpanded] = useState(false);
 
   const safeText = text || "";
-  const isLong = safeText.length > previewLength;
+  const isHtml = looksLikeHtml(safeText);
+  const plainText = isHtml ? htmlToPlainText(safeText) : safeText;
+  const isLong = plainText.length > previewLength;
 
   const visibleText =
     isLong && !expanded
-      ? `${safeText.slice(0, previewLength).trim()}...`
+      ? isHtml
+        ? plainText.slice(0, previewLength).trim()
+        : `${safeText.slice(0, previewLength).trim()}...`
       : safeText;
 
   if (!safeText) return null;
 
   return (
     <div>
-      <FormattedText text={visibleText} className={className} style={style} />
+      {isHtml && !(isLong && !expanded) ? (
+        <RichHtmlText html={visibleText} className={className} style={style} />
+      ) : (
+        <FormattedText
+          text={isHtml && isLong && !expanded ? `${visibleText}...` : visibleText}
+          className={className}
+          style={style}
+        />
+      )}
 
       {isLong && (
         <button
