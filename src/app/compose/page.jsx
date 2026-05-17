@@ -241,10 +241,25 @@ export default function ComposePage() {
               flex: 1 1 auto !important;
               height: 50px !important;
               min-width: 96px !important;
+              display: inline-flex !important;
+              align-items: center !important;
+              justify-content: center !important;
+              gap: 0.38rem !important;
               padding-left: 0.9rem !important;
               padding-right: 0.9rem !important;
               font-size: 12px !important;
               border-radius: 12px !important;
+            }
+
+            div[class*="sticky"][class*="bottom-2"][class*="z-40"][class*="rounded-[22px]"] > div > div > button:last-child::before {
+              content: "✎";
+              display: inline-flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 13px;
+              font-weight: 900;
+              line-height: 1;
+              transform: translateY(-0.5px);
             }
           }
         `}</style>
