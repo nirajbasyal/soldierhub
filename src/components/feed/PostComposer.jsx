@@ -606,7 +606,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
             type="button"
             onClick={toggleAnonymous}
             disabled={submitting}
-            className="sh-tap flex min-w-0 flex-1 items-center justify-between gap-3 text-left"
+            className="sh-tap flex min-w-0 flex-1 items-center justify-between gap-3 text-left md:justify-start md:gap-4"
           >
             <div className="min-w-0">
               <div className="text-sm font-extrabold" style={{ color: T.navy }}>
@@ -648,17 +648,30 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
             </span>
           </button>
 
-          {canPublish && (
-            <button
+          <div className="flex shrink-0 items-center gap-2">
+            {canPublish && (
+              <button
+                type="button"
+                onClick={closeComposer}
+                disabled={submitting}
+                className="sh-tap h-10 shrink-0 rounded-full border px-4 text-xs font-extrabold"
+                style={{ backgroundColor: "#FFFFFF", borderColor: T.border, color: T.navy }}
+              >
+                Clear
+              </button>
+            )}
+
+            <Button
               type="button"
-              onClick={closeComposer}
-              disabled={submitting}
-              className="sh-tap h-10 shrink-0 rounded-full border px-4 text-xs font-extrabold"
-              style={{ backgroundColor: "#FFFFFF", borderColor: T.border, color: T.navy }}
+              variant="primary"
+              size="md"
+              onClick={submit}
+              disabled={!canPublish || submitting}
+              className="hidden rounded-full md:inline-flex md:min-w-[124px]"
             >
-              Clear
-            </button>
-          )}
+              {submitting ? "Publishing..." : "Publish"}
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -676,10 +689,10 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
       )}
 
       <div
-        className="mt-4 flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between md:justify-end md:pt-3"
+        className="mt-4 flex flex-col gap-3 border-t pt-4 md:hidden"
         style={{ borderColor: T.borderSoft }}
       >
-        <div className="text-xs font-medium md:hidden" style={{ color: T.textSubtle }}>
+        <div className="text-xs font-medium" style={{ color: T.textSubtle }}>
           {canPublish
             ? `${plainText.trim().length} characters ready to publish.`
             : "Write your question or update to enable publishing."}
@@ -691,7 +704,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
           size="lg"
           onClick={submit}
           disabled={!canPublish || submitting}
-          className="w-full rounded-full sm:w-auto md:min-w-[132px]"
+          className="w-full rounded-full"
         >
           {submitting ? "Publishing..." : "Publish"}
         </Button>
