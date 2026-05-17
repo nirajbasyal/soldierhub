@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 0G6QBCg2kdJq7Lnd1acQWsbj5kK9wlzWbWbPYLA99bouH4c95tGxreWj4lVoBdX
+\restrict rTlO6DHy94DjpcCS5OB2nt2FVWDBiIdMLSRGMED0Knxiy2IYtnLDvfh9j5lh05S
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 18.4
@@ -47,9 +47,13 @@ begin
   end if;
 
   update public.profiles
-  set status = 'rejected'
+  set
+    status = 'rejected',
+    verification_status = 'rejected',
+    updated_at = now()
   where id = p_profile_id
-    and status = 'pending';
+    and status = 'pending'
+    and verification_status = 'pending';
 end;
 $$;
 
@@ -68,9 +72,13 @@ begin
   end if;
 
   update public.profiles
-  set status = 'revoked'
+  set
+    status = 'revoked',
+    verification_status = 'revoked',
+    updated_at = now()
   where id = p_profile_id
-    and status = 'verified';
+    and status = 'verified'
+    and verification_status = 'verified';
 end;
 $$;
 
@@ -640,22 +648,23 @@ CREATE FUNCTION public.get_public_profile(p_user_id uuid) RETURNS TABLE(id uuid,
     LANGUAGE sql STABLE SECURITY DEFINER
     SET search_path TO 'public'
     AS $$
-                      select
-                          p.id,
-                              p.full_name,
-                                  p.bio,
-                                      p.avatar_color,
-                                          p.avatar_url,
-                                              p.role,
-                                                  p.status,
-                                                      p.verification_status,
-                                                          p.base,
-                                                              p.created_at
-                                                                from public.profiles p
-                                                                  where p.id = p_user_id
-                                                                      and coalesce(p.status, p.verification_status) = 'verified'
-                                                                        limit 1;
-                                                                        $$;
+  select
+    p.id,
+    p.full_name,
+    p.bio,
+    p.avatar_color,
+    p.avatar_url,
+    null::text as role,
+    null::text as status,
+    null::text as verification_status,
+    p.base,
+    p.created_at
+  from public.profiles p
+  where p.id = p_user_id
+    and p.status = 'verified'
+    and p.verification_status = 'verified'
+  limit 1;
+$$;
 
 
 --
@@ -761,12 +770,13 @@ CREATE FUNCTION public.is_verified_profile(p_profile_id uuid) RETURNS boolean
     SET search_path TO 'public'
     AS $$
   select exists (
-      select 1
-          from public.profiles p
-              where p.id = p_profile_id
-                    and coalesce(p.status, p.verification_status) = 'verified'
-                      );
-                      $$;
+    select 1
+    from public.profiles p
+    where p.id = p_profile_id
+      and p.status = 'verified'
+      and p.verification_status = 'verified'
+  );
+$$;
 
 
 --
@@ -941,42 +951,40 @@ CREATE FUNCTION public.search_verified_profile_by_email(p_email text) RETURNS TA
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO 'public'
     AS $_$
-          declare
-            clean_email text := lower(trim(coalesce(p_email, '')));
-            begin
-              if auth.uid() is null then
-                  raise exception 'Authentication required';
-                    end if;
+declare
+  clean_email text := lower(trim(coalesce(p_email, '')));
+begin
+  if auth.uid() is null then
+    raise exception 'Authentication required';
+  end if;
 
-                      if clean_email = '' or clean_email !~* '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$' then
-                          raise exception 'Valid email required';
-                            end if;
+  if clean_email = '' or clean_email !~* '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$' then
+    raise exception 'Valid email required';
+  end if;
 
-                              if not public.is_verified_profile(auth.uid()) then
-                                  raise exception 'Verified account required';
-                                    end if;
+  if not public.is_verified_profile(auth.uid()) then
+    raise exception 'Verified account required';
+  end if;
 
-                                      return query
-                                        select
-                                            p.id as profile_id,
-                                                coalesce(p.full_name, 'SoldierHub member')::text as full_name,
-                                                    coalesce(p.avatar_color, '#314A66')::text as avatar_color,
-                                                        p.avatar_url::text as avatar_url,
-                                                            coalesce(p.base, 'Fort Bliss')::text as base
-                                                              from public.profiles p
-                                                                where (
-                                                                      lower(coalesce(p.email, '')) = clean_email
-                                                                            or lower(coalesce(p.personal_email, '')) = clean_email
-                                                                                  or lower(coalesce(p.military_email, '')) = clean_email
-                                                                                      )
-                                                                                          and (
-                                                                                                p.status = 'verified'
-                                                                                                      or p.verification_status = 'verified'
-                                                                                                          )
-                                                                                                            order by p.created_at asc
-                                                                                                              limit 1;
-                                                                                                              end;
-                                                                                                              $_$;
+  return query
+  select
+    p.id as profile_id,
+    coalesce(p.full_name, 'SoldierHub member')::text as full_name,
+    coalesce(p.avatar_color, '#314A66')::text as avatar_color,
+    p.avatar_url::text as avatar_url,
+    coalesce(p.base, 'Fort Bliss')::text as base
+  from public.profiles p
+  where (
+    lower(coalesce(p.email, '')) = clean_email
+    or lower(coalesce(p.personal_email, '')) = clean_email
+    or lower(coalesce(p.military_email, '')) = clean_email
+  )
+    and p.status = 'verified'
+    and p.verification_status = 'verified'
+  order by p.created_at asc
+  limit 1;
+end;
+$_$;
 
 
 --
@@ -2694,5 +2702,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON T
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 0G6QBCg2kdJq7Lnd1acQWsbj5kK9wlzWbWbPYLA99bouH4c95tGxreWj4lVoBdX
+\unrestrict rTlO6DHy94DjpcCS5OB2nt2FVWDBiIdMLSRGMED0Knxiy2IYtnLDvfh9j5lh05S
 
