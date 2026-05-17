@@ -126,6 +126,18 @@ function selectionInsideTag(editor, tagName) {
   return Boolean(getSelectionElement(editor)?.closest?.(tagName));
 }
 
+function queryCommandIsActive(command) {
+  if (typeof document === "undefined" || typeof document.queryCommandState !== "function") {
+    return false;
+  }
+
+  try {
+    return Boolean(document.queryCommandState(command));
+  } catch {
+    return false;
+  }
+}
+
 function placeCaretInElement(element) {
   if (typeof window === "undefined" || !element) return;
 
@@ -205,6 +217,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   const categoryValueRef = useRef(category);
   const anonymousValueRef = useRef(anonymous);
   const submittingValueRef = useRef(submitting);
+  const activeFormatsRef = useRef(activeFormats);
 
   const canPublish = useMemo(() => plainText.trim().length > 0, [plainText]);
 
@@ -227,6 +240,10 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   useEffect(() => {
     submittingValueRef.current = submitting;
   }, [submitting]);
+
+  useEffect(() => {
+    activeFormatsRef.current = activeFormats;
+  }, [activeFormats]);
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
@@ -253,7 +270,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   useEffect(() => {
     if (open && !pageMode && editorRef.current) {
       editorRef.current.focus({ preventScroll: true });
-      window.requestAnimationFrame(syncQuoteState);
+      window.requestAnimationFrame(syncFormatState);
     }
   }, [open, pageMode]);
 
@@ -291,9 +308,23 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     };
   }, [body, pageMode, isPhoneScreen]);
 
-  const syncQuoteState = () => {
-    ensureQuoteExitSpace(editorRef.current);
-    setStructured(hasStructuredContent(editorRef.current));
+  const syncFormatState = () => {
+    const editor = editorRef.current;
+    ensureQuoteExitSpace(editor);
+    setStructured(hasStructuredContent(editor));
+
+    if (!editor || typeof document === "undefined") return;
+
+    const nextFormats = {
+      bold: queryCommandIsActive("bold") || selectionInsideTag(editor, "strong,b"),
+      italic: queryCommandIsActive("italic") || selectionInsideTag(editor, "em,i"),
+      bullet: queryCommandIsActive("insertUnorderedList") || selectionInsideTag(editor, "ul"),
+      number: queryCommandIsActive("insertOrderedList") || selectionInsideTag(editor, "ol"),
+      quote: selectionInsideTag(editor, "blockquote"),
+    };
+
+    activeFormatsRef.current = nextFormats;
+    setActiveFormats(nextFormats);
   };
 
   const syncEditorState = () => {
@@ -308,12 +339,13 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     bodyValueRef.current = cleanHtml;
     plainTextValueRef.current = cleanText;
     setError("");
+    window.requestAnimationFrame(syncFormatState);
   };
 
   const focusComposerField = () => {
     window.requestAnimationFrame(() => {
       editorRef.current?.focus({ preventScroll: true });
-      syncQuoteState();
+      syncFormatState();
     });
   };
 
@@ -325,15 +357,39 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
 
   const setManualFormatState = (key, value) => {
     setActiveFormats((current) => {
-      if (key === "bullet") return { ...current, bullet: value, number: false, quote: false };
-      if (key === "number") return { ...current, bullet: false, number: value, quote: false };
-      if (key === "quote") return { ...current, bullet: false, number: false, quote: value };
-      return { ...current, [key]: value };
+      const next = key === "bullet"
+        ? { ...current, bullet: value, number: false, quote: false }
+        : key === "number"
+          ? { ...current, bullet: false, number: value, quote: false }
+          : key === "quote"
+            ? { ...current, bullet: false, number: false, quote: value }
+            : { ...current, [key]: value };
+
+      activeFormatsRef.current = next;
+      return next;
     });
   };
 
   const clearBlockFormats = () => {
-    setActiveFormats((current) => ({ ...current, bullet: false, number: false, quote: false }));
+    setActiveFormats((current) => {
+      const next = { ...current, bullet: false, number: false, quote: false };
+      activeFormatsRef.current = next;
+      return next;
+    });
+  };
+
+  const ensureInactiveInlineFormatsBeforeTyping = () => {
+    if (typeof document === "undefined") return;
+
+    const desired = activeFormatsRef.current || {};
+
+    if (!desired.bold && queryCommandIsActive("bold")) {
+      document.execCommand("bold", false, null);
+    }
+
+    if (!desired.italic && queryCommandIsActive("italic")) {
+      document.execCommand("italic", false, null);
+    }
   };
 
   const exitEmptyQuote = (quote) => {
@@ -413,7 +469,9 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
       setManualFormatState("quote", nextQuoteState);
       if (nextQuoteState) window.requestAnimationFrame(() => ensureQuoteExitSpace(editor));
     } else {
-      const nextState = !activeFormats[action.key];
+      const nativeState = queryCommandIsActive(action.command);
+      const currentState = nativeState || Boolean(activeFormatsRef.current?.[action.key]);
+      const nextState = !currentState;
       document.execCommand(action.command, false, null);
       setManualFormatState(action.key, nextState);
     }
@@ -477,13 +535,25 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   const handleEditorBeforeInput = (event) => {
     if (submittingValueRef.current) return;
 
-    if (event.nativeEvent?.inputType === "deleteContentBackward") {
+    const inputType = event.nativeEvent?.inputType;
+
+    if (inputType === "deleteContentBackward") {
       exitEmptyStructureIfNeeded(event);
       return;
     }
 
-    if (event.nativeEvent?.inputType === "insertParagraph") {
+    if (inputType === "insertParagraph") {
       insertQuoteLineBreak(event);
+      return;
+    }
+
+    if (
+      inputType === "insertText" ||
+      inputType === "insertCompositionText" ||
+      inputType === "insertFromComposition" ||
+      inputType === "insertReplacementText"
+    ) {
+      ensureInactiveInlineFormatsBeforeTyping();
     }
   };
 
@@ -495,6 +565,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   const handlePaste = (event) => {
     event.preventDefault();
     const text = event.clipboardData?.getData("text/plain") || "";
+    ensureInactiveInlineFormatsBeforeTyping();
     document.execCommand("insertText", false, text);
     window.requestAnimationFrame(syncEditorState);
   };
@@ -509,6 +580,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     setBody("");
     setPlainText("");
     setActiveFormats({});
+    activeFormatsRef.current = {};
     setStructured(false);
     bodyValueRef.current = "";
     plainTextValueRef.current = "";
@@ -789,13 +861,13 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
           role="textbox"
           aria-label="Write your SoldierHub post"
           aria-multiline="true"
-          onFocus={() => window.requestAnimationFrame(syncQuoteState)}
+          onFocus={() => window.requestAnimationFrame(syncFormatState)}
           onPointerDown={handleEditorPointerDown}
           onInput={syncEditorState}
           onBeforeInput={handleEditorBeforeInput}
           onKeyDown={handleEditorKeyDown}
-          onKeyUp={syncQuoteState}
-          onMouseUp={syncQuoteState}
+          onKeyUp={syncFormatState}
+          onMouseUp={syncFormatState}
           onPaste={handlePaste}
           className="w-full appearance-none border-0 bg-transparent p-0 text-[20px] leading-9 shadow-none outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0 md:text-[17px] md:leading-7 [&_blockquote]:my-3 [&_blockquote]:rounded-[18px] [&_blockquote]:border-0 [&_blockquote]:bg-[#DDE8F3] [&_blockquote]:px-6 [&_blockquote]:py-3 [&_blockquote]:font-normal [&_blockquote]:text-[#102033] [&_em]:italic [&_li]:pl-1 [&_ol]:ml-5 [&_ol]:list-decimal [&_ol]:space-y-1 [&_strong]:font-extrabold [&_ul]:ml-5 [&_ul]:list-disc [&_ul]:space-y-1"
           style={{ color: T.text, border: "none", boxShadow: "none" }}
