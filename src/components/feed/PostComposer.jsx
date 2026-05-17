@@ -299,6 +299,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   const anonymousValueRef = useRef(anonymous);
   const submittingValueRef = useRef(submitting);
   const activeFormatsRef = useRef(activeFormats);
+  const lastQuoteEnterAtRef = useRef(0);
 
   const canPublish = useMemo(() => plainText.trim().length > 0, [plainText]);
 
@@ -665,7 +666,18 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     const editor = editorRef.current;
     if (!editor || !selectionInsideTag(editor, "blockquote")) return false;
 
-    event.preventDefault();
+    event?.preventDefault?.();
+
+    const now =
+      typeof performance !== "undefined" && typeof performance.now === "function"
+        ? performance.now()
+        : Date.now();
+
+    if (now - lastQuoteEnterAtRef.current < 120) {
+      return true;
+    }
+
+    lastQuoteEnterAtRef.current = now;
     document.execCommand("insertHTML", false, "<br><br>");
     setManualFormatState("quote", true);
     window.requestAnimationFrame(syncEditorState);
