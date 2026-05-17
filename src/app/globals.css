@@ -241,6 +241,123 @@ input[placeholder="Write a reply..."]:focus-visible {
   padding-bottom: 0.7rem;
 }
 
+/* Rich text composer polish: fixed editor height, premium quote block, and soft active format state. */
+div:has(> [aria-label="Write your SoldierHub post"]) {
+  border: 1px solid rgba(207, 218, 232, 0.92);
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 251, 255, 0.96));
+  padding: 14px 15px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+div:has(> [aria-label="Write your SoldierHub post"]):focus-within {
+  border-color: rgba(179, 25, 66, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    0 10px 24px rgba(7, 27, 51, 0.045);
+}
+
+div:has(> [aria-label="Write your SoldierHub post"]) > .pointer-events-none {
+  left: 15px !important;
+  top: 14px !important;
+  max-width: calc(100% - 30px);
+}
+
+[aria-label="Write your SoldierHub post"] {
+  height: 142px !important;
+  min-height: 142px !important;
+  max-height: 142px !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  padding-right: 4px !important;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(63, 95, 125, 0.28) transparent;
+}
+
+[aria-label="Write your SoldierHub post"]::-webkit-scrollbar {
+  width: 7px;
+}
+
+[aria-label="Write your SoldierHub post"]::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+[aria-label="Write your SoldierHub post"]::-webkit-scrollbar-thumb {
+  background: rgba(63, 95, 125, 0.22);
+  border-radius: 999px;
+}
+
+[aria-label="Post formatting toolbar"] {
+  background: rgba(255, 246, 248, 0.78) !important;
+  border-color: rgba(179, 25, 66, 0.13) !important;
+}
+
+[aria-label="Post formatting toolbar"] button[aria-pressed="true"] {
+  background-color: rgba(179, 25, 66, 0.105) !important;
+  border-color: rgba(179, 25, 66, 0.26) !important;
+  color: #9F1239 !important;
+  box-shadow:
+    0 8px 18px rgba(179, 25, 66, 0.075),
+    inset 0 1px 0 rgba(255, 255, 255, 0.68) !important;
+}
+
+[aria-label="Post formatting toolbar"] button[aria-pressed="true"] svg {
+  color: #9F1239 !important;
+}
+
+[aria-label="Write your SoldierHub post"] blockquote,
+.sh-feed-post-list blockquote {
+  position: relative;
+  margin: 0.75rem 0 !important;
+  border: 1px solid rgba(207, 218, 232, 0.95) !important;
+  border-left: 5px solid rgba(179, 25, 66, 0.42) !important;
+  border-radius: 22px !important;
+  background:
+    linear-gradient(135deg, rgba(255, 246, 248, 0.94), rgba(244, 248, 253, 0.98)) !important;
+  color: #102033 !important;
+  padding: 1rem 2.35rem !important;
+  font-weight: 650 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.74);
+}
+
+[aria-label="Write your SoldierHub post"] blockquote::before,
+.sh-feed-post-list blockquote::before {
+  content: "\201C";
+  position: absolute;
+  left: 0.88rem;
+  top: 0.56rem;
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: 2.25rem;
+  line-height: 1;
+  color: rgba(179, 25, 66, 0.42);
+}
+
+[aria-label="Write your SoldierHub post"] blockquote::after,
+.sh-feed-post-list blockquote::after {
+  content: "\201D";
+  position: absolute;
+  right: 0.92rem;
+  bottom: 0.22rem;
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: 2.25rem;
+  line-height: 1;
+  color: rgba(179, 25, 66, 0.32);
+}
+
+[aria-label="Write your SoldierHub post"] blockquote p,
+.sh-feed-post-list blockquote p {
+  margin: 0 !important;
+}
+
+@media (max-width: 520px) {
+  [aria-label="Write your SoldierHub post"] {
+    height: 180px !important;
+    min-height: 180px !important;
+    max-height: 180px !important;
+  }
+}
+
 /* Facebook-style mobile feed: posts touch both sides of the phone screen. */
 @media (max-width: 767px) {
   .sh-feed-post-list > article {
