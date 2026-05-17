@@ -37,12 +37,26 @@ const COMPOSER_CATEGORY_LABELS = {
 };
 
 const FORMAT_ACTIONS = [
-  { key: "bold", label: "Bold", shortLabel: "B", icon: Bold },
-  { key: "italic", label: "Italic", shortLabel: "I", icon: Italic },
-  { key: "bullet", label: "Bullet list", shortLabel: "• List", icon: List },
-  { key: "number", label: "Numbered list", shortLabel: "1. List", icon: ListOrdered },
-  { key: "quote", label: "Quote", shortLabel: "Quote", icon: Quote },
+  { key: "bold", command: "bold", label: "Bold", shortLabel: "B", icon: Bold },
+  { key: "italic", command: "italic", label: "Italic", shortLabel: "I", icon: Italic },
+  { key: "bullet", command: "insertUnorderedList", label: "Bullet list", shortLabel: "• List", icon: List },
+  { key: "number", command: "insertOrderedList", label: "Numbered list", shortLabel: "1. List", icon: ListOrdered },
+  { key: "quote", command: "formatBlock", label: "Quote", shortLabel: "Quote", icon: Quote },
 ];
+
+const ALLOWED_EDITOR_TAGS = new Set([
+  "B",
+  "BLOCKQUOTE",
+  "BR",
+  "DIV",
+  "EM",
+  "I",
+  "LI",
+  "OL",
+  "P",
+  "STRONG",
+  "UL",
+]);
 
 function getAnonymousDisplayName(seed) {
   const source = String(seed || "anonymous");
@@ -55,38 +69,48 @@ function getAnonymousDisplayName(seed) {
   return `Anonymous${String(total % 10000).padStart(4, "0")}`;
 }
 
-function formatSelectedLines(value, type) {
-  const fallback = type === "quote" ? "Important note" : "List item";
-  const lines = (value || fallback).split("\n");
-
-  if (type === "bullet") {
-    return lines
-      .map((line) => {
-        const cleaned = line.replace(/^\s*[-*•]\s+/, "").trim();
-        return `- ${cleaned || "List item"}`;
-      })
-      .join("\n");
+function sanitizeComposerHtml(html = "") {
+  if (typeof window === "undefined" || typeof DOMParser === "undefined") {
+    return String(html || "");
   }
 
-  if (type === "number") {
-    return lines
-      .map((line, index) => {
-        const cleaned = line.replace(/^\s*\d+[.)]\s+/, "").trim();
-        return `${index + 1}. ${cleaned || "List item"}`;
-      })
-      .join("\n");
-  }
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(`<div>${html || ""}</div>`, "text/html");
+  const sourceRoot = doc.body.firstElementChild;
+  const outputDoc = document.implementation.createHTMLDocument("soldierhub-compose");
+  const outputRoot = outputDoc.createElement("div");
 
-  if (type === "quote") {
-    return lines
-      .map((line) => {
-        const cleaned = line.replace(/^\s*>\s?/, "").trim();
-        return `> ${cleaned || "Important note"}`;
-      })
-      .join("\n");
-  }
+  const cleanNode = (node, parent) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      parent.appendChild(outputDoc.createTextNode(node.textContent || ""));
+      return;
+    }
 
-  return value;
+    if (node.nodeType !== Node.ELEMENT_NODE) return;
+
+    const tagName = node.tagName?.toUpperCase();
+
+    if (!ALLOWED_EDITOR_TAGS.has(tagName)) {
+      Array.from(node.childNodes).forEach((child) => cleanNode(child, parent));
+      return;
+    }
+
+    const normalizedTag = tagName === "B" ? "strong" : tagName === "I" ? "em" : tagName.toLowerCase();
+    const nextElement = outputDoc.createElement(normalizedTag);
+    Array.from(node.childNodes).forEach((child) => cleanNode(child, nextElement));
+    parent.appendChild(nextElement);
+  };
+
+  Array.from(sourceRoot?.childNodes || []).forEach((child) => cleanNode(child, outputRoot));
+
+  return outputRoot.innerHTML
+    .replace(/<div><br><\/div>/gi, "")
+    .replace(/<p><br><\/p>/gi, "")
+    .trim();
+}
+
+function getPlainEditorText(editor) {
+  return (editor?.innerText || "").replace(/\u00a0/g, " ").trim();
 }
 
 export default function PostComposer({ startOpen = false, pageMode = false }) {
@@ -101,23 +125,29 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   const [open, setOpen] = useState(startOpen);
   const [category, setCategory] = useState("General Q&A");
   const [body, setBody] = useState("");
+  const [plainText, setPlainText] = useState("");
   const [anonymous, setAnonymous] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [textFocused, setTextFocused] = useState(false);
   const [isPhoneScreen, setIsPhoneScreen] = useState(false);
 
-  const bodyRef = useRef(null);
+  const editorRef = useRef(null);
   const bodyValueRef = useRef(body);
+  const plainTextValueRef = useRef(plainText);
   const categoryValueRef = useRef(category);
   const anonymousValueRef = useRef(anonymous);
   const submittingValueRef = useRef(submitting);
 
-  const canPublish = useMemo(() => body.trim().length > 0, [body]);
+  const canPublish = useMemo(() => plainText.trim().length > 0, [plainText]);
 
   useEffect(() => {
     bodyValueRef.current = body;
   }, [body]);
+
+  useEffect(() => {
+    plainTextValueRef.current = plainText;
+  }, [plainText]);
 
   useEffect(() => {
     categoryValueRef.current = category;
@@ -162,16 +192,16 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   }, [canPublish, submitting, pageMode]);
 
   useEffect(() => {
-    if (open && !pageMode && bodyRef.current) {
-      bodyRef.current.focus();
+    if (open && !pageMode && editorRef.current) {
+      editorRef.current.focus({ preventScroll: true });
     }
   }, [open, pageMode]);
 
   useEffect(() => {
-    const textarea = bodyRef.current;
-    if (!textarea) return undefined;
+    const editor = editorRef.current;
+    if (!editor) return undefined;
 
-    const resizeTextarea = () => {
+    const resizeEditor = () => {
       const viewportHeight =
         typeof window !== "undefined" ? window.visualViewport?.height || window.innerHeight : 760;
       const minHeight = pageMode ? (isPhoneScreen ? 190 : 160) : isPhoneScreen ? 180 : 122;
@@ -181,36 +211,46 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
           ? 360
           : 260;
 
-      textarea.style.height = "auto";
-      textarea.style.minHeight = `${minHeight}px`;
-      textarea.style.maxHeight = `${maxHeight}px`;
-      textarea.style.height = `${Math.min(Math.max(textarea.scrollHeight, minHeight), maxHeight)}px`;
-      textarea.style.overflowY = textarea.scrollHeight > maxHeight ? "auto" : "hidden";
+      editor.style.minHeight = `${minHeight}px`;
+      editor.style.maxHeight = `${maxHeight}px`;
+      editor.style.overflowY = editor.scrollHeight > maxHeight ? "auto" : "hidden";
     };
 
-    resizeTextarea();
+    resizeEditor();
 
     if (typeof window !== "undefined") {
-      window.addEventListener("resize", resizeTextarea);
-      window.visualViewport?.addEventListener("resize", resizeTextarea);
+      window.addEventListener("resize", resizeEditor);
+      window.visualViewport?.addEventListener("resize", resizeEditor);
     }
 
     return () => {
       if (typeof window !== "undefined") {
-        window.removeEventListener("resize", resizeTextarea);
-        window.visualViewport?.removeEventListener("resize", resizeTextarea);
+        window.removeEventListener("resize", resizeEditor);
+        window.visualViewport?.removeEventListener("resize", resizeEditor);
       }
     };
   }, [body, pageMode, isPhoneScreen]);
 
+  const syncEditorState = () => {
+    const editor = editorRef.current;
+    const cleanHtml = sanitizeComposerHtml(editor?.innerHTML || "");
+    const cleanText = getPlainEditorText(editor);
+
+    setBody(cleanHtml);
+    setPlainText(cleanText);
+    bodyValueRef.current = cleanHtml;
+    plainTextValueRef.current = cleanText;
+    setError("");
+  };
+
   const focusComposerField = () => {
     window.requestAnimationFrame(() => {
-      bodyRef.current?.focus({ preventScroll: true });
+      editorRef.current?.focus({ preventScroll: true });
     });
   };
 
   const dismissKeyboard = () => {
-    bodyRef.current?.blur();
+    editorRef.current?.blur();
     setTextFocused(false);
   };
 
@@ -220,52 +260,28 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     focusComposerField();
   };
 
-  const applyFormatting = (formatType) => {
+  const applyFormatting = (action) => {
     if (submittingValueRef.current) return;
 
-    const textarea = bodyRef.current;
-    const currentBody = bodyValueRef.current || "";
-    const start = textarea?.selectionStart ?? currentBody.length;
-    const end = textarea?.selectionEnd ?? currentBody.length;
-    const selectedText = currentBody.slice(start, end);
+    const editor = editorRef.current;
+    if (!editor || typeof document === "undefined") return;
 
-    let replacement = selectedText;
-    let selectStartOffset = 0;
-    let selectEndOffset = 0;
+    editor.focus({ preventScroll: true });
 
-    if (formatType === "bold") {
-      const content = selectedText || "bold text";
-      replacement = `**${content}**`;
-      selectStartOffset = 2;
-      selectEndOffset = 2 + content.length;
-    } else if (formatType === "italic") {
-      const content = selectedText || "italic text";
-      replacement = `*${content}*`;
-      selectStartOffset = 1;
-      selectEndOffset = 1 + content.length;
+    if (action.command === "formatBlock") {
+      document.execCommand("formatBlock", false, "blockquote");
     } else {
-      replacement = formatSelectedLines(selectedText, formatType);
-      selectStartOffset = 0;
-      selectEndOffset = replacement.length;
+      document.execCommand(action.command, false, null);
     }
 
-    const needsLeadingBreak = start > 0 && currentBody[start - 1] !== "\n" && ["bullet", "number", "quote"].includes(formatType);
-    const needsTrailingBreak = end < currentBody.length && currentBody[end] !== "\n" && ["bullet", "number", "quote"].includes(formatType);
-    const finalReplacement = `${needsLeadingBreak ? "\n" : ""}${replacement}${needsTrailingBreak ? "\n" : ""}`;
-    const finalSelectStartOffset = selectStartOffset + (needsLeadingBreak ? 1 : 0);
-    const finalSelectEndOffset = selectEndOffset + (needsLeadingBreak ? 1 : 0);
-    const nextBody = `${currentBody.slice(0, start)}${finalReplacement}${currentBody.slice(end)}`;
+    window.requestAnimationFrame(syncEditorState);
+  };
 
-    setBody(nextBody);
-    bodyValueRef.current = nextBody;
-    setError("");
-
-    window.requestAnimationFrame(() => {
-      const nextTextarea = bodyRef.current;
-      if (!nextTextarea) return;
-      nextTextarea.focus({ preventScroll: true });
-      nextTextarea.setSelectionRange(start + finalSelectStartOffset, start + finalSelectEndOffset);
-    });
+  const handlePaste = (event) => {
+    event.preventDefault();
+    const text = event.clipboardData?.getData("text/plain") || "";
+    document.execCommand("insertText", false, text);
+    window.requestAnimationFrame(syncEditorState);
   };
 
   const toggleAnonymous = () => {
@@ -273,21 +289,30 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     setAnonymous((value) => !value);
   };
 
+  const clearEditor = () => {
+    if (editorRef.current) {
+      editorRef.current.innerHTML = "";
+    }
+    setBody("");
+    setPlainText("");
+    bodyValueRef.current = "";
+    plainTextValueRef.current = "";
+  };
+
   const closeComposer = () => {
     if (submittingValueRef.current) return;
 
-    if (startOpen) {
-      setBody("");
-      setAnonymous(false);
-      setError("");
-      return;
-    }
+    clearEditor();
+    setAnonymous(false);
+    setError("");
 
-    setOpen(false);
+    if (!startOpen) {
+      setOpen(false);
+    }
   };
 
   const resetComposer = () => {
-    setBody("");
+    clearEditor();
     setAnonymous(false);
     setError("");
     setOpen(startOpen);
@@ -297,10 +322,12 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     if (submittingValueRef.current) return;
 
     setError("");
+    syncEditorState();
 
-    const cleanedBody = bodyValueRef.current.trim();
+    const cleanedText = plainTextValueRef.current.trim();
+    const cleanedBody = sanitizeComposerHtml(bodyValueRef.current).trim();
 
-    if (!cleanedBody) {
+    if (!cleanedText) {
       setError("Write something before publishing.");
       focusComposerField();
       return;
@@ -310,7 +337,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
       setSubmitting(true);
       submittingValueRef.current = true;
 
-      const mod = await moderateAsync(cleanedBody);
+      const mod = await moderateAsync(cleanedText);
 
       if (!mod.allowed) {
         setError(mod.reason || SAFETY_MESSAGE);
@@ -319,7 +346,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
       }
 
       const result = await createPost({
-        body: cleanedBody,
+        body: cleanedBody || cleanedText,
         category: categoryValueRef.current,
         anonymous: anonymousValueRef.current,
       });
@@ -492,21 +519,25 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
         </span>
 
         <div className="flex min-w-0 flex-1 flex-wrap gap-1.5 md:flex-nowrap">
-          {FORMAT_ACTIONS.map(({ key, label, shortLabel, icon: Icon }) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => applyFormatting(key)}
-              disabled={submitting}
-              className="sh-tap inline-flex h-9 items-center gap-1.5 rounded-full border bg-white px-3 text-xs font-extrabold transition active:scale-[0.98] disabled:opacity-50 md:h-8 md:px-2.5"
-              style={{ borderColor: T.border, color: T.navy }}
-              title={label}
-              aria-label={label}
-            >
-              <Icon size={14} strokeWidth={2.4} />
-              <span>{shortLabel}</span>
-            </button>
-          ))}
+          {FORMAT_ACTIONS.map((action) => {
+            const Icon = action.icon;
+            return (
+              <button
+                key={action.key}
+                type="button"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => applyFormatting(action)}
+                disabled={submitting}
+                className="sh-tap inline-flex h-9 items-center gap-1.5 rounded-full border bg-white px-3 text-xs font-extrabold transition active:scale-[0.98] disabled:opacity-50 md:h-8 md:px-2.5"
+                style={{ borderColor: T.border, color: T.navy }}
+                title={action.label}
+                aria-label={action.label}
+              >
+                <Icon size={14} strokeWidth={2.4} />
+                <span>{action.shortLabel}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -528,19 +559,27 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
           </button>
         )}
 
-        <textarea
-          ref={bodyRef}
-          value={body}
+        {!plainText && (
+          <div
+            className="pointer-events-none absolute left-0 top-0 text-[20px] leading-9 md:text-[17px] md:leading-7"
+            style={{ color: "#A8ABB2" }}
+          >
+            Ask a question, share an update, or help the Soldier Hub community...
+          </div>
+        )}
+
+        <div
+          ref={editorRef}
+          contentEditable={!submitting}
+          suppressContentEditableWarning
+          role="textbox"
+          aria-label="Write your SoldierHub post"
+          aria-multiline="true"
           onFocus={() => setTextFocused(true)}
           onBlur={() => window.setTimeout(() => setTextFocused(false), 120)}
-          onChange={(event) => {
-            setBody(event.target.value);
-            setError("");
-          }}
-          disabled={submitting}
-          placeholder="Ask a question, share an update, or help the Soldier Hub community..."
-          rows={5}
-          className="w-full resize-none appearance-none border-0 bg-transparent p-0 text-[20px] leading-9 shadow-none outline-none ring-0 placeholder:text-[#A8ABB2] focus:border-0 focus:outline-none focus:ring-0 disabled:opacity-70 md:text-[17px] md:leading-7"
+          onInput={syncEditorState}
+          onPaste={handlePaste}
+          className="w-full appearance-none border-0 bg-transparent p-0 text-[20px] leading-9 shadow-none outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0 md:text-[17px] md:leading-7 [&_blockquote]:my-2 [&_blockquote]:rounded-2xl [&_blockquote]:border-l-4 [&_blockquote]:border-[#0B1C2C] [&_blockquote]:bg-[#F4F8FD] [&_blockquote]:px-4 [&_blockquote]:py-3 [&_em]:italic [&_li]:pl-1 [&_ol]:ml-5 [&_ol]:list-decimal [&_ol]:space-y-1 [&_strong]:font-extrabold [&_ul]:ml-5 [&_ul]:list-disc [&_ul]:space-y-1"
           style={{ color: T.text, border: "none", boxShadow: "none" }}
         />
       </div>
@@ -609,7 +648,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
             </span>
           </button>
 
-          {body.trim() && (
+          {canPublish && (
             <button
               type="button"
               onClick={closeComposer}
@@ -642,7 +681,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
       >
         <div className="text-xs font-medium md:hidden" style={{ color: T.textSubtle }}>
           {canPublish
-            ? `${body.trim().length} characters ready to publish.`
+            ? `${plainText.trim().length} characters ready to publish.`
             : "Write your question or update to enable publishing."}
         </div>
 
