@@ -122,11 +122,11 @@ create policy "posts: verified users can create posts"
   );
 
 -- Users can edit only their own posts.
--- Column-level grants below restrict editable fields to title/body/category/edited.
+-- Column-level grants below restrict editable fields to body/category/edited.
 revoke update on public.posts from anon;
 revoke update on public.posts from authenticated;
 
-grant update (title, body, category, edited) on public.posts to authenticated;
+grant update (body, category, edited) on public.posts to authenticated;
 
 create policy "posts: authors can update their own posts"
   on public.posts
