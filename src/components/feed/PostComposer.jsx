@@ -2,7 +2,17 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, ChevronRight, Pencil, Plus } from "lucide-react";
+import {
+  AlertTriangle,
+  Bold,
+  ChevronRight,
+  Italic,
+  List,
+  ListOrdered,
+  Pencil,
+  Plus,
+  Quote,
+} from "lucide-react";
 import { CATEGORIES } from "@/lib/constants";
 import { T, TONE_STYLES } from "@/lib/theme";
 import { moderateAsync } from "@/lib/moderation-client";
@@ -26,6 +36,14 @@ const COMPOSER_CATEGORY_LABELS = {
   "Things To Do": "Things To Do",
 };
 
+const FORMAT_ACTIONS = [
+  { key: "bold", label: "Bold", shortLabel: "B", icon: Bold },
+  { key: "italic", label: "Italic", shortLabel: "I", icon: Italic },
+  { key: "bullet", label: "Bullet list", shortLabel: "• List", icon: List },
+  { key: "number", label: "Numbered list", shortLabel: "1. List", icon: ListOrdered },
+  { key: "quote", label: "Quote", shortLabel: "Quote", icon: Quote },
+];
+
 function getAnonymousDisplayName(seed) {
   const source = String(seed || "anonymous");
   let total = 0;
@@ -35,6 +53,40 @@ function getAnonymousDisplayName(seed) {
   }
 
   return `Anonymous${String(total % 10000).padStart(4, "0")}`;
+}
+
+function formatSelectedLines(value, type) {
+  const fallback = type === "quote" ? "Important note" : "List item";
+  const lines = (value || fallback).split("\n");
+
+  if (type === "bullet") {
+    return lines
+      .map((line) => {
+        const cleaned = line.replace(/^\s*[-*•]\s+/, "").trim();
+        return `- ${cleaned || "List item"}`;
+      })
+      .join("\n");
+  }
+
+  if (type === "number") {
+    return lines
+      .map((line, index) => {
+        const cleaned = line.replace(/^\s*\d+[.)]\s+/, "").trim();
+        return `${index + 1}. ${cleaned || "List item"}`;
+      })
+      .join("\n");
+  }
+
+  if (type === "quote") {
+    return lines
+      .map((line) => {
+        const cleaned = line.replace(/^\s*>\s?/, "").trim();
+        return `> ${cleaned || "Important note"}`;
+      })
+      .join("\n");
+  }
+
+  return value;
 }
 
 export default function PostComposer({ startOpen = false, pageMode = false }) {
@@ -122,10 +174,12 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     const resizeTextarea = () => {
       const viewportHeight =
         typeof window !== "undefined" ? window.visualViewport?.height || window.innerHeight : 760;
-      const minHeight = pageMode ? 190 : 180;
+      const minHeight = pageMode ? (isPhoneScreen ? 190 : 160) : isPhoneScreen ? 180 : 122;
       const maxHeight = pageMode
-        ? Math.max(240, Math.min(420, Math.round(viewportHeight * 0.38)))
-        : 360;
+        ? Math.max(220, Math.min(isPhoneScreen ? 420 : 340, Math.round(viewportHeight * 0.38)))
+        : isPhoneScreen
+          ? 360
+          : 260;
 
       textarea.style.height = "auto";
       textarea.style.minHeight = `${minHeight}px`;
@@ -147,7 +201,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
         window.visualViewport?.removeEventListener("resize", resizeTextarea);
       }
     };
-  }, [body, pageMode]);
+  }, [body, pageMode, isPhoneScreen]);
 
   const focusComposerField = () => {
     window.requestAnimationFrame(() => {
@@ -164,6 +218,54 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     if (submittingValueRef.current) return;
     setCategory(nextCategory);
     focusComposerField();
+  };
+
+  const applyFormatting = (formatType) => {
+    if (submittingValueRef.current) return;
+
+    const textarea = bodyRef.current;
+    const currentBody = bodyValueRef.current || "";
+    const start = textarea?.selectionStart ?? currentBody.length;
+    const end = textarea?.selectionEnd ?? currentBody.length;
+    const selectedText = currentBody.slice(start, end);
+
+    let replacement = selectedText;
+    let selectStartOffset = 0;
+    let selectEndOffset = 0;
+
+    if (formatType === "bold") {
+      const content = selectedText || "bold text";
+      replacement = `**${content}**`;
+      selectStartOffset = 2;
+      selectEndOffset = 2 + content.length;
+    } else if (formatType === "italic") {
+      const content = selectedText || "italic text";
+      replacement = `*${content}*`;
+      selectStartOffset = 1;
+      selectEndOffset = 1 + content.length;
+    } else {
+      replacement = formatSelectedLines(selectedText, formatType);
+      selectStartOffset = 0;
+      selectEndOffset = replacement.length;
+    }
+
+    const needsLeadingBreak = start > 0 && currentBody[start - 1] !== "\n" && ["bullet", "number", "quote"].includes(formatType);
+    const needsTrailingBreak = end < currentBody.length && currentBody[end] !== "\n" && ["bullet", "number", "quote"].includes(formatType);
+    const finalReplacement = `${needsLeadingBreak ? "\n" : ""}${replacement}${needsTrailingBreak ? "\n" : ""}`;
+    const finalSelectStartOffset = selectStartOffset + (needsLeadingBreak ? 1 : 0);
+    const finalSelectEndOffset = selectEndOffset + (needsLeadingBreak ? 1 : 0);
+    const nextBody = `${currentBody.slice(0, start)}${finalReplacement}${currentBody.slice(end)}`;
+
+    setBody(nextBody);
+    bodyValueRef.current = nextBody;
+    setError("");
+
+    window.requestAnimationFrame(() => {
+      const nextTextarea = bodyRef.current;
+      if (!nextTextarea) return;
+      nextTextarea.focus({ preventScroll: true });
+      nextTextarea.setSelectionRange(start + finalSelectStartOffset, start + finalSelectEndOffset);
+    });
   };
 
   const toggleAnonymous = () => {
@@ -323,12 +425,12 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   return (
     <div
       className={pageMode
-        ? "flex flex-col rounded-[30px] border p-4 md:min-h-[620px] md:p-6"
+        ? "flex flex-col rounded-[30px] border p-4 md:min-h-[520px] md:p-5"
         : "rounded-[26px] border p-4"
       }
       style={{ backgroundColor: T.card, borderColor: T.border }}
     >
-      <div className="mb-4 flex items-center gap-3">
+      <div className="mb-3 flex items-center gap-3">
         <Avatar name={composerDisplayName} color={composerDisplayColor} size={46} />
 
         <div className="min-w-0 flex-1">
@@ -341,7 +443,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
         </div>
       </div>
 
-      <div className="relative -mx-1 mb-4">
+      <div className="relative -mx-1 mb-3">
         <div className="overflow-x-auto no-scrollbar scroll-smooth">
           <div className="flex w-max gap-2 px-1 pr-14">
             {CATEGORIES.filter((c) => c.key !== "All").map((c) => {
@@ -354,7 +456,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
                   key={c.key}
                   type="button"
                   onClick={() => selectCategory(c.key)}
-                  className="h-11 shrink-0 rounded-full border px-5 text-sm font-bold transition-all active:scale-[0.98]"
+                  className="h-11 shrink-0 rounded-full border px-5 text-sm font-bold transition-all active:scale-[0.98] md:h-10 md:px-4"
                   style={{
                     backgroundColor: active ? s.bg : "#FFFFFF",
                     color: active ? s.text : T.textMuted,
@@ -377,6 +479,34 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
           }}
         >
           <ChevronRight size={22} strokeWidth={2.7} style={{ color: RED }} />
+        </div>
+      </div>
+
+      <div
+        className="mb-3 flex flex-wrap items-center gap-1.5 rounded-[20px] border px-2 py-2 md:flex-nowrap md:gap-2 md:rounded-2xl md:py-1.5"
+        style={{ backgroundColor: "rgba(244,248,253,0.78)", borderColor: T.borderSoft }}
+        aria-label="Post formatting toolbar"
+      >
+        <span className="hidden shrink-0 pl-1 text-[11px] font-extrabold uppercase tracking-[0.12em] md:inline" style={{ color: T.textSubtle }}>
+          Format
+        </span>
+
+        <div className="flex min-w-0 flex-1 flex-wrap gap-1.5 md:flex-nowrap">
+          {FORMAT_ACTIONS.map(({ key, label, shortLabel, icon: Icon }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => applyFormatting(key)}
+              disabled={submitting}
+              className="sh-tap inline-flex h-9 items-center gap-1.5 rounded-full border bg-white px-3 text-xs font-extrabold transition active:scale-[0.98] disabled:opacity-50 md:h-8 md:px-2.5"
+              style={{ borderColor: T.border, color: T.navy }}
+              title={label}
+              aria-label={label}
+            >
+              <Icon size={14} strokeWidth={2.4} />
+              <span>{shortLabel}</span>
+            </button>
+          ))}
         </div>
       </div>
 
@@ -409,8 +539,8 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
           }}
           disabled={submitting}
           placeholder="Ask a question, share an update, or help the Soldier Hub community..."
-          rows={6}
-          className="w-full resize-none appearance-none border-0 bg-transparent p-0 text-[20px] leading-9 shadow-none outline-none ring-0 placeholder:text-[#A8ABB2] focus:border-0 focus:outline-none focus:ring-0 disabled:opacity-70"
+          rows={5}
+          className="w-full resize-none appearance-none border-0 bg-transparent p-0 text-[20px] leading-9 shadow-none outline-none ring-0 placeholder:text-[#A8ABB2] focus:border-0 focus:outline-none focus:ring-0 disabled:opacity-70 md:text-[17px] md:leading-7"
           style={{ color: T.text, border: "none", boxShadow: "none" }}
         />
       </div>
@@ -426,7 +556,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
       )}
 
       <div
-        className="mt-3 rounded-[22px] border px-3 py-3"
+        className="mt-3 rounded-[22px] border px-3 py-3 md:rounded-[18px] md:py-2.5"
         style={{
           borderColor: T.borderSoft,
           backgroundColor: "rgba(248,250,253,0.94)",
@@ -507,10 +637,10 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
       )}
 
       <div
-        className="mt-4 flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between"
+        className="mt-4 flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between md:justify-end md:pt-3"
         style={{ borderColor: T.borderSoft }}
       >
-        <div className="text-xs font-medium" style={{ color: T.textSubtle }}>
+        <div className="text-xs font-medium md:hidden" style={{ color: T.textSubtle }}>
           {canPublish
             ? `${body.trim().length} characters ready to publish.`
             : "Write your question or update to enable publishing."}
@@ -522,7 +652,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
           size="lg"
           onClick={submit}
           disabled={!canPublish || submitting}
-          className="w-full rounded-full sm:w-auto"
+          className="w-full rounded-full sm:w-auto md:min-w-[132px]"
         >
           {submitting ? "Publishing..." : "Publish"}
         </Button>
