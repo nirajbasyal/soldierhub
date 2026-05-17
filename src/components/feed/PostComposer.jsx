@@ -123,6 +123,27 @@ function selectionInsideTag(editor, tagName) {
   return Boolean(startElement?.closest?.(tagName));
 }
 
+function placeCaretInElement(element) {
+  if (typeof window === "undefined" || !element) return;
+
+  const selection = window.getSelection?.();
+  const range = document.createRange();
+
+  range.selectNodeContents(element);
+  range.collapse(true);
+  selection?.removeAllRanges();
+  selection?.addRange(range);
+}
+
+function isEmptyEditableBlock(element) {
+  if (!element) return false;
+
+  const tagName = element.tagName?.toLowerCase();
+  if (!["p", "div"].includes(tagName)) return false;
+
+  return !element.textContent?.replace(/\u00a0/g, " ").trim();
+}
+
 export default function PostComposer({ startOpen = false, pageMode = false }) {
   const router = useRouter();
   const { currentUser, requireAuth, createPost, setCategory: setFeedCategory } = useApp();
@@ -136,7 +157,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   const [submitting, setSubmitting] = useState(false);
   const [textFocused, setTextFocused] = useState(false);
   const [isPhoneScreen, setIsPhoneScreen] = useState(false);
-  const [activeFormats, setActiveFormats] = useState({});
+  const [hasQuoteBlock, setHasQuoteBlock] = useState(false);
 
   const editorRef = useRef(null);
   const bodyValueRef = useRef(body);
@@ -192,7 +213,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   useEffect(() => {
     if (open && !pageMode && editorRef.current) {
       editorRef.current.focus({ preventScroll: true });
-      window.requestAnimationFrame(updateActiveFormats);
+      window.requestAnimationFrame(syncQuoteState);
     }
   }, [open, pageMode]);
 
@@ -230,17 +251,9 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     };
   }, [body, pageMode, isPhoneScreen]);
 
-  const updateActiveFormats = () => {
-    if (typeof document === "undefined") return;
+  const syncQuoteState = () => {
     const editor = editorRef.current;
-
-    setActiveFormats({
-      bold: document.queryCommandState?.("bold") || false,
-      italic: document.queryCommandState?.("italic") || false,
-      bullet: document.queryCommandState?.("insertUnorderedList") || false,
-      number: document.queryCommandState?.("insertOrderedList") || false,
-      quote: selectionInsideTag(editor, "blockquote"),
-    });
+    setHasQuoteBlock(Boolean(editor?.querySelector?.("blockquote")));
   };
 
   const syncEditorState = () => {
@@ -250,16 +263,16 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
 
     setBody(cleanHtml);
     setPlainText(cleanText);
+    setHasQuoteBlock(Boolean(editor?.querySelector?.("blockquote")));
     bodyValueRef.current = cleanHtml;
     plainTextValueRef.current = cleanText;
     setError("");
-    updateActiveFormats();
   };
 
   const focusComposerField = () => {
     window.requestAnimationFrame(() => {
       editorRef.current?.focus({ preventScroll: true });
-      updateActiveFormats();
+      syncQuoteState();
     });
   };
 
@@ -298,6 +311,32 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     window.requestAnimationFrame(syncEditorState);
   };
 
+  const insertTextNearQuote = (position) => {
+    if (submittingValueRef.current) return;
+
+    const editor = editorRef.current;
+    const quote = editor?.querySelector?.("blockquote");
+    if (!editor || !quote) return;
+
+    const sibling = position === "before" ? quote.previousElementSibling : quote.nextElementSibling;
+    let target = isEmptyEditableBlock(sibling) ? sibling : null;
+
+    if (!target) {
+      target = document.createElement("p");
+      target.appendChild(document.createElement("br"));
+
+      if (position === "before") {
+        quote.parentNode?.insertBefore(target, quote);
+      } else {
+        quote.parentNode?.insertBefore(target, quote.nextSibling);
+      }
+    }
+
+    editor.focus({ preventScroll: true });
+    placeCaretInElement(target);
+    window.requestAnimationFrame(syncEditorState);
+  };
+
   const toggleAnonymous = () => {
     if (submittingValueRef.current) return;
     setAnonymous((value) => !value);
@@ -307,7 +346,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     if (editorRef.current) editorRef.current.innerHTML = "";
     setBody("");
     setPlainText("");
-    setActiveFormats({});
+    setHasQuoteBlock(false);
     bodyValueRef.current = "";
     plainTextValueRef.current = "";
   };
@@ -534,7 +573,6 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
         <div className="flex min-w-0 flex-1 flex-wrap gap-1.5 md:flex-nowrap">
           {FORMAT_ACTIONS.map((action) => {
             const Icon = action.icon;
-            const active = Boolean(activeFormats[action.key]);
 
             return (
               <button
@@ -545,14 +583,14 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
                 disabled={submitting}
                 className="sh-tap inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-xs font-extrabold transition active:scale-[0.98] disabled:opacity-50 md:h-8 md:px-2.5"
                 style={{
-                  backgroundColor: active ? "rgba(63,95,125,0.16)" : "#FFFFFF",
-                  borderColor: active ? "rgba(63,95,125,0.38)" : T.border,
-                  color: active ? T.navy : T.textSubtle,
-                  boxShadow: active ? "0 8px 18px rgba(11,28,44,0.08)" : "none",
+                  backgroundColor: "#FFFFFF",
+                  borderColor: T.border,
+                  color: T.textSubtle,
+                  boxShadow: "none",
                 }}
                 title={action.label}
                 aria-label={action.label}
-                aria-pressed={active}
+                aria-pressed={false}
               >
                 <Icon size={14} strokeWidth={2.4} />
                 <span>{action.shortLabel}</span>
@@ -561,6 +599,38 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
           })}
         </div>
       </div>
+
+      {isPhoneScreen && hasQuoteBlock && (
+        <div className="mb-2 grid grid-cols-2 gap-2 md:hidden" aria-label="Quote placement shortcuts">
+          <button
+            type="button"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => insertTextNearQuote("before")}
+            className="sh-tap rounded-full border px-3 py-2 text-[11px] font-extrabold"
+            style={{
+              backgroundColor: "rgba(238,243,247,0.92)",
+              borderColor: "rgba(63,95,125,0.20)",
+              color: T.navy,
+            }}
+          >
+            Text above quote
+          </button>
+
+          <button
+            type="button"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => insertTextNearQuote("after")}
+            className="sh-tap rounded-full border px-3 py-2 text-[11px] font-extrabold"
+            style={{
+              backgroundColor: "rgba(238,243,247,0.92)",
+              borderColor: "rgba(63,95,125,0.20)",
+              color: T.navy,
+            }}
+          >
+            Text below quote
+          </button>
+        </div>
+      )}
 
       <div className="relative">
         {textFocused && isPhoneScreen && (
@@ -598,14 +668,14 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
           aria-multiline="true"
           onFocus={() => {
             setTextFocused(true);
-            window.requestAnimationFrame(updateActiveFormats);
+            window.requestAnimationFrame(syncQuoteState);
           }}
           onBlur={() => window.setTimeout(() => setTextFocused(false), 120)}
           onInput={syncEditorState}
-          onKeyUp={updateActiveFormats}
-          onMouseUp={updateActiveFormats}
+          onKeyUp={syncQuoteState}
+          onMouseUp={syncQuoteState}
           onPaste={handlePaste}
-          className="w-full appearance-none border-0 bg-transparent p-0 text-[20px] leading-9 shadow-none outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0 md:text-[17px] md:leading-7 [&_blockquote]:my-3 [&_blockquote]:rounded-[22px] [&_blockquote]:border [&_blockquote]:border-l-[5px] [&_blockquote]:border-[#D9E2EA] [&_blockquote]:border-l-[#3F5F7D] [&_blockquote]:bg-[#EEF3F7] [&_blockquote]:px-5 [&_blockquote]:py-4 [&_blockquote]:font-semibold [&_blockquote]:text-[#102033] [&_em]:italic [&_li]:pl-1 [&_ol]:ml-5 [&_ol]:list-decimal [&_ol]:space-y-1 [&_strong]:font-extrabold [&_ul]:ml-5 [&_ul]:list-disc [&_ul]:space-y-1"
+          className="w-full appearance-none border-0 bg-transparent p-0 text-[20px] leading-9 shadow-none outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0 md:text-[17px] md:leading-7 [&_blockquote]:my-3 [&_blockquote]:rounded-[18px] [&_blockquote]:border-0 [&_blockquote]:bg-[#EEF3F7] [&_blockquote]:px-6 [&_blockquote]:py-3 [&_blockquote]:font-normal [&_blockquote]:text-[#102033] [&_em]:italic [&_li]:pl-1 [&_ol]:ml-5 [&_ol]:list-decimal [&_ol]:space-y-1 [&_strong]:font-extrabold [&_ul]:ml-5 [&_ul]:list-disc [&_ul]:space-y-1"
           style={{ color: T.text, border: "none", boxShadow: "none" }}
         />
       </div>
