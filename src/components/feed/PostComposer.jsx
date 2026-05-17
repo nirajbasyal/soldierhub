@@ -505,6 +505,28 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
           Avoid typing personal details inside the post. Your real name stays hidden publicly.
         </div>
       )}
+
+      <div
+        className="mt-4 flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between"
+        style={{ borderColor: T.borderSoft }}
+      >
+        <div className="text-xs font-medium" style={{ color: T.textSubtle }}>
+          {canPublish
+            ? `${body.trim().length} characters ready to publish.`
+            : "Write your question or update to enable publishing."}
+        </div>
+
+        <Button
+          type="button"
+          variant="primary"
+          size="lg"
+          onClick={submit}
+          disabled={!canPublish || submitting}
+          className="w-full rounded-full sm:w-auto"
+        >
+          {submitting ? "Publishing..." : "Publish"}
+        </Button>
+      </div>
     </div>
   );
 }
