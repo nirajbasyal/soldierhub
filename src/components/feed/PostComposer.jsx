@@ -166,18 +166,6 @@ function placeCaretInElement(element, atEnd = false) {
   selection?.addRange(range);
 }
 
-function placeCaretAfterNode(node) {
-  if (typeof window === "undefined" || !node) return;
-
-  const selection = window.getSelection?.();
-  const range = document.createRange();
-
-  range.setStartAfter(node);
-  range.collapse(true);
-  selection?.removeAllRanges();
-  selection?.addRange(range);
-}
-
 function createEmptyParagraph() {
   const paragraph = document.createElement("p");
   paragraph.appendChild(document.createElement("br"));
@@ -231,10 +219,17 @@ function exitInlineFormatForNewText(editor, selector) {
   const inlineElement = startElement?.closest?.(selector);
   if (!inlineElement || !editor.contains(inlineElement)) return false;
 
-  const marker = document.createTextNode(FORMAT_BOUNDARY);
-  inlineElement.parentNode?.insertBefore(marker, inlineElement.nextSibling);
-  placeCaretAfterNode(marker);
-  return true;
+  const blockElement = inlineElement.closest?.("p,div,li") || inlineElement.parentElement;
+  if (!blockElement || !editor.contains(blockElement)) return false;
+
+  if (isElementContentEmpty(inlineElement)) {
+    const lineBreak = document.createElement("br");
+    inlineElement.replaceWith(lineBreak);
+    placeCaretInElement(blockElement);
+    return true;
+  }
+
+  return false;
 }
 
 function exitListForNewText(editor, listSelector) {
@@ -467,8 +462,13 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   const turnInlineFormatOff = (command, selector, key) => {
     forceCommandOff(command);
     exitInlineFormatForNewText(editorRef.current, selector);
+    forceCommandOff(command);
     setManualFormatState(key, false);
-    window.requestAnimationFrame(syncEditorState);
+    window.requestAnimationFrame(() => {
+      forceCommandOff(command);
+      setManualFormatState(key, false);
+      syncEditorState();
+    });
   };
 
   const ensureInactiveInlineFormatsBeforeTyping = () => {
