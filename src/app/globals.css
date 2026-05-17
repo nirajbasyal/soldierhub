@@ -264,6 +264,12 @@ div:has(> [aria-label="Write your SoldierHub post"]) > .pointer-events-none {
   max-width: calc(100% - 30px);
 }
 
+div:has(> [aria-label="Write your SoldierHub post"] blockquote) > .pointer-events-none,
+div:has(> [aria-label="Write your SoldierHub post"] ul) > .pointer-events-none,
+div:has(> [aria-label="Write your SoldierHub post"] ol) > .pointer-events-none {
+  display: none !important;
+}
+
 [aria-label="Write your SoldierHub post"] {
   height: 142px !important;
   min-height: 142px !important;
@@ -355,6 +361,42 @@ div:has(> [aria-label="Write your SoldierHub post"]) > .pointer-events-none {
     height: 180px !important;
     min-height: 180px !important;
     max-height: 180px !important;
+  }
+
+  [aria-label="Post formatting toolbar"] {
+    flex-wrap: nowrap !important;
+    gap: 0.25rem !important;
+    padding: 0.35rem !important;
+    border-radius: 18px !important;
+  }
+
+  [aria-label="Post formatting toolbar"] > span {
+    display: none !important;
+  }
+
+  [aria-label="Post formatting toolbar"] > div {
+    width: 100% !important;
+    flex-wrap: nowrap !important;
+    justify-content: space-between !important;
+    gap: 0.25rem !important;
+  }
+
+  [aria-label="Post formatting toolbar"] button {
+    width: 36px !important;
+    min-width: 36px !important;
+    height: 36px !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    border-radius: 999px !important;
+  }
+
+  [aria-label="Post formatting toolbar"] button span {
+    display: none !important;
+  }
+
+  [aria-label="Post formatting toolbar"] button svg {
+    width: 15px !important;
+    height: 15px !important;
   }
 }
 
