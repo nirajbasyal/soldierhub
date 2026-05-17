@@ -19,6 +19,7 @@ as $$
     where id = auth.uid()
       and role = 'admin'
       and status = 'verified'
+      and verification_status = 'verified'
   );
 $$;
 
@@ -35,6 +36,7 @@ as $$
     from public.profiles
     where id = auth.uid()
       and status = 'verified'
+      and verification_status = 'verified'
   );
 $$;
 
