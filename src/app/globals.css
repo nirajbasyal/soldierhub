@@ -322,7 +322,7 @@ div:has(> [aria-label="Write your SoldierHub post"] ol) > .pointer-events-none {
   border: 0 !important;
   border-left: 0 !important;
   border-radius: 18px !important;
-  background: linear-gradient(135deg, rgba(205, 221, 237, 0.98), rgba(218, 231, 244, 0.98)) !important;
+  background: linear-gradient(135deg, rgba(223, 233, 244, 0.98), rgba(235, 241, 248, 0.98)) !important;
   color: #102033 !important;
   padding: 0.82rem 2.15rem 0.82rem 2.45rem !important;
   font-weight: 400 !important;
