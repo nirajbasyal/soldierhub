@@ -109,23 +109,47 @@ export default function ComposePage() {
         </div>
 
         <style>{`
-          [aria-label="Post formatting toolbar"] button[aria-label="Quote"] {
+          [aria-label="Post formatting toolbar"] button:is(
+            [aria-label="Bold"],
+            [aria-label="Italic"],
+            [aria-label="Bullet list"],
+            [aria-label="Numbered list"],
+            [aria-label="Quote"]
+          ) {
             transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease, transform 160ms ease !important;
           }
 
-          [aria-label="Post formatting toolbar"] button[aria-label="Quote"][aria-pressed="true"] {
+          [aria-label="Post formatting toolbar"] button:is(
+            [aria-label="Bold"],
+            [aria-label="Italic"],
+            [aria-label="Bullet list"],
+            [aria-label="Numbered list"],
+            [aria-label="Quote"]
+          )[aria-pressed="true"] {
             background: linear-gradient(180deg, #3F5F7D 0%, #314A66 100%) !important;
-            border-color: rgba(63, 95, 125, 0.62) !important;
+            border-color: rgba(63, 95, 125, 0.68) !important;
             color: #FFFFFF !important;
             box-shadow: 0 10px 22px rgba(11, 28, 44, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.18) !important;
           }
 
-          [aria-label="Post formatting toolbar"] button[aria-label="Quote"][aria-pressed="true"] svg {
+          [aria-label="Post formatting toolbar"] button:is(
+            [aria-label="Bold"],
+            [aria-label="Italic"],
+            [aria-label="Bullet list"],
+            [aria-label="Numbered list"],
+            [aria-label="Quote"]
+          )[aria-pressed="true"] svg {
             color: #FFFFFF !important;
           }
 
-          [aria-label="Post formatting toolbar"] button[aria-label="Quote"][aria-pressed="false"] {
-            background: #FFFFFF !important;
+          [aria-label="Post formatting toolbar"] button:is(
+            [aria-label="Bold"],
+            [aria-label="Italic"],
+            [aria-label="Bullet list"],
+            [aria-label="Numbered list"],
+            [aria-label="Quote"]
+          )[aria-pressed="false"] {
+            background: linear-gradient(180deg, #FFFFFF 0%, #F6F8FB 100%) !important;
             border-color: rgba(207, 218, 232, 0.95) !important;
             color: #64748B !important;
             box-shadow: none !important;
@@ -133,35 +157,35 @@ export default function ComposePage() {
 
           @media (max-width: 520px) {
             div[class*="sticky"][class*="bottom-2"][class*="z-40"][class*="rounded-[22px]"] {
-              bottom: max(0.6rem, env(safe-area-inset-bottom)) !important;
-              margin-top: 0.65rem !important;
-              padding: 0.5rem 0.52rem !important;
-              border-radius: 24px !important;
+              bottom: max(0.55rem, env(safe-area-inset-bottom)) !important;
+              margin-top: 0.6rem !important;
+              padding: 0.42rem 0.44rem !important;
+              border-radius: 16px !important;
               background: rgba(248, 250, 253, 0.985) !important;
-              box-shadow: 0 16px 34px rgba(11, 28, 44, 0.14) !important;
+              box-shadow: 0 14px 30px rgba(11, 28, 44, 0.13) !important;
               backdrop-filter: blur(18px);
             }
 
             div[class*="sticky"][class*="bottom-2"][class*="z-40"][class*="rounded-[22px]"] > div {
               display: flex !important;
               align-items: stretch !important;
-              gap: 0.45rem !important;
+              gap: 0.42rem !important;
             }
 
             div[class*="sticky"][class*="bottom-2"][class*="z-40"][class*="rounded-[22px]"] > div > button:first-child {
               flex: 0 0 96px !important;
               min-width: 96px !important;
               max-width: 96px !important;
-              min-height: 52px !important;
+              min-height: 50px !important;
               display: flex !important;
               flex-direction: column !important;
               align-items: center !important;
               justify-content: center !important;
-              gap: 0.26rem !important;
-              padding: 0.32rem 0.35rem !important;
+              gap: 0.24rem !important;
+              padding: 0.34rem 0.38rem !important;
               border: 1px solid rgba(207, 218, 232, 0.88) !important;
-              border-radius: 20px !important;
-              background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(238,243,247,0.9)) !important;
+              border-radius: 12px !important;
+              background: linear-gradient(180deg, rgba(255,255,255,0.97), rgba(238,243,247,0.9)) !important;
               box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78) !important;
             }
 
@@ -171,7 +195,7 @@ export default function ComposePage() {
               overflow: visible !important;
               text-align: center !important;
               font-size: 9.4px !important;
-              font-weight: 600 !important;
+              font-weight: 500 !important;
               line-height: 1.05 !important;
               letter-spacing: -0.01em !important;
               color: #314A66 !important;
@@ -179,8 +203,8 @@ export default function ComposePage() {
 
             div[class*="sticky"][class*="bottom-2"][class*="z-40"][class*="rounded-[22px]"] > div > button:first-child > span:nth-child(2) {
               position: relative !important;
-              width: 52px !important;
-              height: 28px !important;
+              width: 54px !important;
+              height: 30px !important;
               display: inline-flex !important;
               align-items: center !important;
               overflow: hidden !important;
@@ -189,8 +213,8 @@ export default function ComposePage() {
             }
 
             div[class*="sticky"][class*="bottom-2"][class*="z-40"][class*="rounded-[22px]"] > div > button:first-child > span:nth-child(2) > span:last-child {
-              width: 22px !important;
-              height: 22px !important;
+              width: 24px !important;
+              height: 24px !important;
               border-radius: 999px !important;
               top: 3px !important;
               left: 3px !important;
@@ -201,26 +225,26 @@ export default function ComposePage() {
               flex: 1 1 auto !important;
               min-width: 0 !important;
               display: flex !important;
-              gap: 0.4rem !important;
+              gap: 0.42rem !important;
             }
 
             div[class*="sticky"][class*="bottom-2"][class*="z-40"][class*="rounded-[22px]"] > div > div > button:first-child {
-              height: 52px !important;
+              height: 50px !important;
               min-width: 58px !important;
               padding-left: 0.72rem !important;
               padding-right: 0.72rem !important;
               font-size: 11px !important;
-              border-radius: 20px !important;
+              border-radius: 12px !important;
             }
 
             div[class*="sticky"][class*="bottom-2"][class*="z-40"][class*="rounded-[22px]"] > div > div > button:last-child {
               flex: 1 1 auto !important;
-              height: 52px !important;
+              height: 50px !important;
               min-width: 96px !important;
               padding-left: 0.9rem !important;
               padding-right: 0.9rem !important;
               font-size: 12px !important;
-              border-radius: 20px !important;
+              border-radius: 12px !important;
             }
           }
         `}</style>
