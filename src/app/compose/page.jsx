@@ -109,77 +109,118 @@ export default function ComposePage() {
         </div>
 
         <style>{`
+          [aria-label="Post formatting toolbar"] button[aria-label="Quote"] {
+            transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease, transform 160ms ease !important;
+          }
+
+          [aria-label="Post formatting toolbar"] button[aria-label="Quote"][aria-pressed="true"] {
+            background: linear-gradient(180deg, #3F5F7D 0%, #314A66 100%) !important;
+            border-color: rgba(63, 95, 125, 0.62) !important;
+            color: #FFFFFF !important;
+            box-shadow: 0 10px 22px rgba(11, 28, 44, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.18) !important;
+          }
+
+          [aria-label="Post formatting toolbar"] button[aria-label="Quote"][aria-pressed="true"] svg {
+            color: #FFFFFF !important;
+          }
+
+          [aria-label="Post formatting toolbar"] button[aria-label="Quote"][aria-pressed="false"] {
+            background: #FFFFFF !important;
+            border-color: rgba(207, 218, 232, 0.95) !important;
+            color: #64748B !important;
+            box-shadow: none !important;
+          }
+
           @media (max-width: 520px) {
             div[class*="sticky"][class*="bottom-2"][class*="z-40"][class*="rounded-[22px]"] {
               bottom: max(0.6rem, env(safe-area-inset-bottom)) !important;
               margin-top: 0.65rem !important;
-              padding: 0.48rem 0.5rem !important;
-              border-radius: 22px !important;
-              background: rgba(248, 250, 253, 0.98) !important;
+              padding: 0.5rem 0.52rem !important;
+              border-radius: 24px !important;
+              background: rgba(248, 250, 253, 0.985) !important;
               box-shadow: 0 16px 34px rgba(11, 28, 44, 0.14) !important;
               backdrop-filter: blur(18px);
             }
 
             div[class*="sticky"][class*="bottom-2"][class*="z-40"][class*="rounded-[22px]"] > div {
               display: flex !important;
-              align-items: center !important;
-              gap: 0.42rem !important;
+              align-items: stretch !important;
+              gap: 0.45rem !important;
             }
 
             div[class*="sticky"][class*="bottom-2"][class*="z-40"][class*="rounded-[22px]"] > div > button:first-child {
-              flex: 0 0 88px !important;
-              min-width: 88px !important;
-              max-width: 88px !important;
-              min-height: 46px !important;
+              flex: 0 0 96px !important;
+              min-width: 96px !important;
+              max-width: 96px !important;
+              min-height: 52px !important;
               display: flex !important;
               flex-direction: column !important;
               align-items: center !important;
               justify-content: center !important;
-              gap: 0.22rem !important;
-              padding: 0.2rem 0.25rem !important;
-              border-radius: 18px !important;
-              background: rgba(238, 243, 247, 0.72) !important;
+              gap: 0.26rem !important;
+              padding: 0.32rem 0.35rem !important;
+              border: 1px solid rgba(207, 218, 232, 0.88) !important;
+              border-radius: 20px !important;
+              background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(238,243,247,0.9)) !important;
+              box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78) !important;
             }
 
             div[class*="sticky"][class*="bottom-2"][class*="z-40"][class*="rounded-[22px]"] > div > button:first-child > span:first-child {
-              max-width: 78px !important;
+              max-width: 86px !important;
               white-space: normal !important;
               overflow: visible !important;
               text-align: center !important;
-              font-size: 9.5px !important;
-              font-weight: 500 !important;
+              font-size: 9.4px !important;
+              font-weight: 600 !important;
               line-height: 1.05 !important;
-              letter-spacing: 0 !important;
-              color: #314a66 !important;
+              letter-spacing: -0.01em !important;
+              color: #314A66 !important;
             }
 
             div[class*="sticky"][class*="bottom-2"][class*="z-40"][class*="rounded-[22px]"] > div > button:first-child > span:nth-child(2) {
-              width: 48px !important;
-              height: 26px !important;
+              position: relative !important;
+              width: 52px !important;
+              height: 28px !important;
+              display: inline-flex !important;
+              align-items: center !important;
+              overflow: hidden !important;
+              border-radius: 999px !important;
+              box-shadow: inset 0 1px 2px rgba(11, 28, 44, 0.16) !important;
+            }
+
+            div[class*="sticky"][class*="bottom-2"][class*="z-40"][class*="rounded-[22px]"] > div > button:first-child > span:nth-child(2) > span:last-child {
+              width: 22px !important;
+              height: 22px !important;
+              border-radius: 999px !important;
+              top: 3px !important;
+              left: 3px !important;
+              box-shadow: 0 3px 7px rgba(11, 28, 44, 0.22) !important;
             }
 
             div[class*="sticky"][class*="bottom-2"][class*="z-40"][class*="rounded-[22px]"] > div > div {
               flex: 1 1 auto !important;
               min-width: 0 !important;
               display: flex !important;
-              gap: 0.38rem !important;
+              gap: 0.4rem !important;
             }
 
             div[class*="sticky"][class*="bottom-2"][class*="z-40"][class*="rounded-[22px]"] > div > div > button:first-child {
-              height: 44px !important;
+              height: 52px !important;
               min-width: 58px !important;
               padding-left: 0.72rem !important;
               padding-right: 0.72rem !important;
               font-size: 11px !important;
+              border-radius: 20px !important;
             }
 
             div[class*="sticky"][class*="bottom-2"][class*="z-40"][class*="rounded-[22px]"] > div > div > button:last-child {
               flex: 1 1 auto !important;
-              height: 44px !important;
-              min-width: 92px !important;
+              height: 52px !important;
+              min-width: 96px !important;
               padding-left: 0.9rem !important;
               padding-right: 0.9rem !important;
               font-size: 12px !important;
+              border-radius: 20px !important;
             }
           }
         `}</style>
