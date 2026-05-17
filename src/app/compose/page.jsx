@@ -107,6 +107,82 @@ export default function ComposePage() {
             <PostComposer startOpen pageMode />
           </section>
         </div>
+
+        <style>{`
+          @media (max-width: 520px) {
+            div[class*="sticky"][class*="bottom-2"][class*="z-40"][class*="rounded-[22px]"] {
+              bottom: max(0.6rem, env(safe-area-inset-bottom)) !important;
+              margin-top: 0.65rem !important;
+              padding: 0.48rem 0.5rem !important;
+              border-radius: 22px !important;
+              background: rgba(248, 250, 253, 0.98) !important;
+              box-shadow: 0 16px 34px rgba(11, 28, 44, 0.14) !important;
+              backdrop-filter: blur(18px);
+            }
+
+            div[class*="sticky"][class*="bottom-2"][class*="z-40"][class*="rounded-[22px]"] > div {
+              display: flex !important;
+              align-items: center !important;
+              gap: 0.42rem !important;
+            }
+
+            div[class*="sticky"][class*="bottom-2"][class*="z-40"][class*="rounded-[22px]"] > div > button:first-child {
+              flex: 0 0 88px !important;
+              min-width: 88px !important;
+              max-width: 88px !important;
+              min-height: 46px !important;
+              display: flex !important;
+              flex-direction: column !important;
+              align-items: center !important;
+              justify-content: center !important;
+              gap: 0.22rem !important;
+              padding: 0.2rem 0.25rem !important;
+              border-radius: 18px !important;
+              background: rgba(238, 243, 247, 0.72) !important;
+            }
+
+            div[class*="sticky"][class*="bottom-2"][class*="z-40"][class*="rounded-[22px]"] > div > button:first-child > span:first-child {
+              max-width: 78px !important;
+              white-space: normal !important;
+              overflow: visible !important;
+              text-align: center !important;
+              font-size: 9.5px !important;
+              font-weight: 500 !important;
+              line-height: 1.05 !important;
+              letter-spacing: 0 !important;
+              color: #314a66 !important;
+            }
+
+            div[class*="sticky"][class*="bottom-2"][class*="z-40"][class*="rounded-[22px]"] > div > button:first-child > span:nth-child(2) {
+              width: 48px !important;
+              height: 26px !important;
+            }
+
+            div[class*="sticky"][class*="bottom-2"][class*="z-40"][class*="rounded-[22px]"] > div > div {
+              flex: 1 1 auto !important;
+              min-width: 0 !important;
+              display: flex !important;
+              gap: 0.38rem !important;
+            }
+
+            div[class*="sticky"][class*="bottom-2"][class*="z-40"][class*="rounded-[22px]"] > div > div > button:first-child {
+              height: 44px !important;
+              min-width: 58px !important;
+              padding-left: 0.72rem !important;
+              padding-right: 0.72rem !important;
+              font-size: 11px !important;
+            }
+
+            div[class*="sticky"][class*="bottom-2"][class*="z-40"][class*="rounded-[22px]"] > div > div > button:last-child {
+              flex: 1 1 auto !important;
+              height: 44px !important;
+              min-width: 92px !important;
+              padding-left: 0.9rem !important;
+              padding-right: 0.9rem !important;
+              font-size: 12px !important;
+            }
+          }
+        `}</style>
       </main>
     </AppShell>
   );
