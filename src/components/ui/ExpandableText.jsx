@@ -264,26 +264,39 @@ export default function ExpandableText({
   const isHtml = looksLikeHtml(safeText);
   const plainText = isHtml ? htmlToPlainText(safeText) : safeText;
   const isLong = plainText.length > previewLength;
+  const previewMaxHeight = buttonSize === "xs" ? 112 : 236;
 
-  const visibleText =
-    isLong && !expanded
-      ? isHtml
-        ? plainText.slice(0, previewLength).trim()
-        : `${safeText.slice(0, previewLength).trim()}...`
+  const visiblePlainText =
+    isLong && !expanded && !isHtml
+      ? `${safeText.slice(0, previewLength).trim()}...`
       : safeText;
 
   if (!safeText) return null;
 
   return (
     <div>
-      {isHtml && !(isLong && !expanded) ? (
-        <RichHtmlText html={visibleText} className={className} style={style} />
+      {isHtml ? (
+        <div
+          className="relative"
+          style={
+            isLong && !expanded
+              ? { maxHeight: previewMaxHeight, overflow: "hidden" }
+              : undefined
+          }
+        >
+          <RichHtmlText html={safeText} className={className} style={style} />
+          {isLong && !expanded ? (
+            <div
+              className="pointer-events-none absolute inset-x-0 bottom-0 h-16"
+              style={{
+                background:
+                  "linear-gradient(180deg, rgba(253,254,255,0) 0%, rgba(253,254,255,0.92) 72%, rgba(253,254,255,1) 100%)",
+              }}
+            />
+          ) : null}
+        </div>
       ) : (
-        <FormattedText
-          text={isHtml && isLong && !expanded ? `${visibleText}...` : visibleText}
-          className={className}
-          style={style}
-        />
+        <FormattedText text={visiblePlainText} className={className} style={style} />
       )}
 
       {isLong && (
