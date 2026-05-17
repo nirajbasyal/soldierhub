@@ -12,6 +12,7 @@ import {
   Pencil,
   Plus,
   Quote,
+  X,
 } from "lucide-react";
 import { CATEGORIES } from "@/lib/constants";
 import { T, TONE_STYLES } from "@/lib/theme";
@@ -113,14 +114,18 @@ function getPlainEditorText(editor) {
   return (editor?.innerText || "").replace(/\u00a0/g, " ").trim();
 }
 
+function selectionInsideTag(editor, tagName) {
+  if (typeof window === "undefined") return false;
+  const selection = window.getSelection?.();
+  const anchorNode = selection?.anchorNode;
+  if (!editor || !anchorNode || !editor.contains(anchorNode)) return false;
+  const startElement = anchorNode.nodeType === Node.TEXT_NODE ? anchorNode.parentElement : anchorNode;
+  return Boolean(startElement?.closest?.(tagName));
+}
+
 export default function PostComposer({ startOpen = false, pageMode = false }) {
   const router = useRouter();
-  const {
-    currentUser,
-    requireAuth,
-    createPost,
-    setCategory: setFeedCategory,
-  } = useApp();
+  const { currentUser, requireAuth, createPost, setCategory: setFeedCategory } = useApp();
 
   const [open, setOpen] = useState(startOpen);
   const [category, setCategory] = useState("General Q&A");
@@ -131,6 +136,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   const [submitting, setSubmitting] = useState(false);
   const [textFocused, setTextFocused] = useState(false);
   const [isPhoneScreen, setIsPhoneScreen] = useState(false);
+  const [activeFormats, setActiveFormats] = useState({});
 
   const editorRef = useRef(null);
   const bodyValueRef = useRef(body);
@@ -163,10 +169,8 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
-
     const phoneQuery = window.matchMedia("(max-width: 520px)");
     const updatePhoneScreen = () => setIsPhoneScreen(phoneQuery.matches);
-
     updatePhoneScreen();
 
     if (phoneQuery.addEventListener) {
@@ -180,20 +184,15 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
 
   useEffect(() => {
     if (!pageMode || typeof window === "undefined") return;
-
     window.dispatchEvent(
-      new CustomEvent(COMPOSE_STATE_EVENT, {
-        detail: {
-          canPublish,
-          submitting,
-        },
-      })
+      new CustomEvent(COMPOSE_STATE_EVENT, { detail: { canPublish, submitting } })
     );
   }, [canPublish, submitting, pageMode]);
 
   useEffect(() => {
     if (open && !pageMode && editorRef.current) {
       editorRef.current.focus({ preventScroll: true });
+      window.requestAnimationFrame(updateActiveFormats);
     }
   }, [open, pageMode]);
 
@@ -231,6 +230,19 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     };
   }, [body, pageMode, isPhoneScreen]);
 
+  const updateActiveFormats = () => {
+    if (typeof document === "undefined") return;
+    const editor = editorRef.current;
+
+    setActiveFormats({
+      bold: document.queryCommandState?.("bold") || false,
+      italic: document.queryCommandState?.("italic") || false,
+      bullet: document.queryCommandState?.("insertUnorderedList") || false,
+      number: document.queryCommandState?.("insertOrderedList") || false,
+      quote: selectionInsideTag(editor, "blockquote"),
+    });
+  };
+
   const syncEditorState = () => {
     const editor = editorRef.current;
     const cleanHtml = sanitizeComposerHtml(editor?.innerHTML || "");
@@ -241,11 +253,13 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     bodyValueRef.current = cleanHtml;
     plainTextValueRef.current = cleanText;
     setError("");
+    updateActiveFormats();
   };
 
   const focusComposerField = () => {
     window.requestAnimationFrame(() => {
       editorRef.current?.focus({ preventScroll: true });
+      updateActiveFormats();
     });
   };
 
@@ -262,14 +276,14 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
 
   const applyFormatting = (action) => {
     if (submittingValueRef.current) return;
-
     const editor = editorRef.current;
     if (!editor || typeof document === "undefined") return;
 
     editor.focus({ preventScroll: true });
 
     if (action.command === "formatBlock") {
-      document.execCommand("formatBlock", false, "blockquote");
+      const isInQuote = selectionInsideTag(editor, "blockquote");
+      document.execCommand("formatBlock", false, isInQuote ? "p" : "blockquote");
     } else {
       document.execCommand(action.command, false, null);
     }
@@ -290,25 +304,20 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   };
 
   const clearEditor = () => {
-    if (editorRef.current) {
-      editorRef.current.innerHTML = "";
-    }
+    if (editorRef.current) editorRef.current.innerHTML = "";
     setBody("");
     setPlainText("");
+    setActiveFormats({});
     bodyValueRef.current = "";
     plainTextValueRef.current = "";
   };
 
   const closeComposer = () => {
     if (submittingValueRef.current) return;
-
     clearEditor();
     setAnonymous(false);
     setError("");
-
-    if (!startOpen) {
-      setOpen(false);
-    }
+    if (!startOpen) setOpen(false);
   };
 
   const resetComposer = () => {
@@ -338,7 +347,6 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
       submittingValueRef.current = true;
 
       const mod = await moderateAsync(cleanedText);
-
       if (!mod.allowed) {
         setError(mod.reason || SAFETY_MESSAGE);
         focusComposerField();
@@ -358,11 +366,9 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
       }
 
       resetComposer();
-
       if (typeof window !== "undefined") {
         window.sessionStorage.setItem(PUBLISH_SCROLL_KEY, "1");
       }
-
       setFeedCategory?.("All");
       router.push("/");
     } catch (err) {
@@ -377,16 +383,9 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
 
   useEffect(() => {
     if (!pageMode) return undefined;
-
-    const handleExternalSubmit = () => {
-      submit();
-    };
-
+    const handleExternalSubmit = () => submit();
     window.addEventListener(COMPOSE_SUBMIT_EVENT, handleExternalSubmit);
-
-    return () => {
-      window.removeEventListener(COMPOSE_SUBMIT_EVENT, handleExternalSubmit);
-    };
+    return () => window.removeEventListener(COMPOSE_SUBMIT_EVENT, handleExternalSubmit);
   }, [pageMode]);
 
   if (!currentUser || currentUser.status !== "verified") {
@@ -446,18 +445,29 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   const composerDisplayName = anonymous
     ? getAnonymousDisplayName(currentUser.id)
     : currentUser.full_name;
-
   const composerDisplayColor = anonymous ? "#5C6470" : currentUser.avatar_color;
 
   return (
     <div
       className={pageMode
-        ? "flex flex-col rounded-[30px] border p-4 md:min-h-[520px] md:p-5"
-        : "rounded-[26px] border p-4"
+        ? "relative flex flex-col rounded-[30px] border p-4 md:min-h-[520px] md:p-5"
+        : "relative rounded-[26px] border p-4"
       }
       style={{ backgroundColor: T.card, borderColor: T.border }}
     >
-      <div className="mb-3 flex items-center gap-3">
+      <button
+        type="button"
+        onClick={closeComposer}
+        disabled={submitting}
+        className="sh-tap absolute right-4 top-4 hidden h-9 w-9 items-center justify-center rounded-full border transition hover:shadow-sm disabled:opacity-50 md:flex"
+        style={{ backgroundColor: "#FFFFFF", borderColor: T.border, color: T.textSubtle }}
+        aria-label="Close post composer"
+        title="Close composer"
+      >
+        <X size={16} strokeWidth={2.6} />
+      </button>
+
+      <div className="mb-3 flex items-center gap-3 pr-0 md:pr-12">
         <Avatar name={composerDisplayName} color={composerDisplayColor} size={46} />
 
         <div className="min-w-0 flex-1">
@@ -511,16 +521,21 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
 
       <div
         className="mb-3 flex flex-wrap items-center gap-1.5 rounded-[20px] border px-2 py-2 md:flex-nowrap md:gap-2 md:rounded-2xl md:py-1.5"
-        style={{ backgroundColor: "rgba(244,248,253,0.78)", borderColor: T.borderSoft }}
+        style={{ backgroundColor: "rgba(238,243,247,0.92)", borderColor: T.borderSoft }}
         aria-label="Post formatting toolbar"
       >
-        <span className="hidden shrink-0 pl-1 text-[11px] font-extrabold uppercase tracking-[0.12em] md:inline" style={{ color: T.textSubtle }}>
+        <span
+          className="hidden shrink-0 pl-1 text-[11px] font-extrabold uppercase tracking-[0.12em] md:inline"
+          style={{ color: T.textSubtle }}
+        >
           Format
         </span>
 
         <div className="flex min-w-0 flex-1 flex-wrap gap-1.5 md:flex-nowrap">
           {FORMAT_ACTIONS.map((action) => {
             const Icon = action.icon;
+            const active = Boolean(activeFormats[action.key]);
+
             return (
               <button
                 key={action.key}
@@ -528,10 +543,16 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => applyFormatting(action)}
                 disabled={submitting}
-                className="sh-tap inline-flex h-9 items-center gap-1.5 rounded-full border bg-white px-3 text-xs font-extrabold transition active:scale-[0.98] disabled:opacity-50 md:h-8 md:px-2.5"
-                style={{ borderColor: T.border, color: T.navy }}
+                className="sh-tap inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-xs font-extrabold transition active:scale-[0.98] disabled:opacity-50 md:h-8 md:px-2.5"
+                style={{
+                  backgroundColor: active ? "rgba(63,95,125,0.16)" : "#FFFFFF",
+                  borderColor: active ? "rgba(63,95,125,0.38)" : T.border,
+                  color: active ? T.navy : T.textSubtle,
+                  boxShadow: active ? "0 8px 18px rgba(11,28,44,0.08)" : "none",
+                }}
                 title={action.label}
                 aria-label={action.label}
+                aria-pressed={active}
               >
                 <Icon size={14} strokeWidth={2.4} />
                 <span>{action.shortLabel}</span>
@@ -575,11 +596,16 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
           role="textbox"
           aria-label="Write your SoldierHub post"
           aria-multiline="true"
-          onFocus={() => setTextFocused(true)}
+          onFocus={() => {
+            setTextFocused(true);
+            window.requestAnimationFrame(updateActiveFormats);
+          }}
           onBlur={() => window.setTimeout(() => setTextFocused(false), 120)}
           onInput={syncEditorState}
+          onKeyUp={updateActiveFormats}
+          onMouseUp={updateActiveFormats}
           onPaste={handlePaste}
-          className="w-full appearance-none border-0 bg-transparent p-0 text-[20px] leading-9 shadow-none outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0 md:text-[17px] md:leading-7 [&_blockquote]:my-2 [&_blockquote]:rounded-2xl [&_blockquote]:border-l-4 [&_blockquote]:border-[#0B1C2C] [&_blockquote]:bg-[#F4F8FD] [&_blockquote]:px-4 [&_blockquote]:py-3 [&_em]:italic [&_li]:pl-1 [&_ol]:ml-5 [&_ol]:list-decimal [&_ol]:space-y-1 [&_strong]:font-extrabold [&_ul]:ml-5 [&_ul]:list-disc [&_ul]:space-y-1"
+          className="w-full appearance-none border-0 bg-transparent p-0 text-[20px] leading-9 shadow-none outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0 md:text-[17px] md:leading-7 [&_blockquote]:my-3 [&_blockquote]:rounded-[22px] [&_blockquote]:border [&_blockquote]:border-l-[5px] [&_blockquote]:border-[#D9E2EA] [&_blockquote]:border-l-[#3F5F7D] [&_blockquote]:bg-[#EEF3F7] [&_blockquote]:px-5 [&_blockquote]:py-4 [&_blockquote]:font-semibold [&_blockquote]:text-[#102033] [&_em]:italic [&_li]:pl-1 [&_ol]:ml-5 [&_ol]:list-decimal [&_ol]:space-y-1 [&_strong]:font-extrabold [&_ul]:ml-5 [&_ul]:list-disc [&_ul]:space-y-1"
           style={{ color: T.text, border: "none", boxShadow: "none" }}
         />
       </div>
@@ -596,10 +622,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
 
       <div
         className="mt-3 rounded-[22px] border px-3 py-3 md:rounded-[18px] md:py-2.5"
-        style={{
-          borderColor: T.borderSoft,
-          backgroundColor: "rgba(248,250,253,0.94)",
-        }}
+        style={{ borderColor: T.borderSoft, backgroundColor: "rgba(248,250,253,0.94)" }}
       >
         <div className="flex items-center justify-between gap-3">
           <button
@@ -624,26 +647,15 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
                 backgroundColor: anonymous ? DARK_RED : "rgba(213,226,242,0.72)",
               }}
             >
-              <span
-                className="absolute left-3 text-[9px] font-black"
-                style={{ color: "#FFFFFF", opacity: anonymous ? 1 : 0 }}
-              >
+              <span className="absolute left-3 text-[9px] font-black" style={{ color: "#FFFFFF", opacity: anonymous ? 1 : 0 }}>
                 ON
               </span>
-
-              <span
-                className="absolute right-2.5 text-[9px] font-black"
-                style={{ color: T.textSubtle, opacity: anonymous ? 0 : 1 }}
-              >
+              <span className="absolute right-2.5 text-[9px] font-black" style={{ color: T.textSubtle, opacity: anonymous ? 0 : 1 }}>
                 OFF
               </span>
-
               <span
                 className="absolute left-[3px] top-[3px] h-[24px] w-[24px] rounded-full transition-transform duration-200"
-                style={{
-                  transform: anonymous ? "translateX(36px)" : "translateX(0)",
-                  backgroundColor: "#FFFFFF",
-                }}
+                style={{ transform: anonymous ? "translateX(36px)" : "translateX(0)", backgroundColor: "#FFFFFF" }}
               />
             </span>
           </button>
@@ -678,24 +690,15 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
       {anonymous && (
         <div
           className="mt-2 rounded-2xl border px-3 py-2.5 text-xs"
-          style={{
-            backgroundColor: "rgba(255,241,245,0.96)",
-            borderColor: "rgba(179,25,66,0.18)",
-            color: DARK_RED,
-          }}
+          style={{ backgroundColor: "rgba(255,241,245,0.96)", borderColor: "rgba(179,25,66,0.18)", color: DARK_RED }}
         >
           Avoid typing personal details inside the post. Your real name stays hidden publicly.
         </div>
       )}
 
-      <div
-        className="mt-4 flex flex-col gap-3 border-t pt-4 md:hidden"
-        style={{ borderColor: T.borderSoft }}
-      >
+      <div className="mt-4 flex flex-col gap-3 border-t pt-4 md:hidden" style={{ borderColor: T.borderSoft }}>
         <div className="text-xs font-medium" style={{ color: T.textSubtle }}>
-          {canPublish
-            ? `${plainText.trim().length} characters ready to publish.`
-            : "Write your question or update to enable publishing."}
+          {canPublish ? `${plainText.trim().length} characters ready to publish.` : "Write your question or update to enable publishing."}
         </div>
 
         <Button
