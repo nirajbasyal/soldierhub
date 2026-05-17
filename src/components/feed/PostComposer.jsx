@@ -277,6 +277,32 @@ function exitQuoteForNewText(editor) {
   return true;
 }
 
+function insertSingleLineBreakAtCursor(editor) {
+  if (!editor || typeof window === "undefined" || typeof document === "undefined") return false;
+
+  const selection = window.getSelection?.();
+  if (!selection?.rangeCount) return false;
+
+  const range = selection.getRangeAt(0);
+  if (!editor.contains(range.commonAncestorContainer)) return false;
+
+  range.deleteContents();
+
+  const lineBreak = document.createElement("br");
+  const marker = document.createTextNode(FORMAT_BOUNDARY);
+
+  range.insertNode(lineBreak);
+  range.setStartAfter(lineBreak);
+  range.collapse(true);
+  range.insertNode(marker);
+  range.setStartAfter(marker);
+  range.collapse(true);
+
+  selection.removeAllRanges();
+  selection.addRange(range);
+  return true;
+}
+
 export default function PostComposer({ startOpen = false, pageMode = false }) {
   const router = useRouter();
   const { currentUser, requireAuth, createPost, setCategory: setFeedCategory } = useApp();
@@ -678,7 +704,11 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     }
 
     lastQuoteEnterAtRef.current = now;
-    document.execCommand("insertHTML", false, "<br><br>");
+
+    if (!insertSingleLineBreakAtCursor(editor)) {
+      document.execCommand("insertHTML", false, "<br>");
+    }
+
     setManualFormatState("quote", true);
     window.requestAnimationFrame(syncEditorState);
     return true;
