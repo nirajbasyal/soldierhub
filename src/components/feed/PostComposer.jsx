@@ -27,6 +27,7 @@ const SAFETY_MESSAGE =
 const PUBLISH_SCROLL_KEY = "soldierhub_scroll_to_latest_post";
 const COMPOSE_SUBMIT_EVENT = "soldierhub-compose-submit";
 const COMPOSE_STATE_EVENT = "soldierhub-compose-state";
+const FORMAT_BOUNDARY = "\u200B";
 
 const COMPOSER_CATEGORY_LABELS = {
   "General Q&A": "Q&A",
@@ -70,7 +71,7 @@ function getAnonymousDisplayName(seed) {
 
 function sanitizeComposerHtml(html = "") {
   if (typeof window === "undefined" || typeof DOMParser === "undefined") {
-    return String(html || "");
+    return String(html || "").replaceAll(FORMAT_BOUNDARY, "");
   }
 
   const parser = new DOMParser();
@@ -81,7 +82,7 @@ function sanitizeComposerHtml(html = "") {
 
   const cleanNode = (node, parent) => {
     if (node.nodeType === Node.TEXT_NODE) {
-      parent.appendChild(outputDoc.createTextNode(node.textContent || ""));
+      parent.appendChild(outputDoc.createTextNode((node.textContent || "").replaceAll(FORMAT_BOUNDARY, "")));
       return;
     }
 
@@ -103,13 +104,14 @@ function sanitizeComposerHtml(html = "") {
   Array.from(sourceRoot?.childNodes || []).forEach((child) => cleanNode(child, outputRoot));
 
   return outputRoot.innerHTML
+    .replaceAll(FORMAT_BOUNDARY, "")
     .replace(/<div><br><\/div>/gi, "")
     .replace(/<p><br><\/p>/gi, "")
     .trim();
 }
 
 function getPlainEditorText(editor) {
-  return (editor?.innerText || "").replace(/\u00a0/g, " ").trim();
+  return (editor?.innerText || "").replaceAll(FORMAT_BOUNDARY, "").replace(/\u00a0/g, " ").trim();
 }
 
 function getSelectionElement(editor) {
@@ -138,13 +140,39 @@ function queryCommandIsActive(command) {
   }
 }
 
-function placeCaretInElement(element) {
+function forceCommandOff(command) {
+  if (typeof document === "undefined") return;
+
+  for (let i = 0; i < 3; i += 1) {
+    if (!queryCommandIsActive(command)) return;
+
+    try {
+      document.execCommand(command, false, null);
+    } catch {
+      return;
+    }
+  }
+}
+
+function placeCaretInElement(element, atEnd = false) {
   if (typeof window === "undefined" || !element) return;
 
   const selection = window.getSelection?.();
   const range = document.createRange();
 
   range.selectNodeContents(element);
+  range.collapse(!atEnd);
+  selection?.removeAllRanges();
+  selection?.addRange(range);
+}
+
+function placeCaretAfterNode(node) {
+  if (typeof window === "undefined" || !node) return;
+
+  const selection = window.getSelection?.();
+  const range = document.createRange();
+
+  range.setStartAfter(node);
   range.collapse(true);
   selection?.removeAllRanges();
   selection?.addRange(range);
@@ -162,12 +190,12 @@ function isEmptyEditableBlock(element) {
   const tagName = element.tagName?.toLowerCase();
   if (!["p", "div"].includes(tagName)) return false;
 
-  return !element.textContent?.replace(/\u00a0/g, " ").trim();
+  return !element.textContent?.replaceAll(FORMAT_BOUNDARY, "").replace(/\u00a0/g, " ").trim();
 }
 
 function isElementContentEmpty(element) {
   if (!element) return false;
-  return !element.textContent?.replace(/\u00a0/g, " ").trim();
+  return !element.textContent?.replaceAll(FORMAT_BOUNDARY, "").replace(/\u00a0/g, " ").trim();
 }
 
 function getCurrentQuote(editor) {
@@ -194,6 +222,64 @@ function ensureQuoteExitSpace(editor) {
 
 function hasStructuredContent(editor) {
   return Boolean(editor?.querySelector?.("blockquote, ul, ol, li"));
+}
+
+function exitInlineFormatForNewText(editor, selector) {
+  if (!editor || typeof document === "undefined") return false;
+
+  const startElement = getSelectionElement(editor);
+  const inlineElement = startElement?.closest?.(selector);
+  if (!inlineElement || !editor.contains(inlineElement)) return false;
+
+  const marker = document.createTextNode(FORMAT_BOUNDARY);
+  inlineElement.parentNode?.insertBefore(marker, inlineElement.nextSibling);
+  placeCaretAfterNode(marker);
+  return true;
+}
+
+function exitListForNewText(editor, listSelector) {
+  if (!editor || typeof document === "undefined") return false;
+
+  const listItem = getCurrentListItem(editor);
+  const list = listItem?.closest?.(listSelector);
+  if (!listItem || !list || !editor.contains(list)) return false;
+
+  const paragraph = createEmptyParagraph();
+  const listHasOneItem = list.querySelectorAll(":scope > li").length <= 1;
+
+  if (isElementContentEmpty(listItem)) {
+    if (listHasOneItem) {
+      list.parentNode?.insertBefore(paragraph, list);
+      list.remove();
+    } else {
+      list.parentNode?.insertBefore(paragraph, list.nextSibling);
+      listItem.remove();
+    }
+  } else {
+    list.parentNode?.insertBefore(paragraph, list.nextSibling);
+  }
+
+  placeCaretInElement(paragraph);
+  return true;
+}
+
+function exitQuoteForNewText(editor) {
+  if (!editor || typeof document === "undefined") return false;
+
+  const quote = getCurrentQuote(editor);
+  if (!quote || !editor.contains(quote)) return false;
+
+  const paragraph = createEmptyParagraph();
+
+  if (isElementContentEmpty(quote)) {
+    quote.parentNode?.insertBefore(paragraph, quote);
+    quote.remove();
+  } else {
+    quote.parentNode?.insertBefore(paragraph, quote.nextSibling);
+  }
+
+  placeCaretInElement(paragraph);
+  return true;
 }
 
 export default function PostComposer({ startOpen = false, pageMode = false }) {
@@ -378,17 +464,24 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     });
   };
 
+  const turnInlineFormatOff = (command, selector, key) => {
+    forceCommandOff(command);
+    exitInlineFormatForNewText(editorRef.current, selector);
+    setManualFormatState(key, false);
+    window.requestAnimationFrame(syncEditorState);
+  };
+
   const ensureInactiveInlineFormatsBeforeTyping = () => {
     if (typeof document === "undefined") return;
 
     const desired = activeFormatsRef.current || {};
 
-    if (!desired.bold && queryCommandIsActive("bold")) {
-      document.execCommand("bold", false, null);
+    if (!desired.bold && (queryCommandIsActive("bold") || selectionInsideTag(editorRef.current, "strong,b"))) {
+      turnInlineFormatOff("bold", "strong,b", "bold");
     }
 
-    if (!desired.italic && queryCommandIsActive("italic")) {
-      document.execCommand("italic", false, null);
+    if (!desired.italic && (queryCommandIsActive("italic") || selectionInsideTag(editorRef.current, "em,i"))) {
+      turnInlineFormatOff("italic", "em,i", "italic");
     }
   };
 
@@ -455,6 +548,59 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     return false;
   };
 
+  const turnFormatOff = (action) => {
+    const editor = editorRef.current;
+    if (!editor || typeof document === "undefined") return;
+
+    if (action.key === "bold") {
+      turnInlineFormatOff("bold", "strong,b", "bold");
+      return;
+    }
+
+    if (action.key === "italic") {
+      turnInlineFormatOff("italic", "em,i", "italic");
+      return;
+    }
+
+    if (action.key === "bullet") {
+      exitListForNewText(editor, "ul");
+      forceCommandOff("insertUnorderedList");
+      setManualFormatState("bullet", false);
+      window.requestAnimationFrame(syncEditorState);
+      return;
+    }
+
+    if (action.key === "number") {
+      exitListForNewText(editor, "ol");
+      forceCommandOff("insertOrderedList");
+      setManualFormatState("number", false);
+      window.requestAnimationFrame(syncEditorState);
+      return;
+    }
+
+    if (action.key === "quote") {
+      exitQuoteForNewText(editor);
+      setManualFormatState("quote", false);
+      window.requestAnimationFrame(syncEditorState);
+    }
+  };
+
+  const turnFormatOn = (action) => {
+    const editor = editorRef.current;
+    if (!editor || typeof document === "undefined") return;
+
+    if (action.command === "formatBlock") {
+      document.execCommand("formatBlock", false, "blockquote");
+      setManualFormatState("quote", true);
+      window.requestAnimationFrame(() => ensureQuoteExitSpace(editor));
+    } else {
+      document.execCommand(action.command, false, null);
+      setManualFormatState(action.key, true);
+    }
+
+    window.requestAnimationFrame(syncEditorState);
+  };
+
   const applyFormatting = (action) => {
     if (submittingValueRef.current) return;
     const editor = editorRef.current;
@@ -462,21 +608,15 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
 
     editor.focus({ preventScroll: true });
 
-    if (action.command === "formatBlock") {
-      const isInQuote = selectionInsideTag(editor, "blockquote");
-      const nextQuoteState = !isInQuote;
-      document.execCommand("formatBlock", false, nextQuoteState ? "blockquote" : "p");
-      setManualFormatState("quote", nextQuoteState);
-      if (nextQuoteState) window.requestAnimationFrame(() => ensureQuoteExitSpace(editor));
-    } else {
-      const nativeState = queryCommandIsActive(action.command);
-      const currentState = nativeState || Boolean(activeFormatsRef.current?.[action.key]);
-      const nextState = !currentState;
-      document.execCommand(action.command, false, null);
-      setManualFormatState(action.key, nextState);
-    }
+    const currentState = Boolean(activeFormatsRef.current?.[action.key]) ||
+      (action.command !== "formatBlock" && queryCommandIsActive(action.command)) ||
+      (action.key === "quote" && selectionInsideTag(editor, "blockquote"));
 
-    window.requestAnimationFrame(syncEditorState);
+    if (currentState) {
+      turnFormatOff(action);
+    } else {
+      turnFormatOn(action);
+    }
   };
 
   const handleEditorPointerDown = (event) => {
