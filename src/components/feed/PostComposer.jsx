@@ -12,7 +12,6 @@ import {
   Pencil,
   Plus,
   Quote,
-  X,
 } from "lucide-react";
 import { CATEGORIES } from "@/lib/constants";
 import { T, TONE_STYLES } from "@/lib/theme";
@@ -24,8 +23,6 @@ import Button from "@/components/ui/Button";
 const SAFETY_MESSAGE =
   "This content may violate SoldierHub community safety rules. Please revise it and try again.";
 
-const RED = "#B31942";
-const DARK_RED = "#9F1239";
 const PUBLISH_SCROLL_KEY = "soldierhub_scroll_to_latest_post";
 const COMPOSE_SUBMIT_EVENT = "soldierhub-compose-submit";
 const COMPOSE_STATE_EVENT = "soldierhub-compose-state";
@@ -160,6 +157,10 @@ function ensureQuoteExitSpace(editor) {
   });
 }
 
+function hasStructuredContent(editor) {
+  return Boolean(editor?.querySelector?.("blockquote, ul, ol, li"));
+}
+
 export default function PostComposer({ startOpen = false, pageMode = false }) {
   const router = useRouter();
   const { currentUser, requireAuth, createPost, setCategory: setFeedCategory } = useApp();
@@ -171,9 +172,9 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   const [anonymous, setAnonymous] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [textFocused, setTextFocused] = useState(false);
   const [isPhoneScreen, setIsPhoneScreen] = useState(false);
   const [activeFormats, setActiveFormats] = useState({});
+  const [structured, setStructured] = useState(false);
 
   const editorRef = useRef(null);
   const bodyValueRef = useRef(body);
@@ -240,12 +241,12 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     const resizeEditor = () => {
       const viewportHeight =
         typeof window !== "undefined" ? window.visualViewport?.height || window.innerHeight : 760;
-      const minHeight = pageMode ? (isPhoneScreen ? 190 : 160) : isPhoneScreen ? 180 : 122;
+      const minHeight = pageMode ? (isPhoneScreen ? 176 : 150) : isPhoneScreen ? 172 : 118;
       const maxHeight = pageMode
-        ? Math.max(220, Math.min(isPhoneScreen ? 420 : 340, Math.round(viewportHeight * 0.38)))
+        ? Math.max(220, Math.min(isPhoneScreen ? 390 : 320, Math.round(viewportHeight * 0.36)))
         : isPhoneScreen
-          ? 360
-          : 260;
+          ? 320
+          : 240;
 
       editor.style.minHeight = `${minHeight}px`;
       editor.style.maxHeight = `${maxHeight}px`;
@@ -269,6 +270,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
 
   const syncQuoteState = () => {
     ensureQuoteExitSpace(editorRef.current);
+    setStructured(hasStructuredContent(editorRef.current));
   };
 
   const syncEditorState = () => {
@@ -279,6 +281,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
 
     setBody(cleanHtml);
     setPlainText(cleanText);
+    setStructured(hasStructuredContent(editor));
     bodyValueRef.current = cleanHtml;
     plainTextValueRef.current = cleanText;
     setError("");
@@ -289,11 +292,6 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
       editorRef.current?.focus({ preventScroll: true });
       syncQuoteState();
     });
-  };
-
-  const dismissKeyboard = () => {
-    editorRef.current?.blur();
-    setTextFocused(false);
   };
 
   const selectCategory = (nextCategory) => {
@@ -356,9 +354,9 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
       const rect = quote.getBoundingClientRect();
       return (
         event.clientY >= rect.bottom &&
-        event.clientY <= rect.bottom + 44 &&
-        event.clientX >= rect.left - 12 &&
-        event.clientX <= rect.right + 12
+        event.clientY <= rect.bottom + 52 &&
+        event.clientX >= rect.left - 14 &&
+        event.clientX <= rect.right + 14
       );
     });
 
@@ -372,6 +370,16 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     editor.focus({ preventScroll: true });
     placeCaretInElement(exitBlock);
     setManualFormatState("quote", false);
+    window.requestAnimationFrame(syncEditorState);
+  };
+
+  const handleEditorKeyDown = (event) => {
+    const editor = editorRef.current;
+    if (!editor || event.key !== "Enter" || !selectionInsideTag(editor, "blockquote")) return;
+
+    event.preventDefault();
+    document.execCommand("insertHTML", false, "<br><br>");
+    setManualFormatState("quote", true);
     window.requestAnimationFrame(syncEditorState);
   };
 
@@ -392,6 +400,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     setBody("");
     setPlainText("");
     setActiveFormats({});
+    setStructured(false);
     bodyValueRef.current = "";
     plainTextValueRef.current = "";
   };
@@ -534,32 +543,27 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   return (
     <div
       className={pageMode
-        ? "relative flex flex-col rounded-[30px] border p-4 md:min-h-[520px] md:p-5"
+        ? "relative flex flex-col rounded-[30px] border p-4 md:min-h-[500px] md:p-5"
         : "relative rounded-[26px] border p-4"
       }
       style={{ backgroundColor: T.card, borderColor: T.border }}
     >
-      <button
-        type="button"
-        onClick={closeComposer}
-        disabled={submitting}
-        className="sh-tap absolute right-4 top-4 hidden h-9 w-9 items-center justify-center rounded-full border transition hover:shadow-sm disabled:opacity-50 md:flex"
-        style={{ backgroundColor: "#FFFFFF", borderColor: T.border, color: T.textSubtle }}
-        aria-label="Close post composer"
-        title="Close composer"
+      <div
+        className="absolute right-4 top-4 rounded-full border px-3 py-1 text-[11px] font-extrabold"
+        style={{ backgroundColor: "#F4F8FD", borderColor: T.borderSoft, color: T.textSubtle }}
       >
-        <X size={16} strokeWidth={2.6} />
-      </button>
+        Be kind
+      </div>
 
-      <div className="mb-3 flex items-center gap-3 pr-0 md:pr-12">
-        <Avatar name={composerDisplayName} color={composerDisplayColor} size={46} />
+      <div className="mb-3 flex items-center gap-3 pr-20">
+        <Avatar name={composerDisplayName} color={composerDisplayColor} size={44} />
 
         <div className="min-w-0 flex-1">
-          <div className="truncate text-[18px] font-extrabold" style={{ color: T.text }}>
-            {composerDisplayName}
+          <div className="truncate text-[17px] font-extrabold" style={{ color: T.text }}>
+            Create a post
           </div>
-          <div className="text-sm" style={{ color: T.textSubtle }}>
-            Posting to SoldierHub
+          <div className="truncate text-sm" style={{ color: T.textSubtle }}>
+            {anonymous ? composerDisplayName : currentUser.full_name}
           </div>
         </div>
       </div>
@@ -577,7 +581,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
                   key={c.key}
                   type="button"
                   onClick={() => selectCategory(c.key)}
-                  className="h-11 shrink-0 rounded-full border px-5 text-sm font-bold transition-all active:scale-[0.98] md:h-10 md:px-4"
+                  className="h-10 shrink-0 rounded-full border px-4 text-sm font-bold transition-all active:scale-[0.98]"
                   style={{
                     backgroundColor: active ? s.bg : "#FFFFFF",
                     color: active ? s.text : T.textMuted,
@@ -599,7 +603,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
               "linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.82) 62%, rgba(255,255,255,1) 100%)",
           }}
         >
-          <ChevronRight size={22} strokeWidth={2.7} style={{ color: RED }} />
+          <ChevronRight size={22} strokeWidth={2.7} style={{ color: T.textSubtle }} />
         </div>
       </div>
 
@@ -647,29 +651,12 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
       </div>
 
       <div className="relative">
-        {textFocused && isPhoneScreen && (
-          <button
-            type="button"
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={dismissKeyboard}
-            className="sh-tap absolute right-0 top-0 z-20 rounded-full border px-3 py-1.5 text-xs font-extrabold shadow-sm backdrop-blur-xl"
-            style={{
-              backgroundColor: "rgba(255,255,255,0.94)",
-              borderColor: "rgba(179,25,66,0.18)",
-              color: RED,
-              boxShadow: "0 8px 18px rgba(11,28,44,0.08)",
-            }}
-          >
-            Done
-          </button>
-        )}
-
-        {!plainText && (
+        {!plainText && !structured && (
           <div
             className="pointer-events-none absolute left-0 top-0 text-[20px] leading-9 md:text-[17px] md:leading-7"
             style={{ color: "#A8ABB2" }}
           >
-            Ask a question, share an update, or help the Soldier Hub community...
+            Ask a question, share an update, or help the SoldierHub community...
           </div>
         )}
 
@@ -680,13 +667,10 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
           role="textbox"
           aria-label="Write your SoldierHub post"
           aria-multiline="true"
-          onFocus={() => {
-            setTextFocused(true);
-            window.requestAnimationFrame(syncQuoteState);
-          }}
-          onBlur={() => window.setTimeout(() => setTextFocused(false), 120)}
+          onFocus={() => window.requestAnimationFrame(syncQuoteState)}
           onPointerDown={handleEditorPointerDown}
           onInput={syncEditorState}
+          onKeyDown={handleEditorKeyDown}
           onKeyUp={syncQuoteState}
           onMouseUp={syncQuoteState}
           onPaste={handlePaste}
@@ -709,27 +693,22 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
         className="mt-3 rounded-[22px] border px-3 py-3 md:rounded-[18px] md:py-2.5"
         style={{ borderColor: T.borderSoft, backgroundColor: "rgba(248,250,253,0.94)" }}
       >
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 md:gap-3">
           <button
             type="button"
             onClick={toggleAnonymous}
             disabled={submitting}
-            className="sh-tap flex min-w-0 flex-1 items-center justify-between gap-3 text-left md:justify-start md:gap-4"
+            className="sh-tap flex min-w-0 flex-1 items-center justify-between gap-2 text-left"
           >
-            <div className="min-w-0">
-              <div className="text-sm font-extrabold" style={{ color: T.navy }}>
-                Post anonymously
-              </div>
-              <div className="mt-0.5 truncate text-xs" style={{ color: T.textSubtle }}>
-                {anonymous ? `Public name: ${composerDisplayName}` : "Your name will be shown publicly"}
-              </div>
-            </div>
+            <span className="truncate text-sm font-extrabold" style={{ color: T.navy }}>
+              Post anonymous
+            </span>
 
             <span
-              className="relative inline-flex h-8 w-[66px] shrink-0 items-center rounded-full border"
+              className="relative inline-flex h-8 w-[62px] shrink-0 items-center rounded-full border"
               style={{
-                borderColor: anonymous ? "rgba(159,18,57,0.18)" : T.border,
-                backgroundColor: anonymous ? DARK_RED : "rgba(213,226,242,0.72)",
+                borderColor: anonymous ? "rgba(63,95,125,0.34)" : T.border,
+                backgroundColor: anonymous ? "#3F5F7D" : "rgba(213,226,242,0.72)",
               }}
             >
               <span className="absolute left-3 text-[9px] font-black" style={{ color: "#FFFFFF", opacity: anonymous ? 1 : 0 }}>
@@ -740,63 +719,44 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
               </span>
               <span
                 className="absolute left-[3px] top-[3px] h-[24px] w-[24px] rounded-full transition-transform duration-200"
-                style={{ transform: anonymous ? "translateX(36px)" : "translateX(0)", backgroundColor: "#FFFFFF" }}
+                style={{ transform: anonymous ? "translateX(32px)" : "translateX(0)", backgroundColor: "#FFFFFF" }}
               />
             </span>
           </button>
 
-          <div className="flex shrink-0 items-center gap-2">
-            {canPublish && (
-              <button
-                type="button"
-                onClick={closeComposer}
-                disabled={submitting}
-                className="sh-tap h-10 shrink-0 rounded-full border px-4 text-xs font-extrabold"
-                style={{ backgroundColor: "#FFFFFF", borderColor: T.border, color: T.navy }}
-              >
-                Clear
-              </button>
-            )}
-
-            <Button
+          {canPublish && (
+            <button
               type="button"
-              variant="primary"
-              size="md"
-              onClick={submit}
-              disabled={!canPublish || submitting}
-              className="hidden rounded-full md:inline-flex md:min-w-[124px]"
+              onClick={closeComposer}
+              disabled={submitting}
+              className="sh-tap h-11 shrink-0 rounded-full border px-4 text-xs font-extrabold"
+              style={{ backgroundColor: "#FFFFFF", borderColor: T.border, color: T.navy }}
             >
-              {submitting ? "Publishing..." : "Publish"}
-            </Button>
-          </div>
+              Clear
+            </button>
+          )}
+
+          <Button
+            type="button"
+            variant="primary"
+            size="lg"
+            onClick={submit}
+            disabled={!canPublish || submitting}
+            className="min-w-[116px] rounded-full px-5 md:min-w-[140px]"
+          >
+            {submitting ? "Publishing..." : "Publish"}
+          </Button>
         </div>
       </div>
 
       {anonymous && (
         <div
           className="mt-2 rounded-2xl border px-3 py-2.5 text-xs"
-          style={{ backgroundColor: "rgba(255,241,245,0.96)", borderColor: "rgba(179,25,66,0.18)", color: DARK_RED }}
+          style={{ backgroundColor: "rgba(244,248,253,0.96)", borderColor: T.borderSoft, color: T.textMuted }}
         >
           Avoid typing personal details inside the post. Your real name stays hidden publicly.
         </div>
       )}
-
-      <div className="mt-4 flex flex-col gap-3 border-t pt-4 md:hidden" style={{ borderColor: T.borderSoft }}>
-        <div className="text-xs font-medium" style={{ color: T.textSubtle }}>
-          {canPublish ? `${plainText.trim().length} characters ready to publish.` : "Write your question or update to enable publishing."}
-        </div>
-
-        <Button
-          type="button"
-          variant="primary"
-          size="lg"
-          onClick={submit}
-          disabled={!canPublish || submitting}
-          className="w-full rounded-full"
-        >
-          {submitting ? "Publishing..." : "Publish"}
-        </Button>
-      </div>
     </div>
   );
 }
