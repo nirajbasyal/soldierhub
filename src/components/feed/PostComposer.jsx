@@ -655,6 +655,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     ? getAnonymousDisplayName(currentUser.id)
     : currentUser.full_name;
   const composerDisplayColor = anonymous ? "#5C6470" : currentUser.avatar_color;
+  const actionBarClassName = `${pageMode ? "sticky bottom-2 z-40 md:static" : ""} mt-3 rounded-[22px] border px-2.5 py-2 md:rounded-[18px] md:px-3 md:py-2.5`;
 
   return (
     <div
@@ -676,14 +677,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
         <X size={16} strokeWidth={2.8} />
       </button>
 
-      <div
-        className="absolute right-4 top-4 rounded-full border px-3 py-1 text-[11px] font-extrabold md:hidden"
-        style={{ backgroundColor: T.redBg, borderColor: "rgba(179, 25, 66, 0.16)", color: T.red }}
-      >
-        Be kind
-      </div>
-
-      <div className="mb-3 flex items-center gap-3 pr-20">
+      <div className="mb-3 flex items-center gap-3 md:pr-12">
         <Avatar name={composerDisplayName} color={composerDisplayColor} size={44} />
 
         <div className="min-w-0 flex-1">
@@ -819,46 +813,53 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
       )}
 
       <div
-        className="mt-3 rounded-[22px] border px-3 py-3 md:rounded-[18px] md:py-2.5"
-        style={{ borderColor: T.borderSoft, backgroundColor: "rgba(248,250,253,0.94)" }}
+        className={actionBarClassName}
+        style={{
+          borderColor: T.borderSoft,
+          backgroundColor: "rgba(248,250,253,0.98)",
+          boxShadow: pageMode ? "0 14px 30px rgba(11,28,44,0.08)" : "none",
+        }}
       >
-        <div className="flex items-center gap-2 md:gap-3">
+        <div className="flex items-center gap-1.5 md:gap-3">
           <button
             type="button"
             onClick={toggleAnonymous}
             disabled={submitting}
-            className="sh-tap flex min-w-0 flex-1 flex-col items-start justify-center gap-2 rounded-[18px] px-1 py-1 text-left md:flex-row md:items-center md:justify-between md:gap-3"
+            className="sh-tap flex min-w-0 flex-1 items-center justify-between gap-1.5 rounded-[18px] px-1 py-1 text-left md:gap-3"
           >
-            <span className="text-[13px] font-extrabold leading-tight md:text-sm" style={{ color: T.navy }}>
-              Post anonymous
+            <span
+              className="truncate text-[11px] font-medium leading-tight md:text-sm md:font-semibold"
+              style={{ color: T.navy }}
+            >
+              Post anonymously
             </span>
 
             <span
-              className="relative inline-flex h-8 w-[62px] shrink-0 items-center rounded-full border"
+              className="relative inline-flex h-7 w-[52px] shrink-0 items-center rounded-full border"
               style={{
                 borderColor: anonymous ? "rgba(63,95,125,0.34)" : T.border,
                 backgroundColor: anonymous ? "#3F5F7D" : "rgba(213,226,242,0.72)",
               }}
             >
-              <span className="absolute left-3 text-[9px] font-black" style={{ color: "#FFFFFF", opacity: anonymous ? 1 : 0 }}>
+              <span className="absolute left-2 text-[8px] font-black" style={{ color: "#FFFFFF", opacity: anonymous ? 1 : 0 }}>
                 ON
               </span>
-              <span className="absolute right-2.5 text-[9px] font-black" style={{ color: T.textSubtle, opacity: anonymous ? 0 : 1 }}>
+              <span className="absolute right-2 text-[8px] font-black" style={{ color: T.textSubtle, opacity: anonymous ? 0 : 1 }}>
                 OFF
               </span>
               <span
-                className="absolute left-[3px] top-[3px] h-[24px] w-[24px] rounded-full transition-transform duration-200"
-                style={{ transform: anonymous ? "translateX(32px)" : "translateX(0)", backgroundColor: "#FFFFFF" }}
+                className="absolute left-[3px] top-[3px] h-[22px] w-[22px] rounded-full transition-transform duration-200"
+                style={{ transform: anonymous ? "translateX(24px)" : "translateX(0)", backgroundColor: "#FFFFFF" }}
               />
             </span>
           </button>
 
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1.5 md:gap-2">
             <button
               type="button"
               onClick={clearComposerInput}
               disabled={!canPublish || submitting}
-              className="sh-tap h-11 shrink-0 rounded-full border px-4 text-xs font-extrabold disabled:opacity-45"
+              className="sh-tap h-10 shrink-0 rounded-full border px-3 text-[11px] font-extrabold disabled:opacity-45 md:h-11 md:px-4 md:text-xs"
               style={{ backgroundColor: "#FFFFFF", borderColor: T.border, color: T.navy }}
             >
               Clear
@@ -870,7 +871,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
               size="lg"
               onClick={submit}
               disabled={!canPublish || submitting}
-              className="min-w-[104px] rounded-full px-4 md:min-w-[140px] md:px-5"
+              className="h-10 min-w-[88px] rounded-full px-3 text-[12px] md:h-11 md:min-w-[140px] md:px-5 md:text-sm"
             >
               {submitting ? "Publishing..." : "Publish"}
             </Button>
@@ -880,10 +881,11 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
 
       {anonymous && (
         <div
-          className="mt-2 rounded-2xl border px-3 py-2.5 text-xs"
-          style={{ backgroundColor: "rgba(244,248,253,0.96)", borderColor: T.borderSoft, color: T.textMuted }}
+          className="mt-2 flex items-start gap-2 rounded-2xl border px-3 py-2.5 text-xs font-medium"
+          style={{ backgroundColor: T.redBg, borderColor: "rgba(179, 25, 66, 0.18)", color: T.red }}
         >
-          Avoid typing personal details inside the post. Your real name stays hidden publicly.
+          <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+          <span>Anonymous mode is on. Do not include names, unit details, or personal contact info in the post body.</span>
         </div>
       )}
     </div>
