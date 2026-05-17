@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict rTlO6DHy94DjpcCS5OB2nt2FVWDBiIdMLSRGMED0Knxiy2IYtnLDvfh9j5lh05S
+\restrict fCaisX1AFEkeYkAWdHbiggY6at7lEBJRQpEunNCWejAcs8Iuf7JkvEdATGCBe8u
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 18.4
@@ -363,7 +363,7 @@ $$;
 
 CREATE FUNCTION public.delete_comment_safe(p_comment_id uuid) RETURNS TABLE(ok boolean, deleted_comment_id uuid, affected_post_id uuid)
     LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO ''
+    SET search_path TO 'public'
     AS $$
 declare
   v_user_id uuid := auth.uid();
@@ -380,7 +380,8 @@ begin
     select 1
     from public.profiles p
     where p.id = v_user_id
-      and coalesce(p.status, p.verification_status) = 'verified'
+      and p.status = 'verified'
+      and p.verification_status = 'verified'
   )
   into v_is_verified;
 
@@ -393,8 +394,9 @@ begin
     select 1
     from public.profiles p
     where p.id = v_user_id
-      and coalesce(p.status, p.verification_status) = 'verified'
       and p.role = 'admin'
+      and p.status = 'verified'
+      and p.verification_status = 'verified'
   )
   into v_is_admin;
 
@@ -1195,37 +1197,12 @@ CREATE TABLE public.posts (
 
 
 --
--- Name: reports; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.reports (
-    post_id uuid NOT NULL,
-    user_id uuid NOT NULL,
-    reason text DEFAULT ''::text,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
-);
-
-
---
 -- Name: upvotes; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.upvotes (
     post_id uuid NOT NULL,
     user_id uuid NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
-);
-
-
---
--- Name: visitor_reports; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.visitor_reports (
-    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
-    post_id uuid NOT NULL,
-    visitor_key_hash text NOT NULL,
-    reason text DEFAULT ''::text,
     created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
@@ -1251,12 +1228,8 @@ CREATE VIEW public.my_posts_with_meta WITH (security_invoker='true') AS
           WHERE (u.post_id = p.id)), (0)::bigint) AS upvote_count,
     COALESCE(( SELECT count(*) AS count
            FROM public.comments c
-          WHERE (c.post_id = p.id)), (0)::bigint) AS comment_count,
-    (COALESCE(( SELECT count(*) AS count
-           FROM public.reports r
-          WHERE (r.post_id = p.id)), (0)::bigint) + COALESCE(( SELECT count(*) AS count
-           FROM public.visitor_reports vr
-          WHERE (vr.post_id = p.id)), (0)::bigint)) AS report_count
+          WHERE ((c.post_id = p.id) AND (c.deleted_at IS NULL))), (0)::bigint) AS comment_count,
+    public.count_post_reports(id) AS report_count
    FROM public.posts p;
 
 
@@ -1308,12 +1281,8 @@ CREATE VIEW public.posts_with_meta WITH (security_invoker='true') AS
           WHERE (u.post_id = p.id)), (0)::bigint) AS upvote_count,
     COALESCE(( SELECT count(*) AS count
            FROM public.comments c
-          WHERE (c.post_id = p.id)), (0)::bigint) AS comment_count,
-    (COALESCE(( SELECT count(*) AS count
-           FROM public.reports r
-          WHERE (r.post_id = p.id)), (0)::bigint) + COALESCE(( SELECT count(*) AS count
-           FROM public.visitor_reports vr
-          WHERE (vr.post_id = p.id)), (0)::bigint)) AS report_count
+          WHERE ((c.post_id = p.id) AND (c.deleted_at IS NULL))), (0)::bigint) AS comment_count,
+    public.count_post_reports(id) AS report_count
    FROM public.posts p
   WHERE (status = ANY (ARRAY['active'::text, 'reported'::text]));
 
@@ -1373,7 +1342,7 @@ CREATE VIEW public.profile_follow_counts AS
             count(*) AS following_count
            FROM public.profile_follows
           GROUP BY profile_follows.follower_id) following ON ((following.follower_id = p.id)))
-  WHERE (COALESCE(p.status, p.verification_status) = 'verified'::text);
+  WHERE ((p.status = 'verified'::text) AND (p.verification_status = 'verified'::text));
 
 
 --
@@ -1389,7 +1358,19 @@ CREATE VIEW public.public_profiles WITH (security_invoker='true') AS
     base,
     created_at
    FROM public.profiles
-  WHERE (status = 'verified'::text);
+  WHERE ((status = 'verified'::text) AND (verification_status = 'verified'::text));
+
+
+--
+-- Name: reports; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.reports (
+    post_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    reason text DEFAULT ''::text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
 
 
 --
@@ -1405,6 +1386,19 @@ CREATE TABLE public.resources (
     display_order integer DEFAULT 0,
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: visitor_reports; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.visitor_reports (
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
+    post_id uuid NOT NULL,
+    visitor_key_hash text NOT NULL,
+    reason text DEFAULT ''::text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 
@@ -2542,28 +2536,12 @@ GRANT UPDATE(edited) ON TABLE public.posts TO authenticated;
 
 
 --
--- Name: TABLE reports; Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON TABLE public.reports TO anon;
-GRANT ALL ON TABLE public.reports TO authenticated;
-GRANT ALL ON TABLE public.reports TO service_role;
-
-
---
 -- Name: TABLE upvotes; Type: ACL; Schema: public; Owner: -
 --
 
 GRANT ALL ON TABLE public.upvotes TO anon;
 GRANT ALL ON TABLE public.upvotes TO authenticated;
 GRANT ALL ON TABLE public.upvotes TO service_role;
-
-
---
--- Name: TABLE visitor_reports; Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON TABLE public.visitor_reports TO service_role;
 
 
 --
@@ -2630,12 +2608,28 @@ GRANT ALL ON TABLE public.public_profiles TO service_role;
 
 
 --
+-- Name: TABLE reports; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.reports TO anon;
+GRANT ALL ON TABLE public.reports TO authenticated;
+GRANT ALL ON TABLE public.reports TO service_role;
+
+
+--
 -- Name: TABLE resources; Type: ACL; Schema: public; Owner: -
 --
 
 GRANT ALL ON TABLE public.resources TO anon;
 GRANT ALL ON TABLE public.resources TO authenticated;
 GRANT ALL ON TABLE public.resources TO service_role;
+
+
+--
+-- Name: TABLE visitor_reports; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.visitor_reports TO service_role;
 
 
 --
@@ -2702,5 +2696,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON T
 -- PostgreSQL database dump complete
 --
 
-\unrestrict rTlO6DHy94DjpcCS5OB2nt2FVWDBiIdMLSRGMED0Knxiy2IYtnLDvfh9j5lh05S
+\unrestrict fCaisX1AFEkeYkAWdHbiggY6at7lEBJRQpEunNCWejAcs8Iuf7JkvEdATGCBe8u
 
