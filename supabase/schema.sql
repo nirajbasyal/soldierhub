@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict fCaisX1AFEkeYkAWdHbiggY6at7lEBJRQpEunNCWejAcs8Iuf7JkvEdATGCBe8u
+\restrict uzMrX4KkY7kXdk9ReB0qWSrrMkUlVSsP5k5vbNCSeIEckS2o4rNJ1vHks1E0DJ8
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 18.4
@@ -2223,8 +2223,8 @@ GRANT USAGE ON SCHEMA public TO service_role;
 --
 
 REVOKE ALL ON FUNCTION public.admin_reject_profile(p_profile_id uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION public.admin_reject_profile(p_profile_id uuid) TO authenticated;
 GRANT ALL ON FUNCTION public.admin_reject_profile(p_profile_id uuid) TO service_role;
+GRANT ALL ON FUNCTION public.admin_reject_profile(p_profile_id uuid) TO authenticated;
 
 
 --
@@ -2232,8 +2232,8 @@ GRANT ALL ON FUNCTION public.admin_reject_profile(p_profile_id uuid) TO service_
 --
 
 REVOKE ALL ON FUNCTION public.admin_revoke_profile(p_profile_id uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION public.admin_revoke_profile(p_profile_id uuid) TO authenticated;
 GRANT ALL ON FUNCTION public.admin_revoke_profile(p_profile_id uuid) TO service_role;
+GRANT ALL ON FUNCTION public.admin_revoke_profile(p_profile_id uuid) TO authenticated;
 
 
 --
@@ -2241,8 +2241,8 @@ GRANT ALL ON FUNCTION public.admin_revoke_profile(p_profile_id uuid) TO service_
 --
 
 REVOKE ALL ON FUNCTION public.admin_revoke_profile_by_email(p_email text) FROM PUBLIC;
-GRANT ALL ON FUNCTION public.admin_revoke_profile_by_email(p_email text) TO authenticated;
 GRANT ALL ON FUNCTION public.admin_revoke_profile_by_email(p_email text) TO service_role;
+GRANT ALL ON FUNCTION public.admin_revoke_profile_by_email(p_email text) TO authenticated;
 
 
 --
@@ -2250,8 +2250,8 @@ GRANT ALL ON FUNCTION public.admin_revoke_profile_by_email(p_email text) TO serv
 --
 
 REVOKE ALL ON FUNCTION public.admin_verify_profile_by_email(p_email text) FROM PUBLIC;
-GRANT ALL ON FUNCTION public.admin_verify_profile_by_email(p_email text) TO authenticated;
 GRANT ALL ON FUNCTION public.admin_verify_profile_by_email(p_email text) TO service_role;
+GRANT ALL ON FUNCTION public.admin_verify_profile_by_email(p_email text) TO authenticated;
 
 
 --
@@ -2259,9 +2259,9 @@ GRANT ALL ON FUNCTION public.admin_verify_profile_by_email(p_email text) TO serv
 --
 
 REVOKE ALL ON FUNCTION public.count_post_reports(p_post_id uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.count_post_reports(p_post_id uuid) TO service_role;
 GRANT ALL ON FUNCTION public.count_post_reports(p_post_id uuid) TO anon;
 GRANT ALL ON FUNCTION public.count_post_reports(p_post_id uuid) TO authenticated;
-GRANT ALL ON FUNCTION public.count_post_reports(p_post_id uuid) TO service_role;
 
 
 --
@@ -2269,16 +2269,15 @@ GRANT ALL ON FUNCTION public.count_post_reports(p_post_id uuid) TO service_role;
 --
 
 REVOKE ALL ON FUNCTION public.create_comment_safe(p_post_id uuid, p_body text) FROM PUBLIC;
-GRANT ALL ON FUNCTION public.create_comment_safe(p_post_id uuid, p_body text) TO authenticated;
 GRANT ALL ON FUNCTION public.create_comment_safe(p_post_id uuid, p_body text) TO service_role;
+GRANT ALL ON FUNCTION public.create_comment_safe(p_post_id uuid, p_body text) TO authenticated;
 
 
 --
 -- Name: FUNCTION create_follow_notification(); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.create_follow_notification() TO anon;
-GRANT ALL ON FUNCTION public.create_follow_notification() TO authenticated;
+REVOKE ALL ON FUNCTION public.create_follow_notification() FROM PUBLIC;
 GRANT ALL ON FUNCTION public.create_follow_notification() TO service_role;
 
 
@@ -2287,9 +2286,9 @@ GRANT ALL ON FUNCTION public.create_follow_notification() TO service_role;
 --
 
 REVOKE ALL ON FUNCTION public.create_visitor_report(p_post_id uuid, p_visitor_key text, p_reason text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.create_visitor_report(p_post_id uuid, p_visitor_key text, p_reason text) TO service_role;
 GRANT ALL ON FUNCTION public.create_visitor_report(p_post_id uuid, p_visitor_key text, p_reason text) TO anon;
 GRANT ALL ON FUNCTION public.create_visitor_report(p_post_id uuid, p_visitor_key text, p_reason text) TO authenticated;
-GRANT ALL ON FUNCTION public.create_visitor_report(p_post_id uuid, p_visitor_key text, p_reason text) TO service_role;
 
 
 --
@@ -2297,8 +2296,8 @@ GRANT ALL ON FUNCTION public.create_visitor_report(p_post_id uuid, p_visitor_key
 --
 
 REVOKE ALL ON FUNCTION public.delete_comment_safe(p_comment_id uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION public.delete_comment_safe(p_comment_id uuid) TO authenticated;
 GRANT ALL ON FUNCTION public.delete_comment_safe(p_comment_id uuid) TO service_role;
+GRANT ALL ON FUNCTION public.delete_comment_safe(p_comment_id uuid) TO authenticated;
 
 
 --
@@ -2306,17 +2305,15 @@ GRANT ALL ON FUNCTION public.delete_comment_safe(p_comment_id uuid) TO service_r
 --
 
 REVOKE ALL ON FUNCTION public.delete_own_post(p_post_id uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION public.delete_own_post(p_post_id uuid) TO anon;
-GRANT ALL ON FUNCTION public.delete_own_post(p_post_id uuid) TO authenticated;
 GRANT ALL ON FUNCTION public.delete_own_post(p_post_id uuid) TO service_role;
+GRANT ALL ON FUNCTION public.delete_own_post(p_post_id uuid) TO authenticated;
 
 
 --
 -- Name: FUNCTION delete_post(p_post_id uuid); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.delete_post(p_post_id uuid) TO anon;
-GRANT ALL ON FUNCTION public.delete_post(p_post_id uuid) TO authenticated;
+REVOKE ALL ON FUNCTION public.delete_post(p_post_id uuid) FROM PUBLIC;
 GRANT ALL ON FUNCTION public.delete_post(p_post_id uuid) TO service_role;
 
 
@@ -2325,27 +2322,29 @@ GRANT ALL ON FUNCTION public.delete_post(p_post_id uuid) TO service_role;
 --
 
 REVOKE ALL ON FUNCTION public.get_anonymous_post_label(p_post_id uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.get_anonymous_post_label(p_post_id uuid) TO service_role;
 GRANT ALL ON FUNCTION public.get_anonymous_post_label(p_post_id uuid) TO anon;
 GRANT ALL ON FUNCTION public.get_anonymous_post_label(p_post_id uuid) TO authenticated;
-GRANT ALL ON FUNCTION public.get_anonymous_post_label(p_post_id uuid) TO service_role;
 
 
 --
 -- Name: FUNCTION get_public_comments_for_post(target_post_id uuid, limit_count integer); Type: ACL; Schema: public; Owner: -
 --
 
+REVOKE ALL ON FUNCTION public.get_public_comments_for_post(target_post_id uuid, limit_count integer) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.get_public_comments_for_post(target_post_id uuid, limit_count integer) TO service_role;
 GRANT ALL ON FUNCTION public.get_public_comments_for_post(target_post_id uuid, limit_count integer) TO anon;
 GRANT ALL ON FUNCTION public.get_public_comments_for_post(target_post_id uuid, limit_count integer) TO authenticated;
-GRANT ALL ON FUNCTION public.get_public_comments_for_post(target_post_id uuid, limit_count integer) TO service_role;
 
 
 --
 -- Name: FUNCTION get_public_posts(limit_count integer, cursor_created_at timestamp with time zone, cursor_id uuid); Type: ACL; Schema: public; Owner: -
 --
 
+REVOKE ALL ON FUNCTION public.get_public_posts(limit_count integer, cursor_created_at timestamp with time zone, cursor_id uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.get_public_posts(limit_count integer, cursor_created_at timestamp with time zone, cursor_id uuid) TO service_role;
 GRANT ALL ON FUNCTION public.get_public_posts(limit_count integer, cursor_created_at timestamp with time zone, cursor_id uuid) TO anon;
 GRANT ALL ON FUNCTION public.get_public_posts(limit_count integer, cursor_created_at timestamp with time zone, cursor_id uuid) TO authenticated;
-GRANT ALL ON FUNCTION public.get_public_posts(limit_count integer, cursor_created_at timestamp with time zone, cursor_id uuid) TO service_role;
 
 
 --
@@ -2353,9 +2352,9 @@ GRANT ALL ON FUNCTION public.get_public_posts(limit_count integer, cursor_create
 --
 
 REVOKE ALL ON FUNCTION public.get_public_profile(p_user_id uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.get_public_profile(p_user_id uuid) TO service_role;
 GRANT ALL ON FUNCTION public.get_public_profile(p_user_id uuid) TO anon;
 GRANT ALL ON FUNCTION public.get_public_profile(p_user_id uuid) TO authenticated;
-GRANT ALL ON FUNCTION public.get_public_profile(p_user_id uuid) TO service_role;
 
 
 --
@@ -2363,7 +2362,6 @@ GRANT ALL ON FUNCTION public.get_public_profile(p_user_id uuid) TO service_role;
 --
 
 REVOKE ALL ON FUNCTION public.handle_new_user() FROM PUBLIC;
-GRANT ALL ON FUNCTION public.handle_new_user() TO authenticated;
 GRANT ALL ON FUNCTION public.handle_new_user() TO service_role;
 
 
@@ -2372,8 +2370,8 @@ GRANT ALL ON FUNCTION public.handle_new_user() TO service_role;
 --
 
 REVOKE ALL ON FUNCTION public.is_admin() FROM PUBLIC;
-GRANT ALL ON FUNCTION public.is_admin() TO authenticated;
 GRANT ALL ON FUNCTION public.is_admin() TO service_role;
+GRANT ALL ON FUNCTION public.is_admin() TO authenticated;
 
 
 --
@@ -2381,8 +2379,8 @@ GRANT ALL ON FUNCTION public.is_admin() TO service_role;
 --
 
 REVOKE ALL ON FUNCTION public.is_verified() FROM PUBLIC;
-GRANT ALL ON FUNCTION public.is_verified() TO authenticated;
 GRANT ALL ON FUNCTION public.is_verified() TO service_role;
+GRANT ALL ON FUNCTION public.is_verified() TO authenticated;
 
 
 --
@@ -2390,9 +2388,8 @@ GRANT ALL ON FUNCTION public.is_verified() TO service_role;
 --
 
 REVOKE ALL ON FUNCTION public.is_verified_profile(p_profile_id uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION public.is_verified_profile(p_profile_id uuid) TO anon;
-GRANT ALL ON FUNCTION public.is_verified_profile(p_profile_id uuid) TO authenticated;
 GRANT ALL ON FUNCTION public.is_verified_profile(p_profile_id uuid) TO service_role;
+GRANT ALL ON FUNCTION public.is_verified_profile(p_profile_id uuid) TO authenticated;
 
 
 --
@@ -2400,17 +2397,15 @@ GRANT ALL ON FUNCTION public.is_verified_profile(p_profile_id uuid) TO service_r
 --
 
 REVOKE ALL ON FUNCTION public.list_my_follow_connections(p_list_type text, p_limit integer) FROM PUBLIC;
-GRANT ALL ON FUNCTION public.list_my_follow_connections(p_list_type text, p_limit integer) TO anon;
-GRANT ALL ON FUNCTION public.list_my_follow_connections(p_list_type text, p_limit integer) TO authenticated;
 GRANT ALL ON FUNCTION public.list_my_follow_connections(p_list_type text, p_limit integer) TO service_role;
+GRANT ALL ON FUNCTION public.list_my_follow_connections(p_list_type text, p_limit integer) TO authenticated;
 
 
 --
 -- Name: FUNCTION protect_profile_sensitive_fields(); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.protect_profile_sensitive_fields() TO anon;
-GRANT ALL ON FUNCTION public.protect_profile_sensitive_fields() TO authenticated;
+REVOKE ALL ON FUNCTION public.protect_profile_sensitive_fields() FROM PUBLIC;
 GRANT ALL ON FUNCTION public.protect_profile_sensitive_fields() TO service_role;
 
 
@@ -2418,9 +2413,9 @@ GRANT ALL ON FUNCTION public.protect_profile_sensitive_fields() TO service_role;
 -- Name: FUNCTION request_profile_rereview(p_military_email text, p_phone text); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.request_profile_rereview(p_military_email text, p_phone text) TO anon;
-GRANT ALL ON FUNCTION public.request_profile_rereview(p_military_email text, p_phone text) TO authenticated;
+REVOKE ALL ON FUNCTION public.request_profile_rereview(p_military_email text, p_phone text) FROM PUBLIC;
 GRANT ALL ON FUNCTION public.request_profile_rereview(p_military_email text, p_phone text) TO service_role;
+GRANT ALL ON FUNCTION public.request_profile_rereview(p_military_email text, p_phone text) TO authenticated;
 
 
 --
@@ -2428,8 +2423,8 @@ GRANT ALL ON FUNCTION public.request_profile_rereview(p_military_email text, p_p
 --
 
 REVOKE ALL ON FUNCTION public.restore_reported_post(p_post_id uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION public.restore_reported_post(p_post_id uuid) TO authenticated;
 GRANT ALL ON FUNCTION public.restore_reported_post(p_post_id uuid) TO service_role;
+GRANT ALL ON FUNCTION public.restore_reported_post(p_post_id uuid) TO authenticated;
 
 
 --
@@ -2437,9 +2432,8 @@ GRANT ALL ON FUNCTION public.restore_reported_post(p_post_id uuid) TO service_ro
 --
 
 REVOKE ALL ON FUNCTION public.search_verified_profile_by_email(p_email text) FROM PUBLIC;
-GRANT ALL ON FUNCTION public.search_verified_profile_by_email(p_email text) TO anon;
-GRANT ALL ON FUNCTION public.search_verified_profile_by_email(p_email text) TO authenticated;
 GRANT ALL ON FUNCTION public.search_verified_profile_by_email(p_email text) TO service_role;
+GRANT ALL ON FUNCTION public.search_verified_profile_by_email(p_email text) TO authenticated;
 
 
 --
@@ -2447,7 +2441,6 @@ GRANT ALL ON FUNCTION public.search_verified_profile_by_email(p_email text) TO s
 --
 
 REVOKE ALL ON FUNCTION public.tg_cache_author_fields() FROM PUBLIC;
-GRANT ALL ON FUNCTION public.tg_cache_author_fields() TO authenticated;
 GRANT ALL ON FUNCTION public.tg_cache_author_fields() TO service_role;
 
 
@@ -2456,7 +2449,6 @@ GRANT ALL ON FUNCTION public.tg_cache_author_fields() TO service_role;
 --
 
 REVOKE ALL ON FUNCTION public.tg_cache_comment_author() FROM PUBLIC;
-GRANT ALL ON FUNCTION public.tg_cache_comment_author() TO authenticated;
 GRANT ALL ON FUNCTION public.tg_cache_comment_author() TO service_role;
 
 
@@ -2465,7 +2457,6 @@ GRANT ALL ON FUNCTION public.tg_cache_comment_author() TO service_role;
 --
 
 REVOKE ALL ON FUNCTION public.tg_mark_post_reported() FROM PUBLIC;
-GRANT ALL ON FUNCTION public.tg_mark_post_reported() TO authenticated;
 GRANT ALL ON FUNCTION public.tg_mark_post_reported() TO service_role;
 
 
@@ -2473,8 +2464,7 @@ GRANT ALL ON FUNCTION public.tg_mark_post_reported() TO service_role;
 -- Name: FUNCTION tg_notify_on_comment(); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.tg_notify_on_comment() TO anon;
-GRANT ALL ON FUNCTION public.tg_notify_on_comment() TO authenticated;
+REVOKE ALL ON FUNCTION public.tg_notify_on_comment() FROM PUBLIC;
 GRANT ALL ON FUNCTION public.tg_notify_on_comment() TO service_role;
 
 
@@ -2482,8 +2472,7 @@ GRANT ALL ON FUNCTION public.tg_notify_on_comment() TO service_role;
 -- Name: FUNCTION tg_set_updated_at(); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.tg_set_updated_at() TO anon;
-GRANT ALL ON FUNCTION public.tg_set_updated_at() TO authenticated;
+REVOKE ALL ON FUNCTION public.tg_set_updated_at() FROM PUBLIC;
 GRANT ALL ON FUNCTION public.tg_set_updated_at() TO service_role;
 
 
@@ -2491,27 +2480,25 @@ GRANT ALL ON FUNCTION public.tg_set_updated_at() TO service_role;
 -- Name: FUNCTION toggle_post_report(p_post_id uuid, p_reason text); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.toggle_post_report(p_post_id uuid, p_reason text) TO anon;
-GRANT ALL ON FUNCTION public.toggle_post_report(p_post_id uuid, p_reason text) TO authenticated;
+REVOKE ALL ON FUNCTION public.toggle_post_report(p_post_id uuid, p_reason text) FROM PUBLIC;
 GRANT ALL ON FUNCTION public.toggle_post_report(p_post_id uuid, p_reason text) TO service_role;
+GRANT ALL ON FUNCTION public.toggle_post_report(p_post_id uuid, p_reason text) TO authenticated;
 
 
 --
 -- Name: TABLE comments; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON TABLE public.comments TO anon;
-GRANT ALL ON TABLE public.comments TO authenticated;
 GRANT ALL ON TABLE public.comments TO service_role;
+GRANT SELECT,INSERT,DELETE ON TABLE public.comments TO authenticated;
 
 
 --
 -- Name: TABLE posts; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,REFERENCES,DELETE,TRIGGER,TRUNCATE,MAINTAIN ON TABLE public.posts TO anon;
-GRANT SELECT,INSERT,REFERENCES,DELETE,TRIGGER,TRUNCATE,MAINTAIN ON TABLE public.posts TO authenticated;
 GRANT ALL ON TABLE public.posts TO service_role;
+GRANT SELECT,INSERT,DELETE ON TABLE public.posts TO authenticated;
 
 
 --
@@ -2539,90 +2526,84 @@ GRANT UPDATE(edited) ON TABLE public.posts TO authenticated;
 -- Name: TABLE upvotes; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON TABLE public.upvotes TO anon;
-GRANT ALL ON TABLE public.upvotes TO authenticated;
 GRANT ALL ON TABLE public.upvotes TO service_role;
+GRANT SELECT,INSERT,DELETE ON TABLE public.upvotes TO authenticated;
 
 
 --
 -- Name: TABLE my_posts_with_meta; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON TABLE public.my_posts_with_meta TO anon;
-GRANT ALL ON TABLE public.my_posts_with_meta TO authenticated;
 GRANT ALL ON TABLE public.my_posts_with_meta TO service_role;
+GRANT SELECT ON TABLE public.my_posts_with_meta TO authenticated;
 
 
 --
 -- Name: TABLE notifications; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON TABLE public.notifications TO anon;
-GRANT ALL ON TABLE public.notifications TO authenticated;
 GRANT ALL ON TABLE public.notifications TO service_role;
+GRANT SELECT,DELETE,UPDATE ON TABLE public.notifications TO authenticated;
 
 
 --
 -- Name: TABLE posts_with_meta; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON TABLE public.posts_with_meta TO anon;
-GRANT ALL ON TABLE public.posts_with_meta TO authenticated;
 GRANT ALL ON TABLE public.posts_with_meta TO service_role;
+GRANT SELECT ON TABLE public.posts_with_meta TO anon;
+GRANT SELECT ON TABLE public.posts_with_meta TO authenticated;
 
 
 --
 -- Name: TABLE profile_follows; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON TABLE public.profile_follows TO anon;
-GRANT ALL ON TABLE public.profile_follows TO authenticated;
 GRANT ALL ON TABLE public.profile_follows TO service_role;
+GRANT SELECT,INSERT,DELETE ON TABLE public.profile_follows TO authenticated;
 
 
 --
 -- Name: TABLE profiles; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON TABLE public.profiles TO anon;
-GRANT ALL ON TABLE public.profiles TO authenticated;
 GRANT ALL ON TABLE public.profiles TO service_role;
+GRANT SELECT,DELETE,UPDATE ON TABLE public.profiles TO authenticated;
 
 
 --
 -- Name: TABLE profile_follow_counts; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON TABLE public.profile_follow_counts TO anon;
-GRANT ALL ON TABLE public.profile_follow_counts TO authenticated;
 GRANT ALL ON TABLE public.profile_follow_counts TO service_role;
+GRANT SELECT ON TABLE public.profile_follow_counts TO anon;
+GRANT SELECT ON TABLE public.profile_follow_counts TO authenticated;
 
 
 --
 -- Name: TABLE public_profiles; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON TABLE public.public_profiles TO anon;
-GRANT ALL ON TABLE public.public_profiles TO authenticated;
 GRANT ALL ON TABLE public.public_profiles TO service_role;
+GRANT SELECT ON TABLE public.public_profiles TO anon;
+GRANT SELECT ON TABLE public.public_profiles TO authenticated;
 
 
 --
 -- Name: TABLE reports; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON TABLE public.reports TO anon;
-GRANT ALL ON TABLE public.reports TO authenticated;
 GRANT ALL ON TABLE public.reports TO service_role;
+GRANT SELECT,INSERT,DELETE ON TABLE public.reports TO authenticated;
 
 
 --
 -- Name: TABLE resources; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON TABLE public.resources TO anon;
-GRANT ALL ON TABLE public.resources TO authenticated;
 GRANT ALL ON TABLE public.resources TO service_role;
+GRANT SELECT ON TABLE public.resources TO anon;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.resources TO authenticated;
 
 
 --
@@ -2637,8 +2618,6 @@ GRANT ALL ON TABLE public.visitor_reports TO service_role;
 --
 
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON SEQUENCES TO postgres;
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON SEQUENCES TO anon;
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON SEQUENCES TO authenticated;
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON SEQUENCES TO service_role;
 
 
@@ -2657,8 +2636,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON S
 --
 
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON FUNCTIONS TO postgres;
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON FUNCTIONS TO anon;
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON FUNCTIONS TO authenticated;
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON FUNCTIONS TO service_role;
 
 
@@ -2677,8 +2654,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON F
 --
 
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON TABLES TO postgres;
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON TABLES TO anon;
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON TABLES TO authenticated;
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON TABLES TO service_role;
 
 
@@ -2696,5 +2671,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON T
 -- PostgreSQL database dump complete
 --
 
-\unrestrict fCaisX1AFEkeYkAWdHbiggY6at7lEBJRQpEunNCWejAcs8Iuf7JkvEdATGCBe8u
+\unrestrict uzMrX4KkY7kXdk9ReB0qWSrrMkUlVSsP5k5vbNCSeIEckS2o4rNJ1vHks1E0DJ8
 
