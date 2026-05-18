@@ -365,7 +365,7 @@ export default function PostCard({ post, openRepliesDefault = false }) {
   const adminModeratingOtherPost = Boolean(isAdmin && !ownsPost);
   const replyName = post?.anonymous && ownsPost ? anonymousName : currentUser?.full_name || "Member";
   const replyColor = post?.anonymous && ownsPost ? "#5C6470" : currentUser?.avatar_color || colorFromString(replyName);
-  const bodyText = post?.body || post?.content || post?.text || post?.title || "";
+  const bodyText = post?.body || post?.content || post?.text || "";
 
   useEffect(() => {
     setShowComments(Boolean(openRepliesDefault));
