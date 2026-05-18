@@ -11,10 +11,6 @@ import Button from "@/components/ui/Button";
 import PostCard from "@/components/feed/PostCard";
 import PostSkeleton from "@/components/ui/PostSkeleton";
 import EmptyState from "@/components/ui/EmptyState";
-import MobileWeatherStrip from "@/components/tools/MobileWeatherStrip";
-import BAHCard from "@/components/tools/BAHCard";
-import GateHoursCard from "@/components/tools/GateHoursCard";
-import SiteInfoCard from "@/components/tools/SiteInfoCard";
 
 function getPostId(post) {
   return post?.id || post?.post_id || post?.postId || post?.post?.id || null;
@@ -59,7 +55,7 @@ export default function PostDetailPage() {
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
-  const { posts, isLiveMode } = useApp();
+  const { posts = [], isLiveMode } = useApp();
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
   const openRepliesDefault = searchParams?.get("replies") === "1";
@@ -116,47 +112,48 @@ export default function PostDetailPage() {
 
   return (
     <AppShell>
-      <main className="max-w-6xl mx-auto px-0 md:px-5 pt-0 md:pt-6 pb-24 md:pb-10 overflow-x-hidden">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-2 lg:gap-4">
-          <div className="flex flex-col gap-2 min-w-0">
-            <div className="block lg:hidden pt-1 px-2">
-              <MobileWeatherStrip />
-            </div>
+      <main className="min-h-screen bg-[#F3F6FA] pb-24 md:pb-12">
+        <div className="mx-auto w-full max-w-2xl px-0 py-0 md:px-6 md:py-6">
+          <div className="px-4 pt-4 md:px-0 md:pt-0">
+            <Button variant="secondary" icon={ArrowLeft} onClick={handleBack}>
+              {openedFromNotification ? "Back to notifications" : "Back to feed"}
+            </Button>
+          </div>
 
-            <div className="px-2 md:px-0 pt-2 md:pt-0">
-              <Button variant="secondary" icon={ArrowLeft} onClick={handleBack}>
-                {openedFromNotification ? "Back to notifications" : "Back to feed"}
-              </Button>
-            </div>
+          <section
+            className="mx-4 mt-4 rounded-[26px] border px-4 py-3 md:mx-0"
+            style={{
+              backgroundColor: "rgba(255,255,255,0.86)",
+              borderColor: "rgba(217,226,234,0.92)",
+              boxShadow: "0 12px 28px rgba(11,28,44,0.05)",
+            }}
+          >
+            <p className="text-xs font-bold uppercase tracking-[0.16em]" style={{ color: T.textSubtle }}>
+              {openedFromNotification ? "Notification post" : "Post detail"}
+            </p>
+            <h1 className="mt-1 text-lg font-extrabold leading-6" style={{ color: T.navy }}>
+              Individual post view
+            </h1>
+          </section>
 
+          <div className="mt-3 flex w-full flex-col gap-[3px] sh-feed-post-list scroll-mt-24">
             {loading ? (
-              <div className="mx-0 flex w-full flex-col gap-[3px] sh-feed-post-list scroll-mt-24">
-                <PostSkeleton />
-              </div>
+              <PostSkeleton />
             ) : post ? (
-              <div className="mx-0 flex w-full flex-col gap-[3px] sh-feed-post-list scroll-mt-24">
-                <PostCard post={post} openRepliesDefault={openRepliesDefault} />
-              </div>
+              <PostCard post={post} openRepliesDefault={openRepliesDefault} />
             ) : (
               <div
-                className="mx-2 md:mx-0 rounded-[24px] border p-6 sh-card-premium"
+                className="mx-4 rounded-[24px] border p-6 md:mx-0 sh-card-premium"
                 style={{ backgroundColor: T.card, borderColor: T.border }}
               >
                 <EmptyState
                   icon={Inbox}
                   title="Post not found"
-                  body="This post may have been removed or the link is incorrect."
+                  body="This post may have been removed or the link is not valid."
                 />
               </div>
             )}
           </div>
-
-          <aside className="hidden lg:flex flex-col gap-3 sticky top-24 self-start">
-            <MobileWeatherStrip />
-            <BAHCard />
-            <GateHoursCard />
-            <SiteInfoCard />
-          </aside>
         </div>
       </main>
     </AppShell>
