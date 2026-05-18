@@ -5,7 +5,6 @@
   <path d="M43 75C50 82 56 85 64 85C72 85 78 82 85 75" stroke="#3F5F7D" stroke-width="6" stroke-linecap="round"/>
   <path d="M43 57C49 51 56 48 64 48C72 48 79 51 85 57" stroke="#0B1C2C" stroke-width="6" stroke-linecap="round"/>
   <text x="59" y="73" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="27" font-weight="900" letter-spacing="-2.4" fill="#0B1C2C">SH</text>
-  <text x="116" y="78" font-family="Arial, Helvetica, sans-serif" font-size="43" font-weight="900" fill="#0B1C2C" letter-spacing="-2.1">Soldier</text>
-  <text x="260" y="78" font-family="Arial, Helvetica, sans-serif" font-size="43" font-weight="900" fill="#3F5F7D" letter-spacing="-2.1">Hub</text>
+  <text x="116" y="78" font-family="Arial, Helvetica, sans-serif" font-size="43" font-weight="900" letter-spacing="-2.1"><tspan fill="#0B1C2C">Soldier</tspan><tspan fill="#3F5F7D">Hub</tspan></text>
   <text x="119" y="101" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="800" fill="#64748B" letter-spacing="1.2">FORT BLISS • EL PASO</text>
 </svg>
