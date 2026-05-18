@@ -7,11 +7,14 @@ import { T } from "@/lib/theme";
 import { useApp } from "@/store/AppContext";
 import { createClient } from "@/lib/supabase/client";
 import AppShell from "@/components/layout/AppShell";
-import Footer from "@/components/layout/Footer";
 import Button from "@/components/ui/Button";
 import PostCard from "@/components/feed/PostCard";
 import PostSkeleton from "@/components/ui/PostSkeleton";
 import EmptyState from "@/components/ui/EmptyState";
+import MobileWeatherStrip from "@/components/tools/MobileWeatherStrip";
+import BAHCard from "@/components/tools/BAHCard";
+import GateHoursCard from "@/components/tools/GateHoursCard";
+import SiteInfoCard from "@/components/tools/SiteInfoCard";
 
 function getPostId(post) {
   return post?.id || post?.post_id || post?.postId || post?.post?.id || null;
@@ -60,7 +63,8 @@ export default function PostDetailPage() {
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
   const openRepliesDefault = searchParams?.get("replies") === "1";
-  const openedFromNotification = openRepliesDefault || searchParams?.get("from") === "notifications";
+  const openedFromNotification =
+    openRepliesDefault || searchParams?.get("from") === "notifications";
 
   useEffect(() => {
     const id = params?.id;
@@ -71,7 +75,7 @@ export default function PostDetailPage() {
 
     const found = posts.find((p) => getPostId(p) === id);
     if (found) {
-      setPost(found);
+      setPost(normalizePostRow(found));
       setLoading(false);
       return () => {
         cancelled = true;
@@ -111,26 +115,48 @@ export default function PostDetailPage() {
   };
 
   return (
-    <AppShell hideNav>
-      <main className="min-h-screen pb-24 md:pb-12" style={{ backgroundColor: T.bg }}>
-        <div className="max-w-2xl mx-auto px-4 md:px-6 py-6 md:py-10">
-          <Button variant="secondary" icon={ArrowLeft} onClick={handleBack}>
-            {openedFromNotification ? "Back" : "Back to feed"}
-          </Button>
+    <AppShell>
+      <main className="max-w-6xl mx-auto px-0 md:px-5 pt-0 md:pt-6 pb-24 md:pb-10 overflow-x-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-2 lg:gap-4">
+          <div className="flex flex-col gap-2 min-w-0">
+            <div className="block lg:hidden pt-1 px-2">
+              <MobileWeatherStrip />
+            </div>
 
-          <div className="mt-6">
+            <div className="px-2 md:px-0 pt-2 md:pt-0">
+              <Button variant="secondary" icon={ArrowLeft} onClick={handleBack}>
+                {openedFromNotification ? "Back to notifications" : "Back to feed"}
+              </Button>
+            </div>
+
             {loading ? (
-              <PostSkeleton />
+              <div className="mx-0 flex w-full flex-col gap-[3px] sh-feed-post-list scroll-mt-24">
+                <PostSkeleton />
+              </div>
             ) : post ? (
-              <PostCard post={post} openRepliesDefault={openRepliesDefault} />
+              <div className="mx-0 flex w-full flex-col gap-[3px] sh-feed-post-list scroll-mt-24">
+                <PostCard post={post} openRepliesDefault={openRepliesDefault} />
+              </div>
             ) : (
-              <div className="rounded-2xl border p-8" style={{ backgroundColor: T.card, borderColor: T.border }}>
-                <EmptyState icon={Inbox} title="Post not found" body="This post may have been removed or the link is incorrect." />
+              <div
+                className="mx-2 md:mx-0 rounded-[24px] border p-6 sh-card-premium"
+                style={{ backgroundColor: T.card, borderColor: T.border }}
+              >
+                <EmptyState
+                  icon={Inbox}
+                  title="Post not found"
+                  body="This post may have been removed or the link is incorrect."
+                />
               </div>
             )}
           </div>
 
-          <Footer />
+          <aside className="hidden lg:flex flex-col gap-3 sticky top-24 self-start">
+            <MobileWeatherStrip />
+            <BAHCard />
+            <GateHoursCard />
+            <SiteInfoCard />
+          </aside>
         </div>
       </main>
     </AppShell>
