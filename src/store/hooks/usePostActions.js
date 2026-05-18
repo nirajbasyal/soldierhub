@@ -9,7 +9,7 @@ import {
 import { getPostId, getProfileStatus } from "../utils/appHelpers";
 
 const FEED_CACHE_KEY = "soldierhub_feed_cache_v2";
-const COMMENT_CACHE_PREFIX = "soldierhub_comment_cache_v1:";
+const COMMENT_CACHE_PREFIX = "soldierhub_comment_cache_v2:";
 const COMMENT_CACHE_MAX_AGE_MS = 1000 * 60 * 5;
 
 function removePostFromList(list = [], postId) {
@@ -454,7 +454,7 @@ export function usePostActions({
     pushToast("Post reported. Admins will review.", "success");
   };
 
-  const commentOnPost = async (postId, body) => {
+  const commentOnPost = async (postId, body, options = {}) => {
     if (!requireAuth()) {
       return { ok: false, error: "You must be verified to comment." };
     }
@@ -463,14 +463,20 @@ export function usePostActions({
       return { ok: false, error: "Please slow down before commenting again." };
     }
 
+    const shouldMaskAsAnonymous = Boolean(options?.isAnonymousAuthor);
+    const anonymousCommentName = options?.anonymousName || "Anonymous";
+    const anonymousCommentColor = options?.anonymousColor || "#5C6470";
+
     const optimisticComment = {
       id: `temp-${uid()}`,
       post_id: postId,
-      author_id: currentUser.id,
+      author_id: shouldMaskAsAnonymous ? null : currentUser.id,
+      author_user_id: shouldMaskAsAnonymous ? null : currentUser.id,
       body,
       created_at: new Date().toISOString(),
-      author_name_cached: currentUser.full_name,
-      author_color_cached: currentUser.avatar_color,
+      author_name_cached: shouldMaskAsAnonymous ? anonymousCommentName : currentUser.full_name,
+      author_color_cached: shouldMaskAsAnonymous ? anonymousCommentColor : currentUser.avatar_color,
+      is_anonymous_author: shouldMaskAsAnonymous,
       viewer_is_author: true,
     };
 
@@ -512,7 +518,10 @@ export function usePostActions({
       }
 
       const savedCommentId = getCommentId(data);
-      const savedAuthorId = getCommentAuthorId(data) || currentUser.id;
+      const savedIsAnonymousAuthor = Boolean(
+        data?.is_anonymous_author === true || optimisticComment.is_anonymous_author === true
+      );
+      const savedAuthorId = savedIsAnonymousAuthor ? null : getCommentAuthorId(data) || currentUser.id;
       const savedComment = {
         ...optimisticComment,
         ...(data || {}),
@@ -520,8 +529,13 @@ export function usePostActions({
         comment_id: savedCommentId || optimisticComment.id,
         author_id: savedAuthorId,
         author_user_id: savedAuthorId,
-        author_name_cached: data?.author_name_cached || optimisticComment.author_name_cached,
-        author_color_cached: data?.author_color_cached || optimisticComment.author_color_cached,
+        author_name_cached: savedIsAnonymousAuthor
+          ? data?.author_name_cached || anonymousCommentName
+          : data?.author_name_cached || optimisticComment.author_name_cached,
+        author_color_cached: savedIsAnonymousAuthor
+          ? data?.author_color_cached || anonymousCommentColor
+          : data?.author_color_cached || optimisticComment.author_color_cached,
+        is_anonymous_author: savedIsAnonymousAuthor,
         viewer_is_author: true,
       };
 
