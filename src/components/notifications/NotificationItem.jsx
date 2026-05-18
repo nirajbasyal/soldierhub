@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, MessageCircle, ThumbsUp, UserPlus } from "lucide-react";
+import { ArrowBigUp, ArrowRight, MessageCircle, UserPlus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { T } from "@/lib/theme";
 import { timeAgo } from "@/lib/helpers";
@@ -21,6 +21,29 @@ function getInitials(name) {
   }
 
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+}
+
+function decodeCommonHtmlEntities(value) {
+  return String(value || "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&apos;/gi, "'");
+}
+
+function richTextToPlainText(value) {
+  if (value === null || value === undefined) return "";
+
+  return decodeCommonHtmlEntities(value)
+    .replace(/<\s*br\s*\/?\s*>/gi, " ")
+    .replace(/<\s*\/\s*(p|div|blockquote|li|ul|ol|h[1-6])\s*>/gi, " ")
+    .replace(/<\s*li[^>]*>/gi, " ")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function getActorId(notification) {
@@ -52,22 +75,24 @@ function getProfileLinkName(name) {
 }
 
 function getPostText(notification, fallbackPost) {
-  return (
+  const rawPostText =
     notification?.post?.body ||
     notification?.post_preview_cached ||
     fallbackPost?.body ||
     notification?.post_title_cached ||
-    "Post unavailable"
-  );
+    "Post unavailable";
+
+  return richTextToPlainText(rawPostText) || "Post unavailable";
 }
 
 function getCommentText(notification) {
-  return (
+  const rawCommentText =
     notification?.comment?.body ||
     notification?.comment_body_cached ||
     notification?.body ||
-    ""
-  );
+    "";
+
+  return richTextToPlainText(rawCommentText);
 }
 
 function isFollowNotification(notification) {
@@ -75,7 +100,7 @@ function isFollowNotification(notification) {
 }
 
 function trimWords(value, maxWords = 4) {
-  const words = String(value || "")
+  const words = richTextToPlainText(value)
     .replace(/\s+/g, " ")
     .trim()
     .split(" ")
@@ -160,7 +185,7 @@ export default function NotificationItem({ notification, group }) {
   const notificationIcon = isFollow
     ? UserPlus
     : upvoteItems.length > 0 && !latestComment
-      ? ThumbsUp
+      ? ArrowBigUp
       : MessageCircle;
   const NotificationIcon = notificationIcon;
 
@@ -295,7 +320,7 @@ export default function NotificationItem({ notification, group }) {
                 className="mt-3 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold"
                 style={{ backgroundColor: SOFT_BLUE, borderColor: SOFT_BLUE_DARK, color: NAVY }}
               >
-                <ThumbsUp size={13} strokeWidth={2.5} style={{ color: SLATE_BLUE }} />
+                <ArrowBigUp size={13} strokeWidth={2.5} style={{ color: SLATE_BLUE }} />
                 {upvoteItems.length === 1 ? "1 upvote" : `${upvoteItems.length} upvotes`}
               </div>
             ) : null}
