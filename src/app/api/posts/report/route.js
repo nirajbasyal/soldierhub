@@ -127,9 +127,10 @@ export async function POST(request) {
     );
   }
 
+  // reports table uses (post_id, user_id) as the primary key; it has no id column.
   const { data: existingReport } = await supabase
     .from("reports")
-    .select("id, post_id, user_id")
+    .select("post_id, user_id, created_at")
     .eq("post_id", postId)
     .eq("user_id", user.id)
     .maybeSingle();
@@ -144,7 +145,7 @@ export async function POST(request) {
   const { data, error } = await supabase
     .from("reports")
     .insert([{ post_id: postId, user_id: user.id, reason }])
-    .select()
+    .select("post_id, user_id, reason, created_at")
     .maybeSingle();
 
   if (error) {
