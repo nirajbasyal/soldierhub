@@ -1,6 +1,40 @@
 import { withSentryConfig } from "@sentry/nextjs";
 
+const isProduction = process.env.NODE_ENV === "production";
+
+const cspDirectives = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "form-action 'self'",
+  "manifest-src 'self'",
+  "img-src 'self' data: blob: https:",
+  "font-src 'self' data:",
+  "style-src 'self' 'unsafe-inline'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:",
+  "worker-src 'self' blob:",
+  "frame-src 'none'",
+  [
+    "connect-src 'self'",
+    "https://*.supabase.co",
+    "wss://*.supabase.co",
+    "https://api.weather.gov",
+    "https://*.ingest.sentry.io",
+    "https://o*.ingest.sentry.io",
+    "https://*.sentry.io",
+    "https://vitals.vercel-insights.com",
+  ].join(" "),
+  isProduction ? "upgrade-insecure-requests" : "",
+].filter(Boolean);
+
+const contentSecurityPolicy = cspDirectives.join("; ");
+
 const securityHeaders = [
+  {
+    key: "Content-Security-Policy",
+    value: contentSecurityPolicy,
+  },
   {
     key: "X-DNS-Prefetch-Control",
     value: "on",
