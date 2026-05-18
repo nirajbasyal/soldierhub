@@ -80,6 +80,10 @@ function normalizeSafeComments(comments = []) {
   return (comments || []).filter((comment) => !isDeletedComment(comment)).map(normalizeCommentRow);
 }
 
+function getUniquePostIds(postIds = []) {
+  return [...new Set((postIds || []).filter(Boolean))];
+}
+
 export async function listCommentsForPost(postId, { limit = DEFAULT_COMMENT_LIMIT } = {}) {
   const supabase = createClient();
   if (!supabase) return { data: [], error: null };
@@ -121,18 +125,36 @@ export async function listCommentsForPost(postId, { limit = DEFAULT_COMMENT_LIMI
 
 export async function listCommentsForPosts(postIds, { limit = DEFAULT_COMMENT_LIMIT } = {}) {
   const supabase = createClient();
-  if (!supabase || postIds.length === 0) return { data: [], error: null };
+  const uniquePostIds = getUniquePostIds(postIds);
 
-  const uniquePostIds = [...new Set(postIds.filter(Boolean))];
+  if (!supabase || uniquePostIds.length === 0) {
+    return { data: [], error: null };
+  }
 
+  // Production path: one RPC call for all feed posts.
+  // This avoids the old N+1 pattern where the feed made one network request per post.
+  const batchedResult = await supabase.rpc("get_public_comments_for_posts", {
+    target_post_ids: uniquePostIds,
+    per_post_limit: limit,
+  });
+
+  if (!batchedResult.error) {
+    return {
+      data: normalizeSafeComments(batchedResult.data || []),
+      error: null,
+    };
+  }
+
+  // Safe fallback: if a local/staging database has not received the new batched RPC yet,
+  // keep the app working by using the older singular RPC.
   const results = await Promise.all(
     uniquePostIds.map((postId) => listCommentsForPost(postId, { limit }))
   );
 
   const data = results.flatMap((result) => result.data || []);
-  const error = results.find((result) => result.error)?.error || null;
+  const fallbackError = results.find((result) => result.error)?.error || null;
 
-  return { data, error };
+  return { data, error: fallbackError || batchedResult.error };
 }
 
 export async function createComment({ post_id, body }) {
