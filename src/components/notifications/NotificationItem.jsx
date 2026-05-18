@@ -6,7 +6,10 @@ import { T } from "@/lib/theme";
 import { timeAgo } from "@/lib/helpers";
 import ProfileIdentityLink from "@/components/ui/ProfileIdentityLink";
 
-const THEME_RED = "#B31942";
+const SOFT_BLUE = "#EEF3F7";
+const SOFT_BLUE_DARK = "#DDE8F2";
+const SLATE_BLUE = "#3F5F7D";
+const NAVY = "#0B1C2C";
 
 function getInitials(name) {
   if (!name) return "SH";
@@ -148,11 +151,17 @@ export default function NotificationItem({ notification, group }) {
   const firstActor = actors[0] || { id: getActorId(latest), name: getActorName(latest) };
   const latestTime = latest.created_at;
   const summary = isGroup ? buildSummary(group) : buildSummary({ notifications });
-  const visibleActivityCount = isFollow ? notifications.length : (latestComment ? 1 : 0) + (upvoteItems.length > 0 ? upvoteItems.length : 0);
+  const visibleActivityCount = isFollow
+    ? notifications.length
+    : (latestComment ? 1 : 0) + (upvoteItems.length > 0 ? upvoteItems.length : 0);
   const hiddenCount = isFollow ? 0 : Math.max(notifications.length - visibleActivityCount, 0);
   const firstActorFallbackName = getProfileLinkName(firstActor.name);
   const latestCommentFallbackName = getProfileLinkName(getActorName(latestComment));
-  const notificationIcon = isFollow ? UserPlus : upvoteItems.length > 0 && !latestComment ? ThumbsUp : MessageCircle;
+  const notificationIcon = isFollow
+    ? UserPlus
+    : upvoteItems.length > 0 && !latestComment
+      ? ThumbsUp
+      : MessageCircle;
   const NotificationIcon = notificationIcon;
 
   const openNotification = () => {
@@ -181,7 +190,7 @@ export default function NotificationItem({ notification, group }) {
       tabIndex={0}
       onClick={openNotification}
       onKeyDown={handleKeyDown}
-      className="group relative flex w-full cursor-pointer items-start gap-3 overflow-hidden rounded-[26px] border p-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 md:gap-4 md:p-5"
+      className="group relative flex w-full cursor-pointer items-start gap-3 overflow-hidden rounded-[26px] border p-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9DB6CF] md:gap-4 md:p-5"
       style={{
         backgroundColor: unread ? "#FFFFFF" : "rgba(255,255,255,0.78)",
         borderColor: unread ? "#B9CBE1" : "#D9E3EE",
@@ -190,18 +199,16 @@ export default function NotificationItem({ notification, group }) {
           : "0 8px 22px rgba(11,28,44,0.04)",
       }}
     >
-      {unread ? <div className="absolute left-0 top-0 h-full w-1.5" style={{ backgroundColor: THEME_RED }} /> : null}
-
       <ProfileIdentityLink
         userId={firstActor.id}
         fallbackName={firstActorFallbackName}
-        className="relative shrink-0 cursor-pointer transition hover:opacity-85 focus:outline-none"
+        className="relative shrink-0 cursor-pointer transition hover:opacity-90 focus:outline-none"
       >
         <div
-          className="flex h-12 w-12 items-center justify-center rounded-2xl text-sm font-extrabold md:h-13 md:w-13"
+          className="flex h-12 w-12 items-center justify-center rounded-2xl text-sm font-extrabold md:h-[52px] md:w-[52px]"
           style={{
-            backgroundColor: unread ? "#0B1C2C" : "#E5EEF8",
-            color: unread ? "#FFFFFF" : T.blue,
+            backgroundColor: unread ? NAVY : SOFT_BLUE,
+            color: unread ? "#FFFFFF" : SLATE_BLUE,
           }}
         >
           {getInitials(firstActor.name)}
@@ -212,7 +219,7 @@ export default function NotificationItem({ notification, group }) {
           style={{
             backgroundColor: "#FFFFFF",
             borderColor: "#FFFFFF",
-            color: isFollow ? THEME_RED : upvoteItems.length > 0 && !latestComment ? T.gold : T.blue,
+            color: SLATE_BLUE,
           }}
         >
           <NotificationIcon size={13} strokeWidth={2.5} />
@@ -232,9 +239,9 @@ export default function NotificationItem({ notification, group }) {
             {isFollow ? (
               <div
                 className="mt-2 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold"
-                style={{ backgroundColor: "#FBE8EE", borderColor: "#F5C6D4", color: THEME_RED }}
+                style={{ backgroundColor: SOFT_BLUE, borderColor: SOFT_BLUE_DARK, color: NAVY }}
               >
-                <UserPlus size={13} strokeWidth={2.5} />
+                <UserPlus size={13} strokeWidth={2.5} style={{ color: SLATE_BLUE }} />
                 View profile
               </div>
             ) : (
@@ -245,7 +252,7 @@ export default function NotificationItem({ notification, group }) {
                   borderColor: unread ? "#C8D8EA" : "#DEE8F2",
                 }}
               >
-                <div className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: THEME_RED }}>
+                <div className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: SLATE_BLUE }}>
                   Your post
                 </div>
                 <p
@@ -261,7 +268,7 @@ export default function NotificationItem({ notification, group }) {
               <div className="mt-3 flex gap-2">
                 <div
                   className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full"
-                  style={{ backgroundColor: latestComment.read ? "#9AA8B8" : THEME_RED }}
+                  style={{ backgroundColor: latestComment.read ? "#9AA8B8" : SLATE_BLUE }}
                 />
                 <p className="min-w-0 text-sm leading-6" style={{ color: T.textMuted }}>
                   <ProfileIdentityLink
@@ -284,8 +291,11 @@ export default function NotificationItem({ notification, group }) {
             ) : null}
 
             {upvoteItems.length > 0 ? (
-              <div className="mt-3 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold" style={{ backgroundColor: "#FFF8EA", borderColor: "#F1D497", color: T.navy }}>
-                <ThumbsUp size={13} strokeWidth={2.5} style={{ color: T.gold }} />
+              <div
+                className="mt-3 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold"
+                style={{ backgroundColor: SOFT_BLUE, borderColor: SOFT_BLUE_DARK, color: NAVY }}
+              >
+                <ThumbsUp size={13} strokeWidth={2.5} style={{ color: SLATE_BLUE }} />
                 {upvoteItems.length === 1 ? "1 upvote" : `${upvoteItems.length} upvotes`}
               </div>
             ) : null}
@@ -297,14 +307,14 @@ export default function NotificationItem({ notification, group }) {
             ) : null}
 
             <div className="mt-3 flex items-center gap-2 text-xs font-semibold" style={{ color: unread ? T.navy : T.textSubtle }}>
-              {unread ? <span className="h-2 w-2 rounded-full" style={{ backgroundColor: THEME_RED }} /> : null}
+              {unread ? <span className="h-2 w-2 rounded-full" style={{ backgroundColor: SLATE_BLUE }} /> : null}
               <span>{latestTime ? timeAgo(latestTime) : "Recently"}</span>
             </div>
           </div>
 
           <div className="flex shrink-0 flex-col items-end gap-2">
             {unread ? (
-              <span className="rounded-full px-2.5 py-1 text-[11px] font-extrabold" style={{ backgroundColor: "#FBE8EE", color: THEME_RED }}>
+              <span className="rounded-full px-2.5 py-1 text-[11px] font-extrabold" style={{ backgroundColor: "#EAF2FA", color: NAVY }}>
                 New
               </span>
             ) : null}
