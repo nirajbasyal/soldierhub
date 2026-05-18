@@ -74,6 +74,22 @@ function getProfileLinkName(name) {
   return cleaned;
 }
 
+function getNotificationPostId(notification, group) {
+  return (
+    notification?.post_id ||
+    notification?.postId ||
+    notification?.post?.id ||
+    notification?.post?.post_id ||
+    notification?.comment?.post_id ||
+    notification?.comment?.postId ||
+    group?.postId ||
+    group?.post_id ||
+    group?.post?.id ||
+    group?.post?.post_id ||
+    null
+  );
+}
+
 function getPostText(notification, fallbackPost) {
   const rawPostText =
     notification?.post?.body ||
@@ -166,8 +182,8 @@ export default function NotificationItem({ notification, group }) {
   const latest = notifications[0] || notification || {};
   const unread = isGroup ? notifications.some((item) => !item.read) : !latest.read;
   const isFollow = isFollowNotification(latest);
-  const postId = latest.post_id || group?.postId;
-  const fallbackPost = group?.post || null;
+  const fallbackPost = group?.post || latest?.post || null;
+  const postId = getNotificationPostId(latest, group);
   const postText = getPostText(latest, fallbackPost);
   const commentItems = notifications.filter((item) => item.type === "comment");
   const latestComment = commentItems[0] || null;
@@ -196,11 +212,11 @@ export default function NotificationItem({ notification, group }) {
     }
 
     if (postId) {
-      router.push(`/post/${encodeURIComponent(postId)}?replies=1`);
+      router.push(`/post/${encodeURIComponent(postId)}?replies=1&from=notifications`);
       return;
     }
 
-    router.push("/");
+    router.push("/notifications");
   };
 
   const handleKeyDown = (event) => {
