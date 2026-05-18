@@ -230,7 +230,11 @@ function CommentRow({
   const commentAuthorId = getAuthorId(comment);
   const anonymousName = getAnonymousDisplayName(postId);
   const anonymousAuthor = Boolean(
-    post?.anonymous && commentAuthorId && postAuthorId && commentAuthorId === postAuthorId
+    comment?.is_anonymous_author === true ||
+      comment?.anonymous === true ||
+      comment?.comment_anonymous === true ||
+      (post?.anonymous && commentAuthorId && postAuthorId && commentAuthorId === postAuthorId) ||
+      (post?.anonymous && comment?.viewer_is_author === true && !commentAuthorId)
   );
   const name = anonymousAuthor ? anonymousName : getDisplayName(comment, "Member");
   const color = anonymousAuthor ? "#5C6470" : getDisplayColor(comment, name);
@@ -240,7 +244,7 @@ function CommentRow({
 
   return (
     <div className="group flex items-start gap-2.5">
-      <AuthorAvatarName userId={commentAuthorId} fallbackName={name} name={name} color={color} size={30} anonymous={anonymousAuthor}>
+      <AuthorAvatarName userId={anonymousAuthor ? null : commentAuthorId} fallbackName={name} name={name} color={color} size={30} anonymous={anonymousAuthor}>
         <Avatar name={name} color={color} size={30} />
       </AuthorAvatarName>
       <div className="min-w-0 flex-1">
@@ -250,7 +254,7 @@ function CommentRow({
         >
           <div className="flex min-w-0 items-center gap-1.5 text-xs font-bold" style={{ color: T.text }}>
             {anonymousAuthor ? <Lock size={11} className="shrink-0" /> : null}
-            <AuthorAvatarName userId={commentAuthorId} fallbackName={name} name={name} color={color} size={30} anonymous={anonymousAuthor}>
+            <AuthorAvatarName userId={anonymousAuthor ? null : commentAuthorId} fallbackName={name} name={name} color={color} size={30} anonymous={anonymousAuthor}>
               <span className={anonymousAuthor || !commentAuthorId ? "truncate" : "truncate cursor-pointer transition hover:opacity-80"}>
                 {name}
               </span>
@@ -537,7 +541,11 @@ export default function PostCard({ post, openRepliesDefault = false }) {
     try {
       const mod = await moderateAsync(cleaned);
       if (!mod.allowed) return setCommentError(mod.reason || "Comment could not be posted.");
-      const result = await commentOnPost?.(postId, cleaned);
+      const result = await commentOnPost?.(postId, cleaned, {
+        isAnonymousAuthor: Boolean(post?.anonymous && ownsPost),
+        anonymousName,
+        anonymousColor: "#5C6470",
+      });
       if (result?.ok === false) return setCommentError(result.error || "Could not post comment.");
       setComment("");
       setShowComments(true);
