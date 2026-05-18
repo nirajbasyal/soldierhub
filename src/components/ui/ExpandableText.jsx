@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { T } from "@/lib/theme";
 
 const ALLOWED_RICH_TEXT_TAGS = new Set([
+  "A",
   "B",
   "BLOCKQUOTE",
   "BR",
@@ -17,8 +18,94 @@ const ALLOWED_RICH_TEXT_TAGS = new Set([
   "UL",
 ]);
 
+const URL_PATTERN = /((?:https?:\/\/|www\.)[^\s<>"']+)/gi;
+const TRAILING_URL_PUNCTUATION = /[.,!?;:)\]}]+$/;
+
 function looksLikeHtml(text = "") {
-  return /<\/?(p|div|strong|em|ul|ol|li|blockquote|br)\b/i.test(String(text));
+  return /<\/?(a|p|div|strong|em|ul|ol|li|blockquote|br)\b/i.test(String(text));
+}
+
+function splitUrlAndTrailingPunctuation(rawUrl = "") {
+  const value = String(rawUrl || "");
+  const match = value.match(TRAILING_URL_PUNCTUATION);
+
+  if (!match) return { url: value, suffix: "" };
+
+  return {
+    url: value.slice(0, -match[0].length),
+    suffix: match[0],
+  };
+}
+
+function normalizeHref(rawUrl = "") {
+  const { url } = splitUrlAndTrailingPunctuation(rawUrl.trim());
+  if (!url) return null;
+
+  const href = /^https?:\/\//i.test(url) ? url : `https://${url}`;
+
+  try {
+    const parsed = new URL(href);
+    if (!["http:", "https:"].includes(parsed.protocol)) return null;
+    return parsed.href;
+  } catch {
+    return null;
+  }
+}
+
+function getCompactLinkLabel(rawUrl = "") {
+  const href = normalizeHref(rawUrl);
+  if (!href) return String(rawUrl || "");
+
+  try {
+    const parsed = new URL(href);
+    const host = parsed.hostname.replace(/^www\./i, "");
+    const hasMore =
+      (parsed.pathname && parsed.pathname !== "/") || Boolean(parsed.search) || Boolean(parsed.hash);
+
+    return hasMore ? `${host}/...` : host;
+  } catch {
+    return String(rawUrl || "");
+  }
+}
+
+function appendTextWithSmartLinks(outputDoc, parent, text = "") {
+  const value = String(text || "");
+  if (!value) return;
+
+  URL_PATTERN.lastIndex = 0;
+  let lastIndex = 0;
+  let match;
+
+  while ((match = URL_PATTERN.exec(value)) !== null) {
+    if (match.index > lastIndex) {
+      parent.appendChild(outputDoc.createTextNode(value.slice(lastIndex, match.index)));
+    }
+
+    const rawToken = match[0];
+    const { url, suffix } = splitUrlAndTrailingPunctuation(rawToken);
+    const href = normalizeHref(url);
+
+    if (href) {
+      const link = outputDoc.createElement("a");
+      link.setAttribute("href", href);
+      link.setAttribute("target", "_blank");
+      link.setAttribute("rel", "noopener noreferrer nofollow");
+      link.appendChild(outputDoc.createTextNode(getCompactLinkLabel(href)));
+      parent.appendChild(link);
+    } else {
+      parent.appendChild(outputDoc.createTextNode(rawToken));
+    }
+
+    if (suffix) {
+      parent.appendChild(outputDoc.createTextNode(suffix));
+    }
+
+    lastIndex = match.index + rawToken.length;
+  }
+
+  if (lastIndex < value.length) {
+    parent.appendChild(outputDoc.createTextNode(value.slice(lastIndex)));
+  }
 }
 
 function sanitizeRichTextHtml(html = "") {
@@ -34,7 +121,11 @@ function sanitizeRichTextHtml(html = "") {
 
   const cleanNode = (node, parent) => {
     if (node.nodeType === Node.TEXT_NODE) {
-      parent.appendChild(outputDoc.createTextNode(node.textContent || ""));
+      if (parent.tagName?.toUpperCase() === "A") {
+        parent.appendChild(outputDoc.createTextNode(node.textContent || ""));
+      } else {
+        appendTextWithSmartLinks(outputDoc, parent, node.textContent || "");
+      }
       return;
     }
 
@@ -44,6 +135,22 @@ function sanitizeRichTextHtml(html = "") {
 
     if (!ALLOWED_RICH_TEXT_TAGS.has(tagName)) {
       Array.from(node.childNodes).forEach((child) => cleanNode(child, parent));
+      return;
+    }
+
+    if (tagName === "A") {
+      const href = normalizeHref(node.getAttribute("href") || node.textContent || "");
+      if (!href) {
+        Array.from(node.childNodes).forEach((child) => cleanNode(child, parent));
+        return;
+      }
+
+      const link = outputDoc.createElement("a");
+      link.setAttribute("href", href);
+      link.setAttribute("target", "_blank");
+      link.setAttribute("rel", "noopener noreferrer nofollow");
+      link.appendChild(outputDoc.createTextNode(getCompactLinkLabel(href)));
+      parent.appendChild(link);
       return;
     }
 
@@ -68,11 +175,28 @@ function htmlToPlainText(html = "") {
   return (doc.body.textContent || "").replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
 }
 
-function renderInlineFormatting(text) {
+function SmartLink({ rawUrl = "", children = null }) {
+  const href = normalizeHref(rawUrl);
+  if (!href) return children || rawUrl;
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer nofollow"
+      className="break-words font-semibold underline decoration-[#7EA4C5] underline-offset-2"
+      style={{ color: "#245B8F" }}
+    >
+      {children || getCompactLinkLabel(href)}
+    </a>
+  );
+}
+
+function renderInlineFormatting(text, keyPrefix = "inline") {
   if (!text) return null;
 
   const parts = [];
-  const pattern = /(\*\*[^*]+\*\*|\*[^*]+\*)/g;
+  const pattern = /(\*\*[^*]+\*\*|\*[^*]+\*|(?:https?:\/\/|www\.)[^\s<>"']+)/gi;
   let lastIndex = 0;
   let match;
 
@@ -82,19 +206,27 @@ function renderInlineFormatting(text) {
     }
 
     const token = match[0];
-    const key = `${match.index}-${token}`;
+    const key = `${keyPrefix}-${match.index}-${token}`;
 
     if (token.startsWith("**") && token.endsWith("**")) {
       parts.push(
         <strong key={key} className="font-extrabold" style={{ color: T.text }}>
-          {token.slice(2, -2)}
+          {renderInlineFormatting(token.slice(2, -2), `${key}-bold`)}
         </strong>
       );
     } else if (token.startsWith("*") && token.endsWith("*")) {
       parts.push(
         <em key={key} className="italic">
-          {token.slice(1, -1)}
+          {renderInlineFormatting(token.slice(1, -1), `${key}-italic`)}
         </em>
+      );
+    } else {
+      const { url, suffix } = splitUrlAndTrailingPunctuation(token);
+      parts.push(
+        <span key={key}>
+          <SmartLink rawUrl={url} />
+          {suffix}
+        </span>
       );
     }
 
@@ -188,7 +320,7 @@ function FormattedText({ text = "", className = "text-sm leading-relaxed", style
             <ul key={`bullet-${index}`} className="ml-5 list-disc space-y-1.5">
               {block.items.map((item, itemIndex) => (
                 <li key={`${index}-${itemIndex}`} className="pl-1">
-                  {renderInlineFormatting(item)}
+                  {renderInlineFormatting(item, `bullet-${index}-${itemIndex}`)}
                 </li>
               ))}
             </ul>
@@ -200,7 +332,7 @@ function FormattedText({ text = "", className = "text-sm leading-relaxed", style
             <ol key={`number-${index}`} className="ml-5 list-decimal space-y-1.5">
               {block.items.map((item, itemIndex) => (
                 <li key={`${index}-${itemIndex}`} className="pl-1">
-                  {renderInlineFormatting(item)}
+                  {renderInlineFormatting(item, `number-${index}-${itemIndex}`)}
                 </li>
               ))}
             </ol>
@@ -220,7 +352,7 @@ function FormattedText({ text = "", className = "text-sm leading-relaxed", style
             >
               {block.text.split("\n").map((line, lineIndex) => (
                 <p key={`${index}-${lineIndex}`} className={lineIndex > 0 ? "mt-1" : ""}>
-                  {renderInlineFormatting(line)}
+                  {renderInlineFormatting(line, `quote-${index}-${lineIndex}`)}
                 </p>
               ))}
             </blockquote>
@@ -229,7 +361,7 @@ function FormattedText({ text = "", className = "text-sm leading-relaxed", style
 
         return (
           <p key={`text-${index}`} className="whitespace-pre-wrap">
-            {renderInlineFormatting(block.text)}
+            {renderInlineFormatting(block.text, `text-${index}`)}
           </p>
         );
       })}
@@ -244,7 +376,7 @@ function RichHtmlText({ html = "", className = "text-sm leading-relaxed", style 
 
   return (
     <div
-      className={`${className} space-y-3 [&_blockquote]:rounded-2xl [&_blockquote]:border-l-4 [&_blockquote]:border-[#0B1C2C] [&_blockquote]:bg-[#F4F8FD] [&_blockquote]:px-4 [&_blockquote]:py-3 [&_blockquote]:font-medium [&_em]:italic [&_li]:pl-1 [&_ol]:ml-5 [&_ol]:list-decimal [&_ol]:space-y-1.5 [&_p]:whitespace-pre-wrap [&_strong]:font-extrabold [&_ul]:ml-5 [&_ul]:list-disc [&_ul]:space-y-1.5`}
+      className={`${className} space-y-3 [&_a]:break-words [&_a]:font-semibold [&_a]:text-[#245B8F] [&_a]:underline [&_a]:decoration-[#7EA4C5] [&_a]:underline-offset-2 [&_blockquote]:rounded-2xl [&_blockquote]:border-l-4 [&_blockquote]:border-[#0B1C2C] [&_blockquote]:bg-[#F4F8FD] [&_blockquote]:px-4 [&_blockquote]:py-3 [&_blockquote]:font-medium [&_em]:italic [&_li]:pl-1 [&_ol]:ml-5 [&_ol]:list-decimal [&_ol]:space-y-1.5 [&_p]:whitespace-pre-wrap [&_strong]:font-extrabold [&_ul]:ml-5 [&_ul]:list-disc [&_ul]:space-y-1.5`}
       style={style}
       dangerouslySetInnerHTML={{ __html: safeHtml }}
     />
