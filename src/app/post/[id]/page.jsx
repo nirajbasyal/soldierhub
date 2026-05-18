@@ -120,22 +120,6 @@ export default function PostDetailPage() {
             </Button>
           </div>
 
-          <section
-            className="mx-4 mt-4 rounded-[26px] border px-4 py-3 md:mx-0"
-            style={{
-              backgroundColor: "rgba(255,255,255,0.86)",
-              borderColor: "rgba(217,226,234,0.92)",
-              boxShadow: "0 12px 28px rgba(11,28,44,0.05)",
-            }}
-          >
-            <p className="text-xs font-bold uppercase tracking-[0.16em]" style={{ color: T.textSubtle }}>
-              {openedFromNotification ? "Notification post" : "Post detail"}
-            </p>
-            <h1 className="mt-1 text-lg font-extrabold leading-6" style={{ color: T.navy }}>
-              Individual post view
-            </h1>
-          </section>
-
           <div className="mt-3 flex w-full flex-col gap-[3px] sh-feed-post-list scroll-mt-24">
             {loading ? (
               <PostSkeleton />
