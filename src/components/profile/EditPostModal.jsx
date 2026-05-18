@@ -160,6 +160,15 @@ function isElementContentEmpty(element) {
   return !element.textContent?.replaceAll(FORMAT_BOUNDARY, "").replace(/\u00a0/g, " ").trim();
 }
 
+function isEmptyEditableBlock(element) {
+  if (!element) return false;
+
+  const tagName = element.tagName?.toLowerCase();
+  if (!["p", "div"].includes(tagName)) return false;
+
+  return isElementContentEmpty(element);
+}
+
 function getCurrentQuote(editor) {
   const startElement = getSelectionElement(editor);
   const quote = startElement?.closest?.("blockquote");
@@ -170,6 +179,16 @@ function getCurrentListItem(editor) {
   const startElement = getSelectionElement(editor);
   const listItem = startElement?.closest?.("li");
   return listItem && editor?.contains(listItem) ? listItem : null;
+}
+
+function ensureQuoteExitSpace(editor) {
+  if (!editor || typeof document === "undefined") return;
+
+  Array.from(editor.querySelectorAll("blockquote")).forEach((quote) => {
+    if (!quote.nextElementSibling) {
+      quote.parentNode?.insertBefore(createEmptyParagraph(), quote.nextSibling);
+    }
+  });
 }
 
 function hasStructuredContent(editor) {
@@ -250,6 +269,7 @@ export default function EditPostModal({ post, onClose, onSave }) {
 
   const syncFormatState = () => {
     const editor = editorRef.current;
+    ensureQuoteExitSpace(editor);
     setStructured(hasStructuredContent(editor));
 
     if (!editor || typeof document === "undefined") return;
@@ -265,6 +285,7 @@ export default function EditPostModal({ post, onClose, onSave }) {
 
   const syncEditorState = () => {
     const editor = editorRef.current;
+    ensureQuoteExitSpace(editor);
     const cleanHtml = sanitizeEditorHtml(editor?.innerHTML || "");
     const cleanText = getPlainEditorText(editor);
 
@@ -294,6 +315,7 @@ export default function EditPostModal({ post, onClose, onSave }) {
         placeCaretInElement(paragraph);
       } else {
         document.execCommand("formatBlock", false, "blockquote");
+        window.requestAnimationFrame(() => ensureQuoteExitSpace(editor));
       }
     } else {
       document.execCommand(action.command, false, null);
@@ -382,6 +404,48 @@ export default function EditPostModal({ post, onClose, onSave }) {
       event.preventDefault();
       insertQuoteLineBreak();
     }
+  };
+
+  const handleEditorPointerDown = (event) => {
+    const editor = editorRef.current;
+    if (!editor || submitting) return;
+
+    const clickedElement = event.target instanceof Element ? event.target : null;
+    const clickedInsideQuote = clickedElement?.closest?.("blockquote");
+    if (clickedInsideQuote && editor.contains(clickedInsideQuote)) return;
+
+    const clickedEditableBlock = clickedElement?.closest?.("p,div");
+    if (
+      clickedEditableBlock &&
+      editor.contains(clickedEditableBlock) &&
+      isEmptyEditableBlock(clickedEditableBlock) &&
+      clickedEditableBlock.previousElementSibling?.tagName?.toLowerCase() === "blockquote"
+    ) {
+      setActiveFormats((current) => ({ ...current, bullet: false, number: false, quote: false }));
+      return;
+    }
+
+    const quoteToExit = Array.from(editor.querySelectorAll("blockquote")).find((quote) => {
+      const rect = quote.getBoundingClientRect();
+      return (
+        event.clientY >= rect.bottom &&
+        event.clientY <= rect.bottom + 52 &&
+        event.clientX >= rect.left - 14 &&
+        event.clientX <= rect.right + 14
+      );
+    });
+
+    if (!quoteToExit) return;
+
+    ensureQuoteExitSpace(editor);
+    const exitBlock = quoteToExit.nextElementSibling;
+    if (!isEmptyEditableBlock(exitBlock)) return;
+
+    event.preventDefault();
+    editor.focus({ preventScroll: true });
+    placeCaretInElement(exitBlock);
+    setActiveFormats((current) => ({ ...current, bullet: false, number: false, quote: false }));
+    window.requestAnimationFrame(syncEditorState);
   };
 
   const handlePaste = (event) => {
@@ -553,6 +617,7 @@ export default function EditPostModal({ post, onClose, onSave }) {
               aria-label="Edit post body"
               aria-multiline="true"
               onFocus={() => window.requestAnimationFrame(syncFormatState)}
+              onPointerDown={handleEditorPointerDown}
               onInput={syncEditorState}
               onBeforeInput={handleBeforeInput}
               onKeyDown={handleKeyDown}
