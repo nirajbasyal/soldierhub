@@ -1,15 +1,12 @@
-<svg width="340" height="150" viewBox="0 0 340 150" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="340" height="150" rx="24" fill="transparent"/>
-  <rect x="18" y="31" width="88" height="88" rx="26" fill="#071B33"/>
-  <circle cx="62" cy="75" r="32" fill="#FDFEFF"/>
-  <path d="M45.5 80C52.5 71.5 71.5 71.5 78.5 80" stroke="#B31942" stroke-width="7" stroke-linecap="round"/>
-  <path d="M51 64.5C58 57 69.5 57 76 64.5" stroke="#1E4E8C" stroke-width="6.5" stroke-linecap="round"/>
-  <path d="M51.5 92C57.5 98 66.5 98 72.5 92" stroke="#071B33" stroke-width="6.5" stroke-linecap="round"/>
-  <circle cx="44" cy="82.5" r="8.5" fill="#B31942"/>
-  <circle cx="80" cy="82.5" r="8.5" fill="#B31942"/>
-  <circle cx="62" cy="59" r="8" fill="#1E4E8C"/>
-  <circle cx="62" cy="98" r="8" fill="#071B33"/>
-  <text x="124" y="65" font-family="Arial, Helvetica, sans-serif" font-size="39" font-weight="800" fill="#071B33" letter-spacing="-1.4">Soldier</text>
-  <text x="124" y="103" font-family="Arial, Helvetica, sans-serif" font-size="39" font-weight="800" fill="#B31942" letter-spacing="-1.4">Hub</text>
-  <text x="124" y="127" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="800" fill="#5A6B7E" letter-spacing="1.45">CONNECT • SHARE • SUPPORT</text>
+<svg width="390" height="150" viewBox="0 0 390 150" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="390" height="150" rx="24" fill="transparent"/>
+  <rect x="18" y="31" width="88" height="88" rx="26" fill="#0B1C2C"/>
+  <rect x="30" y="43" width="64" height="64" rx="19" fill="#F8FAFC"/>
+  <path d="M45 84C52 91 58 94 67 94C76 94 82 91 89 84" stroke="#3F5F7D" stroke-width="6.5" stroke-linecap="round"/>
+  <path d="M45 64C52 57 59 54 67 54C75 54 82 57 89 64" stroke="#0B1C2C" stroke-width="6.5" stroke-linecap="round"/>
+  <text x="62" y="82" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="900" letter-spacing="-2.7" fill="#0B1C2C">SH</text>
+  <text x="124" y="78" font-family="Arial, Helvetica, sans-serif" font-size="43" font-weight="900" fill="#0B1C2C" letter-spacing="-2.1">Soldier</text>
+  <text x="268" y="78" font-family="Arial, Helvetica, sans-serif" font-size="43" font-weight="900" fill="#3F5F7D" letter-spacing="-2.1">Hub</text>
+  <text x="126" y="106" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="800" fill="#64748B" letter-spacing="1.25">FORT BLISS • EL PASO</text>
+  <text x="126" y="127" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="800" fill="#64748B" letter-spacing="1.2">CONNECT • SHARE • SUPPORT</text>
 </svg>
