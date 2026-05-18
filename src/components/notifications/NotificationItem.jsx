@@ -231,6 +231,9 @@ export default function NotificationItem({ notification, group }) {
       tabIndex={0}
       onClick={openNotification}
       onKeyDown={handleKeyDown}
+      onMouseDown={(event) => {
+        if (event.detail > 0) event.preventDefault();
+      }}
       className="group relative flex w-full cursor-pointer items-start gap-3 overflow-hidden rounded-[26px] border p-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9DB6CF] md:gap-4 md:p-5"
       style={{
         backgroundColor: unread ? "#FFFFFF" : "rgba(255,255,255,0.78)",
@@ -238,6 +241,8 @@ export default function NotificationItem({ notification, group }) {
         boxShadow: unread
           ? "0 14px 34px rgba(11,28,44,0.10)"
           : "0 8px 22px rgba(11,28,44,0.04)",
+        outline: "none",
+        WebkitTapHighlightColor: "transparent",
       }}
     >
       <ProfileIdentityLink
