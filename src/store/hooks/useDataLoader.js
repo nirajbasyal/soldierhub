@@ -12,6 +12,8 @@ const FEED_CACHE_KEY = "soldierhub_feed_cache_v2";
 const FEED_CACHE_MAX_AGE_MS = 1000 * 60 * 5;
 const PROFILE_CACHE_KEY = "soldierhub_current_profile_v1";
 const PROFILE_CACHE_MAX_AGE_MS = 1000 * 60 * 30;
+const NOTIFICATION_CACHE_KEY_PREFIX = "soldierhub_notifications_cache_v1_";
+const NOTIFICATION_CACHE_MAX_AGE_MS = 1000 * 60 * 3;
 
 function getNextCursor(items = []) {
   const lastItem = items[items.length - 1];
@@ -124,6 +126,78 @@ function writeProfileCache(profile) {
 function clearProfileCache() {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(PROFILE_CACHE_KEY);
+}
+
+function getNotificationCacheKey(userId) {
+  return `${NOTIFICATION_CACHE_KEY_PREFIX}${userId}`;
+}
+
+function isSafeCachedNotification(notification) {
+  return Boolean(notification?.id && notification?.created_at);
+}
+
+function readNotificationCache(userId) {
+  if (typeof window === "undefined" || !userId) return null;
+
+  try {
+    const raw = window.localStorage.getItem(getNotificationCacheKey(userId));
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw);
+    const notifications = Array.isArray(parsed?.notifications) ? parsed.notifications : [];
+    const savedAt = Number(parsed?.savedAt || 0);
+
+    if (
+      !notifications.length ||
+      !savedAt ||
+      Date.now() - savedAt > NOTIFICATION_CACHE_MAX_AGE_MS
+    ) {
+      window.localStorage.removeItem(getNotificationCacheKey(userId));
+      return null;
+    }
+
+    return notifications.filter(isSafeCachedNotification).slice(0, NOTIFICATION_PAGE_SIZE);
+  } catch {
+    window.localStorage.removeItem(getNotificationCacheKey(userId));
+    return null;
+  }
+}
+
+function writeNotificationCache(userId, notifications = []) {
+  if (typeof window === "undefined" || !userId) return;
+
+  try {
+    const safeNotifications = (notifications || [])
+      .filter(isSafeCachedNotification)
+      .slice(0, NOTIFICATION_PAGE_SIZE);
+
+    if (!safeNotifications.length) {
+      window.localStorage.removeItem(getNotificationCacheKey(userId));
+      return;
+    }
+
+    window.localStorage.setItem(
+      getNotificationCacheKey(userId),
+      JSON.stringify({ notifications: safeNotifications, savedAt: Date.now() })
+    );
+  } catch {
+    // Notification cache is only used for faster first paint.
+  }
+}
+
+function clearNotificationCache(userId = null) {
+  if (typeof window === "undefined") return;
+
+  if (userId) {
+    window.localStorage.removeItem(getNotificationCacheKey(userId));
+    return;
+  }
+
+  Object.keys(window.localStorage).forEach((key) => {
+    if (key.startsWith(NOTIFICATION_CACHE_KEY_PREFIX)) {
+      window.localStorage.removeItem(key);
+    }
+  });
 }
 
 function prependRealtimeNotification(currentNotifications = [], notification) {
@@ -296,6 +370,7 @@ export function useDataLoader({
           nextNotifications
         );
         setNotificationsCursor(getNextCursor(mergedNotifications));
+        writeNotificationCache(currentUser.id, mergedNotifications);
         return mergedNotifications;
       });
 
@@ -359,6 +434,7 @@ export function useDataLoader({
 
       if (status === "rejected" || status === "revoked") {
         clearProfileCache();
+        clearNotificationCache(profile?.id);
         setCurrentUser(profile || null);
         setUnreadCount(0);
         setAuthLoading(false);
@@ -393,6 +469,7 @@ export function useDataLoader({
     unsubscribe = Auth.onAuthChange(async (user) => {
       if (!user) {
         clearProfileCache();
+        clearNotificationCache();
         setCurrentUser(null);
         setMyUpvotes(new Set());
         setMyReports(new Set());
@@ -410,6 +487,7 @@ export function useDataLoader({
 
       if (status === "rejected" || status === "revoked") {
         clearProfileCache();
+        clearNotificationCache(user.id);
         setCurrentUser(profile || null);
         setMyUpvotes(new Set());
         setMyReports(new Set());
@@ -473,6 +551,7 @@ export function useDataLoader({
     const status = getProfileStatus(currentUser);
 
     if (status !== "verified") {
+      clearNotificationCache(currentUser?.id);
       setMyUpvotes(new Set());
       setMyReports(new Set());
       setNotifications([]);
@@ -485,32 +564,54 @@ export function useDataLoader({
     }
 
     let cancelled = false;
-    setNotificationsLoading(true);
+    const cachedNotifications = readNotificationCache(currentUser.id);
+
+    if (cachedNotifications) {
+      setNotifications(cachedNotifications);
+      setNotificationsCursor(getNextCursor(cachedNotifications));
+      setHasMoreNotifications(cachedNotifications.length === NOTIFICATION_PAGE_SIZE);
+      setNotificationsLoading(false);
+    } else {
+      setNotificationsLoading(true);
+    }
+
     refreshUnreadCount(currentUser.id, { skipCache: true });
 
     (async () => {
-      const [{ data: ups }, { data: reps }, { data: notifs }, { data: mine }] =
-        await Promise.all([
-          PostsDB.listMyUpvotedPostIds(currentUser.id),
-          PostsDB.listMyReportedPostIds(currentUser.id),
-          NotificationsDB.listMyNotifications(currentUser.id, {
-            limit: NOTIFICATION_PAGE_SIZE,
-          }),
-          PostsDB.listMyPosts(currentUser.id),
-        ]);
+      const { data: notifs, error } = await NotificationsDB.listMyNotifications(currentUser.id, {
+        limit: NOTIFICATION_PAGE_SIZE,
+      });
 
       if (cancelled) return;
 
-      const safeNotifications = notifs || [];
+      if (!error) {
+        const safeNotifications = notifs || [];
+        setNotifications(safeNotifications);
+        setNotificationsCursor(getNextCursor(safeNotifications));
+        setHasMoreNotifications(safeNotifications.length === NOTIFICATION_PAGE_SIZE);
+        writeNotificationCache(currentUser.id, safeNotifications);
+      } else if (!cachedNotifications) {
+        setNotifications([]);
+        setNotificationsCursor(null);
+        setHasMoreNotifications(false);
+      }
 
-      setMyUpvotes(new Set(ups));
-      setMyReports(new Set(reps));
-      setNotifications(safeNotifications);
-      setNotificationsCursor(getNextCursor(safeNotifications));
-      setHasMoreNotifications(safeNotifications.length === NOTIFICATION_PAGE_SIZE);
       setNotificationsLoading(false);
-      setMyPosts(sanitizePosts(mine || [], currentUser.id));
       refreshUnreadCount(currentUser.id, { skipCache: true });
+    })();
+
+    (async () => {
+      const [{ data: ups }, { data: reps }, { data: mine }] = await Promise.all([
+        PostsDB.listMyUpvotedPostIds(currentUser.id),
+        PostsDB.listMyReportedPostIds(currentUser.id),
+        PostsDB.listMyPosts(currentUser.id),
+      ]);
+
+      if (cancelled) return;
+
+      setMyUpvotes(new Set(ups || []));
+      setMyReports(new Set(reps || []));
+      setMyPosts(sanitizePosts(mine || [], currentUser.id));
     })();
 
     return () => {
@@ -543,9 +644,14 @@ export function useDataLoader({
 
       NotificationsDB.hydrateNotificationRows([notification]).then((hydrated) => {
         const safeNotification = hydrated?.[0] || notification;
-        setNotifications((currentNotifications) =>
-          prependRealtimeNotification(currentNotifications, safeNotification)
-        );
+        setNotifications((currentNotifications) => {
+          const mergedNotifications = prependRealtimeNotification(
+            currentNotifications,
+            safeNotification
+          );
+          writeNotificationCache(currentUser.id, mergedNotifications);
+          return mergedNotifications;
+        });
       });
     });
 
