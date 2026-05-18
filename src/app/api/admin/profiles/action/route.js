@@ -5,9 +5,6 @@ import { checkRateLimit, rateLimitResponse } from "@/lib/server/rateLimit";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const ADMIN_EMAIL =
-  process.env.SOLDIERHUB_ADMIN_EMAIL || "niraj.basyal2054@gmail.com";
-
 const ALLOWED_ACTIONS = new Set([
   "verify",
   "reject",
@@ -15,6 +12,13 @@ const ALLOWED_ACTIONS = new Set([
   "verify_by_email",
   "revoke_by_email",
 ]);
+
+function getExpectedAdminEmails() {
+  return (process.env.SOLDIERHUB_ADMIN_EMAILS || "")
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+}
 
 function getBearerToken(request) {
   const header = request.headers.get("authorization") || "";
@@ -39,14 +43,20 @@ function createAuthedSupabaseClient(accessToken) {
 }
 
 function isExpectedAdmin({ user, profile }) {
-  const expectedEmail = ADMIN_EMAIL.trim().toLowerCase();
+  const expectedEmails = getExpectedAdminEmails();
+
+  if (!expectedEmails.length) return false;
+
   const authEmail = user?.email?.trim().toLowerCase() || "";
   const profileEmail = profile?.email?.trim().toLowerCase() || "";
   const personalEmail = profile?.personal_email?.trim().toLowerCase() || "";
+  const militaryEmail = profile?.military_email?.trim().toLowerCase() || "";
 
   return (
     profile?.role === "admin" &&
-    [authEmail, profileEmail, personalEmail].includes(expectedEmail)
+    expectedEmails.some((expectedEmail) =>
+      [authEmail, profileEmail, personalEmail, militaryEmail].includes(expectedEmail)
+    )
   );
 }
 
@@ -159,7 +169,7 @@ export async function POST(request) {
 
   const { data: adminProfile, error: adminProfileError } = await supabase
     .from("profiles")
-    .select("id, email, personal_email, role")
+    .select("id, email, personal_email, military_email, role")
     .eq("id", user.id)
     .maybeSingle();
 
