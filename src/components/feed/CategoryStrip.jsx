@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronRight } from "lucide-react";
 import { CATEGORIES } from "@/lib/constants";
 import { T, TONE_STYLES } from "@/lib/theme";
 
@@ -72,6 +73,16 @@ export default function CategoryStrip({ selected, counts, onSelect }) {
                       {counts[c.key]}
                     </span>
                   )}
+
+                  <ChevronRight
+                    size={14}
+                    strokeWidth={2.5}
+                    aria-hidden="true"
+                    className="shrink-0 transition-transform duration-150 group-hover:translate-x-0.5"
+                    style={{
+                      opacity: active ? 0.9 : 0.45,
+                    }}
+                  />
                 </span>
               </button>
             );
