@@ -39,9 +39,9 @@ export default function ComposePage() {
         className="min-h-[100dvh] overflow-x-hidden pb-24 md:pb-10"
         style={{ backgroundColor: T.bg }}
       >
-        <div className="mx-auto flex min-h-[100dvh] w-full max-w-4xl flex-col px-3 pt-2 md:px-6 md:pt-7">
+        <div className="mx-auto flex min-h-[100dvh] w-full max-w-[820px] flex-col px-4 pt-2 sm:px-5 md:px-7 md:pt-7 xl:px-8">
           <div
-            className="sticky top-0 z-[80] -mx-3 mb-3 flex items-center justify-between gap-3 px-3 py-2 backdrop-blur-xl md:static md:mx-0 md:mb-5 md:px-0 md:py-0 md:backdrop-blur-none"
+            className="sticky top-0 z-[80] -mx-4 mb-3 flex items-center justify-between gap-3 px-4 py-2 backdrop-blur-xl sm:-mx-5 sm:px-5 md:static md:mx-0 md:mb-5 md:px-0 md:py-0 md:backdrop-blur-none"
             style={{
               background:
                 "linear-gradient(180deg, rgba(248,247,244,0.98) 0%, rgba(248,247,244,0.92) 80%, rgba(248,247,244,0) 100%)",
