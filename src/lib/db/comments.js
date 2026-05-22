@@ -31,6 +31,20 @@ function getCommentAuthorId(comment = {}) {
   );
 }
 
+function getCommentAvatarUrl(comment = {}) {
+  return (
+    comment?.author_avatar_url_cached ||
+    comment?.author_avatar_url ||
+    comment?.comment_author_avatar_url ||
+    comment?.profile_avatar_url ||
+    comment?.avatar_url ||
+    comment?.author?.avatar_url ||
+    comment?.profile?.avatar_url ||
+    comment?.user?.avatar_url ||
+    null
+  );
+}
+
 function isDeletedComment(comment = {}) {
   const body = String(comment?.body || comment?.content || comment?.text || "").trim();
 
@@ -54,6 +68,7 @@ function normalizeCommentRow(comment = {}) {
     comment?.profile?.full_name ||
     comment?.user?.full_name ||
     "Member";
+  const authorAvatarUrl = getCommentAvatarUrl(comment);
 
   return {
     ...comment,
@@ -71,6 +86,8 @@ function normalizeCommentRow(comment = {}) {
       comment?.profile?.avatar_color ||
       comment?.user?.avatar_color ||
       null,
+    author_avatar_url: authorAvatarUrl,
+    author_avatar_url_cached: authorAvatarUrl,
     body: comment?.body || comment?.content || comment?.text || "",
     created_at: comment?.created_at || comment?.inserted_at || comment?.createdAt || null,
   };
