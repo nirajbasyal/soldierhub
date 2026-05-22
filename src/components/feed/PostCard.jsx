@@ -158,6 +158,18 @@ function getPostUrl(postId) {
   return `${window.location.origin}/?post=${encodeURIComponent(postId)}`;
 }
 
+function getPostImage(post) {
+  const url = post?.image_url || post?.imageUrl || post?.media_url || post?.mediaUrl || null;
+  if (!url) return null;
+
+  return {
+    url,
+    width: Number(post?.image_width || post?.imageWidth || 0) || null,
+    height: Number(post?.image_height || post?.imageHeight || 0) || null,
+    size: Number(post?.image_size || post?.imageSize || 0) || null,
+  };
+}
+
 function ActionButton({ icon: Icon, label, count, active = false, onClick, fillWhenActive = false }) {
   return (
     <button
@@ -366,6 +378,7 @@ export default function PostCard({ post, openRepliesDefault = false }) {
   const replyName = post?.anonymous && ownsPost ? anonymousName : currentUser?.full_name || "Member";
   const replyColor = post?.anonymous && ownsPost ? "#5C6470" : currentUser?.avatar_color || colorFromString(replyName);
   const bodyText = post?.body || post?.content || post?.text || "";
+  const postImage = getPostImage(post);
 
   useEffect(() => {
     setShowComments(Boolean(openRepliesDefault));
@@ -666,6 +679,22 @@ export default function PostCard({ post, openRepliesDefault = false }) {
           {bodyText ? (
             <div className="mt-4 text-[16px] md:text-[17px] leading-8" style={{ color: T.text }}>
               <ExpandableText text={bodyText} />
+            </div>
+          ) : null}
+
+          {postImage ? (
+            <div
+              className="mt-4 overflow-hidden rounded-[22px] border bg-[#F4F8FD]"
+              style={{ borderColor: T.borderSoft || T.border }}
+            >
+              <img
+                src={postImage.url}
+                alt="Post attachment"
+                loading="lazy"
+                decoding="async"
+                className="block max-h-[620px] w-full object-cover"
+                style={{ aspectRatio: postImage.width && postImage.height ? `${postImage.width} / ${postImage.height}` : "16 / 10" }}
+              />
             </div>
           ) : null}
         </div>
