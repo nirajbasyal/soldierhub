@@ -315,8 +315,8 @@ export default function HomePage() {
   return (
     <AppShell>
       <ImageLightboxBridge />
-      <main className="mx-auto w-full max-w-[1120px] overflow-x-hidden px-3 pt-0 pb-24 md:px-5 md:pt-6 md:pb-10">
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-5">
+      <main className="mx-auto w-full max-w-[1080px] overflow-x-hidden px-4 pt-0 pb-24 sm:px-5 md:px-7 md:pt-6 md:pb-10 xl:px-8">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_292px] lg:gap-5">
           <div className="flex min-w-0 flex-col gap-3">
             <div className="block pt-1 lg:hidden">
               <MobileWeatherStrip />
