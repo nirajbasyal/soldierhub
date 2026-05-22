@@ -11,10 +11,27 @@ const RPC_MODE_EMPTY = "empty";
 
 let workingPublicPostsRpcMode = null;
 
+function getAuthorAvatarUrl(row = {}, profile = null) {
+  return (
+    row.author_avatar_url ||
+    row.author_avatar_url_cached ||
+    row.profile_avatar_url ||
+    row.avatar_url ||
+    row.author?.avatar_url ||
+    row.profile?.avatar_url ||
+    row.profiles?.avatar_url ||
+    row.user?.avatar_url ||
+    profile?.avatar_url ||
+    null
+  );
+}
+
 export function normalizePostRow(row = {}) {
   const profile = row.profile || row.profiles || row.author || null;
   const postId = row.id || row.post_id || row.postId || row.post?.id || null;
   const commentCount = row.comment_count ?? row.comments_count ?? row.reply_count ?? 0;
+  const isAnonymous = Boolean(row.anonymous);
+  const authorAvatarUrl = isAnonymous ? null : getAuthorAvatarUrl(row, profile);
 
   return {
     ...row,
@@ -42,6 +59,8 @@ export function normalizePostRow(row = {}) {
       row.profile_avatar_color ||
       profile?.avatar_color ||
       "#314A66",
+    author_avatar_url: authorAvatarUrl,
+    author_avatar_url_cached: authorAvatarUrl,
     image_url: row.image_url || row.imageUrl || null,
     image_key: row.image_key || row.imageKey || null,
     image_width: row.image_width || row.imageWidth || null,
@@ -64,23 +83,48 @@ function hasFeedCursor(cursorCreatedAt, cursorId) {
   return Boolean(cursorCreatedAt || cursorId);
 }
 
+async function fetchProfilesByIds(supabase, authorIds = []) {
+  const safeIds = [...new Set((authorIds || []).filter(Boolean))];
+  if (!supabase || safeIds.length === 0) return [];
+
+  const fullResult = await supabase
+    .from("profiles")
+    .select("id, full_name, avatar_color, avatar_url")
+    .in("id", safeIds);
+
+  if (!fullResult.error) return fullResult.data || [];
+
+  const fallbackResult = await supabase
+    .from("profiles")
+    .select("id, full_name, avatar_color")
+    .in("id", safeIds);
+
+  if (fallbackResult.error) return [];
+  return fallbackResult.data || [];
+}
+
 async function attachProfilesToPosts(supabase, rows = []) {
   if (!Array.isArray(rows) || rows.length === 0) return [];
 
   const normalizedRows = rows.map(normalizePostRow);
-  const missingProfileRows = normalizedRows.filter(
-    (row) => row.author_id && (!row.author_name || row.author_name === "Member")
+  const profileRows = normalizedRows.filter((row) => {
+    if (!row.author_id || row.anonymous) return false;
+
+    return (
+      !row.author_name ||
+      row.author_name === "Member" ||
+      !row.author_color ||
+      !row.author_avatar_url
+    );
+  });
+
+  if (profileRows.length === 0) return normalizedRows;
+
+  const profiles = await fetchProfilesByIds(
+    supabase,
+    profileRows.map((row) => row.author_id)
   );
-
-  if (missingProfileRows.length === 0) return normalizedRows;
-
-  const authorIds = [...new Set(missingProfileRows.map((row) => row.author_id))];
-  const { data: profiles, error } = await supabase
-    .from("profiles")
-    .select("id, full_name, avatar_color")
-    .in("id", authorIds);
-
-  if (error) return normalizedRows;
+  if (!profiles.length) return normalizedRows;
 
   const profileById = new Map((profiles || []).map((profile) => [profile.id, profile]));
   return normalizedRows.map((row) =>
@@ -128,7 +172,8 @@ async function listPostsFromRpc(
 
     if (!result.error && Array.isArray(result.data)) {
       if (!usingCursor) workingPublicPostsRpcMode = mode;
-      return { data: result.data.map(normalizePostRow), error: null };
+      const hydratedPosts = await attachProfilesToPosts(supabase, result.data || []);
+      return { data: hydratedPosts, error: null };
     }
 
     lastError = result.error || lastError;
@@ -154,7 +199,7 @@ async function listMyPostsFromView(supabase, userId, limit) {
     .limit(limit);
 
   if (!result.error) {
-    return { data: (result.data || []).map(normalizePostRow), error: null };
+    return { data: await attachProfilesToPosts(supabase, result.data || []), error: null };
   }
 
   console.error("List my posts from metadata view failed:", result.error);
@@ -178,7 +223,7 @@ async function listReportedPostsFromView(supabase) {
     .limit(50);
 
   if (!result.error) {
-    return { data: (result.data || []).map(normalizePostRow), error: null };
+    return { data: await attachProfilesToPosts(supabase, result.data || []), error: null };
   }
 
   console.error("List reported posts from metadata view failed:", result.error);
