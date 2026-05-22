@@ -4,6 +4,8 @@ const DEFAULT_AVATAR_OPTIONS = {
   maxWidth: 512,
   maxHeight: 512,
   quality: 0.82,
+  minQuality: 0.62,
+  maxBytes: 500 * 1024,
   type: "image/webp",
 };
 
@@ -11,6 +13,8 @@ const DEFAULT_POST_OPTIONS = {
   maxWidth: 1600,
   maxHeight: 1600,
   quality: 0.82,
+  minQuality: 0.58,
+  maxBytes: 2 * 1024 * 1024,
   type: "image/webp",
 };
 
@@ -67,6 +71,32 @@ async function canvasToBlob(canvas, type, quality) {
   });
 }
 
+async function renderCompressedFile({ canvas, file, type, quality }) {
+  const blob = await canvasToBlob(canvas, type, quality);
+  const baseName = file.name.replace(/\.[^.]+$/, "") || "image";
+
+  return new File([blob], `${baseName}.webp`, {
+    type,
+    lastModified: Date.now(),
+  });
+}
+
+async function compressWithinBudget({ canvas, file, type, quality, minQuality, maxBytes }) {
+  let workingQuality = quality;
+  let compressedFile = await renderCompressedFile({ canvas, file, type, quality: workingQuality });
+
+  while (compressedFile.size > maxBytes && workingQuality > minQuality) {
+    workingQuality = Math.max(minQuality, Number((workingQuality - 0.08).toFixed(2)));
+    compressedFile = await renderCompressedFile({ canvas, file, type, quality: workingQuality });
+  }
+
+  if (compressedFile.size > maxBytes) {
+    throw new Error("Image is still too large after compression. Please choose a smaller image.");
+  }
+
+  return { file: compressedFile, quality: workingQuality };
+}
+
 export async function compressImage(file, options = {}) {
   assertImageFile(file);
 
@@ -86,13 +116,19 @@ export async function compressImage(file, options = {}) {
   const context = canvas.getContext("2d", { alpha: false });
   if (!context) throw new Error("Your browser could not prepare this image.");
 
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = "high";
+  context.fillStyle = "#FFFFFF";
+  context.fillRect(0, 0, target.width, target.height);
   context.drawImage(image, 0, 0, target.width, target.height);
 
-  const blob = await canvasToBlob(canvas, config.type, config.quality);
-  const baseName = file.name.replace(/\.[^.]+$/, "") || "image";
-  const compressedFile = new File([blob], `${baseName}.webp`, {
+  const { file: compressedFile, quality } = await compressWithinBudget({
+    canvas,
+    file,
     type: config.type,
-    lastModified: Date.now(),
+    quality: config.quality,
+    minQuality: config.minQuality,
+    maxBytes: config.maxBytes,
   });
 
   return {
@@ -103,6 +139,7 @@ export async function compressImage(file, options = {}) {
     size: compressedFile.size,
     originalSize: file.size,
     contentType: config.type,
+    quality,
   };
 }
 
