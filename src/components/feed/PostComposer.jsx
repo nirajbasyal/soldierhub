@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
   Bold,
-  Camera,
   ChevronRight,
   ImagePlus,
   Italic,
@@ -36,6 +35,7 @@ const PUBLISH_SCROLL_KEY = "soldierhub_scroll_to_latest_post";
 const COMPOSE_SUBMIT_EVENT = "soldierhub-compose-submit";
 const COMPOSE_STATE_EVENT = "soldierhub-compose-state";
 const COMPOSER_DRAFT_KEY = "soldierhub_post_composer_draft_v1";
+const AUTO_SAVE_DELAY_MS = 1200;
 const FORMAT_BOUNDARY = "\u200B";
 
 const COMPOSER_CATEGORY_LABELS = {
@@ -115,11 +115,7 @@ function sanitizeComposerHtml(html = "") {
 
   Array.from(sourceRoot?.childNodes || []).forEach((child) => cleanNode(child, outputRoot));
 
-  return outputRoot.innerHTML
-    .replaceAll(FORMAT_BOUNDARY, "")
-    .replace(/<div><br><\/div>/gi, "")
-    .replace(/<p><br><\/p>/gi, "")
-    .trim();
+  return outputRoot.innerHTML.replaceAll(FORMAT_BOUNDARY, "").trim();
 }
 
 function getPlainEditorText(editor) {
@@ -166,6 +162,20 @@ function safeRequestAnimationFrame(callback) {
   }
 
   window.requestAnimationFrame(callback);
+}
+
+function placeCursorAtEnd(element) {
+  if (typeof window === "undefined" || !element) return;
+
+  element.focus({ preventScroll: true });
+
+  const range = document.createRange();
+  range.selectNodeContents(element);
+  range.collapse(false);
+
+  const selection = window.getSelection?.();
+  selection?.removeAllRanges();
+  selection?.addRange(range);
 }
 
 function readSavedDraft(userId) {
@@ -299,7 +309,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     const resizeEditor = () => {
       const viewportHeight =
         typeof window !== "undefined" ? window.visualViewport?.height || window.innerHeight : 760;
-      const minHeight = pageMode ? (isPhoneScreen ? 210 : 170) : isPhoneScreen ? 188 : 126;
+      const minHeight = pageMode ? (isPhoneScreen ? 180 : 150) : isPhoneScreen ? 170 : 126;
 
       editor.style.minHeight = `${minHeight}px`;
 
@@ -310,10 +320,10 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
       }
 
       const maxHeight = pageMode
-        ? Math.max(260, Math.min(isPhoneScreen ? 430 : 340, Math.round(viewportHeight * 0.42)))
+        ? Math.max(230, Math.min(isPhoneScreen ? 390 : 320, Math.round(viewportHeight * 0.38)))
         : isPhoneScreen
-          ? 360
-          : 240;
+          ? 330
+          : 220;
 
       editor.style.maxHeight = `${maxHeight}px`;
       editor.style.overflowY = editor.scrollHeight > maxHeight ? "auto" : "hidden";
@@ -332,7 +342,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
         window.visualViewport?.removeEventListener("resize", resizeEditor);
       }
     };
-  }, [body, pageMode, isPhoneScreen]);
+  }, [body, pageMode, isPhoneScreen, selectedImage]);
 
   useEffect(() => {
     if (!open || hasLoadedDraftRef.current || !currentUser?.id) return;
@@ -357,6 +367,41 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     anonymousValueRef.current = Boolean(savedDraft.anonymous);
     setDraftStatus("Draft restored. Continue editing or publish when ready.");
   }, [open, currentUser?.id]);
+
+  useEffect(() => {
+    if (!open || typeof window === "undefined" || !currentUser?.id || submitting || imageProcessing) {
+      return undefined;
+    }
+
+    const autoSaveTimer = window.setTimeout(() => {
+      const draftBody = sanitizeComposerHtml(bodyValueRef.current);
+      const draftText = plainTextValueRef.current.trim();
+
+      if (!draftText && !draftBody) return;
+
+      try {
+        window.localStorage.setItem(
+          COMPOSER_DRAFT_KEY,
+          JSON.stringify({
+            userId: currentUser.id,
+            body: draftBody || draftText,
+            plainText: draftText,
+            category: categoryValueRef.current,
+            anonymous: anonymousValueRef.current,
+            structured,
+            savedAt: Date.now(),
+          })
+        );
+        setDraftSaved(true);
+        setDraftStatus("Auto-saved on this device.");
+      } catch {
+        setDraftSaved(false);
+        setDraftStatus("Draft could not be saved on this device.");
+      }
+    }, AUTO_SAVE_DELAY_MS);
+
+    return () => window.clearTimeout(autoSaveTimer);
+  }, [body, plainText, category, anonymous, structured, open, currentUser?.id, submitting, imageProcessing]);
 
   const syncFormatState = () => {
     const editor = editorRef.current;
@@ -449,7 +494,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
         selectedImageRef.current = compressed;
         return compressed;
       });
-      setImageStatus("Photo optimized for faster loading.");
+      setImageStatus("");
       setOpen(true);
     } catch (err) {
       setError(err?.message || "Could not prepare this image. Please try another photo.");
@@ -542,7 +587,11 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     plainTextValueRef.current = clearedDraft.plainText;
     setClearedDraft(null);
     setDraftStatus("Text restored.");
-    focusComposerField();
+
+    safeRequestAnimationFrame(() => {
+      placeCursorAtEnd(editorRef.current);
+      syncFormatState();
+    });
   };
 
   const resetComposer = () => {
@@ -559,7 +608,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   const saveDraft = () => {
     if (typeof window === "undefined" || !currentUser?.id) return;
 
-    const draftBody = sanitizeComposerHtml(bodyValueRef.current).trim();
+    const draftBody = sanitizeComposerHtml(bodyValueRef.current);
     const draftText = plainTextValueRef.current.trim();
 
     if (!draftText && !draftBody) {
@@ -597,7 +646,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     syncEditorState();
 
     const cleanedText = plainTextValueRef.current.trim();
-    const cleanedBody = sanitizeComposerHtml(bodyValueRef.current).trim();
+    const cleanedBody = sanitizeComposerHtml(bodyValueRef.current);
     const imageToUpload = selectedImageRef.current;
 
     if (!cleanedText && !imageToUpload) {
@@ -652,9 +701,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     } finally {
       setSubmitting(false);
       submittingValueRef.current = false;
-      setImageStatus((current) =>
-        current === "Uploading photo…" ? "Photo optimized for faster loading." : current
-      );
+      setImageStatus((current) => (current === "Uploading photo…" ? "" : current));
     }
   };
 
@@ -851,7 +898,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
       />
 
       <div
-        className="relative rounded-[24px] border px-3.5 py-3 md:px-4 md:py-3.5"
+        className="relative overflow-hidden rounded-[24px] border px-3.5 py-3 md:px-4 md:py-3.5"
         style={{ backgroundColor: "#F8FAFD", borderColor: T.borderSoft }}
       >
         {showTextClearControl ? (
@@ -859,7 +906,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
             type="button"
             onClick={clearedDraft ? restoreClearedText : clearTextWithUndo}
             disabled={submitting}
-            className="sh-tap absolute right-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-full border shadow-sm transition active:scale-[0.96] disabled:opacity-50"
+            className="sh-tap absolute right-3 top-3 z-20 inline-flex h-8 w-8 items-center justify-center rounded-full border shadow-sm transition active:scale-[0.96] disabled:opacity-50"
             style={{ backgroundColor: "rgba(255,255,255,0.96)", borderColor: T.border, color: T.navy }}
             aria-label={clearedDraft ? "Undo cleared text" : "Clear text"}
             title={clearedDraft ? "Undo" : "Clear text"}
@@ -889,78 +936,64 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
           onKeyUp={syncFormatState}
           onMouseUp={syncFormatState}
           onPaste={handlePaste}
-          className="w-full appearance-none border-0 bg-transparent pr-10 text-[18px] leading-8 shadow-none outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0 md:text-[17px] md:leading-7 [&_blockquote]:my-3 [&_blockquote]:rounded-[18px] [&_blockquote]:border-0 [&_blockquote]:bg-[#DDE8F3] [&_blockquote]:px-5 [&_blockquote]:py-3 [&_blockquote]:font-normal [&_blockquote]:text-[#102033] [&_em]:italic [&_li]:pl-1 [&_ol]:ml-5 [&_ol]:list-decimal [&_ol]:space-y-1 [&_strong]:font-extrabold [&_ul]:ml-5 [&_ul]:list-disc [&_ul]:space-y-1"
+          className="w-full appearance-none border-0 bg-transparent pr-10 text-[18px] leading-8 shadow-none outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0 md:text-[17px] md:leading-7 [&_blockquote]:my-3 [&_blockquote]:rounded-[18px] [&_blockquote]:border-0 [&_blockquote]:bg-[#DDE8F3] [&_blockquote]:px-5 [&_blockquote]:py-3 [&_blockquote]:font-normal [&_blockquote]:text-[#102033] [&_div]:min-h-[1.65em] [&_div]:whitespace-pre-wrap [&_em]:italic [&_li]:pl-1 [&_ol]:ml-5 [&_ol]:list-decimal [&_ol]:space-y-1 [&_p]:min-h-[1.65em] [&_p]:whitespace-pre-wrap [&_strong]:font-extrabold [&_ul]:ml-5 [&_ul]:list-disc [&_ul]:space-y-1"
           style={{ color: T.text, border: "none", boxShadow: "none" }}
         />
-      </div>
 
-      {imageProcessing && !selectedImage ? (
-        <div
-          className="mt-4 flex items-center gap-3 rounded-[22px] border px-4 py-4"
-          style={{ backgroundColor: "#F4F8FD", borderColor: T.borderSoft }}
-        >
-          <span
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
-            style={{ backgroundColor: "rgba(63,95,125,0.12)", color: T.navy }}
+        {imageProcessing && !selectedImage ? (
+          <div
+            className="mt-3 flex items-center gap-3 rounded-[20px] border px-3.5 py-3"
+            style={{ backgroundColor: "#F4F8FD", borderColor: T.borderSoft }}
           >
-            <Loader2 size={18} className="animate-spin" />
-          </span>
-          <div className="min-w-0">
-            <div className="text-sm font-extrabold" style={{ color: T.text }}>
-              Preparing your photo
-            </div>
-            <div className="text-xs font-medium" style={{ color: T.textSubtle }}>
-              Compressing image for faster loading…
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {selectedImage ? (
-        <div
-          className="mt-4 overflow-hidden rounded-[24px] border"
-          style={{ backgroundColor: "#EEF3F8", borderColor: T.borderSoft }}
-        >
-          <div className="relative flex justify-center bg-[#EEF3F8]">
-            <img
-              src={selectedImage.previewUrl}
-              alt="Selected post preview"
-              className="block h-auto max-h-[62vh] w-full object-contain md:max-h-[340px] md:w-auto md:max-w-full"
-            />
-            <button
-              type="button"
-              onClick={removeSelectedImage}
-              disabled={submitting || imageProcessing}
-              className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full border shadow-sm transition active:scale-[0.98] disabled:opacity-50"
-              style={{ backgroundColor: "rgba(255,255,255,0.94)", borderColor: T.border, color: T.navy }}
-              aria-label="Remove selected photo"
-              title="Remove photo"
+            <span
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+              style={{ backgroundColor: "rgba(63,95,125,0.12)", color: T.navy }}
             >
-              <X size={16} strokeWidth={2.8} />
-            </button>
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-2 bg-white/78 px-4 py-3">
+              <Loader2 size={17} className="animate-spin" />
+            </span>
             <div className="min-w-0">
-              <div className="flex items-center gap-2 text-sm font-extrabold" style={{ color: T.text }}>
-                <Camera size={15} strokeWidth={2.5} />
-                Photo attached
+              <div className="text-sm font-extrabold" style={{ color: T.text }}>
+                Preparing your photo
               </div>
-              <div className="truncate text-xs font-medium" style={{ color: T.textSubtle }}>
-                {imageStatus || "Ready to publish."}
+              <div className="text-xs font-medium" style={{ color: T.textSubtle }}>
+                Please wait before publishing.
               </div>
             </div>
-            <button
-              type="button"
-              onClick={openImagePicker}
-              disabled={submitting || imageProcessing}
-              className="sh-tap rounded-full border px-3 py-2 text-xs font-extrabold disabled:opacity-50"
-              style={{ backgroundColor: "#FFFFFF", borderColor: T.border, color: T.navy }}
-            >
-              Replace
-            </button>
           </div>
-        </div>
-      ) : null}
+        ) : null}
+
+        {selectedImage ? (
+          <div
+            className="mt-3 overflow-hidden rounded-[22px] border"
+            style={{ backgroundColor: "#EEF3F8", borderColor: T.borderSoft }}
+          >
+            <div className="relative flex justify-center bg-[#EEF3F8]">
+              <img
+                src={selectedImage.previewUrl}
+                alt="Selected post preview"
+                className="block max-h-[62vh] w-full object-cover md:max-h-[340px]"
+                style={{
+                  aspectRatio:
+                    selectedImage.width && selectedImage.height
+                      ? `${selectedImage.width} / ${selectedImage.height}`
+                      : "16 / 10",
+                }}
+              />
+              <button
+                type="button"
+                onClick={removeSelectedImage}
+                disabled={submitting || imageProcessing}
+                className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full border shadow-sm transition active:scale-[0.98] disabled:opacity-50"
+                style={{ backgroundColor: "rgba(255,255,255,0.94)", borderColor: T.border, color: T.navy }}
+                aria-label="Remove selected photo"
+                title="Remove photo"
+              >
+                <X size={16} strokeWidth={2.8} />
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </div>
 
       {imageNotice ? (
         <div
@@ -989,7 +1022,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
           boxShadow: pageMode ? "0 14px 30px rgba(11,28,44,0.08)" : "none",
         }}
       >
-        <div className="grid grid-cols-[minmax(110px,1fr)_46px_minmax(96px,0.82fr)] items-center gap-2 md:flex md:items-center md:justify-between md:gap-3">
+        <div className="grid grid-cols-[minmax(108px,1fr)_46px_minmax(96px,0.82fr)] items-center gap-2 md:flex md:items-center md:justify-between md:gap-3">
           <button
             type="button"
             onClick={toggleAnonymous}
@@ -1002,7 +1035,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
             }}
             aria-pressed={anonymous}
           >
-            <span className="w-full text-[10px] font-black uppercase leading-none tracking-[0.06em] md:w-auto md:text-[12px] md:normal-case md:tracking-normal">
+            <span className="w-full text-[10.5px] font-medium leading-tight tracking-normal md:w-auto md:text-[12px]">
               Post anonymously
             </span>
 
@@ -1082,7 +1115,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
           </button>
 
           <span className="min-w-0 flex-1 text-right text-[10.5px] font-semibold leading-snug" style={{ color: T.textSubtle }}>
-            {draftStatus || "Restores automatically when you reopen compose."}
+            {draftStatus || "Auto-restores when you reopen compose."}
           </span>
         </div>
       </div>
