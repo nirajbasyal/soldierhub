@@ -92,6 +92,150 @@ export default function ComposePage() {
             <PostComposer startOpen pageMode />
           </section>
         </div>
+
+        <style jsx global>{`
+          @media (max-width: 520px) {
+            main section > div.relative.flex.flex-col {
+              border-radius: 24px !important;
+              padding: 13px !important;
+              box-shadow: 0 10px 28px rgba(11, 28, 44, 0.06) !important;
+            }
+
+            [aria-label="Post formatting toolbar"] {
+              border-radius: 18px !important;
+              padding: 7px !important;
+            }
+
+            [aria-label="Post formatting toolbar"] > div {
+              display: grid !important;
+              grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+              gap: 6px !important;
+              width: 100% !important;
+            }
+
+            [aria-label="Post formatting toolbar"] button {
+              height: 38px !important;
+              justify-content: center !important;
+              padding-left: 6px !important;
+              padding-right: 6px !important;
+              border-radius: 999px !important;
+              font-size: 11px !important;
+            }
+
+            div[contenteditable="true"][aria-label="Write your SoldierHub post"] {
+              min-height: 170px !important;
+              max-height: none !important;
+              overflow-y: visible !important;
+              font-size: 17px !important;
+              line-height: 1.72 !important;
+              padding-bottom: 8px !important;
+              -webkit-user-select: text !important;
+              user-select: text !important;
+              touch-action: manipulation !important;
+            }
+
+            div[contenteditable="true"][aria-label="Write your SoldierHub post"] + * {
+              font-size: 17px !important;
+            }
+
+            img[alt="Selected post preview"] {
+              width: 100% !important;
+              max-height: 54vh !important;
+              object-fit: contain !important;
+              background: #eef3f8 !important;
+            }
+
+            img[alt="Selected post preview"]:where([style]) {
+              aspect-ratio: auto !important;
+            }
+
+            img[alt="Selected post preview"]:parent {
+              background: #eef3f8 !important;
+            }
+
+            div[class*="sticky"][class*="bottom-2"][class*="z-40"] {
+              bottom: max(0.55rem, env(safe-area-inset-bottom)) !important;
+              margin-top: 0.75rem !important;
+              padding: 7px !important;
+              border-radius: 18px !important;
+              background: rgba(248, 250, 253, 0.985) !important;
+              box-shadow: 0 14px 34px rgba(11, 28, 44, 0.14) !important;
+              backdrop-filter: blur(18px);
+            }
+
+            div[class*="sticky"][class*="bottom-2"][class*="z-40"] > div {
+              display: grid !important;
+              grid-template-columns: minmax(92px, 0.95fr) minmax(0, 1.35fr) !important;
+              align-items: stretch !important;
+              gap: 7px !important;
+            }
+
+            div[class*="sticky"][class*="bottom-2"][class*="z-40"] > div > button:first-child {
+              min-width: 0 !important;
+              height: 50px !important;
+              border: 1px solid rgba(207, 218, 232, 0.9) !important;
+              border-radius: 14px !important;
+              padding: 6px 7px !important;
+              background: linear-gradient(180deg, #ffffff 0%, #f4f8fd 100%) !important;
+            }
+
+            div[class*="sticky"][class*="bottom-2"][class*="z-40"] > div > button:first-child > span:first-child {
+              max-width: 58px !important;
+              white-space: normal !important;
+              overflow: visible !important;
+              font-size: 9.5px !important;
+              line-height: 1.05 !important;
+              font-weight: 800 !important;
+              letter-spacing: -0.02em !important;
+            }
+
+            div[class*="sticky"][class*="bottom-2"][class*="z-40"] > div > div {
+              display: grid !important;
+              grid-template-columns: 50px minmax(0, 1fr) !important;
+              gap: 7px !important;
+              min-width: 0 !important;
+            }
+
+            div[class*="sticky"][class*="bottom-2"][class*="z-40"] > div > div > button:nth-child(2) {
+              display: none !important;
+            }
+
+            div[class*="sticky"][class*="bottom-2"][class*="z-40"] > div > div > button:first-child,
+            div[class*="sticky"][class*="bottom-2"][class*="z-40"] > div > div > button:last-child {
+              height: 50px !important;
+              border-radius: 14px !important;
+            }
+
+            div[class*="sticky"][class*="bottom-2"][class*="z-40"] > div > div > button:first-child {
+              width: 50px !important;
+              min-width: 50px !important;
+              padding: 0 !important;
+            }
+
+            div[class*="sticky"][class*="bottom-2"][class*="z-40"] > div > div > button:first-child span {
+              display: none !important;
+            }
+
+            div[class*="sticky"][class*="bottom-2"][class*="z-40"] > div > div > button:last-child {
+              min-width: 0 !important;
+              width: 100% !important;
+              font-size: 13px !important;
+              font-weight: 900 !important;
+            }
+          }
+
+          @media (min-width: 768px) {
+            img[alt="Selected post preview"] {
+              max-height: 360px !important;
+              object-fit: contain !important;
+              background: #eef3f8 !important;
+            }
+
+            img[alt="Selected post preview"]:where([style]) {
+              aspect-ratio: auto !important;
+            }
+          }
+        `}</style>
       </main>
     </AppShell>
   );
