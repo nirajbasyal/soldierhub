@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/client";
 
 const POST_SELECT =
-  "id, author_id, author_name_cached, author_color_cached, category, body, anonymous, status, edited, created_at, updated_at";
+  "id, author_id, author_name_cached, author_color_cached, category, body, anonymous, status, edited, created_at, updated_at, image_url, image_key, image_width, image_height, image_size";
 
 const RPC_MODE_FULL = "full";
 const RPC_MODE_LIMIT = "limit";
@@ -42,6 +42,11 @@ export function normalizePostRow(row = {}) {
       row.profile_avatar_color ||
       profile?.avatar_color ||
       "#314A66",
+    image_url: row.image_url || row.imageUrl || null,
+    image_key: row.image_key || row.imageKey || null,
+    image_width: row.image_width || row.imageWidth || null,
+    image_height: row.image_height || row.imageHeight || null,
+    image_size: row.image_size || row.imageSize || null,
     upvote_count: row.upvote_count ?? row.upvotes_count ?? 0,
     comment_count: commentCount,
     reply_count: commentCount,
@@ -249,7 +254,7 @@ async function postJsonToApi(path, accessToken, payload, fallbackMessage) {
   return { data: result, error: null };
 }
 
-export async function createPost({ category, body, anonymous }) {
+export async function createPost({ category, body, anonymous, image = null }) {
   const supabase = createClient();
   if (!supabase) return { data: null, error: null };
 
@@ -262,7 +267,7 @@ export async function createPost({ category, body, anonymous }) {
   const result = await postJsonToApi(
     "/api/posts/create",
     accessToken,
-    { category, body, anonymous },
+    { category, body, anonymous, image },
     "Could not create post."
   );
   if (result.error) return result;
