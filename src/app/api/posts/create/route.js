@@ -7,9 +7,10 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const POST_SELECT =
-  "id, author_id, author_name_cached, author_color_cached, category, body, anonymous, status, edited, created_at, updated_at";
+  "id, author_id, author_name_cached, author_color_cached, category, body, anonymous, status, edited, created_at, updated_at, image_url, image_key, image_width, image_height, image_size";
 
 const MAX_BODY_LENGTH = 5000;
+const MAX_POST_IMAGE_BYTES = 2 * 1024 * 1024;
 
 function getBearerToken(request) {
   const header = request.headers.get("authorization") || "";
@@ -38,8 +39,37 @@ function cleanText(value, fallback = "") {
   return value.trim();
 }
 
-function validatePostInput({ body }) {
-  if (!body) return "Please write something before posting.";
+function safeNumber(value) {
+  const numberValue = Number(value);
+  if (!Number.isFinite(numberValue) || numberValue <= 0) return null;
+  return Math.round(numberValue);
+}
+
+function cleanImageMetadata(value = {}) {
+  if (!value || typeof value !== "object") return null;
+
+  const imageUrl = cleanText(value.url || value.image_url);
+  const imageKey = cleanText(value.key || value.image_key);
+  const imageSize = safeNumber(value.size || value.image_size);
+  const imageWidth = safeNumber(value.width || value.image_width);
+  const imageHeight = safeNumber(value.height || value.image_height);
+
+  if (!imageUrl || !imageKey) return null;
+  if (imageSize && imageSize > MAX_POST_IMAGE_BYTES) {
+    throw new Error("Compressed post image must be under 2 MB.");
+  }
+
+  return {
+    image_url: imageUrl,
+    image_key: imageKey,
+    image_width: imageWidth,
+    image_height: imageHeight,
+    image_size: imageSize,
+  };
+}
+
+function validatePostInput({ body, image }) {
+  if (!body && !image?.image_url) return "Please write something or add an image before posting.";
   if (body.length > MAX_BODY_LENGTH) return `Post body must be ${MAX_BODY_LENGTH} characters or less.`;
   return null;
 }
@@ -111,11 +141,21 @@ export async function POST(request) {
     );
   }
 
+  let image = null;
+  try {
+    image = cleanImageMetadata(bodyJson?.image || bodyJson?.media || null);
+  } catch (imageError) {
+    return NextResponse.json(
+      { error: imageError.message || "Invalid image." },
+      { status: 400, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
+    );
+  }
+
   const body = cleanText(bodyJson?.body);
   const category = cleanText(bodyJson?.category, "General Q&A") || "General Q&A";
   const anonymous = Boolean(bodyJson?.anonymous);
 
-  const validationError = validatePostInput({ body });
+  const validationError = validatePostInput({ body, image });
 
   if (validationError) {
     return NextResponse.json(
@@ -163,6 +203,7 @@ export async function POST(request) {
     anonymous,
     status: "active",
     edited: false,
+    ...(image || {}),
   };
 
   const { data, error } = await supabase
