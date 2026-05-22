@@ -9,6 +9,7 @@ import PostComposer from "@/components/feed/PostComposer";
 
 const COMPOSE_SUBMIT_EVENT = "soldierhub-compose-submit";
 const COMPOSE_STATE_EVENT = "soldierhub-compose-state";
+const AUTO_SAVE_DELAY_MS = 1200;
 
 export default function ComposePage() {
   const router = useRouter();
@@ -25,6 +26,61 @@ export default function ComposePage() {
 
     return () => {
       window.removeEventListener(COMPOSE_STATE_EVENT, handleComposeState);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    let autoSaveTimer;
+    let connectTimer;
+    let cleanupEditor = () => {};
+
+    const getEditor = () =>
+      document.querySelector('div[contenteditable="true"][aria-label="Write your SoldierHub post"]');
+
+    const getSaveDraftButton = () =>
+      Array.from(document.querySelectorAll("button")).find((button) => {
+        const label = button.textContent?.toLowerCase() || "";
+        return label.includes("save draft") || label.includes("draft saved");
+      });
+
+    const requestAutoSave = () => {
+      window.clearTimeout(autoSaveTimer);
+
+      autoSaveTimer = window.setTimeout(() => {
+        const editor = getEditor();
+        const text = (editor?.innerText || "").replaceAll("\u200B", "").trim();
+        if (!text) return;
+
+        const saveButton = getSaveDraftButton();
+        if (!saveButton || saveButton.disabled) return;
+
+        saveButton.click();
+      }, AUTO_SAVE_DELAY_MS);
+    };
+
+    const connectAutoSave = () => {
+      const editor = getEditor();
+      if (!editor) return false;
+
+      editor.addEventListener("input", requestAutoSave);
+      editor.addEventListener("blur", requestAutoSave);
+      cleanupEditor = () => {
+        editor.removeEventListener("input", requestAutoSave);
+        editor.removeEventListener("blur", requestAutoSave);
+      };
+      return true;
+    };
+
+    if (!connectAutoSave()) {
+      connectTimer = window.setTimeout(connectAutoSave, 650);
+    }
+
+    return () => {
+      window.clearTimeout(autoSaveTimer);
+      window.clearTimeout(connectTimer);
+      cleanupEditor();
     };
   }, []);
 
@@ -62,15 +118,15 @@ export default function ComposePage() {
             </button>
 
             <div
-              className="flex min-w-0 flex-1 items-center justify-end gap-1.5 rounded-full border px-3 py-2 text-right text-[11px] font-bold leading-tight md:max-w-[360px] md:text-xs"
+              className="flex min-w-0 flex-1 items-center justify-end gap-1.5 rounded-full border px-3 py-2 text-right text-[11px] font-semibold leading-tight md:max-w-[360px] md:text-xs"
               style={{
-                backgroundColor: "rgba(255,255,255,0.72)",
-                borderColor: "rgba(213,226,242,0.9)",
-                color: T.textSubtle,
+                backgroundColor: "rgba(255,244,246,0.9)",
+                borderColor: "rgba(179,25,66,0.16)",
+                color: "#6E2333",
               }}
             >
-              <ShieldAlert size={14} className="shrink-0" />
-              <span className="truncate">Do not share sensitive info. Be kind.</span>
+              <ShieldAlert size={14} className="shrink-0" style={{ color: "#B31942" }} />
+              <span className="truncate">Do not post sensitive info. Be kind.</span>
             </div>
 
             <button
@@ -145,6 +201,34 @@ export default function ComposePage() {
               background: rgba(248, 250, 253, 0.985) !important;
               box-shadow: 0 14px 34px rgba(11, 28, 44, 0.14) !important;
               backdrop-filter: blur(18px);
+            }
+
+            div[class*="sticky"][class*="bottom-2"][class*="z-40"] > div.grid > button:first-child {
+              height: 52px !important;
+              flex-direction: row !important;
+              justify-content: space-between !important;
+              gap: 8px !important;
+              padding: 0 10px !important;
+              text-align: left !important;
+            }
+
+            div[class*="sticky"][class*="bottom-2"][class*="z-40"] > div.grid > button:first-child > span:first-child {
+              width: auto !important;
+              min-width: 0 !important;
+              max-width: 64px !important;
+              overflow: hidden !important;
+              text-overflow: ellipsis !important;
+              white-space: normal !important;
+              font-size: 10px !important;
+              font-weight: 500 !important;
+              line-height: 1.1 !important;
+              letter-spacing: 0 !important;
+              text-transform: none !important;
+              text-align: left !important;
+            }
+
+            div[class*="sticky"][class*="bottom-2"][class*="z-40"] > div.grid > button:first-child > span:nth-child(2) {
+              width: 50px !important;
             }
           }
 
