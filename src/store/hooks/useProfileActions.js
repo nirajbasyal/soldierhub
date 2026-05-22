@@ -13,24 +13,32 @@ export function useProfileActions({
   sendToPendingReview,
 }) {
   const updateProfile = async (updates) => {
-    if (!requireAuth()) return;
+    if (!requireAuth()) {
+      return { ok: false, error: "Please sign in again before updating your profile." };
+    }
 
     if (SUPA) {
       const { data, error } = await ProfilesDB.updateMyProfile(
         currentUser.id,
         updates
       );
-      if (error) return pushToast(error.message, "error");
+      if (error) {
+        pushToast(error.message, "error");
+        return { ok: false, error: error.message };
+      }
       setCurrentUser(data);
       pushToast("Profile updated", "success");
-      return;
+      return { ok: true, data };
     }
 
-    setCurrentUser((u) => ({ ...u, ...updates }));
+    const updated = { ...currentUser, ...updates };
+
+    setCurrentUser(updated);
     setUsers((arr) =>
       arr.map((u) => (u.id === currentUser.id ? { ...u, ...updates } : u))
     );
     pushToast("Profile updated", "success");
+    return { ok: true, data: updated };
   };
 
   const requestRereview = async ({ militaryEmail, phone } = {}) => {
