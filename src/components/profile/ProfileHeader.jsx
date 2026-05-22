@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
+  Camera,
   Check,
   Edit3,
   KeyRound,
@@ -11,6 +12,7 @@ import {
   Mail,
   Shield,
   ShieldCheck,
+  Trash2,
   UserMinus,
   UserRound,
   UsersRound,
@@ -20,6 +22,8 @@ import { T } from "@/lib/theme";
 import { useApp } from "@/store/AppContext";
 import * as Auth from "@/lib/supabase/auth";
 import * as Follows from "@/lib/supabase/follows";
+import { compressAvatarImage, revokePreviewUrl } from "@/lib/media/imageCompression";
+import { formatBytes, uploadCompressedImageToR2 } from "@/lib/media/upload";
 import Avatar from "@/components/ui/Avatar";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
@@ -277,6 +281,11 @@ export default function ProfileHeader() {
   const [name, setName] = useState(displayName);
   const [bio, setBio] = useState(displayBio);
   const [color, setColor] = useState(displayColor);
+  const avatarInputRef = useRef(null);
+  const [avatarUrl, setAvatarUrl] = useState(safeUser.avatar_url || "");
+  const [avatarImage, setAvatarImage] = useState(null);
+  const [avatarError, setAvatarError] = useState("");
+  const [avatarSaving, setAvatarSaving] = useState(false);
 
   const [followSummary, setFollowSummary] = useState({
     followersCount: 0,
@@ -304,7 +313,14 @@ export default function ProfileHeader() {
     setName(currentUser.full_name || currentUser.email || "SoldierHub user");
     setBio(currentUser.bio || "");
     setColor(currentUser.avatar_color || "#1E4E8C");
+    setAvatarUrl(currentUser.avatar_url || "");
   }, [currentUser]);
+
+  useEffect(() => {
+    return () => {
+      if (avatarImage?.previewUrl) revokePreviewUrl(avatarImage.previewUrl);
+    };
+  }, [avatarImage]);
 
   const loadFollowSummary = useCallback(
     async ({ silent = false, skipCache = false } = {}) => {
@@ -454,16 +470,97 @@ export default function ProfileHeader() {
     setPasswordSuccess("");
   };
 
-  const save = () => {
-    if (!currentUser?.id) return;
-    updateProfile?.({ full_name: name.trim() || displayName, bio, avatar_color: color });
-    setEditing(false);
+  const activeAvatarSrc = avatarImage?.previewUrl || avatarUrl || "";
+
+  const chooseAvatar = () => {
+    if (avatarSaving) return;
+    setAvatarError("");
+    avatarInputRef.current?.click();
+  };
+
+  const handleAvatarFile = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) return;
+
+    setAvatarError("");
+
+    try {
+      const compressed = await compressAvatarImage(file);
+
+      setAvatarImage((previous) => {
+        if (previous?.previewUrl) revokePreviewUrl(previous.previewUrl);
+        return compressed;
+      });
+    } catch (error) {
+      setAvatarError(error?.message || "Could not prepare this profile photo.");
+    }
+  };
+
+  const removeAvatarPhoto = () => {
+    if (avatarSaving) return;
+    setAvatarError("");
+    setAvatarUrl("");
+    setAvatarImage((previous) => {
+      if (previous?.previewUrl) revokePreviewUrl(previous.previewUrl);
+      return null;
+    });
+  };
+
+  const save = async () => {
+    if (!currentUser?.id || avatarSaving) return;
+
+    setAvatarError("");
+    setAvatarSaving(true);
+
+    try {
+      let nextAvatarUrl = avatarUrl || "";
+
+      if (avatarImage?.file) {
+        const uploaded = await uploadCompressedImageToR2(avatarImage, {
+          purpose: "avatar",
+        });
+
+        nextAvatarUrl = uploaded?.url || "";
+      }
+
+      const result = await updateProfile?.({
+        full_name: name.trim() || displayName,
+        bio,
+        avatar_color: color,
+        avatar_url: nextAvatarUrl || null,
+      });
+
+      if (result?.ok === false) {
+        setAvatarError(result.error || "Could not save profile photo.");
+        return;
+      }
+
+      setAvatarUrl(nextAvatarUrl);
+      setAvatarImage((previous) => {
+        if (previous?.previewUrl) revokePreviewUrl(previous.previewUrl);
+        return null;
+      });
+      setEditing(false);
+    } catch (error) {
+      setAvatarError(error?.message || "Could not upload profile photo.");
+    } finally {
+      setAvatarSaving(false);
+    }
   };
 
   const cancel = () => {
+    if (avatarSaving) return;
     setName(displayName);
     setBio(displayBio);
     setColor(displayColor);
+    setAvatarUrl(safeUser.avatar_url || "");
+    setAvatarError("");
+    setAvatarImage((previous) => {
+      if (previous?.previewUrl) revokePreviewUrl(previous.previewUrl);
+      return null;
+    });
     resetPasswordForm();
     setShowPasswordForm(false);
     setEditing(false);
@@ -561,12 +658,94 @@ export default function ProfileHeader() {
                 style={{ backgroundColor: "#FFFFFF", borderColor: "#D5E2F2" }}
               >
                 <div className="md:hidden">
-                  <Avatar name={editing ? name : displayName} color={editing ? color : displayColor} size={64} />
+                  <Avatar
+                    name={editing ? name : displayName}
+                    color={editing ? color : displayColor}
+                    src={editing ? activeAvatarSrc : safeUser.avatar_url}
+                    size={64}
+                  />
                 </div>
                 <div className="hidden md:block">
-                  <Avatar name={editing ? name : displayName} color={editing ? color : displayColor} size={88} />
+                  <Avatar
+                    name={editing ? name : displayName}
+                    color={editing ? color : displayColor}
+                    src={editing ? activeAvatarSrc : safeUser.avatar_url}
+                    size={88}
+                  />
                 </div>
               </div>
+
+              {editing && (
+                <div className="w-full max-w-[220px]">
+                  <input
+                    ref={avatarInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={handleAvatarFile}
+                    className="hidden"
+                  />
+
+                  <div className="flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={chooseAvatar}
+                      disabled={avatarSaving}
+                      className="inline-flex items-center justify-center gap-2 rounded-full border px-3 py-2 text-xs font-extrabold transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                      style={{
+                        backgroundColor: "rgba(244,248,253,0.96)",
+                        borderColor: "#D5E2F2",
+                        color: T.navy,
+                      }}
+                    >
+                      <Camera size={14} />
+                      {activeAvatarSrc ? "Change photo" : "Add photo"}
+                    </button>
+
+                    {activeAvatarSrc ? (
+                      <button
+                        type="button"
+                        onClick={removeAvatarPhoto}
+                        disabled={avatarSaving}
+                        className="inline-flex items-center justify-center gap-2 rounded-full border px-3 py-2 text-xs font-extrabold transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                        style={{
+                          backgroundColor: "rgba(253,236,240,0.95)",
+                          borderColor: "#F3C7D1",
+                          color: "#B31942",
+                        }}
+                      >
+                        <Trash2 size={14} />
+                        Remove photo
+                      </button>
+                    ) : null}
+
+                    {avatarImage?.size ? (
+                      <div
+                        className="rounded-2xl border px-3 py-2 text-center text-[11px] font-semibold"
+                        style={{
+                          backgroundColor: "rgba(220,232,247,0.55)",
+                          borderColor: "#D5E2F2",
+                          color: T.textMuted,
+                        }}
+                      >
+                        Ready to upload · {formatBytes(avatarImage.size)}
+                      </div>
+                    ) : null}
+
+                    {avatarError ? (
+                      <div
+                        className="rounded-2xl border px-3 py-2 text-center text-[11px] font-semibold"
+                        style={{
+                          backgroundColor: "rgba(253,236,240,0.95)",
+                          borderColor: "#F3C7D1",
+                          color: "#B31942",
+                        }}
+                      >
+                        {avatarError}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              )}
 
               {editing && (
                 <div className="flex flex-wrap gap-1.5 justify-center md:justify-start max-w-[180px]">
@@ -644,14 +823,15 @@ export default function ProfileHeader() {
                         Edit profile
                       </h2>
                       <p className="text-sm mt-1" style={{ color: T.textMuted }}>
-                        Update your display name, bio, and avatar color.
+                        Update your display name, bio, and profile photo.
                       </p>
                     </div>
 
                     <button
                       type="button"
                       onClick={cancel}
-                      className="h-9 w-9 rounded-full border flex items-center justify-center shrink-0"
+                      disabled={avatarSaving}
+                      className="h-9 w-9 rounded-full border flex items-center justify-center shrink-0 disabled:cursor-not-allowed disabled:opacity-60"
                       style={{ backgroundColor: T.card, borderColor: "#D5E2F2", color: T.textMuted }}
                     >
                       <X size={16} />
@@ -667,10 +847,15 @@ export default function ProfileHeader() {
                   </div>
 
                   <div className="flex flex-col sm:flex-row gap-2 mt-4">
-                    <Button variant="primary" onClick={save} icon={Check}>
-                      Save profile changes
+                    <Button
+                      variant="primary"
+                      onClick={save}
+                      icon={avatarSaving ? Loader2 : Check}
+                      disabled={avatarSaving}
+                    >
+                      {avatarSaving ? "Saving profile…" : "Save profile changes"}
                     </Button>
-                    <Button variant="ghost" onClick={cancel}>
+                    <Button variant="ghost" onClick={cancel} disabled={avatarSaving}>
                       Cancel
                     </Button>
                   </div>
