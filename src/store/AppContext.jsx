@@ -245,9 +245,14 @@ export function AppProvider({ children }) {
     setUsers,
     setPendingUsers,
     setBlockedUsers,
+    setPosts,
+    setMyPosts,
+    setPostComments,
     requireAuth,
     pushToast,
     sendToPendingReview,
+    reloadPosts,
+    reloadMyPosts,
   });
 
   const notificationActions = useNotificationActions({
