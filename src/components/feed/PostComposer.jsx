@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
   Bold,
+  Camera,
   ChevronRight,
   ImagePlus,
   Italic,
@@ -14,13 +15,16 @@ import {
   Pencil,
   Plus,
   Quote,
+  Save,
+  Send,
+  Undo2,
   X,
 } from "lucide-react";
 import { CATEGORIES } from "@/lib/constants";
 import { T, TONE_STYLES } from "@/lib/theme";
 import { moderateAsync } from "@/lib/moderation-client";
 import { compressPostImage, revokePreviewUrl } from "@/lib/media/imageCompression";
-import { formatBytes, uploadCompressedImageToR2 } from "@/lib/media/upload";
+import { uploadCompressedImageToR2 } from "@/lib/media/upload";
 import { useApp } from "@/store/AppContext";
 import Avatar from "@/components/ui/Avatar";
 import Button from "@/components/ui/Button";
@@ -31,6 +35,7 @@ const SAFETY_MESSAGE =
 const PUBLISH_SCROLL_KEY = "soldierhub_scroll_to_latest_post";
 const COMPOSE_SUBMIT_EVENT = "soldierhub-compose-submit";
 const COMPOSE_STATE_EVENT = "soldierhub-compose-state";
+const COMPOSER_DRAFT_KEY = "soldierhub_post_composer_draft_v1";
 const FORMAT_BOUNDARY = "\u200B";
 
 const COMPOSER_CATEGORY_LABELS = {
@@ -144,167 +149,17 @@ function queryCommandIsActive(command) {
   }
 }
 
-function forceCommandOff(command) {
-  if (typeof document === "undefined") return;
-
-  for (let i = 0; i < 3; i += 1) {
-    if (!queryCommandIsActive(command)) return;
-
-    try {
-      document.execCommand(command, false, null);
-    } catch {
-      return;
-    }
-  }
-}
-
-function placeCaretInElement(element, atEnd = false) {
-  if (typeof window === "undefined" || !element) return;
-
-  const selection = window.getSelection?.();
-  const range = document.createRange();
-
-  range.selectNodeContents(element);
-  range.collapse(!atEnd);
-  selection?.removeAllRanges();
-  selection?.addRange(range);
-}
-
-function createEmptyParagraph() {
-  const paragraph = document.createElement("p");
-  paragraph.appendChild(document.createElement("br"));
-  return paragraph;
-}
-
-function isEmptyEditableBlock(element) {
-  if (!element) return false;
-
-  const tagName = element.tagName?.toLowerCase();
-  if (!["p", "div"].includes(tagName)) return false;
-
-  return !element.textContent?.replaceAll(FORMAT_BOUNDARY, "").replace(/\u00a0/g, " ").trim();
-}
-
-function isElementContentEmpty(element) {
-  if (!element) return false;
-  return !element.textContent?.replaceAll(FORMAT_BOUNDARY, "").replace(/\u00a0/g, " ").trim();
-}
-
-function getCurrentQuote(editor) {
-  const startElement = getSelectionElement(editor);
-  const quote = startElement?.closest?.("blockquote");
-  return quote && editor?.contains(quote) ? quote : null;
-}
-
-function getCurrentListItem(editor) {
-  const startElement = getSelectionElement(editor);
-  const listItem = startElement?.closest?.("li");
-  return listItem && editor?.contains(listItem) ? listItem : null;
-}
-
-function ensureQuoteExitSpace(editor) {
-  if (!editor || typeof document === "undefined") return;
-
-  Array.from(editor.querySelectorAll("blockquote")).forEach((quote) => {
-    if (!quote.nextElementSibling) {
-      quote.parentNode?.insertBefore(createEmptyParagraph(), quote.nextSibling);
-    }
-  });
-}
-
 function hasStructuredContent(editor) {
   return Boolean(editor?.querySelector?.("blockquote, ul, ol, li"));
 }
 
-function exitInlineFormatForNewText(editor, selector) {
-  if (!editor || typeof document === "undefined") return false;
-
-  const startElement = getSelectionElement(editor);
-  const inlineElement = startElement?.closest?.(selector);
-  if (!inlineElement || !editor.contains(inlineElement)) return false;
-
-  const blockElement = inlineElement.closest?.("p,div,li") || inlineElement.parentElement;
-  if (!blockElement || !editor.contains(blockElement)) return false;
-
-  if (isElementContentEmpty(inlineElement)) {
-    const lineBreak = document.createElement("br");
-    inlineElement.replaceWith(lineBreak);
-    placeCaretInElement(blockElement);
-    return true;
+function safeRequestAnimationFrame(callback) {
+  if (typeof window === "undefined" || typeof window.requestAnimationFrame !== "function") {
+    callback?.();
+    return;
   }
 
-  return false;
-}
-
-function exitListForNewText(editor, listSelector) {
-  if (!editor || typeof document === "undefined") return false;
-
-  const listItem = getCurrentListItem(editor);
-  const list = listItem?.closest?.(listSelector);
-  if (!listItem || !list || !editor.contains(list)) return false;
-
-  const paragraph = createEmptyParagraph();
-  const listHasOneItem = list.querySelectorAll(":scope > li").length <= 1;
-
-  if (isElementContentEmpty(listItem)) {
-    if (listHasOneItem) {
-      list.parentNode?.insertBefore(paragraph, list);
-      list.remove();
-    } else {
-      list.parentNode?.insertBefore(paragraph, list.nextSibling);
-      listItem.remove();
-    }
-  } else {
-    list.parentNode?.insertBefore(paragraph, list.nextSibling);
-  }
-
-  placeCaretInElement(paragraph);
-  return true;
-}
-
-function exitQuoteForNewText(editor) {
-  if (!editor || typeof document === "undefined") return false;
-
-  const quote = getCurrentQuote(editor);
-  if (!quote || !editor.contains(quote)) return false;
-
-  const paragraph = createEmptyParagraph();
-
-  if (isElementContentEmpty(quote)) {
-    quote.parentNode?.insertBefore(paragraph, quote);
-    quote.remove();
-  } else {
-    quote.parentNode?.insertBefore(paragraph, quote.nextSibling);
-  }
-
-  placeCaretInElement(paragraph);
-  return true;
-}
-
-function insertSingleLineBreakAtCursor(editor) {
-  if (!editor || typeof window === "undefined" || typeof document === "undefined") return false;
-
-  const selection = window.getSelection?.();
-  if (!selection?.rangeCount) return false;
-
-  const range = selection.getRangeAt(0);
-  if (!editor.contains(range.commonAncestorContainer)) return false;
-
-  range.deleteContents();
-
-  const lineBreak = document.createElement("br");
-  const marker = document.createTextNode(FORMAT_BOUNDARY);
-
-  range.insertNode(lineBreak);
-  range.setStartAfter(lineBreak);
-  range.collapse(true);
-  range.insertNode(marker);
-  range.setStartAfter(marker);
-  range.collapse(true);
-
-  selection.removeAllRanges();
-  selection.addRange(range);
-  return true;
+  window.requestAnimationFrame(callback);
 }
 
 export default function PostComposer({ startOpen = false, pageMode = false }) {
@@ -324,6 +179,9 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   const [selectedImage, setSelectedImage] = useState(null);
   const [imageProcessing, setImageProcessing] = useState(false);
   const [imageStatus, setImageStatus] = useState("");
+  const [imageNotice, setImageNotice] = useState("");
+  const [clearedDraft, setClearedDraft] = useState(null);
+  const [draftStatus, setDraftStatus] = useState("");
 
   const editorRef = useRef(null);
   const imageInputRef = useRef(null);
@@ -334,7 +192,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   const submittingValueRef = useRef(submitting);
   const activeFormatsRef = useRef(activeFormats);
   const selectedImageRef = useRef(selectedImage);
-  const lastQuoteEnterAtRef = useRef(0);
+  const hasLoadedDraftRef = useRef(false);
 
   const canPublish = useMemo(
     () => plainText.trim().length > 0 || Boolean(selectedImage),
@@ -377,6 +235,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
+
     const phoneQuery = window.matchMedia("(max-width: 520px)");
     const updatePhoneScreen = () => setIsPhoneScreen(phoneQuery.matches);
     updatePhoneScreen();
@@ -392,17 +251,20 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
 
   useEffect(() => {
     if (!pageMode || typeof window === "undefined") return;
+
     window.dispatchEvent(
       new CustomEvent(COMPOSE_STATE_EVENT, { detail: { canPublish, submitting: submitting || imageProcessing } })
     );
   }, [canPublish, submitting, imageProcessing, pageMode]);
 
   useEffect(() => {
-    if (open && !pageMode && editorRef.current) {
-      editorRef.current.focus({ preventScroll: true });
-      window.requestAnimationFrame(syncFormatState);
-    }
-  }, [open, pageMode]);
+    if (!open || !editorRef.current) return;
+
+    safeRequestAnimationFrame(() => {
+      editorRef.current?.focus({ preventScroll: true });
+      syncFormatState();
+    });
+  }, [open]);
 
   useEffect(() => {
     const editor = editorRef.current;
@@ -411,14 +273,22 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     const resizeEditor = () => {
       const viewportHeight =
         typeof window !== "undefined" ? window.visualViewport?.height || window.innerHeight : 760;
-      const minHeight = pageMode ? (isPhoneScreen ? 176 : 150) : isPhoneScreen ? 172 : 118;
-      const maxHeight = pageMode
-        ? Math.max(220, Math.min(isPhoneScreen ? 390 : 320, Math.round(viewportHeight * 0.36)))
-        : isPhoneScreen
-          ? 320
-          : 240;
+      const minHeight = pageMode ? (isPhoneScreen ? 210 : 170) : isPhoneScreen ? 188 : 126;
 
       editor.style.minHeight = `${minHeight}px`;
+
+      if (pageMode && isPhoneScreen) {
+        editor.style.maxHeight = "none";
+        editor.style.overflowY = "visible";
+        return;
+      }
+
+      const maxHeight = pageMode
+        ? Math.max(260, Math.min(isPhoneScreen ? 430 : 340, Math.round(viewportHeight * 0.42)))
+        : isPhoneScreen
+          ? 360
+          : 240;
+
       editor.style.maxHeight = `${maxHeight}px`;
       editor.style.overflowY = editor.scrollHeight > maxHeight ? "auto" : "hidden";
     };
@@ -438,9 +308,39 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     };
   }, [body, pageMode, isPhoneScreen]);
 
+  useEffect(() => {
+    if (!open || hasLoadedDraftRef.current || !currentUser?.id || typeof window === "undefined") return;
+
+    hasLoadedDraftRef.current = true;
+
+    try {
+      const raw = window.localStorage.getItem(COMPOSER_DRAFT_KEY);
+      if (!raw) return;
+
+      const savedDraft = JSON.parse(raw);
+      if (savedDraft?.userId !== currentUser.id || !savedDraft?.body) return;
+
+      if (editorRef.current) {
+        editorRef.current.innerHTML = savedDraft.body;
+      }
+
+      setBody(savedDraft.body);
+      setPlainText(savedDraft.plainText || "");
+      setCategory(savedDraft.category || "General Q&A");
+      setAnonymous(Boolean(savedDraft.anonymous));
+      setStructured(Boolean(savedDraft.structured));
+      bodyValueRef.current = savedDraft.body;
+      plainTextValueRef.current = savedDraft.plainText || "";
+      categoryValueRef.current = savedDraft.category || "General Q&A";
+      anonymousValueRef.current = Boolean(savedDraft.anonymous);
+      setDraftStatus("Draft restored from this device.");
+    } catch {
+      window.localStorage.removeItem(COMPOSER_DRAFT_KEY);
+    }
+  }, [open, currentUser?.id]);
+
   const syncFormatState = () => {
     const editor = editorRef.current;
-    ensureQuoteExitSpace(editor);
     setStructured(hasStructuredContent(editor));
 
     if (!editor || typeof document === "undefined") return;
@@ -459,21 +359,22 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
 
   const syncEditorState = () => {
     const editor = editorRef.current;
-    ensureQuoteExitSpace(editor);
     const cleanHtml = sanitizeComposerHtml(editor?.innerHTML || "");
     const cleanText = getPlainEditorText(editor);
 
     setBody(cleanHtml);
     setPlainText(cleanText);
     setStructured(hasStructuredContent(editor));
+    setClearedDraft(null);
+    setDraftStatus("");
     bodyValueRef.current = cleanHtml;
     plainTextValueRef.current = cleanText;
     setError("");
-    window.requestAnimationFrame(syncFormatState);
+    safeRequestAnimationFrame(syncFormatState);
   };
 
   const focusComposerField = () => {
-    window.requestAnimationFrame(() => {
+    safeRequestAnimationFrame(() => {
       editorRef.current?.focus({ preventScroll: true });
       syncFormatState();
     });
@@ -482,6 +383,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   const selectCategory = (nextCategory) => {
     if (submittingValueRef.current) return;
     setCategory(nextCategory);
+    categoryValueRef.current = nextCategory;
     focusComposerField();
   };
 
@@ -492,6 +394,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     });
     selectedImageRef.current = null;
     setImageStatus("");
+    setImageNotice("");
     if (imageInputRef.current) imageInputRef.current.value = "";
   };
 
@@ -507,11 +410,13 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   };
 
   const handleImageSelected = async (event) => {
-    const file = event.target.files?.[0];
+    const files = Array.from(event.target.files || []);
+    const file = files[0];
     if (event.target) event.target.value = "";
     if (!file) return;
 
     setError("");
+    setImageNotice(files.length > 1 ? "Only one photo is allowed per post. We used the first selected photo." : "");
     setImageStatus("Preparing photo…");
     setImageProcessing(true);
 
@@ -522,7 +427,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
         selectedImageRef.current = compressed;
         return compressed;
       });
-      setImageStatus(`${formatBytes(file.size)} → ${formatBytes(compressed.size)} optimized`);
+      setImageStatus("Photo optimized for faster loading.");
       setOpen(true);
     } catch (err) {
       setError(err?.message || "Could not prepare this image. Please try another photo.");
@@ -532,171 +437,6 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     }
   };
 
-  const setManualFormatState = (key, value) => {
-    setActiveFormats((current) => {
-      const next = key === "bullet"
-        ? { ...current, bullet: value, number: false, quote: false }
-        : key === "number"
-          ? { ...current, bullet: false, number: value, quote: false }
-          : key === "quote"
-            ? { ...current, bullet: false, number: false, quote: value }
-            : { ...current, [key]: value };
-
-      activeFormatsRef.current = next;
-      return next;
-    });
-  };
-
-  const clearBlockFormats = () => {
-    setActiveFormats((current) => {
-      const next = { ...current, bullet: false, number: false, quote: false };
-      activeFormatsRef.current = next;
-      return next;
-    });
-  };
-
-  const turnInlineFormatOff = (command, selector, key) => {
-    forceCommandOff(command);
-    exitInlineFormatForNewText(editorRef.current, selector);
-    forceCommandOff(command);
-    setManualFormatState(key, false);
-    window.requestAnimationFrame(() => {
-      forceCommandOff(command);
-      setManualFormatState(key, false);
-      syncEditorState();
-    });
-  };
-
-  const ensureInactiveInlineFormatsBeforeTyping = () => {
-    if (typeof document === "undefined") return;
-
-    const desired = activeFormatsRef.current || {};
-
-    if (!desired.bold && (queryCommandIsActive("bold") || selectionInsideTag(editorRef.current, "strong,b"))) {
-      turnInlineFormatOff("bold", "strong,b", "bold");
-    }
-
-    if (!desired.italic && (queryCommandIsActive("italic") || selectionInsideTag(editorRef.current, "em,i"))) {
-      turnInlineFormatOff("italic", "em,i", "italic");
-    }
-  };
-
-  const exitEmptyQuote = (quote) => {
-    const editor = editorRef.current;
-    if (!editor || !quote) return false;
-
-    const paragraph = createEmptyParagraph();
-    const nextElement = quote.nextElementSibling;
-
-    quote.parentNode?.insertBefore(paragraph, quote);
-    quote.remove();
-
-    if (isEmptyEditableBlock(nextElement)) {
-      nextElement.remove();
-    }
-
-    editor.focus({ preventScroll: true });
-    placeCaretInElement(paragraph);
-    clearBlockFormats();
-    window.requestAnimationFrame(syncEditorState);
-    return true;
-  };
-
-  const exitEmptyListItem = (listItem) => {
-    const editor = editorRef.current;
-    const list = listItem?.closest?.("ul,ol");
-    if (!editor || !listItem || !list) return false;
-
-    const paragraph = createEmptyParagraph();
-    const listHasOneItem = list.querySelectorAll(":scope > li").length <= 1;
-
-    if (listHasOneItem) {
-      list.parentNode?.insertBefore(paragraph, list);
-      list.remove();
-    } else {
-      list.parentNode?.insertBefore(paragraph, list.nextSibling);
-      listItem.remove();
-    }
-
-    editor.focus({ preventScroll: true });
-    placeCaretInElement(paragraph);
-    clearBlockFormats();
-    window.requestAnimationFrame(syncEditorState);
-    return true;
-  };
-
-  const exitEmptyStructureIfNeeded = (event) => {
-    const editor = editorRef.current;
-    if (!editor) return false;
-
-    const quote = getCurrentQuote(editor);
-    if (quote && isElementContentEmpty(quote)) {
-      event.preventDefault();
-      return exitEmptyQuote(quote);
-    }
-
-    const listItem = getCurrentListItem(editor);
-    if (listItem && isElementContentEmpty(listItem)) {
-      event.preventDefault();
-      return exitEmptyListItem(listItem);
-    }
-
-    return false;
-  };
-
-  const turnFormatOff = (action) => {
-    const editor = editorRef.current;
-    if (!editor || typeof document === "undefined") return;
-
-    if (action.key === "bold") {
-      turnInlineFormatOff("bold", "strong,b", "bold");
-      return;
-    }
-
-    if (action.key === "italic") {
-      turnInlineFormatOff("italic", "em,i", "italic");
-      return;
-    }
-
-    if (action.key === "bullet") {
-      exitListForNewText(editor, "ul");
-      forceCommandOff("insertUnorderedList");
-      setManualFormatState("bullet", false);
-      window.requestAnimationFrame(syncEditorState);
-      return;
-    }
-
-    if (action.key === "number") {
-      exitListForNewText(editor, "ol");
-      forceCommandOff("insertOrderedList");
-      setManualFormatState("number", false);
-      window.requestAnimationFrame(syncEditorState);
-      return;
-    }
-
-    if (action.key === "quote") {
-      exitQuoteForNewText(editor);
-      setManualFormatState("quote", false);
-      window.requestAnimationFrame(syncEditorState);
-    }
-  };
-
-  const turnFormatOn = (action) => {
-    const editor = editorRef.current;
-    if (!editor || typeof document === "undefined") return;
-
-    if (action.command === "formatBlock") {
-      document.execCommand("formatBlock", false, "blockquote");
-      setManualFormatState("quote", true);
-      window.requestAnimationFrame(() => ensureQuoteExitSpace(editor));
-    } else {
-      document.execCommand(action.command, false, null);
-      setManualFormatState(action.key, true);
-    }
-
-    window.requestAnimationFrame(syncEditorState);
-  };
-
   const applyFormatting = (action) => {
     if (submittingValueRef.current) return;
     const editor = editorRef.current;
@@ -704,126 +444,40 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
 
     editor.focus({ preventScroll: true });
 
-    const currentState = Boolean(activeFormatsRef.current?.[action.key]) ||
-      (action.command !== "formatBlock" && queryCommandIsActive(action.command)) ||
-      (action.key === "quote" && selectionInsideTag(editor, "blockquote"));
-
-    if (currentState) {
-      turnFormatOff(action);
-    } else {
-      turnFormatOn(action);
-    }
-  };
-
-  const handleEditorPointerDown = (event) => {
-    const editor = editorRef.current;
-    if (!editor || submittingValueRef.current) return;
-
-    const clickedElement = event.target instanceof Element ? event.target : null;
-    const clickedInsideQuote = clickedElement?.closest?.("blockquote");
-    if (clickedInsideQuote && editor.contains(clickedInsideQuote)) return;
-
-    const clickedEditableBlock = clickedElement?.closest?.("p,div");
-    if (
-      clickedEditableBlock &&
-      editor.contains(clickedEditableBlock) &&
-      isEmptyEditableBlock(clickedEditableBlock) &&
-      clickedEditableBlock.previousElementSibling?.tagName?.toLowerCase() === "blockquote"
-    ) {
-      setManualFormatState("quote", false);
-      return;
+    try {
+      if (action.command === "formatBlock") {
+        const isQuoteActive = Boolean(activeFormatsRef.current?.quote) || selectionInsideTag(editor, "blockquote");
+        document.execCommand("formatBlock", false, isQuoteActive ? "p" : "blockquote");
+      } else {
+        document.execCommand(action.command, false, null);
+      }
+    } catch {
+      // Keep the composer usable even if a browser blocks an older execCommand call.
     }
 
-    const quoteToExit = Array.from(editor.querySelectorAll("blockquote")).find((quote) => {
-      const rect = quote.getBoundingClientRect();
-      return (
-        event.clientY >= rect.bottom &&
-        event.clientY <= rect.bottom + 52 &&
-        event.clientX >= rect.left - 14 &&
-        event.clientX <= rect.right + 14
-      );
-    });
-
-    if (!quoteToExit) return;
-
-    ensureQuoteExitSpace(editor);
-    const exitBlock = quoteToExit.nextElementSibling;
-    if (!isEmptyEditableBlock(exitBlock)) return;
-
-    event.preventDefault();
-    editor.focus({ preventScroll: true });
-    placeCaretInElement(exitBlock);
-    setManualFormatState("quote", false);
-    window.requestAnimationFrame(syncEditorState);
-  };
-
-  const insertQuoteLineBreak = (event) => {
-    const editor = editorRef.current;
-    if (!editor || !selectionInsideTag(editor, "blockquote")) return false;
-
-    event?.preventDefault?.();
-
-    const now =
-      typeof performance !== "undefined" && typeof performance.now === "function"
-        ? performance.now()
-        : Date.now();
-
-    if (now - lastQuoteEnterAtRef.current < 120) {
-      return true;
-    }
-
-    lastQuoteEnterAtRef.current = now;
-
-    if (!insertSingleLineBreakAtCursor(editor)) {
-      document.execCommand("insertHTML", false, "<br>");
-    }
-
-    setManualFormatState("quote", true);
-    window.requestAnimationFrame(syncEditorState);
-    return true;
-  };
-
-  const handleEditorBeforeInput = (event) => {
-    if (submittingValueRef.current) return;
-
-    const inputType = event.nativeEvent?.inputType;
-
-    if (inputType === "deleteContentBackward") {
-      exitEmptyStructureIfNeeded(event);
-      return;
-    }
-
-    if (inputType === "insertParagraph") {
-      insertQuoteLineBreak(event);
-      return;
-    }
-
-    if (
-      inputType === "insertText" ||
-      inputType === "insertCompositionText" ||
-      inputType === "insertFromComposition" ||
-      inputType === "insertReplacementText"
-    ) {
-      ensureInactiveInlineFormatsBeforeTyping();
-    }
-  };
-
-  const handleEditorKeyDown = (event) => {
-    if (event.key === "Backspace" && exitEmptyStructureIfNeeded(event)) return;
-    if (event.key === "Enter") insertQuoteLineBreak(event);
+    safeRequestAnimationFrame(syncEditorState);
   };
 
   const handlePaste = (event) => {
     event.preventDefault();
     const text = event.clipboardData?.getData("text/plain") || "";
-    ensureInactiveInlineFormatsBeforeTyping();
-    document.execCommand("insertText", false, text);
-    window.requestAnimationFrame(syncEditorState);
+
+    try {
+      document.execCommand("insertText", false, text);
+    } catch {
+      const editor = editorRef.current;
+      if (editor) editor.textContent = `${editor.textContent || ""}${text}`;
+    }
+
+    safeRequestAnimationFrame(syncEditorState);
   };
 
   const toggleAnonymous = () => {
     if (submittingValueRef.current) return;
-    setAnonymous((value) => !value);
+    setAnonymous((value) => {
+      anonymousValueRef.current = !value;
+      return !value;
+    });
   };
 
   const clearEditor = () => {
@@ -837,11 +491,33 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     plainTextValueRef.current = "";
   };
 
-  const clearComposerInput = () => {
-    if (submittingValueRef.current) return;
+  const clearTextWithUndo = () => {
+    if (submittingValueRef.current || !plainTextValueRef.current.trim()) return;
+
+    const previousBody = bodyValueRef.current;
+    const previousPlainText = plainTextValueRef.current;
+    const previousStructured = structured;
+
+    setClearedDraft({ body: previousBody, plainText: previousPlainText, structured: previousStructured });
     clearEditor();
-    clearSelectedImage();
-    setError("");
+    setDraftStatus("Text cleared. Tap undo to restore it.");
+    focusComposerField();
+  };
+
+  const restoreClearedText = () => {
+    if (!clearedDraft || submittingValueRef.current) return;
+
+    if (editorRef.current) {
+      editorRef.current.innerHTML = clearedDraft.body;
+    }
+
+    setBody(clearedDraft.body);
+    setPlainText(clearedDraft.plainText);
+    setStructured(clearedDraft.structured);
+    bodyValueRef.current = clearedDraft.body;
+    plainTextValueRef.current = clearedDraft.plainText;
+    setClearedDraft(null);
+    setDraftStatus("Text restored.");
     focusComposerField();
   };
 
@@ -851,6 +527,14 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     clearSelectedImage();
     setAnonymous(false);
     setError("");
+    setClearedDraft(null);
+    setDraftStatus("");
+
+    if (pageMode) {
+      router.push("/");
+      return;
+    }
+
     if (!startOpen) setOpen(false);
   };
 
@@ -859,7 +543,39 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     clearSelectedImage();
     setAnonymous(false);
     setError("");
+    setClearedDraft(null);
+    setDraftStatus("");
     setOpen(startOpen);
+  };
+
+  const saveDraft = () => {
+    if (typeof window === "undefined" || !currentUser?.id) return;
+
+    const draftBody = sanitizeComposerHtml(bodyValueRef.current).trim();
+    const draftText = plainTextValueRef.current.trim();
+
+    if (!draftText && !draftBody) {
+      setDraftStatus("Write something before saving a draft.");
+      return;
+    }
+
+    try {
+      window.localStorage.setItem(
+        COMPOSER_DRAFT_KEY,
+        JSON.stringify({
+          userId: currentUser.id,
+          body: draftBody || draftText,
+          plainText: draftText,
+          category: categoryValueRef.current,
+          anonymous: anonymousValueRef.current,
+          structured,
+          savedAt: Date.now(),
+        })
+      );
+      setDraftStatus("Draft saved on this device.");
+    } catch {
+      setDraftStatus("Draft could not be saved on this device.");
+    }
   };
 
   const submit = async () => {
@@ -913,6 +629,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
       resetComposer();
       if (typeof window !== "undefined") {
         window.sessionStorage.setItem(PUBLISH_SCROLL_KEY, "1");
+        window.localStorage.removeItem(COMPOSER_DRAFT_KEY);
       }
       setFeedCategory?.("All");
       router.push("/");
@@ -923,7 +640,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     } finally {
       setSubmitting(false);
       submittingValueRef.current = false;
-      setImageStatus((current) => (current === "Uploading photo…" ? "" : current));
+      setImageStatus((current) => (current === "Uploading photo…" ? "Photo optimized for faster loading." : current));
     }
   };
 
@@ -970,7 +687,12 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
         className="flex w-full cursor-pointer items-center gap-3 rounded-[26px] border p-5"
         style={{ backgroundColor: T.card, borderColor: T.border }}
       >
-        <Avatar name={currentUser.full_name} color={currentUser.avatar_color} size={46} />
+        <Avatar
+          name={currentUser.full_name}
+          color={currentUser.avatar_color}
+          src={currentUser.avatar_url}
+          size={46}
+        />
 
         <div
           className="min-w-0 flex-1 rounded-full border px-4 py-4"
@@ -992,30 +714,25 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     ? getAnonymousDisplayName(currentUser.id)
     : currentUser.full_name;
   const composerDisplayColor = anonymous ? "#5C6470" : currentUser.avatar_color;
-  const actionBarClassName = `${pageMode ? "sticky bottom-2 z-40 md:static" : ""} mt-3 rounded-[22px] border px-2.5 py-2 md:rounded-[18px] md:px-3 md:py-2.5`;
+  const composerAvatarSrc = anonymous ? null : currentUser.avatar_url;
+  const showTextClearControl = Boolean(plainText.trim()) || Boolean(clearedDraft);
+  const actionBarClassName = `${pageMode ? "sticky bottom-2 z-40 md:static" : ""} mt-3 rounded-[24px] border px-2.5 py-2 md:rounded-[20px] md:px-3 md:py-2.5`;
 
   return (
     <div
       className={pageMode
-        ? "relative flex flex-col rounded-[30px] border p-4 md:min-h-[500px] md:p-5"
+        ? "relative flex flex-col rounded-[30px] border p-3.5 md:min-h-[500px] md:p-5"
         : "relative rounded-[26px] border p-4"
       }
       style={{ backgroundColor: T.card, borderColor: T.border }}
     >
-      <button
-        type="button"
-        onClick={closeComposer}
-        disabled={submitting}
-        aria-label="Close post composer"
-        title="Close"
-        className="sh-tap absolute right-4 top-4 hidden h-9 w-9 items-center justify-center rounded-full border md:flex"
-        style={{ backgroundColor: "#F4F8FD", borderColor: T.borderSoft, color: T.textSubtle }}
-      >
-        <X size={16} strokeWidth={2.8} />
-      </button>
-
-      <div className="mb-3 flex items-center gap-3 md:pr-12">
-        <Avatar name={composerDisplayName} color={composerDisplayColor} size={44} />
+      <div className="mb-3 flex items-center gap-3">
+        <Avatar
+          name={composerDisplayName}
+          color={composerDisplayColor}
+          src={composerAvatarSrc}
+          size={44}
+        />
 
         <div className="min-w-0 flex-1">
           <div className="truncate text-[16px] font-extrabold" style={{ color: T.text }}>
@@ -1025,6 +742,18 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
             Posting on SoldierHub
           </div>
         </div>
+
+        <button
+          type="button"
+          onClick={closeComposer}
+          disabled={submitting}
+          aria-label="Close post composer"
+          title="Close composer"
+          className="sh-tap inline-flex h-9 shrink-0 items-center justify-center rounded-full border px-3 text-xs font-extrabold transition active:scale-[0.98] disabled:opacity-50"
+          style={{ backgroundColor: "#F4F8FD", borderColor: T.borderSoft, color: T.navy }}
+        >
+          Close
+        </button>
       </div>
 
       <div className="relative -mx-1 mb-3">
@@ -1078,7 +807,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
           Format
         </span>
 
-        <div className="flex min-w-0 flex-1 flex-wrap gap-1.5 md:flex-nowrap">
+        <div className="grid w-full grid-cols-5 gap-1.5 md:flex md:min-w-0 md:flex-1 md:flex-nowrap">
           {FORMAT_ACTIONS.map((action) => {
             const Icon = action.icon;
             const active = Boolean(activeFormats[action.key]);
@@ -1090,7 +819,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => applyFormatting(action)}
                 disabled={submitting}
-                className="sh-tap inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-xs font-extrabold transition active:scale-[0.98] disabled:opacity-50 md:h-8 md:px-2.5"
+                className="sh-tap inline-flex h-9 items-center justify-center gap-1 rounded-full border px-2 text-[11px] font-extrabold transition active:scale-[0.98] disabled:opacity-50 md:w-auto md:px-3 md:text-xs"
                 style={{
                   backgroundColor: active ? "rgba(63, 95, 125, 0.16)" : "#FFFFFF",
                   borderColor: active ? "rgba(63, 95, 125, 0.34)" : T.border,
@@ -1113,14 +842,32 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
         ref={imageInputRef}
         type="file"
         accept="image/jpeg,image/png,image/webp"
+        multiple
         className="hidden"
         onChange={handleImageSelected}
       />
 
-      <div className="relative">
+      <div
+        className="relative rounded-[24px] border px-3.5 py-3 md:px-4 md:py-3.5"
+        style={{ backgroundColor: "#F8FAFD", borderColor: T.borderSoft }}
+      >
+        {showTextClearControl ? (
+          <button
+            type="button"
+            onClick={clearedDraft ? restoreClearedText : clearTextWithUndo}
+            disabled={submitting}
+            className="sh-tap absolute right-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-full border shadow-sm transition active:scale-[0.96] disabled:opacity-50"
+            style={{ backgroundColor: "rgba(255,255,255,0.96)", borderColor: T.border, color: T.navy }}
+            aria-label={clearedDraft ? "Undo cleared text" : "Clear text"}
+            title={clearedDraft ? "Undo" : "Clear text"}
+          >
+            {clearedDraft ? <Undo2 size={16} strokeWidth={2.7} /> : <X size={16} strokeWidth={2.9} />}
+          </button>
+        ) : null}
+
         {!plainText && !structured && (
           <div
-            className="pointer-events-none absolute left-0 top-0 text-[20px] leading-9 md:text-[17px] md:leading-7"
+            className="pointer-events-none absolute left-3.5 right-14 top-3.5 text-[18px] leading-8 md:left-4 md:top-4 md:text-[17px] md:leading-7"
             style={{ color: "#A8ABB2" }}
           >
             Ask a question, share an update, or help the SoldierHub community...
@@ -1134,15 +881,12 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
           role="textbox"
           aria-label="Write your SoldierHub post"
           aria-multiline="true"
-          onFocus={() => window.requestAnimationFrame(syncFormatState)}
-          onPointerDown={handleEditorPointerDown}
+          onFocus={() => safeRequestAnimationFrame(syncFormatState)}
           onInput={syncEditorState}
-          onBeforeInput={handleEditorBeforeInput}
-          onKeyDown={handleEditorKeyDown}
           onKeyUp={syncFormatState}
           onMouseUp={syncFormatState}
           onPaste={handlePaste}
-          className="w-full appearance-none border-0 bg-transparent p-0 text-[20px] leading-9 shadow-none outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0 md:text-[17px] md:leading-7 [&_blockquote]:my-3 [&_blockquote]:rounded-[18px] [&_blockquote]:border-0 [&_blockquote]:bg-[#DDE8F3] [&_blockquote]:px-6 [&_blockquote]:py-3 [&_blockquote]:font-normal [&_blockquote]:text-[#102033] [&_em]:italic [&_li]:pl-1 [&_ol]:ml-5 [&_ol]:list-decimal [&_ol]:space-y-1 [&_strong]:font-extrabold [&_ul]:ml-5 [&_ul]:list-disc [&_ul]:space-y-1"
+          className="w-full appearance-none border-0 bg-transparent pr-10 text-[18px] leading-8 shadow-none outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0 md:text-[17px] md:leading-7 [&_blockquote]:my-3 [&_blockquote]:rounded-[18px] [&_blockquote]:border-0 [&_blockquote]:bg-[#DDE8F3] [&_blockquote]:px-5 [&_blockquote]:py-3 [&_blockquote]:font-normal [&_blockquote]:text-[#102033] [&_em]:italic [&_li]:pl-1 [&_ol]:ml-5 [&_ol]:list-decimal [&_ol]:space-y-1 [&_strong]:font-extrabold [&_ul]:ml-5 [&_ul]:list-disc [&_ul]:space-y-1"
           style={{ color: T.text, border: "none", boxShadow: "none" }}
         />
       </div>
@@ -1172,19 +916,13 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
       {selectedImage ? (
         <div
           className="mt-4 overflow-hidden rounded-[24px] border"
-          style={{ backgroundColor: "#F4F8FD", borderColor: T.borderSoft }}
+          style={{ backgroundColor: "#EEF3F8", borderColor: T.borderSoft }}
         >
-          <div className="relative">
+          <div className="relative flex justify-center bg-[#EEF3F8]">
             <img
               src={selectedImage.previewUrl}
               alt="Selected post preview"
-              className="block max-h-[420px] w-full object-cover"
-              style={{
-                aspectRatio:
-                  selectedImage.width && selectedImage.height
-                    ? `${selectedImage.width} / ${selectedImage.height}`
-                    : "16 / 10",
-              }}
+              className="block h-auto max-h-[62vh] w-full object-contain md:max-h-[340px] md:w-auto md:max-w-full"
             />
             <button
               type="button"
@@ -1198,13 +936,14 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
               <X size={16} strokeWidth={2.8} />
             </button>
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 bg-white/78 px-4 py-3">
             <div className="min-w-0">
-              <div className="text-sm font-extrabold" style={{ color: T.text }}>
+              <div className="flex items-center gap-2 text-sm font-extrabold" style={{ color: T.text }}>
+                <Camera size={15} strokeWidth={2.5} />
                 Photo attached
               </div>
               <div className="truncate text-xs font-medium" style={{ color: T.textSubtle }}>
-                {imageStatus || `${selectedImage.width}×${selectedImage.height} • ${formatBytes(selectedImage.size)}`}
+                {imageStatus || "Ready to publish."}
               </div>
             </div>
             <button
@@ -1217,6 +956,15 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
               Replace
             </button>
           </div>
+        </div>
+      ) : null}
+
+      {imageNotice ? (
+        <div
+          className="mt-2 rounded-2xl border px-3 py-2 text-[11px] font-semibold"
+          style={{ backgroundColor: "#FFF8E8", borderColor: "rgba(232,160,32,0.28)", color: "#7A5412" }}
+        >
+          {imageNotice}
         </div>
       ) : null}
 
@@ -1238,22 +986,20 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
           boxShadow: pageMode ? "0 14px 30px rgba(11,28,44,0.08)" : "none",
         }}
       >
-        <div className="flex items-center gap-1.5 md:gap-3">
+        <div className="grid grid-cols-[minmax(0,1fr)_44px_minmax(96px,0.82fr)] items-center gap-2 md:flex md:items-center md:justify-between md:gap-3">
           <button
             type="button"
             onClick={toggleAnonymous}
             disabled={submitting}
-            className="sh-tap flex min-w-0 flex-1 items-center justify-between gap-1.5 rounded-[18px] px-1 py-1 text-left md:gap-3"
+            className="sh-tap flex h-12 min-w-0 items-center justify-between gap-2 rounded-[18px] border px-3 text-left transition active:scale-[0.98] disabled:opacity-50 md:h-11 md:min-w-[210px]"
+            style={{ backgroundColor: "#FFFFFF", borderColor: anonymous ? "rgba(63,95,125,0.34)" : T.border, color: T.navy }}
           >
-            <span
-              className="truncate text-[11px] font-medium leading-tight md:text-sm md:font-semibold"
-              style={{ color: T.navy }}
-            >
+            <span className="truncate text-[12px] font-extrabold leading-tight md:text-sm">
               Post anonymously
             </span>
 
             <span
-              className="relative inline-flex h-7 w-[52px] shrink-0 items-center rounded-full border"
+              className="relative inline-flex h-7 w-[50px] shrink-0 items-center rounded-full border"
               style={{
                 borderColor: anonymous ? "rgba(63,95,125,0.34)" : T.border,
                 backgroundColor: anonymous ? "#3F5F7D" : "rgba(213,226,242,0.72)",
@@ -1266,46 +1012,55 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
                 OFF
               </span>
               <span
-                className="absolute left-[3px] top-[3px] h-[22px] w-[22px] rounded-full transition-transform duration-200"
-                style={{ transform: anonymous ? "translateX(24px)" : "translateX(0)", backgroundColor: "#FFFFFF" }}
+                className="absolute left-[3px] top-[3px] h-[21px] w-[21px] rounded-full transition-transform duration-200"
+                style={{ transform: anonymous ? "translateX(23px)" : "translateX(0)", backgroundColor: "#FFFFFF" }}
               />
             </span>
           </button>
 
-          <div className="flex shrink-0 items-center gap-1.5 md:gap-2">
-            <button
-              type="button"
-              onClick={openImagePicker}
-              disabled={submitting || imageProcessing}
-              className="sh-tap inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[11px] font-extrabold disabled:opacity-45 md:h-11 md:px-4 md:text-xs"
-              style={{ backgroundColor: selectedImage ? "rgba(63, 95, 125, 0.12)" : "#FFFFFF", borderColor: selectedImage ? "rgba(63,95,125,0.28)" : T.border, color: T.navy }}
-              title={selectedImage ? "Replace photo" : "Add photo"}
-            >
-              {imageProcessing ? <Loader2 size={15} className="animate-spin" /> : <ImagePlus size={15} strokeWidth={2.5} />}
-              <span className="hidden sm:inline">{selectedImage ? "Photo" : "Add"}</span>
-            </button>
+          <button
+            type="button"
+            onClick={openImagePicker}
+            disabled={submitting || imageProcessing}
+            className="sh-tap inline-flex h-12 w-11 shrink-0 items-center justify-center rounded-[18px] border text-[11px] font-extrabold transition active:scale-[0.98] disabled:opacity-45 md:h-11 md:w-auto md:px-4"
+            style={{ backgroundColor: selectedImage ? "rgba(63, 95, 125, 0.12)" : "#FFFFFF", borderColor: selectedImage ? "rgba(63,95,125,0.28)" : T.border, color: T.navy }}
+            title={selectedImage ? "Replace photo" : "Add photo"}
+            aria-label={selectedImage ? "Replace photo" : "Add photo"}
+          >
+            {imageProcessing ? <Loader2 size={17} className="animate-spin" /> : <ImagePlus size={18} strokeWidth={2.5} />}
+            <span className="hidden md:ml-1.5 md:inline">{selectedImage ? "Photo" : "Add photo"}</span>
+          </button>
 
-            <button
-              type="button"
-              onClick={clearComposerInput}
-              disabled={!canPublish || submitting || imageProcessing}
-              className="sh-tap h-10 shrink-0 rounded-full border px-3 text-[11px] font-extrabold disabled:opacity-45 md:h-11 md:px-4 md:text-xs"
-              style={{ backgroundColor: "#FFFFFF", borderColor: T.border, color: T.navy }}
-            >
-              Clear
-            </button>
+          <Button
+            type="button"
+            variant="primary"
+            size="lg"
+            onClick={submit}
+            disabled={!canPublish || submitting || imageProcessing}
+            className="h-12 min-w-0 rounded-[18px] px-3 text-[12px] md:h-11 md:min-w-[140px] md:rounded-full md:px-5 md:text-sm"
+          >
+            <span className="inline-flex items-center justify-center gap-1.5">
+              {submitting ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
+              {submitting ? "Posting" : "Publish"}
+            </span>
+          </Button>
+        </div>
 
-            <Button
-              type="button"
-              variant="primary"
-              size="lg"
-              onClick={submit}
-              disabled={!canPublish || submitting || imageProcessing}
-              className="h-10 min-w-[88px] rounded-full px-3 text-[12px] md:h-11 md:min-w-[140px] md:px-5 md:text-sm"
-            >
-              {submitting ? "Publishing..." : "Publish"}
-            </Button>
-          </div>
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 px-1">
+          <button
+            type="button"
+            onClick={saveDraft}
+            disabled={submitting || imageProcessing}
+            className="sh-tap inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-[11px] font-extrabold disabled:opacity-50"
+            style={{ color: T.textSubtle }}
+          >
+            <Save size={13} strokeWidth={2.4} />
+            Save draft
+          </button>
+
+          <span className="text-[11px] font-medium" style={{ color: T.textSubtle }}>
+            {draftStatus || "Draft saves text only on this device."}
+          </span>
         </div>
       </div>
 
