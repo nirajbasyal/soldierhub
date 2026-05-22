@@ -40,6 +40,42 @@ function validateCommentInput({ postId, body }) {
   return null;
 }
 
+function getCommentPayload(data) {
+  return Array.isArray(data) ? data[0] || null : data || null;
+}
+
+function isAnonymousComment(comment = {}) {
+  return Boolean(
+    comment?.is_anonymous_author === true ||
+      comment?.anonymous === true ||
+      comment?.comment_anonymous === true
+  );
+}
+
+function attachAuthorProfileToComment(comment, profile, userId) {
+  if (!comment || isAnonymousComment(comment)) return comment;
+
+  const authorAvatarUrl = profile?.avatar_url || null;
+  const authorName =
+    comment.author_name_cached || comment.author_name || profile?.full_name || "Member";
+  const authorColor =
+    comment.author_color_cached || comment.author_color || profile?.avatar_color || null;
+
+  return {
+    ...comment,
+    author_id: comment.author_id || userId,
+    author_user_id: comment.author_user_id || comment.author_id || userId,
+    author_name_cached: authorName,
+    author_color_cached: authorColor,
+    author_avatar_url: comment.author_avatar_url || authorAvatarUrl,
+    author_avatar_url_cached:
+      comment.author_avatar_url_cached || comment.author_avatar_url || authorAvatarUrl,
+    profile_avatar_url: comment.profile_avatar_url || authorAvatarUrl,
+    avatar_url: comment.avatar_url || authorAvatarUrl,
+    viewer_is_author: true,
+  };
+}
+
 export async function POST(request) {
   const ipRateLimit = checkRateLimit(request, {
     keyPrefix: "comments:create:ip",
@@ -115,7 +151,7 @@ export async function POST(request) {
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("id, status, verification_status")
+    .select("id, full_name, avatar_color, avatar_url, status, verification_status")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -147,8 +183,10 @@ export async function POST(request) {
     );
   }
 
+  const comment = attachAuthorProfileToComment(getCommentPayload(data), profile, user.id);
+
   return NextResponse.json(
-    { comment: Array.isArray(data) ? data[0] || null : data || null },
+    { comment },
     { status: 201, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
   );
 }
