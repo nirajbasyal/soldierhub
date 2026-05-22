@@ -91,7 +91,9 @@ function sanitizeComposerHtml(html = "") {
 
   const cleanNode = (node, parent) => {
     if (node.nodeType === Node.TEXT_NODE) {
-      parent.appendChild(outputDoc.createTextNode((node.textContent || "").replaceAll(FORMAT_BOUNDARY, "")));
+      parent.appendChild(
+        outputDoc.createTextNode((node.textContent || "").replaceAll(FORMAT_BOUNDARY, ""))
+      );
       return;
     }
 
@@ -104,7 +106,8 @@ function sanitizeComposerHtml(html = "") {
       return;
     }
 
-    const normalizedTag = tagName === "B" ? "strong" : tagName === "I" ? "em" : tagName.toLowerCase();
+    const normalizedTag =
+      tagName === "B" ? "strong" : tagName === "I" ? "em" : tagName.toLowerCase();
     const nextElement = outputDoc.createElement(normalizedTag);
     Array.from(node.childNodes).forEach((child) => cleanNode(child, nextElement));
     parent.appendChild(nextElement);
@@ -120,7 +123,10 @@ function sanitizeComposerHtml(html = "") {
 }
 
 function getPlainEditorText(editor) {
-  return (editor?.innerText || "").replaceAll(FORMAT_BOUNDARY, "").replace(/\u00a0/g, " ").trim();
+  return (editor?.innerText || "")
+    .replaceAll(FORMAT_BOUNDARY, "")
+    .replace(/\u00a0/g, " ")
+    .trim();
 }
 
 function getSelectionElement(editor) {
@@ -162,6 +168,23 @@ function safeRequestAnimationFrame(callback) {
   window.requestAnimationFrame(callback);
 }
 
+function readSavedDraft(userId) {
+  if (typeof window === "undefined" || !userId) return null;
+
+  try {
+    const raw = window.localStorage.getItem(COMPOSER_DRAFT_KEY);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw);
+    if (parsed?.userId !== userId || !parsed?.body) return null;
+
+    return parsed;
+  } catch {
+    window.localStorage.removeItem(COMPOSER_DRAFT_KEY);
+    return null;
+  }
+}
+
 export default function PostComposer({ startOpen = false, pageMode = false }) {
   const router = useRouter();
   const { currentUser, requireAuth, createPost, setCategory: setFeedCategory } = useApp();
@@ -182,6 +205,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   const [imageNotice, setImageNotice] = useState("");
   const [clearedDraft, setClearedDraft] = useState(null);
   const [draftStatus, setDraftStatus] = useState("");
+  const [draftSaved, setDraftSaved] = useState(false);
 
   const editorRef = useRef(null);
   const imageInputRef = useRef(null);
@@ -253,7 +277,9 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     if (!pageMode || typeof window === "undefined") return;
 
     window.dispatchEvent(
-      new CustomEvent(COMPOSE_STATE_EVENT, { detail: { canPublish, submitting: submitting || imageProcessing } })
+      new CustomEvent(COMPOSE_STATE_EVENT, {
+        detail: { canPublish, submitting: submitting || imageProcessing },
+      })
     );
   }, [canPublish, submitting, imageProcessing, pageMode]);
 
@@ -309,34 +335,27 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   }, [body, pageMode, isPhoneScreen]);
 
   useEffect(() => {
-    if (!open || hasLoadedDraftRef.current || !currentUser?.id || typeof window === "undefined") return;
+    if (!open || hasLoadedDraftRef.current || !currentUser?.id) return;
 
     hasLoadedDraftRef.current = true;
+    const savedDraft = readSavedDraft(currentUser.id);
+    if (!savedDraft) return;
 
-    try {
-      const raw = window.localStorage.getItem(COMPOSER_DRAFT_KEY);
-      if (!raw) return;
-
-      const savedDraft = JSON.parse(raw);
-      if (savedDraft?.userId !== currentUser.id || !savedDraft?.body) return;
-
-      if (editorRef.current) {
-        editorRef.current.innerHTML = savedDraft.body;
-      }
-
-      setBody(savedDraft.body);
-      setPlainText(savedDraft.plainText || "");
-      setCategory(savedDraft.category || "General Q&A");
-      setAnonymous(Boolean(savedDraft.anonymous));
-      setStructured(Boolean(savedDraft.structured));
-      bodyValueRef.current = savedDraft.body;
-      plainTextValueRef.current = savedDraft.plainText || "";
-      categoryValueRef.current = savedDraft.category || "General Q&A";
-      anonymousValueRef.current = Boolean(savedDraft.anonymous);
-      setDraftStatus("Draft restored from this device.");
-    } catch {
-      window.localStorage.removeItem(COMPOSER_DRAFT_KEY);
+    if (editorRef.current) {
+      editorRef.current.innerHTML = savedDraft.body;
     }
+
+    setBody(savedDraft.body);
+    setPlainText(savedDraft.plainText || "");
+    setCategory(savedDraft.category || "General Q&A");
+    setAnonymous(Boolean(savedDraft.anonymous));
+    setStructured(Boolean(savedDraft.structured));
+    setDraftSaved(true);
+    bodyValueRef.current = savedDraft.body;
+    plainTextValueRef.current = savedDraft.plainText || "";
+    categoryValueRef.current = savedDraft.category || "General Q&A";
+    anonymousValueRef.current = Boolean(savedDraft.anonymous);
+    setDraftStatus("Draft restored. Continue editing or publish when ready.");
   }, [open, currentUser?.id]);
 
   const syncFormatState = () => {
@@ -366,6 +385,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     setPlainText(cleanText);
     setStructured(hasStructuredContent(editor));
     setClearedDraft(null);
+    setDraftSaved(false);
     setDraftStatus("");
     bodyValueRef.current = cleanHtml;
     plainTextValueRef.current = cleanText;
@@ -416,7 +436,9 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     if (!file) return;
 
     setError("");
-    setImageNotice(files.length > 1 ? "Only one photo is allowed per post. We used the first selected photo." : "");
+    setImageNotice(
+      files.length > 1 ? "Only one photo is allowed per post. We used the first selected photo." : ""
+    );
     setImageStatus("Preparing photo…");
     setImageProcessing(true);
 
@@ -446,7 +468,8 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
 
     try {
       if (action.command === "formatBlock") {
-        const isQuoteActive = Boolean(activeFormatsRef.current?.quote) || selectionInsideTag(editor, "blockquote");
+        const isQuoteActive =
+          Boolean(activeFormatsRef.current?.quote) || selectionInsideTag(editor, "blockquote");
         document.execCommand("formatBlock", false, isQuoteActive ? "p" : "blockquote");
       } else {
         document.execCommand(action.command, false, null);
@@ -500,6 +523,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
 
     setClearedDraft({ body: previousBody, plainText: previousPlainText, structured: previousStructured });
     clearEditor();
+    setDraftSaved(false);
     setDraftStatus("Text cleared. Tap undo to restore it.");
     focusComposerField();
   };
@@ -521,29 +545,13 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     focusComposerField();
   };
 
-  const closeComposer = () => {
-    if (submittingValueRef.current) return;
-    clearEditor();
-    clearSelectedImage();
-    setAnonymous(false);
-    setError("");
-    setClearedDraft(null);
-    setDraftStatus("");
-
-    if (pageMode) {
-      router.push("/");
-      return;
-    }
-
-    if (!startOpen) setOpen(false);
-  };
-
   const resetComposer = () => {
     clearEditor();
     clearSelectedImage();
     setAnonymous(false);
     setError("");
     setClearedDraft(null);
+    setDraftSaved(false);
     setDraftStatus("");
     setOpen(startOpen);
   };
@@ -555,7 +563,9 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     const draftText = plainTextValueRef.current.trim();
 
     if (!draftText && !draftBody) {
+      setDraftSaved(false);
       setDraftStatus("Write something before saving a draft.");
+      focusComposerField();
       return;
     }
 
@@ -572,8 +582,10 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
           savedAt: Date.now(),
         })
       );
-      setDraftStatus("Draft saved on this device.");
+      setDraftSaved(true);
+      setDraftStatus("Draft saved. Reopen this composer to continue later.");
     } catch {
+      setDraftSaved(false);
       setDraftStatus("Draft could not be saved on this device.");
     }
   };
@@ -640,7 +652,9 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     } finally {
       setSubmitting(false);
       submittingValueRef.current = false;
-      setImageStatus((current) => (current === "Uploading photo…" ? "Photo optimized for faster loading." : current));
+      setImageStatus((current) =>
+        current === "Uploading photo…" ? "Photo optimized for faster loading." : current
+      );
     }
   };
 
@@ -720,9 +734,10 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
 
   return (
     <div
-      className={pageMode
-        ? "relative flex flex-col rounded-[30px] border p-3.5 md:min-h-[500px] md:p-5"
-        : "relative rounded-[26px] border p-4"
+      className={
+        pageMode
+          ? "relative flex flex-col rounded-[30px] border p-3.5 md:min-h-[500px] md:p-5"
+          : "relative rounded-[26px] border p-4"
       }
       style={{ backgroundColor: T.card, borderColor: T.border }}
     >
@@ -742,18 +757,6 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
             Posting on SoldierHub
           </div>
         </div>
-
-        <button
-          type="button"
-          onClick={closeComposer}
-          disabled={submitting}
-          aria-label="Close post composer"
-          title="Close composer"
-          className="sh-tap inline-flex h-9 shrink-0 items-center justify-center rounded-full border px-3 text-xs font-extrabold transition active:scale-[0.98] disabled:opacity-50"
-          style={{ backgroundColor: "#F4F8FD", borderColor: T.borderSoft, color: T.navy }}
-        >
-          Close
-        </button>
       </div>
 
       <div className="relative -mx-1 mb-3">
@@ -986,20 +989,25 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
           boxShadow: pageMode ? "0 14px 30px rgba(11,28,44,0.08)" : "none",
         }}
       >
-        <div className="grid grid-cols-[minmax(0,1fr)_44px_minmax(96px,0.82fr)] items-center gap-2 md:flex md:items-center md:justify-between md:gap-3">
+        <div className="grid grid-cols-[minmax(110px,1fr)_46px_minmax(96px,0.82fr)] items-center gap-2 md:flex md:items-center md:justify-between md:gap-3">
           <button
             type="button"
             onClick={toggleAnonymous}
             disabled={submitting}
-            className="sh-tap flex h-12 min-w-0 items-center justify-between gap-2 rounded-[18px] border px-3 text-left transition active:scale-[0.98] disabled:opacity-50 md:h-11 md:min-w-[210px]"
-            style={{ backgroundColor: "#FFFFFF", borderColor: anonymous ? "rgba(63,95,125,0.34)" : T.border, color: T.navy }}
+            className="sh-tap flex h-[58px] min-w-0 flex-col items-center justify-center gap-1 rounded-[18px] border px-2 text-center transition active:scale-[0.98] disabled:opacity-50 md:h-11 md:min-w-[210px] md:flex-row md:justify-between md:gap-2 md:px-3 md:text-left"
+            style={{
+              backgroundColor: anonymous ? "rgba(63, 95, 125, 0.1)" : "#FFFFFF",
+              borderColor: anonymous ? "rgba(63,95,125,0.34)" : T.border,
+              color: T.navy,
+            }}
+            aria-pressed={anonymous}
           >
-            <span className="truncate text-[12px] font-extrabold leading-tight md:text-sm">
+            <span className="w-full text-[10px] font-black uppercase leading-none tracking-[0.06em] md:w-auto md:text-[12px] md:normal-case md:tracking-normal">
               Post anonymously
             </span>
 
             <span
-              className="relative inline-flex h-7 w-[50px] shrink-0 items-center rounded-full border"
+              className="relative inline-flex h-7 w-[52px] shrink-0 items-center rounded-full border"
               style={{
                 borderColor: anonymous ? "rgba(63,95,125,0.34)" : T.border,
                 backgroundColor: anonymous ? "#3F5F7D" : "rgba(213,226,242,0.72)",
@@ -1013,7 +1021,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
               </span>
               <span
                 className="absolute left-[3px] top-[3px] h-[21px] w-[21px] rounded-full transition-transform duration-200"
-                style={{ transform: anonymous ? "translateX(23px)" : "translateX(0)", backgroundColor: "#FFFFFF" }}
+                style={{ transform: anonymous ? "translateX(25px)" : "translateX(0)", backgroundColor: "#FFFFFF" }}
               />
             </span>
           </button>
@@ -1022,8 +1030,12 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
             type="button"
             onClick={openImagePicker}
             disabled={submitting || imageProcessing}
-            className="sh-tap inline-flex h-12 w-11 shrink-0 items-center justify-center rounded-[18px] border text-[11px] font-extrabold transition active:scale-[0.98] disabled:opacity-45 md:h-11 md:w-auto md:px-4"
-            style={{ backgroundColor: selectedImage ? "rgba(63, 95, 125, 0.12)" : "#FFFFFF", borderColor: selectedImage ? "rgba(63,95,125,0.28)" : T.border, color: T.navy }}
+            className="sh-tap inline-flex h-[58px] w-[46px] shrink-0 items-center justify-center rounded-[18px] border text-[11px] font-extrabold transition active:scale-[0.98] disabled:opacity-45 md:h-11 md:w-auto md:px-4"
+            style={{
+              backgroundColor: selectedImage ? "rgba(63, 95, 125, 0.12)" : "#FFFFFF",
+              borderColor: selectedImage ? "rgba(63,95,125,0.28)" : T.border,
+              color: T.navy,
+            }}
             title={selectedImage ? "Replace photo" : "Add photo"}
             aria-label={selectedImage ? "Replace photo" : "Add photo"}
           >
@@ -1037,7 +1049,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
             size="lg"
             onClick={submit}
             disabled={!canPublish || submitting || imageProcessing}
-            className="h-12 min-w-0 rounded-[18px] px-3 text-[12px] md:h-11 md:min-w-[140px] md:rounded-full md:px-5 md:text-sm"
+            className="h-[58px] min-w-0 rounded-[18px] px-3 text-[12px] md:h-11 md:min-w-[140px] md:rounded-full md:px-5 md:text-sm"
           >
             <span className="inline-flex items-center justify-center gap-1.5">
               {submitting ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
@@ -1046,20 +1058,31 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
           </Button>
         </div>
 
-        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 px-1">
+        <div
+          className="mt-2 flex items-center justify-between gap-2 rounded-[18px] border px-3 py-2"
+          style={{
+            backgroundColor: draftSaved ? "rgba(63, 95, 125, 0.08)" : "#FFFFFF",
+            borderColor: draftSaved ? "rgba(63,95,125,0.24)" : T.border,
+          }}
+        >
           <button
             type="button"
             onClick={saveDraft}
             disabled={submitting || imageProcessing}
-            className="sh-tap inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-[11px] font-extrabold disabled:opacity-50"
-            style={{ color: T.textSubtle }}
+            className="sh-tap inline-flex shrink-0 items-center gap-2 rounded-full px-1 py-1 text-[12px] font-black disabled:opacity-50"
+            style={{ color: draftSaved ? T.navy : T.text }}
           >
-            <Save size={13} strokeWidth={2.4} />
-            Save draft
+            <span
+              className="inline-flex h-7 w-7 items-center justify-center rounded-full"
+              style={{ backgroundColor: draftSaved ? "rgba(63,95,125,0.16)" : "rgba(213,226,242,0.72)" }}
+            >
+              <Save size={14} strokeWidth={2.5} />
+            </span>
+            {draftSaved ? "Draft saved" : "Save draft"}
           </button>
 
-          <span className="text-[11px] font-medium" style={{ color: T.textSubtle }}>
-            {draftStatus || "Draft saves text only on this device."}
+          <span className="min-w-0 flex-1 text-right text-[10.5px] font-semibold leading-snug" style={{ color: T.textSubtle }}>
+            {draftStatus || "Restores automatically when you reopen compose."}
           </span>
         </div>
       </div>
