@@ -6,9 +6,11 @@ import {
   AlertTriangle,
   Bold,
   ChevronRight,
+  ImagePlus,
   Italic,
   List,
   ListOrdered,
+  Loader2,
   Pencil,
   Plus,
   Quote,
@@ -17,6 +19,8 @@ import {
 import { CATEGORIES } from "@/lib/constants";
 import { T, TONE_STYLES } from "@/lib/theme";
 import { moderateAsync } from "@/lib/moderation-client";
+import { compressPostImage, revokePreviewUrl } from "@/lib/media/imageCompression";
+import { formatBytes, uploadCompressedImageToR2 } from "@/lib/media/upload";
 import { useApp } from "@/store/AppContext";
 import Avatar from "@/components/ui/Avatar";
 import Button from "@/components/ui/Button";
@@ -317,17 +321,25 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   const [isPhoneScreen, setIsPhoneScreen] = useState(false);
   const [activeFormats, setActiveFormats] = useState({});
   const [structured, setStructured] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [imageProcessing, setImageProcessing] = useState(false);
+  const [imageStatus, setImageStatus] = useState("");
 
   const editorRef = useRef(null);
+  const imageInputRef = useRef(null);
   const bodyValueRef = useRef(body);
   const plainTextValueRef = useRef(plainText);
   const categoryValueRef = useRef(category);
   const anonymousValueRef = useRef(anonymous);
   const submittingValueRef = useRef(submitting);
   const activeFormatsRef = useRef(activeFormats);
+  const selectedImageRef = useRef(selectedImage);
   const lastQuoteEnterAtRef = useRef(0);
 
-  const canPublish = useMemo(() => plainText.trim().length > 0, [plainText]);
+  const canPublish = useMemo(
+    () => plainText.trim().length > 0 || Boolean(selectedImage),
+    [plainText, selectedImage]
+  );
 
   useEffect(() => {
     bodyValueRef.current = body;
@@ -354,6 +366,16 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   }, [activeFormats]);
 
   useEffect(() => {
+    selectedImageRef.current = selectedImage;
+  }, [selectedImage]);
+
+  useEffect(() => {
+    return () => {
+      revokePreviewUrl(selectedImageRef.current?.previewUrl);
+    };
+  }, []);
+
+  useEffect(() => {
     if (typeof window === "undefined") return undefined;
     const phoneQuery = window.matchMedia("(max-width: 520px)");
     const updatePhoneScreen = () => setIsPhoneScreen(phoneQuery.matches);
@@ -371,9 +393,9 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   useEffect(() => {
     if (!pageMode || typeof window === "undefined") return;
     window.dispatchEvent(
-      new CustomEvent(COMPOSE_STATE_EVENT, { detail: { canPublish, submitting } })
+      new CustomEvent(COMPOSE_STATE_EVENT, { detail: { canPublish, submitting: submitting || imageProcessing } })
     );
-  }, [canPublish, submitting, pageMode]);
+  }, [canPublish, submitting, imageProcessing, pageMode]);
 
   useEffect(() => {
     if (open && !pageMode && editorRef.current) {
@@ -461,6 +483,53 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     if (submittingValueRef.current) return;
     setCategory(nextCategory);
     focusComposerField();
+  };
+
+  const clearSelectedImage = () => {
+    setSelectedImage((current) => {
+      revokePreviewUrl(current?.previewUrl);
+      return null;
+    });
+    selectedImageRef.current = null;
+    setImageStatus("");
+    if (imageInputRef.current) imageInputRef.current.value = "";
+  };
+
+  const removeSelectedImage = () => {
+    if (submittingValueRef.current || imageProcessing) return;
+    clearSelectedImage();
+    focusComposerField();
+  };
+
+  const openImagePicker = () => {
+    if (submittingValueRef.current || imageProcessing) return;
+    imageInputRef.current?.click();
+  };
+
+  const handleImageSelected = async (event) => {
+    const file = event.target.files?.[0];
+    if (event.target) event.target.value = "";
+    if (!file) return;
+
+    setError("");
+    setImageStatus("Preparing photo…");
+    setImageProcessing(true);
+
+    try {
+      const compressed = await compressPostImage(file);
+      setSelectedImage((current) => {
+        revokePreviewUrl(current?.previewUrl);
+        selectedImageRef.current = compressed;
+        return compressed;
+      });
+      setImageStatus(`${formatBytes(file.size)} → ${formatBytes(compressed.size)} optimized`);
+      setOpen(true);
+    } catch (err) {
+      setError(err?.message || "Could not prepare this image. Please try another photo.");
+      setImageStatus("");
+    } finally {
+      setImageProcessing(false);
+    }
   };
 
   const setManualFormatState = (key, value) => {
@@ -771,6 +840,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   const clearComposerInput = () => {
     if (submittingValueRef.current) return;
     clearEditor();
+    clearSelectedImage();
     setError("");
     focusComposerField();
   };
@@ -778,6 +848,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   const closeComposer = () => {
     if (submittingValueRef.current) return;
     clearEditor();
+    clearSelectedImage();
     setAnonymous(false);
     setError("");
     if (!startOpen) setOpen(false);
@@ -785,22 +856,24 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
 
   const resetComposer = () => {
     clearEditor();
+    clearSelectedImage();
     setAnonymous(false);
     setError("");
     setOpen(startOpen);
   };
 
   const submit = async () => {
-    if (submittingValueRef.current) return;
+    if (submittingValueRef.current || imageProcessing) return;
 
     setError("");
     syncEditorState();
 
     const cleanedText = plainTextValueRef.current.trim();
     const cleanedBody = sanitizeComposerHtml(bodyValueRef.current).trim();
+    const imageToUpload = selectedImageRef.current;
 
-    if (!cleanedText) {
-      setError("Write something before publishing.");
+    if (!cleanedText && !imageToUpload) {
+      setError("Write something or add a photo before publishing.");
       focusComposerField();
       return;
     }
@@ -809,17 +882,26 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
       setSubmitting(true);
       submittingValueRef.current = true;
 
-      const mod = await moderateAsync(cleanedText);
-      if (!mod.allowed) {
-        setError(mod.reason || SAFETY_MESSAGE);
-        focusComposerField();
-        return;
+      if (cleanedText) {
+        const mod = await moderateAsync(cleanedText);
+        if (!mod.allowed) {
+          setError(mod.reason || SAFETY_MESSAGE);
+          focusComposerField();
+          return;
+        }
+      }
+
+      let uploadedImage = null;
+      if (imageToUpload) {
+        setImageStatus("Uploading photo…");
+        uploadedImage = await uploadCompressedImageToR2(imageToUpload, { purpose: "post" });
       }
 
       const result = await createPost({
         body: cleanedBody || cleanedText,
         category: categoryValueRef.current,
         anonymous: anonymousValueRef.current,
+        image: uploadedImage,
       });
 
       if (result?.ok === false) {
@@ -836,11 +918,12 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
       router.push("/");
     } catch (err) {
       console.error(err);
-      setError("Could not create post. Try again.");
+      setError(err?.message || "Could not create post. Try again.");
       focusComposerField();
     } finally {
       setSubmitting(false);
       submittingValueRef.current = false;
+      setImageStatus((current) => (current === "Uploading photo…" ? "" : current));
     }
   };
 
@@ -1026,6 +1109,14 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
         </div>
       </div>
 
+      <input
+        ref={imageInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className="hidden"
+        onChange={handleImageSelected}
+      />
+
       <div className="relative">
         {!plainText && !structured && (
           <div
@@ -1055,6 +1146,79 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
           style={{ color: T.text, border: "none", boxShadow: "none" }}
         />
       </div>
+
+      {imageProcessing && !selectedImage ? (
+        <div
+          className="mt-4 flex items-center gap-3 rounded-[22px] border px-4 py-4"
+          style={{ backgroundColor: "#F4F8FD", borderColor: T.borderSoft }}
+        >
+          <span
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+            style={{ backgroundColor: "rgba(63,95,125,0.12)", color: T.navy }}
+          >
+            <Loader2 size={18} className="animate-spin" />
+          </span>
+          <div className="min-w-0">
+            <div className="text-sm font-extrabold" style={{ color: T.text }}>
+              Preparing your photo
+            </div>
+            <div className="text-xs font-medium" style={{ color: T.textSubtle }}>
+              Compressing image for faster loading…
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {selectedImage ? (
+        <div
+          className="mt-4 overflow-hidden rounded-[24px] border"
+          style={{ backgroundColor: "#F4F8FD", borderColor: T.borderSoft }}
+        >
+          <div className="relative">
+            <img
+              src={selectedImage.previewUrl}
+              alt="Selected post preview"
+              className="block max-h-[420px] w-full object-cover"
+              style={{
+                aspectRatio:
+                  selectedImage.width && selectedImage.height
+                    ? `${selectedImage.width} / ${selectedImage.height}`
+                    : "16 / 10",
+              }}
+            />
+            <button
+              type="button"
+              onClick={removeSelectedImage}
+              disabled={submitting || imageProcessing}
+              className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full border shadow-sm transition active:scale-[0.98] disabled:opacity-50"
+              style={{ backgroundColor: "rgba(255,255,255,0.94)", borderColor: T.border, color: T.navy }}
+              aria-label="Remove selected photo"
+              title="Remove photo"
+            >
+              <X size={16} strokeWidth={2.8} />
+            </button>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
+            <div className="min-w-0">
+              <div className="text-sm font-extrabold" style={{ color: T.text }}>
+                Photo attached
+              </div>
+              <div className="truncate text-xs font-medium" style={{ color: T.textSubtle }}>
+                {imageStatus || `${selectedImage.width}×${selectedImage.height} • ${formatBytes(selectedImage.size)}`}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={openImagePicker}
+              disabled={submitting || imageProcessing}
+              className="sh-tap rounded-full border px-3 py-2 text-xs font-extrabold disabled:opacity-50"
+              style={{ backgroundColor: "#FFFFFF", borderColor: T.border, color: T.navy }}
+            >
+              Replace
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {error && (
         <div
@@ -1111,8 +1275,20 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
           <div className="flex shrink-0 items-center gap-1.5 md:gap-2">
             <button
               type="button"
+              onClick={openImagePicker}
+              disabled={submitting || imageProcessing}
+              className="sh-tap inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[11px] font-extrabold disabled:opacity-45 md:h-11 md:px-4 md:text-xs"
+              style={{ backgroundColor: selectedImage ? "rgba(63, 95, 125, 0.12)" : "#FFFFFF", borderColor: selectedImage ? "rgba(63,95,125,0.28)" : T.border, color: T.navy }}
+              title={selectedImage ? "Replace photo" : "Add photo"}
+            >
+              {imageProcessing ? <Loader2 size={15} className="animate-spin" /> : <ImagePlus size={15} strokeWidth={2.5} />}
+              <span className="hidden sm:inline">{selectedImage ? "Photo" : "Add"}</span>
+            </button>
+
+            <button
+              type="button"
               onClick={clearComposerInput}
-              disabled={!canPublish || submitting}
+              disabled={!canPublish || submitting || imageProcessing}
               className="sh-tap h-10 shrink-0 rounded-full border px-3 text-[11px] font-extrabold disabled:opacity-45 md:h-11 md:px-4 md:text-xs"
               style={{ backgroundColor: "#FFFFFF", borderColor: T.border, color: T.navy }}
             >
@@ -1124,7 +1300,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
               variant="primary"
               size="lg"
               onClick={submit}
-              disabled={!canPublish || submitting}
+              disabled={!canPublish || submitting || imageProcessing}
               className="h-10 min-w-[88px] rounded-full px-3 text-[12px] md:h-11 md:min-w-[140px] md:px-5 md:text-sm"
             >
               {submitting ? "Publishing..." : "Publish"}
