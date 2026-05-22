@@ -12,6 +12,8 @@
     "load:auth": "node tests/load/soldierhub-auth-load-test.mjs"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.937.0",
+    "@aws-sdk/s3-request-presigner": "^3.937.0",
     "@sentry/nextjs": "^10.22.0",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.46.1",
