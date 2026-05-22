@@ -313,26 +313,27 @@ export default function HomePage() {
 
   return (
     <AppShell>
-      <main className="max-w-6xl mx-auto px-0 md:px-5 pt-0 md:pt-6 pb-24 md:pb-10 overflow-x-hidden">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-2 lg:gap-4">
-          <div className="flex flex-col gap-2 min-w-0">
-            <div className="block lg:hidden pt-1 px-2">
+      <main className="mx-auto w-full max-w-[1120px] overflow-x-hidden px-3 pt-0 pb-24 md:px-5 md:pt-6 md:pb-10">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-5">
+          <div className="flex min-w-0 flex-col gap-3">
+            <div className="block pt-1 lg:hidden">
               <MobileWeatherStrip />
             </div>
 
-            <div className="px-2 md:px-0">
+            <div>
               <FeedHero currentUser={currentUser} postCount={feedPosts.length} />
             </div>
 
-            <div className="hidden md:block px-2 md:px-0">
+            <div className="hidden md:block">
               <PostComposer />
             </div>
 
             <div
-              className="sticky top-[68px] md:top-[85px] z-20 w-full px-0 py-1 backdrop-blur-xl"
+              className="sticky top-[68px] z-20 w-full rounded-[22px] border px-1 py-1 backdrop-blur-xl md:top-[85px]"
               style={{
                 background:
-                  "linear-gradient(180deg, rgba(234,240,248,0.96) 0%, rgba(234,240,248,0.82) 100%)",
+                  "linear-gradient(180deg, rgba(234,240,248,0.97) 0%, rgba(234,240,248,0.90) 100%)",
+                borderColor: "rgba(207,218,232,0.72)",
               }}
             >
               <CategoryStrip
@@ -366,14 +367,14 @@ export default function HomePage() {
             ) : null}
 
             {showInitialSkeleton ? (
-              <div className="flex flex-col gap-[3px]">
+              <div className="flex flex-col gap-3">
                 <PostSkeleton />
                 <PostSkeleton />
                 <PostSkeleton />
               </div>
             ) : filtered.length === 0 ? (
               <div
-                className="mx-2 md:mx-0 rounded-[24px] border p-6 sh-card-premium"
+                className="rounded-[24px] border p-6 sh-card-premium"
                 style={{ backgroundColor: T.card, borderColor: T.border }}
               >
                 <EmptyState
@@ -388,7 +389,7 @@ export default function HomePage() {
               </div>
             ) : (
               <>
-                <div ref={postListRef} className="mx-0 flex w-full flex-col gap-[3px] sh-feed-post-list scroll-mt-24">
+                <div ref={postListRef} className="sh-feed-post-list mx-0 flex w-full scroll-mt-24 flex-col gap-3">
                   {visibleFiltered.map((post) => {
                     const normalizedPost = normalizeFeedPostForCard(post);
                     return <PostCard key={normalizedPost.id} post={normalizedPost} />;
@@ -396,7 +397,7 @@ export default function HomePage() {
                 </div>
 
                 {showLoadMore ? (
-                  <div className="flex justify-center pt-1 px-2 md:px-0">
+                  <div className="flex justify-center pt-1">
                     <button
                       type="button"
                       onClick={handleLoadMore}
@@ -416,7 +417,7 @@ export default function HomePage() {
             )}
           </div>
 
-          <aside className="hidden lg:flex flex-col gap-3 sticky top-24 self-start">
+          <aside className="sticky top-24 hidden self-start lg:flex flex-col gap-3">
             <MobileWeatherStrip />
             <BAHCard />
             <GateHoursCard />
