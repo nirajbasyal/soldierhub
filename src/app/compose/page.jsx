@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { T } from "@/lib/theme";
 import AppShell from "@/components/layout/AppShell";
 import PostComposer from "@/components/feed/PostComposer";
+import ComposeUxBridge from "@/components/feed/ComposeUxBridge";
 
 const COMPOSE_SUBMIT_EVENT = "soldierhub-compose-submit";
 const COMPOSE_STATE_EVENT = "soldierhub-compose-state";
@@ -35,6 +36,7 @@ export default function ComposePage() {
 
   return (
     <AppShell hideNav>
+      <ComposeUxBridge />
       <main
         className="min-h-[100dvh] overflow-x-hidden pb-28 md:pb-10"
         style={{
@@ -97,9 +99,9 @@ export default function ComposePage() {
           </div>
 
           <section
-            className="flex-1 rounded-[34px] border p-2.5 shadow-sm md:p-4"
+            className="flex-1 rounded-[30px] border p-2.5 shadow-sm md:rounded-[34px] md:p-4"
             style={{
-              backgroundColor: "rgba(255,255,255,0.62)",
+              backgroundColor: "rgba(255,255,255,0.72)",
               borderColor: "rgba(213,226,242,0.95)",
               boxShadow: "0 22px 60px rgba(11,28,44,0.1)",
             }}
@@ -156,7 +158,19 @@ export default function ComposePage() {
           }
 
           @media (max-width: 520px) {
-            div[class*="sticky"][class*="bottom-2"][class*="z-40"][class*="rounded-[22px]"] {
+            section > div.relative.flex.flex-col {
+              border-radius: 24px !important;
+              padding: 12px !important;
+            }
+
+            div[contenteditable="true"][aria-label="Write your SoldierHub post"] {
+              max-height: none !important;
+              overflow-y: visible !important;
+              min-height: 160px !important;
+              padding-right: 42px !important;
+            }
+
+            div[class*="sticky"][class*="bottom-2"][class*="z-40"] {
               bottom: max(0.55rem, env(safe-area-inset-bottom)) !important;
               margin-top: 0.6rem !important;
               padding: 0.42rem 0.44rem !important;
@@ -166,13 +180,13 @@ export default function ComposePage() {
               backdrop-filter: blur(18px);
             }
 
-            div[class*="sticky"][class*="bottom-2"][class*="z-40"][class*="rounded-[22px]"] > div {
+            div[class*="sticky"][class*="bottom-2"][class*="z-40"] > div {
               display: flex !important;
               align-items: stretch !important;
               gap: 0.42rem !important;
             }
 
-            div[class*="sticky"][class*="bottom-2"][class*="z-40"][class*="rounded-[22px]"] > div > button:first-child {
+            div[class*="sticky"][class*="bottom-2"][class*="z-40"] > div > button:first-child {
               flex: 0 0 96px !important;
               min-width: 96px !important;
               max-width: 96px !important;
@@ -189,7 +203,7 @@ export default function ComposePage() {
               box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78) !important;
             }
 
-            div[class*="sticky"][class*="bottom-2"][class*="z-40"][class*="rounded-[22px]"] > div > button:first-child > span:first-child {
+            div[class*="sticky"][class*="bottom-2"][class*="z-40"] > div > button:first-child > span:first-child {
               max-width: 86px !important;
               white-space: normal !important;
               overflow: visible !important;
@@ -201,7 +215,7 @@ export default function ComposePage() {
               color: #314A66 !important;
             }
 
-            div[class*="sticky"][class*="bottom-2"][class*="z-40"][class*="rounded-[22px]"] > div > button:first-child > span:nth-child(2) {
+            div[class*="sticky"][class*="bottom-2"][class*="z-40"] > div > button:first-child > span:nth-child(2) {
               position: relative !important;
               width: 54px !important;
               height: 30px !important;
@@ -212,7 +226,7 @@ export default function ComposePage() {
               box-shadow: inset 0 1px 2px rgba(11, 28, 44, 0.16) !important;
             }
 
-            div[class*="sticky"][class*="bottom-2"][class*="z-40"][class*="rounded-[22px]"] > div > button:first-child > span:nth-child(2) > span:last-child {
+            div[class*="sticky"][class*="bottom-2"][class*="z-40"] > div > button:first-child > span:nth-child(2) > span:last-child {
               width: 24px !important;
               height: 24px !important;
               border-radius: 999px !important;
@@ -221,14 +235,14 @@ export default function ComposePage() {
               box-shadow: 0 3px 7px rgba(11, 28, 44, 0.22) !important;
             }
 
-            div[class*="sticky"][class*="bottom-2"][class*="z-40"][class*="rounded-[22px]"] > div > div {
+            div[class*="sticky"][class*="bottom-2"][class*="z-40"] > div > div {
               flex: 1 1 auto !important;
               min-width: 0 !important;
               display: flex !important;
               gap: 0.42rem !important;
             }
 
-            div[class*="sticky"][class*="bottom-2"][class*="z-40"][class*="rounded-[22px]"] > div > div > button:first-child {
+            div[class*="sticky"][class*="bottom-2"][class*="z-40"] > div > div > button:first-child {
               height: 50px !important;
               min-width: 58px !important;
               padding-left: 0.72rem !important;
@@ -237,7 +251,7 @@ export default function ComposePage() {
               border-radius: 12px !important;
             }
 
-            div[class*="sticky"][class*="bottom-2"][class*="z-40"][class*="rounded-[22px]"] > div > div > button:last-child {
+            div[class*="sticky"][class*="bottom-2"][class*="z-40"] > div > div > button:last-child {
               flex: 1 1 auto !important;
               height: 50px !important;
               min-width: 96px !important;
@@ -251,7 +265,7 @@ export default function ComposePage() {
               border-radius: 12px !important;
             }
 
-            div[class*="sticky"][class*="bottom-2"][class*="z-40"][class*="rounded-[22px]"] > div > div > button:last-child::before {
+            div[class*="sticky"][class*="bottom-2"][class*="z-40"] > div > div > button:last-child::before {
               content: "✎";
               display: inline-flex;
               align-items: center;
