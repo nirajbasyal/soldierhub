@@ -8,8 +8,8 @@ import {
 } from "@/lib/rateLimit/clientActionLimiter";
 import { getPostId, getProfileStatus } from "../utils/appHelpers";
 
-const FEED_CACHE_KEY = "soldierhub_feed_cache_v2";
-const COMMENT_CACHE_PREFIX = "soldierhub_comment_cache_v2:";
+const FEED_CACHE_KEY = "soldierhub_feed_cache_v3";
+const COMMENT_CACHE_PREFIX = "soldierhub_comment_cache_v3:";
 const COMMENT_CACHE_MAX_AGE_MS = 1000 * 60 * 5;
 
 function removePostFromList(list = [], postId) {
@@ -40,10 +40,25 @@ function normalizeImageMetadata(row = {}, fallback = {}) {
   };
 }
 
+function getProfileAvatarUrl(row = {}, currentUser = null) {
+  return (
+    row.author_avatar_url ||
+    row.author_avatar_url_cached ||
+    row.profile_avatar_url ||
+    row.avatar_url ||
+    row.profile?.avatar_url ||
+    row.author?.avatar_url ||
+    row.user?.avatar_url ||
+    currentUser?.avatar_url ||
+    null
+  );
+}
+
 function normalizeCreatedPostForState(row = {}, currentUser, fallback = {}) {
   const postId = getPostId(row) || fallback.id || uid();
   const isAnonymous = Boolean(row.anonymous ?? fallback.anonymous);
   const commentCount = row.comment_count ?? row.comments_count ?? row.reply_count ?? 0;
+  const authorAvatarUrl = isAnonymous ? null : getProfileAvatarUrl(row, currentUser);
 
   return {
     ...row,
@@ -56,6 +71,8 @@ function normalizeCreatedPostForState(row = {}, currentUser, fallback = {}) {
     author_id: row.author_id || currentUser?.id || null,
     author_name: row.author_name || row.author_name_cached || currentUser?.full_name || "Member",
     author_color: row.author_color || row.author_color_cached || currentUser?.avatar_color || "#314A66",
+    author_avatar_url: authorAvatarUrl,
+    author_avatar_url_cached: authorAvatarUrl,
     ...normalizeImageMetadata(row, fallback),
     upvote_count: row.upvote_count ?? row.upvotes_count ?? 0,
     comment_count: commentCount,
@@ -79,6 +96,8 @@ function makeFeedSafePost(post = {}) {
     profile_id: null,
     author_name: null,
     author_color: null,
+    author_avatar_url: null,
+    author_avatar_url_cached: null,
     author_name_cached: null,
     author_color_cached: null,
   };
@@ -122,6 +141,21 @@ function getCommentAuthorId(comment = {}) {
     comment?.author?.id ||
     comment?.profile?.id ||
     comment?.user?.id ||
+    null
+  );
+}
+
+function getCommentAvatarUrl(comment = {}, currentUser = null) {
+  return (
+    comment?.author_avatar_url ||
+    comment?.author_avatar_url_cached ||
+    comment?.comment_author_avatar_url ||
+    comment?.profile_avatar_url ||
+    comment?.avatar_url ||
+    comment?.author?.avatar_url ||
+    comment?.profile?.avatar_url ||
+    comment?.user?.avatar_url ||
+    currentUser?.avatar_url ||
     null
   );
 }
@@ -335,6 +369,7 @@ export function usePostActions({
 
     const postId = id || uid();
     const optimisticImage = normalizeImageMetadata({}, { image });
+    const optimisticAvatarUrl = anonymous ? null : currentUser?.avatar_url || null;
     const optimisticPost = {
       id: postId,
       post_id: postId,
@@ -345,6 +380,8 @@ export function usePostActions({
       author_id: currentUser.id,
       author_name: anonymous ? null : currentUser.full_name,
       author_color: anonymous ? null : currentUser.avatar_color,
+      author_avatar_url: optimisticAvatarUrl,
+      author_avatar_url_cached: optimisticAvatarUrl,
       ...optimisticImage,
       upvote_count: 0,
       comment_count: 0,
@@ -483,6 +520,7 @@ export function usePostActions({
     const shouldMaskAsAnonymous = Boolean(options?.isAnonymousAuthor);
     const anonymousCommentName = options?.anonymousName || "Anonymous";
     const anonymousCommentColor = options?.anonymousColor || "#5C6470";
+    const currentUserAvatarUrl = shouldMaskAsAnonymous ? null : currentUser?.avatar_url || null;
 
     const optimisticComment = {
       id: `temp-${uid()}`,
@@ -493,6 +531,8 @@ export function usePostActions({
       created_at: new Date().toISOString(),
       author_name_cached: shouldMaskAsAnonymous ? anonymousCommentName : currentUser.full_name,
       author_color_cached: shouldMaskAsAnonymous ? anonymousCommentColor : currentUser.avatar_color,
+      author_avatar_url: currentUserAvatarUrl,
+      author_avatar_url_cached: currentUserAvatarUrl,
       is_anonymous_author: shouldMaskAsAnonymous,
       viewer_is_author: true,
     };
@@ -539,6 +579,9 @@ export function usePostActions({
         data?.is_anonymous_author === true || optimisticComment.is_anonymous_author === true
       );
       const savedAuthorId = savedIsAnonymousAuthor ? null : getCommentAuthorId(data) || currentUser.id;
+      const savedAuthorAvatarUrl = savedIsAnonymousAuthor
+        ? null
+        : getCommentAvatarUrl(data, currentUser) || optimisticComment.author_avatar_url || null;
       const savedComment = {
         ...optimisticComment,
         ...(data || {}),
@@ -552,6 +595,8 @@ export function usePostActions({
         author_color_cached: savedIsAnonymousAuthor
           ? data?.author_color_cached || anonymousCommentColor
           : data?.author_color_cached || optimisticComment.author_color_cached,
+        author_avatar_url: savedAuthorAvatarUrl,
+        author_avatar_url_cached: savedAuthorAvatarUrl,
         is_anonymous_author: savedIsAnonymousAuthor,
         viewer_is_author: true,
       };
