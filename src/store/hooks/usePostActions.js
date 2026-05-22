@@ -28,6 +28,18 @@ function addPostToTop(list = [], post = {}) {
   return [post, ...removePostFromList(list, postId)];
 }
 
+function normalizeImageMetadata(row = {}, fallback = {}) {
+  const fallbackImage = fallback.image || {};
+
+  return {
+    image_url: row.image_url || row.imageUrl || fallback.image_url || fallbackImage.url || fallbackImage.image_url || null,
+    image_key: row.image_key || row.imageKey || fallback.image_key || fallbackImage.key || fallbackImage.image_key || null,
+    image_width: row.image_width || row.imageWidth || fallback.image_width || fallbackImage.width || fallbackImage.image_width || null,
+    image_height: row.image_height || row.imageHeight || fallback.image_height || fallbackImage.height || fallbackImage.image_height || null,
+    image_size: row.image_size || row.imageSize || fallback.image_size || fallbackImage.size || fallbackImage.image_size || null,
+  };
+}
+
 function normalizeCreatedPostForState(row = {}, currentUser, fallback = {}) {
   const postId = getPostId(row) || fallback.id || uid();
   const isAnonymous = Boolean(row.anonymous ?? fallback.anonymous);
@@ -44,6 +56,7 @@ function normalizeCreatedPostForState(row = {}, currentUser, fallback = {}) {
     author_id: row.author_id || currentUser?.id || null,
     author_name: row.author_name || row.author_name_cached || currentUser?.full_name || "Member",
     author_color: row.author_color || row.author_color_cached || currentUser?.avatar_color || "#314A66",
+    ...normalizeImageMetadata(row, fallback),
     upvote_count: row.upvote_count ?? row.upvotes_count ?? 0,
     comment_count: commentCount,
     reply_count: row.reply_count ?? commentCount,
@@ -276,7 +289,7 @@ export function usePostActions({
   reloadPosts,
   reloadMyPosts,
 }) {
-  const createPost = async ({ id, title, body, category, anonymous }) => {
+  const createPost = async ({ id, title, body, category, anonymous, image = null }) => {
     if (!requireAuth()) return { ok: false, error: "You must be verified to post." };
 
     if (stopIfLimited({ action: "post", currentUser, pushToast })) {
@@ -289,6 +302,7 @@ export function usePostActions({
         title,
         body,
         anonymous,
+        image,
       });
 
       if (error) {
@@ -302,6 +316,7 @@ export function usePostActions({
         body,
         category,
         anonymous,
+        image,
       });
       const feedPost = makeFeedSafePost(savedPost);
 
@@ -315,10 +330,11 @@ export function usePostActions({
       pushToast("Posted to feed", "success");
       reloadPosts?.({ silent: true });
       reloadMyPosts?.();
-      return { ok: true };
+      return { ok: true, post: savedPost };
     }
 
     const postId = id || uid();
+    const optimisticImage = normalizeImageMetadata({}, { image });
     const optimisticPost = {
       id: postId,
       post_id: postId,
@@ -329,6 +345,7 @@ export function usePostActions({
       author_id: currentUser.id,
       author_name: anonymous ? null : currentUser.full_name,
       author_color: anonymous ? null : currentUser.avatar_color,
+      ...optimisticImage,
       upvote_count: 0,
       comment_count: 0,
       reply_count: 0,
@@ -346,7 +363,7 @@ export function usePostActions({
     setMyPosts((arr) => [optimisticPost, ...arr]);
 
     pushToast("Posted to feed", "success");
-    return { ok: true };
+    return { ok: true, post: optimisticPost };
   };
 
   const upvotePost = async (postId) => {
