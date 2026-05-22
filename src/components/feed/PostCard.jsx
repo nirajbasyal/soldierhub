@@ -109,6 +109,23 @@ function getDisplayColor(item, name) {
   );
 }
 
+function getDisplayAvatarUrl(item) {
+  return (
+    item?.author_avatar_url_cached ||
+    item?.author_avatar_url ||
+    item?.comment_author_avatar_url ||
+    item?.commenter_avatar_url ||
+    item?.profile_avatar_url ||
+    item?.avatar_url ||
+    item?.profile?.avatar_url ||
+    item?.author?.avatar_url ||
+    item?.user?.avatar_url ||
+    item?.commenter?.avatar_url ||
+    item?.actor?.avatar_url ||
+    null
+  );
+}
+
 function getPostCreatedAt(post) {
   return (
     post?.created_at ||
@@ -211,9 +228,9 @@ function MenuButton({ children, icon: Icon, danger = false, onClick }) {
   );
 }
 
-function AuthorAvatarName({ userId, fallbackName = "", name, color, size, anonymous = false, children }) {
+function AuthorAvatarName({ userId, fallbackName = "", name, color, src, size, anonymous = false, children }) {
   if (anonymous || !userId) {
-    return children || <Avatar name={name} color={color} size={size} />;
+    return children || <Avatar name={name} color={color} src={anonymous ? null : src} size={size} />;
   }
 
   return (
@@ -222,7 +239,7 @@ function AuthorAvatarName({ userId, fallbackName = "", name, color, size, anonym
       fallbackName={fallbackName || name}
       className="inline-flex cursor-pointer transition hover:opacity-80 focus:outline-none"
     >
-      {children || <Avatar name={name} color={color} size={size} />}
+      {children || <Avatar name={name} color={color} src={src} size={size} />}
     </ProfileIdentityLink>
   );
 }
@@ -250,14 +267,15 @@ function CommentRow({
   );
   const name = anonymousAuthor ? anonymousName : getDisplayName(comment, "Member");
   const color = anonymousAuthor ? "#5C6470" : getDisplayColor(comment, name);
+  const avatarUrl = anonymousAuthor ? null : getDisplayAvatarUrl(comment);
   const isMine = viewerOwnsComment(comment, currentUser);
   const isReplyingComment = isTemporaryCommentId(commentId);
   const canDeleteComment = Boolean(commentId && !isReplyingComment && currentUser?.id && (isAdmin || isMine));
 
   return (
     <div className="group flex items-start gap-2.5">
-      <AuthorAvatarName userId={anonymousAuthor ? null : commentAuthorId} fallbackName={name} name={name} color={color} size={30} anonymous={anonymousAuthor}>
-        <Avatar name={name} color={color} size={30} />
+      <AuthorAvatarName userId={anonymousAuthor ? null : commentAuthorId} fallbackName={name} name={name} color={color} src={avatarUrl} size={30} anonymous={anonymousAuthor}>
+        <Avatar name={name} color={color} src={avatarUrl} size={30} />
       </AuthorAvatarName>
       <div className="min-w-0 flex-1">
         <div
@@ -266,7 +284,7 @@ function CommentRow({
         >
           <div className="flex min-w-0 items-center gap-1.5 text-xs font-bold" style={{ color: T.text }}>
             {anonymousAuthor ? <Lock size={11} className="shrink-0" /> : null}
-            <AuthorAvatarName userId={anonymousAuthor ? null : commentAuthorId} fallbackName={name} name={name} color={color} size={30} anonymous={anonymousAuthor}>
+            <AuthorAvatarName userId={anonymousAuthor ? null : commentAuthorId} fallbackName={name} name={name} color={color} src={avatarUrl} size={30} anonymous={anonymousAuthor}>
               <span className={anonymousAuthor || !commentAuthorId ? "truncate" : "truncate cursor-pointer transition hover:opacity-80"}>
                 {name}
               </span>
@@ -356,6 +374,7 @@ export default function PostCard({ post, openRepliesDefault = false }) {
   const anonymousName = getAnonymousDisplayName(postId);
   const displayName = post?.anonymous ? anonymousName : getDisplayName(post, "Member");
   const displayColor = post?.anonymous ? "#5C6470" : getDisplayColor(post, displayName);
+  const displayAvatarUrl = post?.anonymous ? null : getDisplayAvatarUrl(post);
   const comments = postId ? postComments?.[postId] || [] : [];
   const commentsLoaded = Boolean(
     postId && Object.prototype.hasOwnProperty.call(postComments || {}, postId)
@@ -377,6 +396,7 @@ export default function PostCard({ post, openRepliesDefault = false }) {
   const adminModeratingOtherPost = Boolean(isAdmin && !ownsPost);
   const replyName = post?.anonymous && ownsPost ? anonymousName : currentUser?.full_name || "Member";
   const replyColor = post?.anonymous && ownsPost ? "#5C6470" : currentUser?.avatar_color || colorFromString(replyName);
+  const replyAvatarUrl = post?.anonymous && ownsPost ? null : currentUser?.avatar_url || null;
   const bodyText = post?.body || post?.content || post?.text || "";
   const postImage = getPostImage(post);
 
@@ -578,12 +598,12 @@ export default function PostCard({ post, openRepliesDefault = false }) {
         <div className="px-4 md:px-5 pt-4 pb-3">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-3 min-w-0 flex-1">
-              <AuthorAvatarName userId={authorId} fallbackName={displayName} name={displayName} color={displayColor} size={42} anonymous={post?.anonymous}>
-                <Avatar name={displayName} color={displayColor} size={42} />
+              <AuthorAvatarName userId={authorId} fallbackName={displayName} name={displayName} color={displayColor} src={displayAvatarUrl} size={42} anonymous={post?.anonymous}>
+                <Avatar name={displayName} color={displayColor} src={displayAvatarUrl} size={42} />
               </AuthorAvatarName>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <AuthorAvatarName userId={authorId} fallbackName={displayName} name={displayName} color={displayColor} size={42} anonymous={post?.anonymous}>
+                  <AuthorAvatarName userId={authorId} fallbackName={displayName} name={displayName} color={displayColor} src={displayAvatarUrl} size={42} anonymous={post?.anonymous}>
                     <span
                       className={`font-bold text-sm md:text-[15px] truncate transition ${
                         post?.anonymous || !authorId ? "" : "cursor-pointer hover:opacity-80"
@@ -764,8 +784,8 @@ export default function PostCard({ post, openRepliesDefault = false }) {
             </div>
 
             <div className="mt-3 flex items-start gap-2.5">
-              <AuthorAvatarName userId={currentUser?.id} fallbackName={replyName} name={replyName} color={replyColor} size={32} anonymous={post?.anonymous && ownsPost}>
-                <Avatar name={replyName} color={replyColor} size={32} />
+              <AuthorAvatarName userId={currentUser?.id} fallbackName={replyName} name={replyName} color={replyColor} src={replyAvatarUrl} size={32} anonymous={post?.anonymous && ownsPost}>
+                <Avatar name={replyName} color={replyColor} src={replyAvatarUrl} size={32} />
               </AuthorAvatarName>
               <div className="min-w-0 flex-1">
                 <div
