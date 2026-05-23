@@ -444,14 +444,14 @@ div:has(> [aria-label="Write your SoldierHub post"] ol) > .pointer-events-none {
   }
 }
 
-/* Feed image previews stay light. The black background is only for the full-screen viewer after clicking. */
-.sh-feed-post-list article button[aria-label="Open post image"] {
+/* Post image previews stay light everywhere. The black background is only for the full-screen viewer after clicking. */
+article button[aria-label="Open post image"] {
   max-height: 430px !important;
   background: #F4F8FD !important;
   overflow: hidden !important;
 }
 
-.sh-feed-post-list article button[aria-label="Open post image"] > img {
+article button[aria-label="Open post image"] > img {
   display: block !important;
   width: 100% !important;
   height: 100% !important;
@@ -461,7 +461,7 @@ div:has(> [aria-label="Write your SoldierHub post"] ol) > .pointer-events-none {
 }
 
 @media (max-width: 520px) {
-  .sh-feed-post-list article button[aria-label="Open post image"] {
+  article button[aria-label="Open post image"] {
     max-height: 360px !important;
     border-radius: 18px !important;
   }
