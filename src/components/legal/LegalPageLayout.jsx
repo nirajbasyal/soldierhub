@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, ExternalLink, Mail } from "lucide-react";
+import { CheckCircle2, ExternalLink, Mail } from "lucide-react";
 import { T } from "@/lib/theme";
 import AppShell from "@/components/layout/AppShell";
 import Footer from "@/components/layout/Footer";
+import CircularBackButton from "@/components/ui/CircularBackButton";
 
 function toneColor(tone = "blue") {
   if (tone === "danger" || tone === "red") return "#B31942";
@@ -120,18 +121,7 @@ export default function LegalPageLayout({
         }}
       >
         <div className="mx-auto w-full max-w-[1180px] px-4 py-5 sm:px-6 md:px-12 md:py-9 lg:px-16 xl:px-20">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold transition hover:-translate-y-0.5 hover:shadow-sm active:scale-[0.98]"
-            style={{
-              backgroundColor: "rgba(255,255,255,0.9)",
-              borderColor: "rgba(207,218,232,0.86)",
-              color: T.navy,
-            }}
-          >
-            <ArrowLeft size={16} />
-            Back to feed
-          </Link>
+          <CircularBackButton href="/" label="Back to feed" />
 
           <section
             className="mt-5 overflow-hidden rounded-[30px] border bg-white md:rounded-[36px]"
