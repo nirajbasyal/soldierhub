@@ -5,7 +5,7 @@ import ProfileVerifiedBadge from "@/components/profile/ProfileVerifiedBadge";
 
 function limitBio(value) {
   const text = typeof value === "string" ? value.trim() : "";
-  if (!text) return "This member has not added a bio yet.";
+  if (!text) return "";
   return text.length > 150 ? `${text.slice(0, 150).trim()}…` : text;
 }
 
@@ -37,6 +37,8 @@ export default function VisitorProfileHero({
 }) {
   if (!profile) return null;
 
+  const bioText = limitBio(profile.bio);
+
   return (
     <section className="relative min-w-0 overflow-hidden rounded-[28px] border border-[#D5E2F2] bg-white shadow-[0_18px_42px_rgba(7,27,51,0.11)]">
       <div
@@ -60,9 +62,11 @@ export default function VisitorProfileHero({
               {refreshing ? <Loader2 size={15} className="mt-1 shrink-0 animate-spin text-white/80" /> : null}
             </div>
 
-            <p className="mt-1.5 line-clamp-3 max-w-xl break-words text-sm leading-6 text-white">
-              {limitBio(profile.bio)}
-            </p>
+            {bioText ? (
+              <p className="mt-1.5 line-clamp-3 max-w-xl break-words text-sm leading-6 text-white">
+                {bioText}
+              </p>
+            ) : null}
           </div>
         </div>
       </div>

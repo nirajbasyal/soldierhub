@@ -10,7 +10,6 @@ import {
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { T } from "@/lib/theme";
 import { listResources } from "@/lib/db/resources";
 import { useApp } from "@/store/AppContext";
@@ -44,7 +43,7 @@ function SectionPill({ active, children, onClick }) {
 function StatusCard({ icon: Icon, title, body }) {
   return (
     <div
-      className="rounded-3xl border p-8 md:p-10 text-center"
+      className="rounded-3xl border p-8 text-center"
       style={{
         backgroundColor: T.card,
         borderColor: T.border,
@@ -77,15 +76,15 @@ function ComingSoonResources() {
             "radial-gradient(circle at top left, rgba(220,232,247,0.9), transparent 32%), linear-gradient(180deg, #F4F8FD 0%, #FFFFFF 48%, #F4F8FD 100%)",
         }}
       >
-        <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 md:py-10">
+        <div className="soldierhub-profile-shell mx-auto w-full max-w-[660px] px-3 py-4 sm:px-5 md:px-6 md:py-6">
           <CircularBackButton href="/" label="Back to feed" />
 
           <section
-            className="mt-6 rounded-[26px] md:rounded-[30px] border relative"
+            className="mt-4 rounded-[28px] border relative"
             style={{
               borderColor: "#D5E2F2",
               backgroundColor: "rgba(255,255,255,0.94)",
-              boxShadow: "0 14px 38px rgba(7,27,51,0.07)",
+              boxShadow: "0 18px 42px rgba(7,27,51,0.09)",
             }}
           >
             <div
@@ -93,7 +92,7 @@ function ComingSoonResources() {
               style={{ backgroundColor: "rgba(30,78,140,0.72)" }}
             />
 
-            <div className="p-7 md:p-10 text-center">
+            <div className="p-7 text-center md:p-8">
               <div
                 className="mx-auto h-16 w-16 rounded-3xl flex items-center justify-center border"
                 style={{
@@ -117,7 +116,7 @@ function ComingSoonResources() {
               </div>
 
               <h1
-                className="mt-4 text-3xl md:text-5xl font-extrabold tracking-[-0.04em] leading-tight"
+                className="mt-4 text-3xl font-extrabold tracking-[-0.04em] leading-tight md:text-5xl"
                 style={{ color: T.navy }}
               >
                 Resources are being prepared
@@ -141,7 +140,6 @@ function ComingSoonResources() {
 }
 
 export default function ResourcesPage() {
-  const router = useRouter();
   const { isAdmin = false } = useApp();
 
   const [resources, setResources] = useState([]);
@@ -237,15 +235,15 @@ export default function ResourcesPage() {
             "radial-gradient(circle at top left, rgba(220,232,247,0.9), transparent 32%), linear-gradient(180deg, #F4F8FD 0%, #FFFFFF 48%, #F4F8FD 100%)",
         }}
       >
-        <div className="max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-10">
+        <div className="soldierhub-profile-shell mx-auto w-full max-w-[660px] px-3 py-4 sm:px-5 md:px-6 md:py-6">
           <CircularBackButton href="/" label="Back to feed" />
 
           <section
-            className="mt-6 rounded-[26px] md:rounded-[30px] border relative"
+            className="mt-4 rounded-[28px] border relative"
             style={{
               borderColor: "#D5E2F2",
               backgroundColor: "rgba(255,255,255,0.94)",
-              boxShadow: "0 14px 38px rgba(7,27,51,0.07)",
+              boxShadow: "0 18px 42px rgba(7,27,51,0.09)",
             }}
           >
             <div
@@ -253,8 +251,8 @@ export default function ResourcesPage() {
               style={{ backgroundColor: "rgba(30,78,140,0.72)" }}
             />
 
-            <div className="p-6 md:p-8">
-              <div className="grid lg:grid-cols-[1fr_320px] gap-6 items-end">
+            <div className="p-5 md:p-6">
+              <div className="grid gap-5">
                 <div>
                   <div
                     className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold uppercase tracking-[0.12em]"
@@ -269,14 +267,14 @@ export default function ResourcesPage() {
                   </div>
 
                   <h1
-                    className="mt-5 text-4xl md:text-5xl font-extrabold tracking-[-0.04em] leading-[0.95]"
+                    className="mt-5 text-4xl font-extrabold tracking-[-0.04em] leading-[0.95] md:text-5xl"
                     style={{ color: T.navy }}
                   >
                     Resources
                   </h1>
 
                   <p
-                    className="mt-3 max-w-2xl text-sm md:text-base leading-7"
+                    className="mt-3 text-sm md:text-base leading-7"
                     style={{ color: T.textMuted }}
                   >
                     Useful links for Fort Bliss soldiers and families, organized
@@ -335,7 +333,7 @@ export default function ResourcesPage() {
               borderColor: T.border,
             }}
           >
-            <div className="flex flex-col md:flex-row md:items-center gap-3">
+            <div className="flex flex-col gap-3">
               <div
                 className="flex-1 min-w-0 rounded-2xl border px-3 py-2.5 flex items-center gap-2"
                 style={{
@@ -426,7 +424,7 @@ export default function ResourcesPage() {
                       </span>
                     </div>
 
-                    <div className="grid gap-3 md:grid-cols-2">
+                    <div className="grid gap-3">
                       {items.map((resource) => (
                         <ResourceCard
                           key={resource.id}
