@@ -47,6 +47,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   const [anonymous, setAnonymous] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [isPhoneScreen, setIsPhoneScreen] = useState(false);
   const [structured, setStructured] = useState(false);
   const [clearedDraft, setClearedDraft] = useState(null);
 
@@ -174,6 +175,22 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   }, [submitting]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const phoneQuery = window.matchMedia("(max-width: 520px)");
+    const updatePhoneScreen = () => setIsPhoneScreen(phoneQuery.matches);
+    updatePhoneScreen();
+
+    if (phoneQuery.addEventListener) {
+      phoneQuery.addEventListener("change", updatePhoneScreen);
+      return () => phoneQuery.removeEventListener("change", updatePhoneScreen);
+    }
+
+    phoneQuery.addListener(updatePhoneScreen);
+    return () => phoneQuery.removeListener(updatePhoneScreen);
+  }, []);
+
+  useEffect(() => {
     if (!pageMode || typeof window === "undefined") return;
 
     window.dispatchEvent(
@@ -191,6 +208,48 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
       syncFormatState();
     });
   }, [open, syncFormatState]);
+
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor) return undefined;
+
+    const resizeEditor = () => {
+      const viewportHeight =
+        typeof window !== "undefined" ? window.visualViewport?.height || window.innerHeight : 760;
+      const minHeight = pageMode ? (isPhoneScreen ? 180 : 150) : isPhoneScreen ? 170 : 126;
+
+      editor.style.minHeight = `${minHeight}px`;
+
+      if (pageMode && isPhoneScreen) {
+        editor.style.maxHeight = "none";
+        editor.style.overflowY = "visible";
+        return;
+      }
+
+      const maxHeight = pageMode
+        ? Math.max(230, Math.min(isPhoneScreen ? 390 : 320, Math.round(viewportHeight * 0.38)))
+        : isPhoneScreen
+          ? 330
+          : 220;
+
+      editor.style.maxHeight = `${maxHeight}px`;
+      editor.style.overflowY = editor.scrollHeight > maxHeight ? "auto" : "hidden";
+    };
+
+    resizeEditor();
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("resize", resizeEditor);
+      window.visualViewport?.addEventListener("resize", resizeEditor);
+    }
+
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("resize", resizeEditor);
+        window.visualViewport?.removeEventListener("resize", resizeEditor);
+      }
+    };
+  }, [body, pageMode, isPhoneScreen, selectedImage]);
 
   const selectCategory = (nextCategory) => {
     if (submittingValueRef.current) return;
