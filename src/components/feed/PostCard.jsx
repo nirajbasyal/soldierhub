@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowBigUp,
+  Download,
   Edit3,
   Flag,
   Lock,
@@ -11,6 +12,7 @@ import {
   Send,
   Share2,
   Trash2,
+  X,
 } from "lucide-react";
 import { CATEGORIES } from "@/lib/constants";
 import { T } from "@/lib/theme";
@@ -185,6 +187,132 @@ function getPostImage(post) {
     height: Number(post?.image_height || post?.imageHeight || 0) || null,
     size: Number(post?.image_size || post?.imageSize || 0) || null,
   };
+}
+
+function getImageRatio(image) {
+  if (!image?.width || !image?.height) return null;
+  return image.width / image.height;
+}
+
+function getDownloadFileName(url = "") {
+  try {
+    const pathname = new URL(url).pathname;
+    const name = pathname.split("/").filter(Boolean).pop();
+    if (name && name.includes(".")) return name;
+  } catch {
+    // Keep the safe fallback below when the URL cannot be parsed.
+  }
+
+  return "soldierhub-post-image.jpg";
+}
+
+function PostImagePreview({ image, onOpen }) {
+  const ratio = getImageRatio(image);
+  const isVeryTall = ratio ? ratio < 0.58 : false;
+  const aspectRatio = ratio ? `${image.width} / ${image.height}` : "16 / 10";
+
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen?.(image)}
+      className="mt-4 block w-full overflow-hidden rounded-[22px] border text-left transition active:scale-[0.995] focus:outline-none focus:ring-2 focus:ring-[#3F5F7D]/25"
+      style={{
+        borderColor: T.borderSoft || T.border,
+        backgroundColor: isVeryTall ? "#101418" : "#F4F8FD",
+        height: isVeryTall ? "clamp(390px, 68vh, 620px)" : undefined,
+        aspectRatio: isVeryTall ? undefined : aspectRatio,
+        maxHeight: isVeryTall ? undefined : "620px",
+      }}
+      aria-label="Open post image"
+    >
+      <img
+        src={image.url}
+        alt="Post attachment"
+        loading="lazy"
+        decoding="async"
+        className="block h-full w-full object-cover"
+        style={{ objectPosition: isVeryTall ? "top center" : "center center" }}
+      />
+    </button>
+  );
+}
+
+function PostImageLightbox({ image, onClose }) {
+  const ratio = getImageRatio(image);
+  const isLongImage = ratio ? ratio < 0.7 : false;
+  const fileName = getDownloadFileName(image?.url);
+
+  useEffect(() => {
+    if (!image?.url || typeof window === "undefined") return undefined;
+
+    const originalOverflow = document.body.style.overflow;
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") onClose?.();
+    };
+
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [image?.url, onClose]);
+
+  if (!image?.url) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[10000] bg-black/95 text-white"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Post image viewer"
+    >
+      <div className="pointer-events-none fixed left-0 right-0 top-0 z-[10001] flex items-center justify-between gap-3 px-3 py-3 sm:px-5">
+        <button
+          type="button"
+          onClick={onClose}
+          className="pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur transition hover:bg-white/18 active:scale-95"
+          aria-label="Close image viewer"
+        >
+          <X size={21} />
+        </button>
+
+        <a
+          href={image.url}
+          download={fileName}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(event) => event.stopPropagation()}
+          className="pointer-events-auto inline-flex h-11 items-center justify-center gap-2 rounded-full bg-white/10 px-4 text-sm font-bold text-white backdrop-blur transition hover:bg-white/18 active:scale-95"
+          aria-label="Download image"
+        >
+          <Download size={18} />
+          <span className="hidden sm:inline">Download</span>
+        </a>
+      </div>
+
+      <div
+        className="h-full overflow-auto px-0 pb-5 pt-[72px] overscroll-contain sm:px-4 sm:pb-8"
+        onClick={(event) => {
+          if (event.target === event.currentTarget) onClose?.();
+        }}
+      >
+        <div className={isLongImage ? "min-h-full" : "flex min-h-full items-center justify-center"}>
+          <img
+            src={image.url}
+            alt="Full size post attachment"
+            className={
+              isLongImage
+                ? "mx-auto block w-full max-w-[720px] object-contain"
+                : "mx-auto block max-h-[calc(100dvh-110px)] max-w-full object-contain"
+            }
+            decoding="async"
+          />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function ActionButton({ icon: Icon, label, count, active = false, onClick, fillWhenActive = false }) {
@@ -368,6 +496,7 @@ export default function PostCard({ post, openRepliesDefault = false }) {
   const [commentMenuOpenId, setCommentMenuOpenId] = useState(null);
   const [commentToDelete, setCommentToDelete] = useState(null);
   const [deletingComment, setDeletingComment] = useState(false);
+  const [activeImage, setActiveImage] = useState(null);
 
   const category = CATEGORIES.find((c) => c.key === post?.category) || CATEGORIES[0];
   const authorId = getAuthorId(post);
@@ -407,6 +536,7 @@ export default function PostCard({ post, openRepliesDefault = false }) {
     setCommentsLoading(false);
     setCommentMenuOpenId(null);
     setCommentToDelete(null);
+    setActiveImage(null);
   }, [postId, openRepliesDefault]);
 
   useEffect(() => {
@@ -702,21 +832,7 @@ export default function PostCard({ post, openRepliesDefault = false }) {
             </div>
           ) : null}
 
-          {postImage ? (
-            <div
-              className="mt-4 overflow-hidden rounded-[22px] border bg-[#F4F8FD]"
-              style={{ borderColor: T.borderSoft || T.border }}
-            >
-              <img
-                src={postImage.url}
-                alt="Post attachment"
-                loading="lazy"
-                decoding="async"
-                className="block max-h-[620px] w-full object-cover"
-                style={{ aspectRatio: postImage.width && postImage.height ? `${postImage.width} / ${postImage.height}` : "16 / 10" }}
-              />
-            </div>
-          ) : null}
+          {postImage ? <PostImagePreview image={postImage} onOpen={setActiveImage} /> : null}
         </div>
 
         <div
@@ -830,6 +946,8 @@ export default function PostCard({ post, openRepliesDefault = false }) {
           </div>
         ) : null}
       </article>
+
+      {activeImage ? <PostImageLightbox image={activeImage} onClose={() => setActiveImage(null)} /> : null}
 
       {editingOpen ? (
         <EditPostModal post={safePost} onClose={() => setEditingOpen(false)} onSave={handleEditSave} />
