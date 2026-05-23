@@ -79,7 +79,7 @@
   }
 }
 
-/* Profile page: match the profile header width to the profile post feed on laptop. */
+/* Profile page: keep header, post section, and post cards the same clean content width. */
 .soldierhub-profile-shell {
   max-width: 660px;
 }
@@ -93,29 +93,124 @@
   margin-right: auto;
 }
 
-.soldierhub-profile-shell section h1 {
-  overflow-wrap: anywhere;
-  word-break: break-word;
+/* Redesigned profile header: compact, responsive, no squeezed name, no oversized empty layout. */
+.soldierhub-profile-shell > section:first-of-type {
+  border-radius: 28px !important;
+  background: rgba(255, 255, 255, 0.94) !important;
+  box-shadow: 0 18px 44px rgba(7, 27, 51, 0.08) !important;
 }
 
-@media (min-width: 1024px) {
-  .soldierhub-profile-shell > section:first-of-type {
-    border-radius: 26px !important;
-  }
+.soldierhub-profile-shell > section:first-of-type > div:first-child {
+  left: 18px !important;
+  right: 18px !important;
+  height: 3px !important;
+  opacity: 0.9 !important;
+}
 
+.soldierhub-profile-shell > section:first-of-type > div:last-child {
+  padding: 1rem !important;
+}
+
+.soldierhub-profile-shell > section:first-of-type > div:last-child > div:first-child {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 1rem !important;
+  align-items: stretch !important;
+}
+
+.soldierhub-profile-shell > section:first-of-type > div:last-child > div:first-child > div:first-child {
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) !important;
+  gap: 0.9rem !important;
+  align-items: start !important;
+  min-width: 0 !important;
+}
+
+.soldierhub-profile-shell > section:first-of-type > div:last-child > div:first-child > div:first-child > div:first-child {
+  align-items: center !important;
+}
+
+.soldierhub-profile-shell > section:first-of-type h1 {
+  max-width: 100% !important;
+  font-size: clamp(1.85rem, 5.6vw, 2.65rem) !important;
+  line-height: 1.02 !important;
+  letter-spacing: -0.045em !important;
+  overflow-wrap: break-word !important;
+  word-break: normal !important;
+  hyphens: auto !important;
+}
+
+.soldierhub-profile-shell > section:first-of-type p {
+  overflow-wrap: break-word !important;
+  word-break: normal !important;
+}
+
+.soldierhub-profile-shell > section:first-of-type [class*="lg:grid-cols-1"] {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 0.55rem !important;
+  min-width: 0 !important;
+  width: 100% !important;
+}
+
+.soldierhub-profile-shell > section:first-of-type [class*="lg:grid-cols-1"] > * {
+  min-width: 0 !important;
+  border-radius: 18px !important;
+  padding: 0.65rem 0.45rem !important;
+  text-align: center !important;
+}
+
+.soldierhub-profile-shell > section:first-of-type [class*="lg:grid-cols-1"] > * > div:first-child {
+  font-size: 1.35rem !important;
+  line-height: 1 !important;
+}
+
+.soldierhub-profile-shell > section:first-of-type [class*="lg:grid-cols-1"] > * > div:last-child {
+  justify-content: center !important;
+  font-size: 0.62rem !important;
+  letter-spacing: 0.11em !important;
+}
+
+@media (min-width: 640px) {
   .soldierhub-profile-shell > section:first-of-type > div:last-child {
-    padding: 1.35rem !important;
+    padding: 1.15rem !important;
   }
 
-  .soldierhub-profile-shell section h1 {
-    font-size: clamp(2.1rem, 4vw, 3rem) !important;
-    line-height: 0.98 !important;
+  .soldierhub-profile-shell > section:first-of-type > div:last-child > div:first-child > div:first-child {
+    gap: 1rem !important;
+  }
+}
+
+@media (min-width: 768px) {
+  .soldierhub-profile-shell > section:first-of-type > div:last-child {
+    padding: 1.25rem !important;
   }
 
-  .soldierhub-profile-shell section [class*="lg:grid-cols-1"] {
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-    min-width: 0 !important;
-    width: 100% !important;
+  .soldierhub-profile-shell > section:first-of-type > div:last-child > div:first-child {
+    gap: 1.05rem !important;
+  }
+
+  .soldierhub-profile-shell > section:first-of-type h1 {
+    font-size: clamp(2rem, 4vw, 2.75rem) !important;
+  }
+}
+
+@media (max-width: 520px) {
+  .soldierhub-profile-shell > section:first-of-type {
+    border-radius: 24px !important;
+  }
+
+  .soldierhub-profile-shell > section:first-of-type > div:last-child > div:first-child > div:first-child {
+    grid-template-columns: 1fr !important;
+    text-align: center !important;
+  }
+
+  .soldierhub-profile-shell > section:first-of-type > div:last-child > div:first-child > div:first-child > div:first-child {
+    align-items: center !important;
+  }
+
+  .soldierhub-profile-shell > section:first-of-type h1 {
+    font-size: clamp(1.85rem, 9vw, 2.45rem) !important;
   }
 }
 
