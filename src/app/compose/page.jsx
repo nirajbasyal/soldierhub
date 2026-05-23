@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { AlertTriangle, ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { T } from "@/lib/theme";
@@ -8,6 +9,21 @@ import PostComposer from "@/components/feed/PostComposer";
 
 export default function ComposePage() {
   const router = useRouter();
+
+  useEffect(() => {
+    const disableMultipleImageSelection = () => {
+      document
+        .querySelectorAll('input[type="file"][accept*="image"]')
+        .forEach((input) => input.removeAttribute("multiple"));
+    };
+
+    disableMultipleImageSelection();
+
+    const observer = new MutationObserver(disableMultipleImageSelection);
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <AppShell hideNav>
@@ -100,6 +116,25 @@ export default function ComposePage() {
             position: relative !important;
             z-index: 1 !important;
             margin-top: 0 !important;
+          }
+
+          .compose-wrap [aria-label="Remove selected photo"] {
+            z-index: 90 !important;
+            width: 40px !important;
+            height: 40px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            background: rgba(255, 255, 255, 0.98) !important;
+            border: 1px solid rgba(190, 202, 216, 0.95) !important;
+            color: #0b1c2c !important;
+            box-shadow: 0 12px 26px rgba(11, 28, 44, 0.22) !important;
+            pointer-events: auto !important;
+          }
+
+          .compose-wrap [aria-label="Remove selected photo"] svg {
+            width: 18px !important;
+            height: 18px !important;
           }
 
           @media (max-width: 520px) {
