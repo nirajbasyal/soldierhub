@@ -32,6 +32,34 @@ function getEditorText(editor) {
   return (editor?.innerText || "").replace(/\u200B/g, "").replace(/\u00a0/g, " ").trim();
 }
 
+function shouldOpenLongTextEditor(editor) {
+  if (!editor || typeof window === "undefined") return false;
+
+  const text = getEditorText(editor);
+  if (!text) return false;
+
+  const hasScrollableText = editor.scrollHeight > editor.clientHeight + 10;
+  if (hasScrollableText) return true;
+
+  const computedStyle = window.getComputedStyle(editor);
+  const maxHeight = Number.parseFloat(computedStyle.maxHeight || "0");
+  const currentHeight = editor.getBoundingClientRect().height;
+
+  if (Number.isFinite(maxHeight) && maxHeight > 0 && currentHeight >= maxHeight - 10) {
+    return true;
+  }
+
+  const lineHeight = Number.parseFloat(computedStyle.lineHeight || "0") || 28;
+  const estimatedLines = Math.ceil(editor.scrollHeight / lineHeight);
+  const manualLineBreaks = (editor.innerText?.match(/\n/g) || []).length;
+
+  return (
+    text.length >= LONG_TEXT_EDITOR_THRESHOLD ||
+    estimatedLines >= 8 ||
+    manualLineBreaks >= 7
+  );
+}
+
 function placeCursorAtEnd(element) {
   if (typeof window === "undefined" || !element) return;
 
@@ -253,7 +281,7 @@ export default function ComposePage() {
       const editor = getComposerEditorFromEvent(event);
       if (!editor) return;
 
-      if (getEditorText(editor).length >= LONG_TEXT_EDITOR_THRESHOLD) {
+      if (shouldOpenLongTextEditor(editor)) {
         openLongTextEditor(editor);
       }
     };
