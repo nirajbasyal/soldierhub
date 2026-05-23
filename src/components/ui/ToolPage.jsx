@@ -2,16 +2,20 @@
 import { ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { T } from "@/lib/theme";
-import Button from "./Button";
 
 export default function ToolPage({ title, eyebrow, icon: Icon, children }) {
   const router = useRouter();
   return (
     <div className="min-h-screen pb-24 md:pb-12" style={{ backgroundColor: T.bg }}>
       <div className="max-w-2xl mx-auto px-4 md:px-6 py-6 md:py-10">
-        <Button variant="secondary" icon={ArrowLeft} onClick={() => router.push("/")}>
-          Back to feed
-        </Button>
+        <button
+          type="button"
+          onClick={() => router.push("/")}
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-[#D5E2F2] bg-white text-[#0B1C2C] shadow-sm transition hover:-translate-y-0.5 hover:bg-[#F4F8FD] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1E4E8C]/35"
+          aria-label="Back to feed"
+        >
+          <ArrowLeft size={18} />
+        </button>
         <div className="mt-6 md:mt-8 mb-6">
           <div className="flex items-center gap-2 mb-1">
             <Icon size={16} style={{ color: T.gold }} />
