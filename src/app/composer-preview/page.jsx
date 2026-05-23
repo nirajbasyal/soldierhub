@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { AlertTriangle, ArrowLeft } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Bold, Italic, List, ListOrdered, Quote } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { T } from "@/lib/theme";
 import AppShell from "@/components/layout/AppShell";
@@ -12,6 +12,14 @@ const COMPOSER_EDITOR_SELECTOR =
 const LONG_EDITOR_TRIGGER_ROWS = 6;
 const LONG_EDITOR_TRIGGER_HEIGHT = 232;
 const LONG_EDITOR_BACKGROUND = "#F8FAFD";
+
+const EXPANDED_FORMAT_ACTIONS = [
+  { key: "bold", label: "Bold", icon: Bold, command: "bold" },
+  { key: "italic", label: "Italic", icon: Italic, command: "italic" },
+  { key: "bullet", label: "Bullets", icon: List, command: "insertUnorderedList" },
+  { key: "number", label: "Numbered", icon: ListOrdered, command: "insertOrderedList" },
+  { key: "quote", label: "Quote", icon: Quote, command: "formatBlock" },
+];
 
 function isPhoneWidth() {
   if (typeof window === "undefined") return false;
@@ -59,6 +67,15 @@ function dispatchComposerInput(editor) {
 
   editor.dispatchEvent(inputEvent);
   editor.dispatchEvent(new Event("keyup", { bubbles: true }));
+}
+
+function selectionInsideTag(editor, selector) {
+  if (typeof window === "undefined" || !editor) return false;
+  const selection = window.getSelection?.();
+  const anchorNode = selection?.anchorNode;
+  if (!anchorNode || !editor.contains(anchorNode)) return false;
+  const element = anchorNode.nodeType === Node.TEXT_NODE ? anchorNode.parentElement : anchorNode;
+  return Boolean(element?.closest?.(selector));
 }
 
 export default function ComposerPreviewPage() {
@@ -114,6 +131,29 @@ export default function ComposerPreviewPage() {
     suppressLongEditorUntilRef.current = Date.now() + 750;
     setLongEditorOpen(false);
     setLongEditorText("");
+  };
+
+  const applyExpandedFormatting = (action) => {
+    const editor = expandedEditorRef.current;
+    if (!editor || typeof document === "undefined") return;
+
+    editor.focus({ preventScroll: true });
+
+    try {
+      if (action.command === "formatBlock") {
+        const isQuoteActive = selectionInsideTag(editor, "blockquote");
+        document.execCommand("formatBlock", false, isQuoteActive ? "p" : "blockquote");
+      } else {
+        document.execCommand(action.command, false, null);
+      }
+    } catch {
+      // Keep typing available if a browser blocks an older execCommand call.
+    }
+
+    window.requestAnimationFrame?.(() => {
+      setLongEditorText(getEditorText(editor));
+      placeCursorAtEnd(editor);
+    });
   };
 
   useEffect(() => {
@@ -249,6 +289,32 @@ export default function ComposerPreviewPage() {
               >
                 Done
               </button>
+            </div>
+
+            <div
+              className="sticky top-[58px] z-20 shrink-0 border-b px-3 py-2"
+              style={{ backgroundColor: "rgba(248,250,253,0.98)", borderColor: T.borderSoft }}
+            >
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {EXPANDED_FORMAT_ACTIONS.map((action) => {
+                  const Icon = action.icon;
+                  return (
+                    <button
+                      key={action.key}
+                      type="button"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => applyExpandedFormatting(action)}
+                      className="sh-tap inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[12px] font-extrabold transition active:scale-[0.97]"
+                      style={{ backgroundColor: "#FFFFFF", borderColor: T.border, color: T.navy }}
+                      aria-label={action.label}
+                      title={action.label}
+                    >
+                      <Icon size={16} strokeWidth={2.55} />
+                      <span>{action.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             <div
