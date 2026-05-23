@@ -58,6 +58,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   const anonymousValueRef = useRef(anonymous);
   const submittingValueRef = useRef(submitting);
   const activeFormatsRef = useRef({});
+  const didInitialPageModePassRef = useRef(false);
 
   const canPublish = useMemo(
     () => plainText.trim().length > 0,
@@ -205,11 +206,17 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   useEffect(() => {
     if (!open || !editorRef.current) return;
 
+    if (pageMode && !didInitialPageModePassRef.current) {
+      didInitialPageModePassRef.current = true;
+      syncFormatState();
+      return;
+    }
+
     safeRequestAnimationFrame(() => {
       editorRef.current?.focus({ preventScroll: true });
       syncFormatState();
     });
-  }, [open, syncFormatState]);
+  }, [open, pageMode, syncFormatState]);
 
   useEffect(() => {
     const editor = editorRef.current;
