@@ -1,4 +1,5 @@
 import "./globals.css";
+import "./feed-polish.css";
 import Providers from "./providers";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://soldierhub.com";
