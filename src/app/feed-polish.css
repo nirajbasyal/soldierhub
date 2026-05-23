@@ -79,6 +79,53 @@
   }
 }
 
+/* Profile page: match the profile header width to the profile post feed on laptop. */
+.soldierhub-profile-shell {
+  max-width: 660px;
+}
+
+.soldierhub-profile-shell > section,
+.soldierhub-profile-shell .sh-feed-post-list,
+.soldierhub-profile-shell .sh-feed-post-list > article {
+  width: 100%;
+  max-width: 620px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.soldierhub-profile-shell section h1 {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+@media (min-width: 1024px) {
+  .soldierhub-profile-shell > section:first-of-type {
+    border-radius: 26px !important;
+  }
+
+  .soldierhub-profile-shell > section:first-of-type > div:last-child {
+    padding: 1.35rem !important;
+  }
+
+  .soldierhub-profile-shell section h1 {
+    font-size: clamp(2.1rem, 4vw, 3rem) !important;
+    line-height: 0.98 !important;
+  }
+
+  .soldierhub-profile-shell section [class*="lg:grid-cols-1"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+}
+
+/* Desktop sidebar weather/tool stack should start level with the feed hero, not with extra empty top space. */
+@media (min-width: 1024px) {
+  main aside.sticky.top-24 {
+    top: 88px !important;
+  }
+}
+
 /* Mobile keeps the edge-to-edge post cards, but long unbroken text still stays inside the card. */
 @media (max-width: 767px) {
   .sh-feed-post-list > article :where(p, span, div, a, li) {
