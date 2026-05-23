@@ -16,64 +16,54 @@ export default function SiteInfoCard({ onNavigate }) {
 
   return (
     <div
-      className="overflow-hidden rounded-[28px] border shadow-sm"
+      className="overflow-hidden rounded-[24px] border bg-white shadow-sm"
       style={{
-        background: "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,251,255,0.96) 100%)",
-        borderColor: "rgba(188,208,234,0.86)",
-        boxShadow: "0 16px 36px rgba(11,28,44,0.07)",
+        borderColor: "rgba(198,214,233,0.9)",
+        boxShadow: "0 12px 28px rgba(11,28,44,0.055)",
       }}
     >
-      {/* Header */}
-      <div
-        className="relative overflow-hidden border-b px-5 py-5"
-        style={{
-          borderColor: "rgba(213,226,242,0.92)",
-          background: "linear-gradient(135deg, rgba(238,245,253,0.96) 0%, rgba(255,255,255,0.98) 62%, rgba(255,246,248,0.9) 100%)",
-        }}
-      >
-        <div className="mb-4 h-1.5 overflow-hidden rounded-full bg-[#DDE8F3]">
-          <div className="h-full w-1/3 rounded-full bg-[#B31942]" />
+      <div className="px-4 pt-4">
+        <div className="mb-3 h-1 overflow-hidden rounded-full bg-[#DDE8F3]">
+          <div className="h-full w-[36%] rounded-full bg-[#B31942]" />
         </div>
 
-        <div className="flex min-h-[116px] items-center justify-center rounded-[24px] border bg-white/70 px-4 py-4">
+        <div className="flex min-h-[96px] items-center justify-center rounded-[22px] border px-4 py-3" style={{ backgroundColor: "#F7FAFE", borderColor: "#DCE7F4" }}>
           <Image
             src={SIDEBAR_LOGO_SRC}
             alt="SoldierHub logo"
             width={260}
             height={120}
-            className="h-auto max-h-[92px] w-full max-w-[238px] object-contain"
+            className="h-auto max-h-[74px] w-full max-w-[220px] object-contain"
             priority={false}
           />
         </div>
       </div>
 
-      <div className="p-5">
-        {/* Disclaimer */}
+      <div className="p-4">
         <div
-          className="flex gap-2.5 rounded-2xl border px-3.5 py-3"
+          className="flex gap-2.5 rounded-2xl border px-3 py-2.5"
           style={{
-            backgroundColor: "rgba(244,248,253,0.78)",
-            borderColor: "rgba(213,226,242,0.9)",
+            backgroundColor: "#F7FAFE",
+            borderColor: "#DCE7F4",
           }}
         >
-          <ShieldCheck size={16} className="mt-0.5 shrink-0" style={{ color: T.blue }} />
+          <ShieldCheck size={15} className="mt-0.5 shrink-0" style={{ color: T.blue }} />
 
-          <p className="text-xs leading-relaxed" style={{ color: T.textMuted }}>
+          <p className="text-[11px] leading-relaxed" style={{ color: T.textMuted }}>
             Independent and unofficial. Not affiliated with, endorsed by,
             sponsored by, or controlled by DoD, the U.S. Army, or Fort Bliss.
           </p>
         </div>
 
-        {/* Legal links */}
-        <div className="mt-4 grid grid-cols-2 gap-2">
+        <div className="mt-3 flex flex-wrap gap-2">
           <Link
             href="/privacy"
             onClick={handleNavigate}
-            className="rounded-2xl px-3 py-2.5 text-center text-sm font-bold transition-opacity hover:opacity-75"
+            className="rounded-full border px-3 py-1.5 text-xs font-bold transition-opacity hover:opacity-75"
             style={{
               color: T.navy,
-              backgroundColor: "rgba(220,232,247,0.55)",
-              border: "1px solid #D5E2F2",
+              backgroundColor: "#F4F7FB",
+              borderColor: "#D5E2F2",
             }}
           >
             Privacy Policy
@@ -82,27 +72,26 @@ export default function SiteInfoCard({ onNavigate }) {
           <Link
             href="/terms"
             onClick={handleNavigate}
-            className="rounded-2xl px-3 py-2.5 text-center text-sm font-bold transition-opacity hover:opacity-75"
+            className="rounded-full border px-3 py-1.5 text-xs font-bold transition-opacity hover:opacity-75"
             style={{
-              color: T.navy,
-              backgroundColor: "rgba(253,236,240,0.55)",
-              border: "1px solid #E9C4CD",
+              color: "#8F1534",
+              backgroundColor: "#FFF5F7",
+              borderColor: "#E9C4CD",
             }}
           >
             Terms of Use
           </Link>
         </div>
 
-        {/* Support email */}
-        <div className="mt-4 border-t pt-4" style={{ borderColor: T.borderSoft }}>
-          <p className="mb-1 text-[11px] font-extrabold uppercase tracking-[0.14em]" style={{ color: T.textSubtle }}>
+        <div className="mt-4 border-t pt-3" style={{ borderColor: T.borderSoft }}>
+          <p className="mb-1 text-[10px] font-extrabold uppercase tracking-[0.14em]" style={{ color: T.textSubtle }}>
             Contact Us
           </p>
 
           <a
             href="mailto:support@soldierhub.com?subject=SoldierHub%20Contact%20%2F%20Feedback"
             onClick={handleNavigate}
-            className="break-all text-sm font-bold underline-offset-4 hover:underline"
+            className="break-all text-xs font-bold underline-offset-4 hover:underline"
             style={{ color: T.navy }}
           >
             support@soldierhub.com
