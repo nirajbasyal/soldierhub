@@ -444,6 +444,40 @@ div:has(> [aria-label="Write your SoldierHub post"] ol) > .pointer-events-none {
   }
 }
 
+/* Facebook-style image previews: do not depend on saved image width/height metadata. */
+.sh-feed-post-list article button[aria-label="Open post image"] {
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  width: 100% !important;
+  height: min(68vh, 620px) !important;
+  min-height: 360px !important;
+  max-height: 620px !important;
+  aspect-ratio: auto !important;
+  border-radius: 22px !important;
+  background: #05070A !important;
+  overflow: hidden !important;
+}
+
+.sh-feed-post-list article button[aria-label="Open post image"] > img {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  object-position: top center !important;
+  background: #05070A !important;
+}
+
+@media (max-width: 520px) {
+  .sh-feed-post-list article button[aria-label="Open post image"] {
+    height: min(66vh, 540px) !important;
+    min-height: 340px !important;
+    border-left: 0 !important;
+    border-right: 0 !important;
+    border-radius: 18px !important;
+  }
+}
+
 @media (min-width: 768px) {
   .sh-card-hover:hover {
     transform: translateY(-2px);
