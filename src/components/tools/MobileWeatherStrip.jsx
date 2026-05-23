@@ -218,35 +218,35 @@ export default function MobileWeatherStrip() {
   };
 
   const ptUniform = getPtGuidance(weather?.tempF, fallbackPtUniform);
-  const recommendations = Array.isArray(ptUniform.recommendations) ? ptUniform.recommendations : [];
+  const recommendations = Array.isArray(ptUniform.recommendations) ? recommendationsFromGuidance(ptUniform.recommendations) : [];
 
   return (
     <div
-      className="rounded-[28px] border p-4 shadow-sm"
+      className="rounded-[24px] border p-4 shadow-sm"
       style={{
-        background: "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,251,255,0.96) 100%)",
-        borderColor: "rgba(188,208,234,0.86)",
-        boxShadow: "0 16px 36px rgba(11,28,44,0.07)",
+        backgroundColor: "rgba(255,255,255,0.96)",
+        borderColor: "rgba(198,214,233,0.9)",
+        boxShadow: "0 12px 28px rgba(11,28,44,0.055)",
       }}
     >
-      <div className="mb-4 h-1.5 overflow-hidden rounded-full bg-[#DDE8F3]">
-        <div className="h-full w-2/5 rounded-full bg-[#B31942]" />
+      <div className="mb-3 h-1 overflow-hidden rounded-full bg-[#DDE8F3]">
+        <div className="h-full w-[36%] rounded-full bg-[#B31942]" />
       </div>
 
       <div className="flex items-start gap-3">
         <div
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border"
-          style={{ backgroundColor: "rgba(220,232,247,0.78)", borderColor: "rgba(188,208,234,0.9)" }}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border"
+          style={{ backgroundColor: "#EEF5FD", borderColor: "#C9D9EE" }}
         >
-          <CloudSun size={20} style={{ color: T.blue }} strokeWidth={2.2} />
+          <CloudSun size={19} style={{ color: T.blue }} strokeWidth={2.25} />
         </div>
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-lg font-extrabold leading-none tracking-[-0.02em]" style={{ color: T.navy }}>
+            <span className="text-lg font-extrabold leading-none tracking-[-0.03em]" style={{ color: T.navy }}>
               Fort Bliss
             </span>
-            <span className="inline-flex items-center gap-1 rounded-full bg-white/80 px-2 py-1 text-[11px] font-bold" style={{ color: T.textSubtle }}>
+            <span className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-bold" style={{ backgroundColor: "#F4F7FB", color: T.textSubtle }}>
               <MapPin size={12} /> El Paso, TX
             </span>
           </div>
@@ -260,87 +260,77 @@ export default function MobileWeatherStrip() {
             {conditionText ? (
               <>
                 <span style={{ color: T.textSubtle }}>•</span>
-                <span className="truncate font-medium">{conditionText}</span>
+                <span className="font-medium">{conditionText}</span>
               </>
             ) : null}
           </div>
 
-          <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[11px] leading-5">
-            <span style={{ color: T.textSubtle }}>{date}</span>
-            <span style={{ color: T.textSubtle }}>•</span>
-            <span style={{ color: T.textMuted }}>{checkedLabel}</span>
-            <span style={{ color: T.textSubtle }}>•</span>
-            <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap">
-              <span style={{ color: T.textMuted }}>Powered by</span>
-              <a
-                href="https://www.weather.gov/epz/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-bold underline underline-offset-2"
-                style={{ color: T.blue }}
-              >
-                National Weather Service
-              </a>
-            </span>
+          <div className="mt-1 text-[11px] leading-5" style={{ color: T.textMuted }}>
+            {date} · {checkedLabel}
           </div>
         </div>
       </div>
 
+      <div className="mt-3 text-[11px] leading-5" style={{ color: T.textMuted }}>
+        Powered by{" "}
+        <a
+          href="https://www.weather.gov/epz/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-bold underline underline-offset-2"
+          style={{ color: T.blue }}
+        >
+          National Weather Service
+        </a>
+      </div>
+
       <div
-        className="mt-4 overflow-hidden rounded-[24px] border px-3 py-3"
+        className="mt-4 rounded-[22px] border p-3"
         style={{
-          background: "linear-gradient(135deg, rgba(238,245,253,0.96) 0%, rgba(255,255,255,0.98) 58%, rgba(255,246,248,0.92) 100%)",
-          borderColor: "rgba(188,208,234,0.92)",
+          backgroundColor: "#F7FAFE",
+          borderColor: "rgba(198,214,233,0.9)",
         }}
       >
         <div className="flex items-start gap-3">
           <div
-            className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border"
-            style={{ backgroundColor: "rgba(255,255,255,0.82)", borderColor: "rgba(188,208,234,0.75)" }}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border bg-white"
+            style={{ borderColor: "#D4E1F1" }}
           >
-            <Shirt size={18} style={{ color: T.navy }} strokeWidth={2.3} />
+            <Shirt size={17} style={{ color: T.navy }} strokeWidth={2.35} />
           </div>
 
           <div className="min-w-0 flex-1">
-            <div className="rounded-2xl border bg-white/82 px-3 py-3" style={{ borderColor: "rgba(188,208,234,0.75)" }}>
-              <div className="flex items-center justify-between gap-2">
-                <div className="text-[11px] font-extrabold uppercase tracking-[0.14em]" style={{ color: T.blue }}>
-                  Current PT Uniform
-                </div>
-                <span className="rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.1em]" style={{ backgroundColor: "rgba(179,25,66,0.09)", color: "#B31942" }}>
-                  Now
-                </span>
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-[10px] font-extrabold uppercase tracking-[0.14em]" style={{ color: T.blue }}>
+                Current PT Uniform
               </div>
-
-              <div className="mt-1 text-xl font-extrabold leading-tight tracking-[-0.03em]" style={{ color: T.navy }}>
-                {ptUniform.title}
-              </div>
-              <div className="mt-0.5 text-sm font-semibold leading-snug" style={{ color: T.text }}>
-                {ptUniform.detail}
-              </div>
+              <span className="rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-[0.08em]" style={{ backgroundColor: "rgba(179,25,66,0.09)", color: "#B31942" }}>
+                Now
+              </span>
             </div>
 
-            {recommendations.length > 0 ? (
-              <div className="mt-3 border-t pt-3" style={{ borderColor: "rgba(63,95,125,0.16)" }}>
-                <div className="text-[11px] font-extrabold uppercase tracking-[0.14em]" style={{ color: T.blue }}>
-                  Note
-                </div>
-                <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  {recommendations.map((item) => (
-                    <div key={`${item.type}-${item.title}`} className="rounded-2xl border bg-white/72 px-3 py-2" style={{ borderColor: "rgba(213,226,242,0.9)" }}>
-                      <div className="text-[11px] font-bold" style={{ color: T.textSubtle }}>
-                        {item.label}
-                      </div>
-                      <div className="mt-0.5 text-sm font-extrabold leading-snug" style={{ color: T.navy }}>
-                        {item.title}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : null}
+            <div className="mt-1 text-[22px] font-extrabold leading-tight tracking-[-0.04em]" style={{ color: T.navy }}>
+              {ptUniform.title}
+            </div>
+            <div className="mt-0.5 text-sm font-semibold leading-snug" style={{ color: T.text }}>
+              {ptUniform.detail}
+            </div>
           </div>
         </div>
+
+        {recommendations.length > 0 ? (
+          <div className="mt-3 rounded-2xl border bg-white px-3 py-2.5" style={{ borderColor: "#DCE7F4" }}>
+            <div className="text-[10px] font-extrabold uppercase tracking-[0.14em]" style={{ color: T.textSubtle }}>
+              Note
+            </div>
+            <div className="mt-1 text-sm leading-snug" style={{ color: T.text }}>
+              <span className="font-bold" style={{ color: T.navy }}>
+                {recommendations[0].label}:
+              </span>{" "}
+              {recommendations[0].title}
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {status === "error" && !weather ? (
@@ -350,4 +340,8 @@ export default function MobileWeatherStrip() {
       ) : null}
     </div>
   );
+}
+
+function recommendationsFromGuidance(items) {
+  return items.filter(Boolean).slice(0, 1);
 }
