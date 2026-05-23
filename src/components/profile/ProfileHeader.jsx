@@ -3,12 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
-  Camera,
   Check,
   KeyRound,
   Loader2,
   Mail,
-  Trash2,
   X,
 } from "lucide-react";
 import { T } from "@/lib/theme";
@@ -25,6 +23,8 @@ import ProfileIdentityHero from "@/components/profile/ProfileIdentityHero";
 import ProfileActions from "@/components/profile/ProfileActions";
 import ProfileStats from "@/components/profile/ProfileStats";
 import ProfileInfoPill from "@/components/profile/ProfileInfoPill";
+import ProfileAvatarActions from "@/components/profile/ProfileAvatarActions";
+import ProfileColorPicker from "@/components/profile/ProfileColorPicker";
 import ProfileFollowListPanel, { getFollowProfileId } from "@/components/profile/ProfileFollowListPanel";
 
 const COLOR_OPTIONS = [
@@ -522,31 +522,12 @@ export default function ProfileHeader() {
               className="hidden"
             />
 
-            <div className="grid grid-cols-1 gap-2 min-[420px]:grid-cols-2">
-              <button
-                type="button"
-                onClick={chooseAvatar}
-                disabled={avatarSaving}
-                className="inline-flex items-center justify-center gap-2 rounded-full border px-3 py-2 text-xs font-black transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
-                style={{ backgroundColor: "rgba(244,248,253,0.96)", borderColor: "#D5E2F2", color: T.navy }}
-              >
-                <Camera size={14} />
-                {activeAvatarSrc ? "Change photo" : "Add photo"}
-              </button>
-
-              {activeAvatarSrc ? (
-                <button
-                  type="button"
-                  onClick={removeAvatarPhoto}
-                  disabled={avatarSaving}
-                  className="inline-flex items-center justify-center gap-2 rounded-full border px-3 py-2 text-xs font-black transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
-                  style={{ backgroundColor: "rgba(253,236,240,0.95)", borderColor: "#F3C7D1", color: "#B31942" }}
-                >
-                  <Trash2 size={14} />
-                  Remove photo
-                </button>
-              ) : null}
-            </div>
+            <ProfileAvatarActions
+              hasAvatar={Boolean(activeAvatarSrc)}
+              saving={avatarSaving}
+              onChoose={chooseAvatar}
+              onRemove={removeAvatarPhoto}
+            />
 
             {avatarImage?.size ? (
               <div
@@ -566,22 +547,7 @@ export default function ProfileHeader() {
               </div>
             ) : null}
 
-            <div className="flex flex-wrap gap-1.5">
-              {COLOR_OPTIONS.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setColor(c)}
-                  className="h-7 w-7 rounded-full border-2 transition-transform hover:scale-110"
-                  style={{
-                    backgroundColor: c,
-                    borderColor: c === color ? "#FFFFFF" : "rgba(255,255,255,0.45)",
-                    boxShadow: c === color ? "0 0 0 2px #1E4E8C" : "none",
-                  }}
-                  aria-label={`Choose profile color ${c}`}
-                />
-              ))}
-            </div>
+            <ProfileColorPicker colors={COLOR_OPTIONS} value={color} onChange={setColor} />
 
             <TextInput label="Display name" value={name} onChange={(e) => setName(e.target.value)} />
             <TextArea label="Bio" value={bio} onChange={(e) => setBio(e.target.value)} />
