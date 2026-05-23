@@ -107,7 +107,7 @@ function LoadingCard() {
             Checking your account
           </h1>
           <p className="mt-2 text-sm leading-6" style={{ color: T.textMuted }}>
-            Please wait while SoldierHub checks your review status.
+            Please wait while Soldier Hub checks your review status.
           </p>
         </section>
       </div>
@@ -278,9 +278,9 @@ function PendingReviewContent() {
   };
 
   const handleContactAdmin = () => {
-    const subject = encodeURIComponent("SoldierHub account access request");
+    const subject = encodeURIComponent("Soldier Hub account access request");
     const body = encodeURIComponent(
-      `Hello,\n\nI need help with my SoldierHub account.\n\nEmail: ${currentEmail || ""}\nName: ${
+      `Hello,\n\nI need help with my Soldier Hub account.\n\nEmail: ${currentEmail || ""}\nName: ${
         currentName || ""
       }\nStatus: ${profileStatus || ""}\n\nThank you.`
     );
@@ -346,7 +346,7 @@ function PendingReviewContent() {
     ? "You can request another review or contact admin for help."
     : found
       ? isApproved
-        ? "Your SoldierHub account is ready."
+        ? "Your Soldier Hub account is ready."
         : emailVerified
           ? "Your profile is waiting for admin review."
           : "One more step before admin review starts."
@@ -363,7 +363,7 @@ function PendingReviewContent() {
 
           <div className="mt-5 text-xs font-black tracking-[0.18em]" style={{ color: T.navy }}>
             <Sparkles size={13} className="mr-1 inline -mt-0.5" />
-            SoldierHub
+            Soldier Hub
           </div>
 
           <h1 className="mx-auto mt-3 max-w-[430px] text-[34px] font-black leading-[1.05] tracking-[-0.045em] sm:text-[42px]" style={{ color: T.navy }}>
@@ -477,10 +477,10 @@ function PendingReviewContent() {
                   title={isApproved ? "Step 2: Admin verification approved" : "Step 2: Wait for admin verification"}
                   body={
                     isApproved
-                      ? "Your SoldierHub account has been approved. You can now browse the feed and use verified member features."
+                      ? "Your Soldier Hub account has been approved. You can now browse the feed and use verified member features."
                       : emailVerified
-                        ? "Your SoldierHub profile is waiting for admin review. Once approved, you will be able to post, comment, message, and use verified member features."
-                        : "After your email is verified, an admin will review your SoldierHub profile. Posting, commenting, and messaging will unlock after approval."
+                        ? "Your Soldier Hub profile is waiting for admin review. Once approved, you will be able to post, comment, message, and use verified member features."
+                        : "After your email is verified, an admin will review your Soldier Hub profile. Posting, commenting, and messaging will unlock after approval."
                   }
                 />
               </div>
