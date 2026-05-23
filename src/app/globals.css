@@ -467,6 +467,17 @@ article button[aria-label="Open post image"] > img {
   }
 }
 
+/* Normal photos keep their natural aspect ratio. Only very long screenshot-style images stay cropped by the PostCard component. */
+article button[aria-label="Open post image"][style*="aspect-ratio"] {
+  max-height: none !important;
+}
+
+article button[aria-label="Open post image"][style*="aspect-ratio"] > img {
+  height: 100% !important;
+  object-fit: contain !important;
+  object-position: center center !important;
+}
+
 @media (min-width: 768px) {
   .sh-card-hover:hover {
     transform: translateY(-2px);
