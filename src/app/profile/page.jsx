@@ -129,8 +129,8 @@ export default function ProfilePage() {
             "radial-gradient(circle at top left, rgba(220,232,247,0.9), transparent 32%), linear-gradient(180deg, #F4F8FD 0%, #FFFFFF 48%, #F4F8FD 100%)",
         }}
       >
-        <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-10">
-          <div className="flex items-center justify-between gap-3 mb-6">
+        <div className="soldierhub-profile-shell mx-auto w-full max-w-[660px] px-4 py-4 sm:px-5 md:px-6 md:py-6">
+          <div className="flex items-center justify-between gap-3 mb-4 md:mb-5">
             <Link
               href="/"
               className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition hover:-translate-y-0.5"
