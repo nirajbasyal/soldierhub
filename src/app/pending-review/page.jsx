@@ -21,12 +21,106 @@ import Footer from "@/components/layout/Footer";
 
 const ADMIN_CONTACT_EMAIL = "niraj.basyal2054@gmail.com";
 
+function StatusIcon({ type = "pending" }) {
+  const isDanger = type === "danger";
+  const isSuccess = type === "success";
+  const Icon = isDanger ? ShieldAlert : isSuccess ? CheckCircle2 : type === "mail" ? Mail : Clock;
+
+  return (
+    <div
+      className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border sm:h-16 sm:w-16"
+      style={{
+        backgroundColor: isDanger ? "#FFF1F4" : isSuccess ? "#EEF7F2" : "#EEF4FB",
+        borderColor: isDanger ? "rgba(179,25,66,0.18)" : isSuccess ? "rgba(34,120,83,0.16)" : "rgba(63,95,125,0.18)",
+      }}
+    >
+      <Icon
+        size={28}
+        strokeWidth={2.25}
+        style={{ color: isDanger ? T.red : isSuccess ? "#227853" : T.navy }}
+      />
+    </div>
+  );
+}
+
+function StepCard({ icon: Icon, title, body, tone = "neutral" }) {
+  const isSuccess = tone === "success";
+  const isDanger = tone === "danger";
+
+  return (
+    <div
+      className="rounded-2xl border p-4 text-left sm:p-5"
+      style={{
+        backgroundColor: isDanger ? "#FFF6F8" : isSuccess ? "#F2F8F5" : "#F7FAFD",
+        borderColor: isDanger ? "rgba(179,25,66,0.22)" : isSuccess ? "rgba(34,120,83,0.2)" : "rgba(63,95,125,0.18)",
+      }}
+    >
+      <div className="flex gap-3">
+        <div
+          className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border"
+          style={{
+            backgroundColor: "rgba(255,255,255,0.78)",
+            borderColor: isDanger ? "rgba(179,25,66,0.18)" : isSuccess ? "rgba(34,120,83,0.18)" : "rgba(63,95,125,0.18)",
+            color: isDanger ? T.red : isSuccess ? "#227853" : T.navy,
+          }}
+        >
+          <Icon size={18} strokeWidth={2.35} />
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <p className="text-[15px] font-extrabold leading-snug" style={{ color: T.text }}>
+            {title}
+          </p>
+          <p className="mt-1.5 text-[13px] leading-6 sm:text-sm" style={{ color: T.textMuted }}>
+            {body}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EmailBadge({ email }) {
+  if (!email) return null;
+
+  return (
+    <div
+      className="mt-4 flex min-w-0 items-center justify-center gap-2 rounded-2xl border px-3 py-3 text-sm"
+      style={{ backgroundColor: "#F3F7FB", borderColor: "rgba(63,95,125,0.12)", color: T.textMuted }}
+    >
+      <Mail size={15} className="shrink-0" />
+      <span className="min-w-0 truncate">{email}</span>
+    </div>
+  );
+}
+
+function LoadingCard() {
+  return (
+    <main className="flex min-h-screen flex-col" style={{ backgroundColor: "#EAF2FA" }}>
+      <div className="flex flex-1 items-center justify-center px-4 py-8">
+        <section
+          className="w-full max-w-[520px] rounded-[28px] border px-5 py-8 text-center shadow-sm sm:px-8"
+          style={{ backgroundColor: "rgba(255,255,255,0.96)", borderColor: "rgba(63,95,125,0.16)" }}
+        >
+          <StatusIcon type="pending" />
+          <h1 className="mt-5 text-3xl font-black tracking-[-0.03em]" style={{ color: T.navy }}>
+            Checking your account
+          </h1>
+          <p className="mt-2 text-sm leading-6" style={{ color: T.textMuted }}>
+            Please wait while SoldierHub checks your review status.
+          </p>
+        </section>
+      </div>
+      <Footer />
+    </main>
+  );
+}
+
 function PendingReviewContent() {
   const router = useRouter();
   const params = useSearchParams();
 
   const { setAuthModal, isLiveMode, requestRereview } = useApp();
-
   const supabase = createClient();
 
   const queryEmail = params.get("email") || "";
@@ -54,14 +148,10 @@ function PendingReviewContent() {
   const isApproved = profileStatus === "verified";
   const isAccessBlocked = isRejected || isRevoked;
 
-  const phoneInvalid =
-    rereviewPhone.trim().length > 0 && rereviewPhone.trim().length !== 10;
+  const phoneInvalid = rereviewPhone.trim().length > 0 && rereviewPhone.trim().length !== 10;
 
   const safeSignOut = async () => {
-    if (supabase) {
-      await supabase.auth.signOut();
-    }
-
+    if (supabase) await supabase.auth.signOut();
     setHasUserSession(false);
     setEmailVerified(false);
   };
@@ -96,20 +186,9 @@ function PendingReviewContent() {
           .eq("id", user.id)
           .maybeSingle();
 
-        const liveStatus =
-          profile?.status ||
-          profile?.verification_status ||
-          statusFromUrl ||
-          "pending";
-
-        const profileEmail =
-          profile?.email || profile?.personal_email || user.email || queryEmail;
-
-        const profileName =
-          profile?.full_name ||
-          user.user_metadata?.full_name ||
-          user.user_metadata?.name ||
-          queryName;
+        const liveStatus = profile?.status || profile?.verification_status || statusFromUrl || "pending";
+        const profileEmail = profile?.email || profile?.personal_email || user.email || queryEmail;
+        const profileName = profile?.full_name || user.user_metadata?.full_name || user.user_metadata?.name || queryName;
 
         setProfileStatus(liveStatus);
         setCurrentEmail(profileEmail);
@@ -120,9 +199,7 @@ function PendingReviewContent() {
 
         if (liveStatus !== statusFromUrl) {
           router.replace(
-            `/pending-review?email=${encodeURIComponent(
-              profileEmail || ""
-            )}&name=${encodeURIComponent(
+            `/pending-review?email=${encodeURIComponent(profileEmail || "")}&name=${encodeURIComponent(
               profileName || ""
             )}&found=1&status=${encodeURIComponent(liveStatus)}`
           );
@@ -152,10 +229,7 @@ function PendingReviewContent() {
 
   const handleBackToFeed = async () => {
     try {
-      if (isAccessBlocked) {
-        await safeSignOut();
-      }
-
+      if (isAccessBlocked) await safeSignOut();
       router.replace("/");
     } catch (error) {
       console.error("Back to feed failed:", error);
@@ -168,42 +242,30 @@ function PendingReviewContent() {
       setRereviewMessage("");
 
       if (!hasUserSession) {
-        setRereviewMessage(
-          "Please sign in with this same account first, then request re-review."
-        );
+        setRereviewMessage("Please sign in with this same account first, then request re-review.");
         setAuthModal("login");
         return;
       }
 
       const cleanPhone = rereviewPhone.trim();
-
       if (cleanPhone && cleanPhone.length !== 10) {
         setRereviewMessage("Please enter a valid 10-digit phone number.");
         return;
       }
 
       setRereviewing(true);
-
-      const result = await requestRereview({
-        phone: cleanPhone,
-      });
+      const result = await requestRereview({ phone: cleanPhone });
 
       if (result?.ok === false) {
-        setRereviewMessage(
-          result.error || "Could not request re-review. Please contact admin."
-        );
+        setRereviewMessage(result.error || "Could not request re-review. Please contact admin.");
         return;
       }
 
       setProfileStatus("pending");
-      setRereviewMessage(
-        "Re-review request submitted. Your profile is pending admin review again."
-      );
+      setRereviewMessage("Re-review request submitted. Your profile is pending admin review again.");
 
       router.replace(
-        `/pending-review?email=${encodeURIComponent(
-          currentEmail || ""
-        )}&name=${encodeURIComponent(
+        `/pending-review?email=${encodeURIComponent(currentEmail || "")}&name=${encodeURIComponent(
           currentName || ""
         )}&found=1&status=pending`
       );
@@ -218,13 +280,10 @@ function PendingReviewContent() {
   const handleContactAdmin = () => {
     const subject = encodeURIComponent("SoldierHub account access request");
     const body = encodeURIComponent(
-      `Hello,\n\nI need help with my SoldierHub account.\n\nEmail: ${
-        currentEmail || ""
-      }\nName: ${currentName || ""}\nStatus: ${
-        profileStatus || ""
-      }\n\nThank you.`
+      `Hello,\n\nI need help with my SoldierHub account.\n\nEmail: ${currentEmail || ""}\nName: ${
+        currentName || ""
+      }\nStatus: ${profileStatus || ""}\n\nThank you.`
     );
-
     window.location.href = `mailto:${ADMIN_CONTACT_EMAIL}?subject=${subject}&body=${body}`;
   };
 
@@ -269,374 +328,201 @@ function PendingReviewContent() {
 
   const found = foundFromUrl || hasUserSession || isAccessBlocked;
 
-  if (checking) {
-    return (
-      <main className="min-h-screen flex flex-col" style={{ backgroundColor: T.bg }}>
-        <div className="flex-1 flex items-center justify-center px-4 py-10">
-          <div
-            className="w-full max-w-md rounded-2xl border p-7 md:p-8 text-center"
-            style={{ backgroundColor: T.card, borderColor: T.border }}
-          >
-            <div
-              className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
-              style={{ backgroundColor: T.goldBg }}
-            >
-              <Clock size={28} style={{ color: T.gold }} strokeWidth={2} />
-            </div>
+  if (checking) return <LoadingCard />;
 
-            <h1 className="text-2xl leading-tight mb-2 font-serif" style={{ color: T.navy }}>
-              Checking your account
-            </h1>
+  const title = isRejected
+    ? "Profile not approved"
+    : isRevoked
+      ? "Access removed"
+      : found
+        ? isApproved
+          ? "Account approved"
+          : emailVerified
+            ? "Email verified. Review pending"
+            : "Verify your email"
+        : "Account not found";
 
-            <p className="text-sm" style={{ color: T.textMuted }}>
-              Please wait while SoldierHub checks your review status.
-            </p>
-          </div>
-        </div>
-
-        <Footer />
-      </main>
-    );
-  }
+  const subtitle = isAccessBlocked
+    ? "You can request another review or contact admin for help."
+    : found
+      ? isApproved
+        ? "Your SoldierHub account is ready."
+        : emailVerified
+          ? "Your profile is waiting for admin review."
+          : "One more step before admin review starts."
+      : "Please sign in with your existing account or contact admin.";
 
   return (
-    <main className="min-h-screen flex flex-col" style={{ backgroundColor: T.bg }}>
-      <div className="flex-1 flex items-center justify-center px-4 py-10">
-        <div
-          className="w-full max-w-md rounded-2xl border p-7 md:p-8 text-center"
-          style={{ backgroundColor: T.card, borderColor: T.border }}
+    <main className="flex min-h-screen flex-col" style={{ backgroundColor: "#EAF2FA" }}>
+      <div className="flex flex-1 items-start justify-center px-4 py-6 sm:items-center sm:py-10">
+        <section
+          className="w-full max-w-[560px] rounded-[30px] border px-5 py-7 text-center shadow-sm sm:px-8 sm:py-9"
+          style={{ backgroundColor: "rgba(255,255,255,0.97)", borderColor: "rgba(63,95,125,0.16)" }}
         >
-          <div
-            className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
-            style={{
-              backgroundColor: isAccessBlocked || !found ? T.redBg : T.goldBg,
-            }}
-          >
-            {isAccessBlocked || !found ? (
-              <ShieldAlert size={28} style={{ color: T.red }} strokeWidth={2} />
-            ) : isApproved ? (
-              <CheckCircle2 size={30} style={{ color: T.gold }} strokeWidth={2} />
-            ) : emailVerified ? (
-              <CheckCircle2 size={30} style={{ color: T.gold }} strokeWidth={2} />
-            ) : (
-              <Mail size={28} style={{ color: T.gold }} strokeWidth={2} />
-            )}
-          </div>
+          <StatusIcon type={isAccessBlocked || !found ? "danger" : isApproved || emailVerified ? "success" : "mail"} />
 
-          <div
-            className="text-xs font-medium tracking-wider uppercase mb-1"
-            style={{ color: T.gold }}
-          >
-            <Sparkles size={12} className="inline mr-1 -mt-0.5" />
+          <div className="mt-5 text-xs font-black tracking-[0.18em]" style={{ color: T.navy }}>
+            <Sparkles size={13} className="mr-1 inline -mt-0.5" />
             SoldierHub
           </div>
 
-          <h1 className="text-3xl leading-tight mb-3 font-serif" style={{ color: T.navy }}>
-            {isRejected
-              ? "Profile verification not approved"
-              : isRevoked
-              ? "Account access removed"
-              : found
-              ? isApproved
-                ? "Account approved"
-                : emailVerified
-                ? "Email verified. Admin review pending"
-                : "Verify your email"
-              : "We couldn't find that account"}
+          <h1 className="mx-auto mt-3 max-w-[430px] text-[34px] font-black leading-[1.05] tracking-[-0.045em] sm:text-[42px]" style={{ color: T.navy }}>
+            {title}
           </h1>
+
+          <p className="mx-auto mt-3 max-w-[430px] text-[15px] leading-6" style={{ color: T.textMuted }}>
+            {currentName ? (
+              <>
+                Thanks for joining, <span className="font-extrabold" style={{ color: T.text }}>{currentName}</span>. {subtitle}
+              </>
+            ) : (
+              subtitle
+            )}
+          </p>
 
           {isAccessBlocked ? (
             <>
-              {currentName ? (
-                <p className="text-sm mb-4" style={{ color: T.textMuted }}>
-                  Account name:{" "}
-                  <span style={{ color: T.text, fontWeight: 600 }}>{currentName}</span>
-                </p>
-              ) : null}
+              <div className="mt-6 space-y-3">
+                <StepCard
+                  icon={ShieldAlert}
+                  tone="danger"
+                  title={isRejected ? "Admin did not approve this profile" : "Access was removed"}
+                  body={
+                    isRejected
+                      ? "This profile was not approved during verification. You may request another review using the same account."
+                      : "For security reasons, access to this profile was removed. You may contact admin or request another review."
+                  }
+                />
 
-              <div
-                className="mt-5 rounded-xl border p-4 text-left"
-                style={{
-                  backgroundColor: T.redBg,
-                  borderColor: T.red,
-                }}
-              >
-                <div className="flex items-start gap-3">
-                  <ShieldAlert
-                    size={20}
-                    style={{ color: T.red }}
-                    className="mt-0.5 shrink-0"
-                  />
-
-                  <div>
-                    <p className="text-sm font-semibold" style={{ color: T.navy }}>
-                      {isRejected
-                        ? "Admin did not approve this profile during verification."
-                        : "For security reasons, admin removed access to this profile."}
-                    </p>
-
-                    <p className="text-xs leading-relaxed mt-2" style={{ color: T.textMuted }}>
-                      You can request another review using the same account. Add or update your phone number if you want admin to have another way to verify your account, or contact admin for help.
-                    </p>
-
-                    <p className="text-xs leading-relaxed mt-2" style={{ color: T.textMuted }}>
-                      Admin contact:{" "}
-                      <span style={{ color: T.text, fontWeight: 600 }}>
-                        {ADMIN_CONTACT_EMAIL}
-                      </span>
-                    </p>
-                  </div>
-                </div>
+                <StepCard
+                  icon={Mail}
+                  title="Need help?"
+                  body={`Contact admin at ${ADMIN_CONTACT_EMAIL}, or add an optional phone number below before requesting re-review.`}
+                />
               </div>
 
-              {currentEmail && (
-                <div
-                  className="mt-4 px-3 py-2 rounded-lg text-xs flex items-center justify-center gap-2"
-                  style={{ backgroundColor: T.surface, color: T.textMuted }}
-                >
-                  <Mail size={13} /> {currentEmail}
-                </div>
-              )}
+              <EmailBadge email={currentEmail} />
 
-              <div className="mt-5 rounded-xl border p-4 text-left" style={{ borderColor: T.border }}>
-                <p className="text-sm font-semibold mb-2" style={{ color: T.navy }}>
+              <div
+                className="mt-5 rounded-2xl border p-4 text-left sm:p-5"
+                style={{ backgroundColor: "#FFFFFF", borderColor: "rgba(63,95,125,0.18)" }}
+              >
+                <p className="text-[15px] font-extrabold" style={{ color: T.text }}>
                   Request re-review
                 </p>
-
-                <p className="text-xs leading-relaxed mb-3" style={{ color: T.textMuted }}>
-                  Add or update optional information below. This will move your account back to
-                  pending admin review.
+                <p className="mt-1.5 text-[13px] leading-6" style={{ color: T.textMuted }}>
+                  Add optional information below. This will move your account back to pending admin review.
                 </p>
 
-                <label className="block">
-                  <span className="block text-xs font-medium mb-1.5" style={{ color: T.textMuted }}>
+                <label className="mt-4 block">
+                  <span className="mb-1.5 block text-xs font-bold" style={{ color: T.textMuted }}>
                     Phone number optional
                   </span>
 
                   <div className="relative">
-                    <span
-                      className="absolute left-3 top-1/2 -translate-y-1/2"
-                      style={{ color: phoneInvalid ? T.red : T.textSubtle }}
-                    >
-                      <Phone size={16} />
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2" style={{ color: phoneInvalid ? T.red : T.textSubtle }}>
+                      <Phone size={17} />
                     </span>
-
                     <input
                       type="tel"
                       inputMode="numeric"
                       maxLength={10}
                       value={rereviewPhone}
-                      onChange={(e) => {
-                        const numbersOnly = e.target.value.replace(/\D/g, "");
-                        setRereviewPhone(numbersOnly);
-                      }}
+                      onChange={(e) => setRereviewPhone(e.target.value.replace(/\D/g, ""))}
                       placeholder="9151234567"
-                      className="w-full h-11 rounded-xl border text-sm outline-none pl-10 pr-3"
-                      style={{
-                        backgroundColor: T.card,
-                        borderColor: phoneInvalid ? T.red : T.border,
-                        color: T.text,
-                      }}
+                      className="h-12 w-full rounded-2xl border bg-white pl-11 pr-3 text-[16px] outline-none"
+                      style={{ borderColor: phoneInvalid ? T.red : "rgba(63,95,125,0.22)", color: T.text }}
                     />
                   </div>
 
-                  {phoneInvalid && (
-                    <p className="mt-1 text-xs font-medium" style={{ color: T.red }}>
+                  {phoneInvalid ? (
+                    <p className="mt-1.5 text-xs font-semibold" style={{ color: T.red }}>
                       Please enter a valid 10-digit phone number.
                     </p>
-                  )}
+                  ) : null}
                 </label>
 
-                {rereviewMessage && (
-                  <p className="mt-3 text-xs leading-relaxed" style={{ color: T.textMuted }}>
+                {rereviewMessage ? (
+                  <p className="mt-3 text-xs leading-6" style={{ color: T.textMuted }}>
                     {rereviewMessage}
                   </p>
-                )}
+                ) : null}
               </div>
 
-              <div className="mt-6 flex flex-col gap-2">
-                <Button
-                  variant="primary"
-                  icon={RefreshCw}
-                  onClick={handleRequestRereview}
-                  disabled={rereviewing || phoneInvalid}
-                >
+              <div className="mt-6 flex flex-col gap-2.5">
+                <Button variant="primary" icon={RefreshCw} onClick={handleRequestRereview} disabled={rereviewing || phoneInvalid}>
                   {rereviewing ? "Submitting..." : "Request re-review"}
                 </Button>
-
-                <Button variant="ghost" icon={Mail} onClick={handleContactAdmin}>
-                  Contact admin
-                </Button>
-
-                <Button variant="ghost" icon={ArrowLeft} onClick={handleBackToFeed}>
-                  Back to feed
-                </Button>
+                <Button variant="ghost" icon={Mail} onClick={handleContactAdmin}>Contact admin</Button>
+                <Button variant="ghost" icon={ArrowLeft} onClick={handleBackToFeed}>Browse the feed</Button>
               </div>
             </>
           ) : found ? (
             <>
-              {currentName ? (
-                <p className="text-sm mb-4" style={{ color: T.textMuted }}>
-                  Thanks for joining,{" "}
-                  <span style={{ color: T.text, fontWeight: 600 }}>{currentName}</span>.
+              <div className="mt-6 space-y-3">
+                <StepCard
+                  icon={emailVerified ? CheckCircle2 : Mail}
+                  tone={emailVerified ? "success" : "neutral"}
+                  title={emailVerified ? "Step 1: Email verified" : "Step 1: Verify your email"}
+                  body={
+                    emailVerified
+                      ? "Your email address has been successfully confirmed."
+                      : "Please check your inbox and click the confirmation link sent to your email address."
+                  }
+                />
+
+                <StepCard
+                  icon={isApproved ? CheckCircle2 : Clock}
+                  tone={isApproved ? "success" : "neutral"}
+                  title={isApproved ? "Step 2: Admin verification approved" : "Step 2: Wait for admin verification"}
+                  body={
+                    isApproved
+                      ? "Your SoldierHub account has been approved. You can now browse the feed and use verified member features."
+                      : emailVerified
+                        ? "Your SoldierHub profile is waiting for admin review. Once approved, you will be able to post, comment, message, and use verified member features."
+                        : "After your email is verified, an admin will review your SoldierHub profile. Posting, commenting, and messaging will unlock after approval."
+                  }
+                />
+              </div>
+
+              <EmailBadge email={currentEmail} />
+
+              {resendMessage ? (
+                <p className="mt-3 text-xs leading-6" style={{ color: T.textMuted }}>
+                  {resendMessage}
                 </p>
               ) : null}
 
-              <div className="mt-5 space-y-3 text-left">
-                <div
-                  className="rounded-xl border p-4"
-                  style={{
-                    backgroundColor: emailVerified ? T.goldBg : T.surface,
-                    borderColor: emailVerified ? T.gold : T.border,
-                  }}
-                >
-                  <div className="flex items-start gap-3">
-                    {emailVerified ? (
-                      <CheckCircle2
-                        size={20}
-                        style={{ color: T.gold }}
-                        className="mt-0.5 shrink-0"
-                      />
-                    ) : (
-                      <Mail
-                        size={20}
-                        style={{ color: T.gold }}
-                        className="mt-0.5 shrink-0"
-                      />
-                    )}
-
-                    <div>
-                      <p className="text-sm font-semibold" style={{ color: T.navy }}>
-                        Step 1:{" "}
-                        {emailVerified ? "Your email has been verified" : "Verify your email"}
-                      </p>
-
-                      <p className="text-xs leading-relaxed mt-1" style={{ color: T.textMuted }}>
-                        {emailVerified
-                          ? "Your email address has been successfully confirmed."
-                          : "Please check your inbox and click the confirmation link sent to your email address."}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div
-                  className="rounded-xl border p-4"
-                  style={{
-                    backgroundColor: isApproved ? T.goldBg : T.surface,
-                    borderColor: isApproved ? T.gold : T.border,
-                  }}
-                >
-                  <div className="flex items-start gap-3">
-                    {isApproved ? (
-                      <CheckCircle2
-                        size={20}
-                        style={{ color: T.gold }}
-                        className="mt-0.5 shrink-0"
-                      />
-                    ) : (
-                      <Clock
-                        size={20}
-                        style={{ color: T.gold }}
-                        className="mt-0.5 shrink-0"
-                      />
-                    )}
-
-                    <div>
-                      <p className="text-sm font-semibold" style={{ color: T.navy }}>
-                        Step 2:{" "}
-                        {isApproved
-                          ? "Admin verification approved"
-                          : "Wait for admin verification"}
-                      </p>
-
-                      <p className="text-xs leading-relaxed mt-1" style={{ color: T.textMuted }}>
-                        {isApproved
-                          ? "Your SoldierHub account has been approved. You can now browse the feed and use verified member features."
-                          : emailVerified
-                          ? "Your SoldierHub profile is now waiting for admin review. Thank you for your patience. You will be able to post, comment, message, and sell once your account is approved."
-                          : "After your email is verified, an admin will review your SoldierHub profile. Posting, commenting, messaging, and selling will unlock after approval."}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {currentEmail && (
-                <div
-                  className="mt-4 px-3 py-2 rounded-lg text-xs flex items-center justify-center gap-2"
-                  style={{ backgroundColor: T.surface, color: T.textMuted }}
-                >
-                  <Mail size={13} /> {currentEmail}
-                </div>
-              )}
-
-              {resendMessage && (
-                <p className="mt-3 text-xs leading-relaxed" style={{ color: T.textMuted }}>
-                  {resendMessage}
-                </p>
-              )}
-
-              <div className="mt-6 flex flex-col gap-2">
-                {!emailVerified && isLiveMode && (
-                  <Button
-                    variant="primary"
-                    icon={RefreshCw}
-                    onClick={handleResendConfirmation}
-                    disabled={resending}
-                  >
+              <div className="mt-6 flex flex-col gap-2.5">
+                {!emailVerified && isLiveMode ? (
+                  <Button variant="primary" icon={RefreshCw} onClick={handleResendConfirmation} disabled={resending}>
                     {resending ? "Sending..." : "Resend confirmation email"}
                   </Button>
-                )}
+                ) : null}
 
-                <Button
-                  variant={emailVerified || isApproved ? "primary" : "ghost"}
-                  icon={ArrowLeft}
-                  onClick={() => router.push("/")}
-                >
+                <Button variant={emailVerified || isApproved ? "primary" : "ghost"} icon={ArrowLeft} onClick={() => router.push("/")}>
                   Browse the feed
                 </Button>
 
-                {emailVerified && !isApproved && (
-                  <Button
-                    variant="ghost"
-                    icon={LogOut}
-                    onClick={handleLogout}
-                    disabled={loggingOut}
-                  >
+                {emailVerified && !isApproved ? (
+                  <Button variant="ghost" icon={LogOut} onClick={handleLogout} disabled={loggingOut}>
                     {loggingOut ? "Logging out..." : "Log out"}
                   </Button>
-                )}
+                ) : null}
               </div>
             </>
           ) : (
             <>
-              <p className="text-sm leading-relaxed" style={{ color: T.textMuted }}>
-                No review request was found for{" "}
-                {currentEmail ? (
-                  <span style={{ color: T.text, fontWeight: 600 }}>{currentEmail}</span>
-                ) : (
-                  "that email"
-                )}
-                . Please sign in with your existing account or contact admin.
-              </p>
+              <EmailBadge email={currentEmail} />
 
-              <div className="mt-6 flex flex-col gap-2">
-                <Button variant="primary" icon={Mail} onClick={() => setAuthModal("login")}>
-                  Sign in
-                </Button>
-
-                <Button variant="ghost" icon={Mail} onClick={handleContactAdmin}>
-                  Contact admin
-                </Button>
-
-                <Button variant="ghost" onClick={() => router.push("/")}>
-                  Back to feed
-                </Button>
+              <div className="mt-6 flex flex-col gap-2.5">
+                <Button variant="primary" icon={Mail} onClick={() => setAuthModal("login")}>Sign in</Button>
+                <Button variant="ghost" icon={Mail} onClick={handleContactAdmin}>Contact admin</Button>
+                <Button variant="ghost" icon={ArrowLeft} onClick={() => router.push("/")}>Browse the feed</Button>
               </div>
             </>
           )}
-        </div>
+        </section>
       </div>
 
       <Footer />
@@ -646,9 +532,7 @@ function PendingReviewContent() {
 
 export default function PendingReviewPage() {
   return (
-    <Suspense
-      fallback={<div className="min-h-screen" style={{ backgroundColor: T.bg }} />}
-    >
+    <Suspense fallback={<div className="min-h-screen" style={{ backgroundColor: "#EAF2FA" }} />}>
       <PendingReviewContent />
     </Suspense>
   );
