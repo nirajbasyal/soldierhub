@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  ArrowLeft,
   Flag,
   Link2,
   Search,
@@ -16,7 +15,7 @@ import { T } from "@/lib/theme";
 import { useApp } from "@/store/AppContext";
 import AppShell from "@/components/layout/AppShell";
 import Footer from "@/components/layout/Footer";
-import Button from "@/components/ui/Button";
+import CircularBackButton from "@/components/ui/CircularBackButton";
 import PendingUsersList from "@/components/admin/PendingUsersList";
 import ReportedPostsList from "@/components/admin/ReportedPostsList";
 import MembersList from "@/components/admin/MembersList";
@@ -109,13 +108,7 @@ export default function AdminPage() {
         style={{ backgroundColor: T.bg }}
       >
         <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 md:py-10">
-          <Button
-            variant="secondary"
-            icon={ArrowLeft}
-            onClick={() => router.push("/")}
-          >
-            Back to feed
-          </Button>
+          <CircularBackButton href="/" label="Back to feed" />
 
           <div className="mt-6 mb-5">
             <div className="flex items-center gap-2 mb-1">
