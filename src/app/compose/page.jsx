@@ -19,8 +19,8 @@ const LONG_TEXT_EDITOR_HEIGHT_TRIGGER = 232;
 const LONG_TEXT_EDITOR_OVERFLOW_ALLOWANCE = 18;
 const LONG_TEXT_EDITOR_SUPPRESS_MS = 750;
 const LONG_TEXT_EDITOR_ANIMATION_MS = 340;
-const LONG_TEXT_EDITOR_MORPH_MS = 520;
-const LONG_TEXT_EDITOR_FOCUS_DELAY_MS = 460;
+const LONG_TEXT_EDITOR_MORPH_MS = 420;
+const LONG_TEXT_EDITOR_FOCUS_DELAY_MS = 50;
 const LONG_TEXT_EDITOR_HEADER_HEIGHT = 58;
 const LONG_TEXT_EDITOR_TOOLBAR_HEIGHT = 57;
 const LONG_TEXT_EDITOR_BACKGROUND = "#F8FAFD";
@@ -37,6 +37,19 @@ const LONG_EDITOR_FORMAT_ACTIONS = [
 
 function getEditorText(editor) {
   return (editor?.innerText || "").replace(/\u200B/g, "").replace(/\u00a0/g, " ").trim();
+}
+
+function getViewportSnapshot() {
+  if (typeof window === "undefined") {
+    return { height: 0, top: 0 };
+  }
+
+  const viewport = window.visualViewport;
+
+  return {
+    height: Math.max(320, Math.floor(viewport?.height || window.innerHeight || 0)),
+    top: Math.max(0, Math.floor(viewport?.offsetTop || 0)),
+  };
 }
 
 function shouldOpenLongTextEditor(editor) {
@@ -141,6 +154,8 @@ export default function ComposePage() {
   const suppressLongEditorUntilRef = useRef(0);
   const longEditorCloseTimerRef = useRef(null);
   const longEditorMorphTimerRef = useRef(null);
+  const longEditorFocusTimerRef = useRef(null);
+  const longEditorMorphingRef = useRef(false);
 
   const getComposerEditor = () => {
     if (typeof document === "undefined") return null;
@@ -154,6 +169,8 @@ export default function ComposePage() {
   };
 
   const scrollLongEditorCaretIntoView = () => {
+    if (longEditorMorphingRef.current) return;
+
     const scroller = longEditorScrollRef.current;
     const editor = expandedEditorRef.current;
     if (!scroller || !editor || typeof window === "undefined") return;
@@ -197,6 +214,16 @@ export default function ComposePage() {
     });
   };
 
+  const focusExpandedEditorAfterMorph = () => {
+    const editor = expandedEditorRef.current;
+    if (!editor) return;
+
+    editor.innerHTML = sourceHtmlRef.current || editor.innerHTML || "";
+    placeCursorAtEnd(editor);
+    syncLongEditorFormats();
+    window.requestAnimationFrame?.(scrollLongEditorCaretIntoView);
+  };
+
   const openLongTextEditor = (editor) => {
     if (!editor || longEditorOpen || !isPhoneWidth()) return;
 
@@ -210,21 +237,24 @@ export default function ComposePage() {
       longEditorMorphTimerRef.current = null;
     }
 
+    if (longEditorFocusTimerRef.current) {
+      window.clearTimeout(longEditorFocusTimerRef.current);
+      longEditorFocusTimerRef.current = null;
+    }
+
     const rect = editor.getBoundingClientRect();
     const computedStyle = window.getComputedStyle(editor);
-    const viewport = window.visualViewport;
-    const viewportTop = Math.max(0, Math.floor(viewport?.offsetTop || 0));
-    const viewportHeight = Math.max(320, Math.floor(viewport?.height || window.innerHeight || 0));
+    const viewport = getViewportSnapshot();
     const targetTop = LONG_TEXT_EDITOR_HEADER_HEIGHT + LONG_TEXT_EDITOR_TOOLBAR_HEIGHT;
 
-    setLongEditorViewport({ height: viewportHeight, top: viewportTop });
+    setLongEditorViewport({ height: viewport.height, top: viewport.top });
     setLongEditorMorph({
       left: Math.max(0, rect.left),
-      top: Math.max(0, rect.top - viewportTop),
+      top: Math.max(0, rect.top - viewport.top),
       width: Math.max(1, rect.width),
       height: Math.max(1, rect.height),
       targetTop,
-      targetHeight: Math.max(190, viewportHeight - targetTop),
+      targetHeight: Math.max(190, viewport.height - targetTop),
       borderRadius: computedStyle.borderRadius || "24px",
       fontSize: computedStyle.fontSize || "17px",
       lineHeight: computedStyle.lineHeight || "26px",
@@ -239,12 +269,31 @@ export default function ComposePage() {
     sourceHtmlRef.current = editor.innerHTML || "";
     setLongEditorText(getEditorText(editor));
     setLongEditorClosing(false);
+    longEditorMorphingRef.current = true;
     setLongEditorMorphing(true);
     setLongEditorOpen(true);
 
     longEditorMorphTimerRef.current = window.setTimeout(() => {
+      const latestViewport = getViewportSnapshot();
+
+      setLongEditorViewport({ height: latestViewport.height, top: latestViewport.top });
+      setLongEditorMorph((current) =>
+        current
+          ? {
+              ...current,
+              targetHeight: Math.max(190, latestViewport.height - current.targetTop),
+            }
+          : current
+      );
+
+      longEditorMorphingRef.current = false;
       setLongEditorMorphing(false);
       longEditorMorphTimerRef.current = null;
+
+      longEditorFocusTimerRef.current = window.setTimeout(() => {
+        focusExpandedEditorAfterMorph();
+        longEditorFocusTimerRef.current = null;
+      }, LONG_TEXT_EDITOR_FOCUS_DELAY_MS);
     }, LONG_TEXT_EDITOR_MORPH_MS);
   };
 
@@ -295,7 +344,7 @@ export default function ComposePage() {
   const finishLongTextEditor = () => {
     const expandedEditor = expandedEditorRef.current;
     const sourceEditor = sourceEditorRef.current || getComposerEditor();
-    const nextHtml = expandedEditor?.innerHTML || "";
+    const nextHtml = expandedEditor?.innerHTML || sourceHtmlRef.current || "";
 
     if (sourceEditor) {
       sourceEditor.innerHTML = nextHtml;
@@ -305,12 +354,18 @@ export default function ComposePage() {
     suppressLongEditorUntilRef.current = Date.now() + LONG_TEXT_EDITOR_SUPPRESS_MS;
     expandedEditor?.blur?.();
     sourceEditor?.blur?.();
+    longEditorMorphingRef.current = false;
     setLongEditorMorphing(false);
     setLongEditorClosing(true);
 
     if (longEditorMorphTimerRef.current) {
       window.clearTimeout(longEditorMorphTimerRef.current);
       longEditorMorphTimerRef.current = null;
+    }
+
+    if (longEditorFocusTimerRef.current) {
+      window.clearTimeout(longEditorFocusTimerRef.current);
+      longEditorFocusTimerRef.current = null;
     }
 
     if (longEditorCloseTimerRef.current) {
@@ -335,6 +390,10 @@ export default function ComposePage() {
 
       if (longEditorMorphTimerRef.current) {
         window.clearTimeout(longEditorMorphTimerRef.current);
+      }
+
+      if (longEditorFocusTimerRef.current) {
+        window.clearTimeout(longEditorFocusTimerRef.current);
       }
     };
   }, []);
@@ -380,17 +439,41 @@ export default function ComposePage() {
   useEffect(() => {
     if (!longEditorOpen) return undefined;
 
-    const updateVisibleViewport = () => {
-      const viewport = window.visualViewport;
-      const nextHeight = Math.max(320, Math.floor(viewport?.height || window.innerHeight || 0));
-      const nextTop = Math.max(0, Math.floor(viewport?.offsetTop || 0));
+    const sourceEditor = sourceEditorRef.current;
+    if (!sourceEditor) return undefined;
 
-      setLongEditorViewport({ height: nextHeight, top: nextTop });
+    const syncFastTypingDuringMorph = () => {
+      if (!longEditorMorphingRef.current) return;
+
+      sourceHtmlRef.current = sourceEditor.innerHTML || "";
+      setLongEditorText(getEditorText(sourceEditor));
+
+      if (expandedEditorRef.current) {
+        expandedEditorRef.current.innerHTML = sourceHtmlRef.current;
+      }
+    };
+
+    sourceEditor.addEventListener("input", syncFastTypingDuringMorph);
+
+    return () => {
+      sourceEditor.removeEventListener("input", syncFastTypingDuringMorph);
+    };
+  }, [longEditorOpen]);
+
+  useEffect(() => {
+    if (!longEditorOpen) return undefined;
+
+    const updateVisibleViewport = () => {
+      if (longEditorMorphingRef.current) return;
+
+      const nextViewport = getViewportSnapshot();
+
+      setLongEditorViewport({ height: nextViewport.height, top: nextViewport.top });
       setLongEditorMorph((current) =>
         current
           ? {
               ...current,
-              targetHeight: Math.max(190, nextHeight - current.targetTop),
+              targetHeight: Math.max(190, nextViewport.height - current.targetTop),
             }
           : current
       );
@@ -432,14 +515,7 @@ export default function ComposePage() {
     window.requestAnimationFrame?.(() => {
       if (!expandedEditorRef.current) return;
       expandedEditorRef.current.innerHTML = sourceHtmlRef.current || "";
-      window.setTimeout(() => {
-        placeCursorAtEnd(expandedEditorRef.current);
-        syncLongEditorFormats();
-        scrollLongEditorCaretIntoView();
-      }, LONG_TEXT_EDITOR_FOCUS_DELAY_MS);
     });
-
-    window.setTimeout(scrollLongEditorCaretIntoView, LONG_TEXT_EDITOR_MORPH_MS + 100);
 
     return () => {
       document.documentElement.style.overflow = previousHtmlOverflow;
@@ -666,22 +742,18 @@ export default function ComposePage() {
           @keyframes soldierhubLongEditorToolbarIn {
             from {
               opacity: 0;
-              transform: translate3d(0, -8px, 0);
             }
             to {
               opacity: 1;
-              transform: translate3d(0, 0, 0);
             }
           }
 
           @keyframes soldierhubLongEditorBodyIn {
             from {
               opacity: 0;
-              transform: translate3d(0, 6px, 0);
             }
             to {
               opacity: 1;
-              transform: translate3d(0, 0, 0);
             }
           }
 
@@ -699,7 +771,7 @@ export default function ComposePage() {
               box-shadow: 0 18px 40px rgba(11, 28, 44, 0.08);
               opacity: 1;
             }
-            76% {
+            84% {
               opacity: 1;
             }
             100% {
@@ -716,8 +788,19 @@ export default function ComposePage() {
             }
           }
 
+          @keyframes soldierhubMorphCaretBlink {
+            0%,
+            45% {
+              opacity: 1;
+            }
+            46%,
+            100% {
+              opacity: 0;
+            }
+          }
+
           .sh-long-editor-enter {
-            animation: soldierhubLongEditorIn 180ms ease-out both;
+            animation: soldierhubLongEditorIn 120ms ease-out both;
             will-change: opacity;
           }
 
@@ -730,7 +813,7 @@ export default function ComposePage() {
 
           .sh-long-editor-enter .sh-long-editor-top,
           .sh-long-editor-enter .sh-long-editor-toolbar {
-            animation: soldierhubLongEditorToolbarIn 340ms cubic-bezier(0.22, 1, 0.36, 1) 220ms both;
+            animation: soldierhubLongEditorToolbarIn 220ms ease-out 130ms both;
           }
 
           .sh-long-editor-morphing .sh-long-editor-body {
@@ -738,7 +821,7 @@ export default function ComposePage() {
           }
 
           .sh-long-editor-ready .sh-long-editor-body {
-            animation: soldierhubLongEditorBodyIn 190ms ease-out both;
+            animation: soldierhubLongEditorBodyIn 120ms ease-out both;
           }
 
           .sh-editor-morph-card {
@@ -750,12 +833,24 @@ export default function ComposePage() {
             white-space: pre-wrap;
             overflow-wrap: anywhere;
             pointer-events: none;
-            animation: soldierhubEditorMorphCard 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+            animation: soldierhubEditorMorphCard 420ms cubic-bezier(0.2, 0.82, 0.2, 1) both;
             will-change: left, top, width, height, border-radius, padding, font-size, line-height, opacity;
           }
 
           .sh-editor-morph-text {
             transform: translateY(calc(-1 * var(--sh-source-scroll, 0px)));
+          }
+
+          .sh-editor-morph-text::after {
+            content: "";
+            display: inline-block;
+            width: 2px;
+            height: 1.05em;
+            margin-left: 2px;
+            border-radius: 999px;
+            background: #102033;
+            vertical-align: -0.15em;
+            animation: soldierhubMorphCaretBlink 900ms steps(1, end) infinite;
           }
 
           @keyframes soldierhubAnonymousComposeNotice {
