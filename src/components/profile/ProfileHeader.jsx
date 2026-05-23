@@ -7,14 +7,13 @@ import {
   Camera,
   Check,
   Edit3,
+  FileText,
   KeyRound,
   Loader2,
   Mail,
   Shield,
-  ShieldCheck,
   Trash2,
   UserMinus,
-  UserRound,
   UsersRound,
   X,
 } from "lucide-react";
@@ -25,7 +24,6 @@ import * as Follows from "@/lib/supabase/follows";
 import { compressAvatarImage, revokePreviewUrl } from "@/lib/media/imageCompression";
 import { formatBytes, uploadCompressedImageToR2 } from "@/lib/media/upload";
 import Avatar from "@/components/ui/Avatar";
-import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import TextInput from "@/components/ui/TextInput";
 import TextArea from "@/components/ui/TextArea";
@@ -44,6 +42,35 @@ const COLOR_OPTIONS = [
 ];
 
 const FOLLOW_LIST_PREVIEW_LIMIT = 30;
+
+function VerifiedCheck() {
+  return (
+    <span
+      className="mt-1 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-black leading-none text-white sm:mt-1.5"
+      style={{ backgroundColor: "#3B82F6" }}
+      aria-label="Verified profile"
+      title="Verified profile"
+    >
+      ✓
+    </span>
+  );
+}
+
+function AdminPill() {
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-extrabold"
+      style={{
+        backgroundColor: "rgba(232,160,32,0.18)",
+        borderColor: "rgba(232,160,32,0.42)",
+        color: "#F4D88E",
+      }}
+    >
+      <Shield size={12} />
+      Admin
+    </span>
+  );
+}
 
 function InfoPill({ icon: Icon, label, value }) {
   return (
@@ -69,14 +96,19 @@ function InfoPill({ icon: Icon, label, value }) {
   );
 }
 
-function StatCard({ label, value, onClick, active = false, loading = false }) {
+function StatCard({ icon: Icon, label, value, onClick, active = false, loading = false }) {
   const content = (
     <>
-      <div className="text-lg font-black leading-none tabular-nums sm:text-xl" style={{ color: T.navy }}>
+      {Icon ? (
+        <div className="mb-1 flex items-center justify-center" style={{ color: active ? T.blue : T.navy }}>
+          <Icon size={17} strokeWidth={2.3} />
+        </div>
+      ) : null}
+      <div className="text-sm font-black leading-none tabular-nums sm:text-base" style={{ color: T.navy }}>
         {value}
       </div>
       <div
-        className="mt-1 flex items-center justify-center gap-1 text-[9px] font-extrabold uppercase tracking-[0.12em] sm:text-[10px]"
+        className="mt-0.5 flex items-center justify-center gap-1 text-[9px] font-extrabold uppercase tracking-[0.12em] sm:text-[10px]"
         style={{ color: T.textSubtle }}
       >
         {label}
@@ -85,10 +117,9 @@ function StatCard({ label, value, onClick, active = false, loading = false }) {
     </>
   );
 
-  const sharedClass = "min-w-0 rounded-2xl border px-2 py-2.5 text-center transition";
+  const sharedClass = "min-w-0 px-2 py-3 text-center transition";
   const sharedStyle = {
-    backgroundColor: active ? "rgba(220,232,247,0.98)" : "rgba(244,248,253,0.9)",
-    borderColor: active ? "#9DB9DA" : "#D5E2F2",
+    backgroundColor: active ? "rgba(220,232,247,0.98)" : "transparent",
   };
 
   if (!onClick) {
@@ -103,7 +134,7 @@ function StatCard({ label, value, onClick, active = false, loading = false }) {
     <button
       type="button"
       onClick={onClick}
-      className={`${sharedClass} hover:-translate-y-0.5 hover:shadow-sm`}
+      className={`${sharedClass} hover:bg-white/60`}
       style={sharedStyle}
     >
       {content}
@@ -637,67 +668,72 @@ export default function ProfileHeader() {
 
   return (
     <section
-      className="relative min-w-0 overflow-hidden rounded-[26px] border"
+      className="relative min-w-0 overflow-hidden rounded-[28px] border"
       style={{
         borderColor: "#D5E2F2",
-        backgroundColor: "rgba(255,255,255,0.94)",
-        boxShadow: "0 14px 34px rgba(7,27,51,0.07)",
+        backgroundColor: "rgba(255,255,255,0.96)",
+        boxShadow: "0 18px 42px rgba(7,27,51,0.11)",
       }}
     >
-      <div className="absolute left-4 right-4 top-0 h-1 rounded-b-full" style={{ backgroundColor: "rgba(179,25,66,0.82)" }} />
-
-      <div className="p-4 sm:p-5">
-        {!editing ? (
-          <>
-            <div className="flex min-w-0 items-start gap-3 sm:gap-4">
-              <div
-                className="shrink-0 rounded-[22px] border p-1.5"
-                style={{ backgroundColor: "#FFFFFF", borderColor: "#D5E2F2" }}
-              >
+      {!editing ? (
+        <div className="min-w-0 pb-5">
+          <div
+            className="relative min-h-[188px] overflow-hidden px-4 pb-14 pt-5 text-center min-[560px]:min-h-[170px] min-[560px]:px-6 min-[560px]:pb-12 min-[560px]:pt-6 min-[560px]:text-left"
+            style={{
+              background:
+                "radial-gradient(circle at 88% 43%, rgba(255,255,255,0.13), transparent 22%), radial-gradient(circle at 88% 43%, transparent 0 16%, rgba(255,255,255,0.15) 16.3% 16.9%, transparent 17.2% 100%), linear-gradient(135deg, #071B33 0%, #102E52 100%)",
+            }}
+          >
+            <div className="relative z-10 flex min-w-0 flex-col items-center gap-3 min-[560px]:flex-row min-[560px]:items-start min-[560px]:gap-4">
+              <div className="shrink-0 rounded-full border-2 border-[#F8F7F4]/75 shadow-[0_12px_28px_rgba(0,0,0,0.24)]">
                 <Avatar name={displayName} color={displayColor} src={safeUser.avatar_url} size={76} />
               </div>
 
-              <div className="min-w-0 flex-1 pt-0.5">
-                <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                  <div
-                    className="inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.13em]"
-                    style={{ backgroundColor: "rgba(244,248,253,0.95)", borderColor: "#D5E2F2", color: T.blue }}
-                  >
-                    <UserRound size={12} />
-                    My Profile
-                  </div>
-                  {safeUser.role === "admin" ? (
-                    <Badge tone="amber" icon={Shield}>
-                      Admin
-                    </Badge>
-                  ) : null}
-                  {isVerified ? (
-                    <Badge tone="blue" icon={ShieldCheck}>
-                      Verified
-                    </Badge>
-                  ) : null}
+              <div className="min-w-0 flex-1 pt-1">
+                <div className="text-[10px] font-black uppercase tracking-[0.18em] text-white/62">
+                  Your profile
                 </div>
 
-                <h1 className="mt-2 truncate text-2xl font-black tracking-[-0.035em] sm:text-3xl" style={{ color: T.navy }} title={displayName}>
-                  {displayName}
+                {safeUser.role === "admin" ? (
+                  <div className="mt-1.5 flex justify-center min-[560px]:justify-start">
+                    <AdminPill />
+                  </div>
+                ) : null}
+
+                <h1 className="mt-1.5 flex min-w-0 items-start justify-center gap-1.5 text-2xl font-black tracking-[-0.04em] text-white min-[560px]:justify-start sm:text-3xl" title={displayName}>
+                  <span className="min-w-0 truncate">{displayName}</span>
+                  {isVerified ? <VerifiedCheck /> : null}
                 </h1>
 
-                <p className="mt-1 break-words text-sm leading-6" style={{ color: displayBio ? T.text : T.textMuted }}>
+                <p className="mx-auto mt-1 max-w-xl break-words text-sm leading-6 text-white/82 min-[560px]:mx-0">
                   {displayBio || "Add a short bio so other verified community members know who you are."}
                 </p>
               </div>
             </div>
+          </div>
 
-            <div className="mt-4 grid grid-cols-3 gap-2">
-              <StatCard label="Posts" value={visiblePosts.length} />
+          <div
+            className="relative z-20 mx-4 -mt-9 grid grid-cols-3 overflow-hidden rounded-2xl border sm:mx-5"
+            style={{
+              backgroundColor: "rgba(248,247,236,0.98)",
+              borderColor: "#D5E2F2",
+              boxShadow: "0 12px 26px rgba(7,27,51,0.16)",
+            }}
+          >
+            <StatCard icon={FileText} label="Posts" value={visiblePosts.length} />
+            <div className="border-l" style={{ borderColor: "rgba(207,218,232,0.92)" }}>
               <StatCard
+                icon={UsersRound}
                 label="Followers"
                 value={followerValue}
                 loading={followLoading}
                 onClick={() => openConnections("followers")}
                 active={connectionsTab === "followers"}
               />
+            </div>
+            <div className="border-l" style={{ borderColor: "rgba(207,218,232,0.92)" }}>
               <StatCard
+                icon={UsersRound}
                 label="Following"
                 value={followingValue}
                 loading={followLoading}
@@ -705,30 +741,32 @@ export default function ProfileHeader() {
                 active={connectionsTab === "following"}
               />
             </div>
+          </div>
 
-            <div className="mt-3">
-              <InfoPill icon={Mail} label="Email" value={displayEmail} />
-            </div>
+          <div className="mx-4 mt-4 sm:mx-5">
+            <InfoPill icon={Mail} label="Email" value={displayEmail} />
+          </div>
 
-            <div className="mt-4 grid grid-cols-1 gap-2 min-[420px]:grid-cols-2">
-              <button
-                type="button"
-                onClick={() => setEditing(true)}
-                className="inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2.5 text-sm font-black transition hover:-translate-y-0.5"
-                style={{ backgroundColor: T.navy, borderColor: "rgba(7,27,51,0.18)", color: "#FFFFFF" }}
-              >
-                <Edit3 size={16} />
-                Edit profile
-              </button>
+          <div className="mx-4 mt-4 grid grid-cols-1 gap-2 min-[420px]:grid-cols-2 sm:mx-5">
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2.5 text-sm font-black transition hover:-translate-y-0.5"
+              style={{ backgroundColor: T.navy, borderColor: "rgba(7,27,51,0.18)", color: "#FFFFFF" }}
+            >
+              <Edit3 size={16} />
+              Edit profile
+            </button>
 
-              <ShareProfileButton
-                profileId={currentUser?.id}
-                profileName={displayName}
-                pushToast={pushToast}
-                className="w-full justify-center"
-              />
-            </div>
+            <ShareProfileButton
+              profileId={currentUser?.id}
+              profileName={displayName}
+              pushToast={pushToast}
+              className="w-full justify-center"
+            />
+          </div>
 
+          <div className="mx-4 sm:mx-5">
             {connectionsTab ? (
               <FollowListPanel
                 type={connectionsTab}
@@ -741,205 +779,205 @@ export default function ProfileHeader() {
                 totalCount={activeConnectionsTotal}
               />
             ) : null}
-          </>
-        ) : (
-          <div className="min-w-0">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-3">
-                <div className="rounded-[22px] border p-1.5" style={{ backgroundColor: "#FFFFFF", borderColor: "#D5E2F2" }}>
-                  <Avatar name={name} color={color} src={activeAvatarSrc} size={72} />
-                </div>
-                <div className="min-w-0">
-                  <h2 className="text-xl font-black tracking-[-0.02em]" style={{ color: T.navy }}>
-                    Edit profile
-                  </h2>
-                  <p className="mt-0.5 text-xs leading-5" style={{ color: T.textMuted }}>
-                    Update your display name, bio, and profile photo.
-                  </p>
-                </div>
+          </div>
+        </div>
+      ) : (
+        <div className="min-w-0 p-4 sm:p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="rounded-full border-2 border-white shadow-[0_10px_22px_rgba(7,27,51,0.12)]">
+                <Avatar name={name} color={color} src={activeAvatarSrc} size={72} />
               </div>
-
-              <button
-                type="button"
-                onClick={cancel}
-                disabled={avatarSaving}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border disabled:cursor-not-allowed disabled:opacity-60"
-                style={{ backgroundColor: T.card, borderColor: "#D5E2F2", color: T.textMuted }}
-                aria-label="Close edit profile"
-              >
-                <X size={16} />
-              </button>
+              <div className="min-w-0">
+                <h2 className="text-xl font-black tracking-[-0.02em]" style={{ color: T.navy }}>
+                  Edit profile
+                </h2>
+                <p className="mt-0.5 text-xs leading-5" style={{ color: T.textMuted }}>
+                  Update your display name, bio, and profile photo.
+                </p>
+              </div>
             </div>
 
-            <div className="mt-4 grid gap-3">
-              <input
-                ref={avatarInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={handleAvatarFile}
-                className="hidden"
-              />
+            <button
+              type="button"
+              onClick={cancel}
+              disabled={avatarSaving}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border disabled:cursor-not-allowed disabled:opacity-60"
+              style={{ backgroundColor: T.card, borderColor: "#D5E2F2", color: T.textMuted }}
+              aria-label="Close edit profile"
+            >
+              <X size={16} />
+            </button>
+          </div>
 
-              <div className="grid grid-cols-1 gap-2 min-[420px]:grid-cols-2">
+          <div className="mt-4 grid gap-3">
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleAvatarFile}
+              className="hidden"
+            />
+
+            <div className="grid grid-cols-1 gap-2 min-[420px]:grid-cols-2">
+              <button
+                type="button"
+                onClick={chooseAvatar}
+                disabled={avatarSaving}
+                className="inline-flex items-center justify-center gap-2 rounded-full border px-3 py-2 text-xs font-black transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                style={{ backgroundColor: "rgba(244,248,253,0.96)", borderColor: "#D5E2F2", color: T.navy }}
+              >
+                <Camera size={14} />
+                {activeAvatarSrc ? "Change photo" : "Add photo"}
+              </button>
+
+              {activeAvatarSrc ? (
                 <button
                   type="button"
-                  onClick={chooseAvatar}
+                  onClick={removeAvatarPhoto}
                   disabled={avatarSaving}
                   className="inline-flex items-center justify-center gap-2 rounded-full border px-3 py-2 text-xs font-black transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
-                  style={{ backgroundColor: "rgba(244,248,253,0.96)", borderColor: "#D5E2F2", color: T.navy }}
-                >
-                  <Camera size={14} />
-                  {activeAvatarSrc ? "Change photo" : "Add photo"}
-                </button>
-
-                {activeAvatarSrc ? (
-                  <button
-                    type="button"
-                    onClick={removeAvatarPhoto}
-                    disabled={avatarSaving}
-                    className="inline-flex items-center justify-center gap-2 rounded-full border px-3 py-2 text-xs font-black transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
-                    style={{ backgroundColor: "rgba(253,236,240,0.95)", borderColor: "#F3C7D1", color: "#B31942" }}
-                  >
-                    <Trash2 size={14} />
-                    Remove photo
-                  </button>
-                ) : null}
-              </div>
-
-              {avatarImage?.size ? (
-                <div
-                  className="rounded-2xl border px-3 py-2 text-center text-[11px] font-semibold"
-                  style={{ backgroundColor: "rgba(220,232,247,0.55)", borderColor: "#D5E2F2", color: T.textMuted }}
-                >
-                  Ready to upload · {formatBytes(avatarImage.size)}
-                </div>
-              ) : null}
-
-              {avatarError ? (
-                <div
-                  className="rounded-2xl border px-3 py-2 text-center text-[11px] font-semibold"
                   style={{ backgroundColor: "rgba(253,236,240,0.95)", borderColor: "#F3C7D1", color: "#B31942" }}
                 >
-                  {avatarError}
+                  <Trash2 size={14} />
+                  Remove photo
+                </button>
+              ) : null}
+            </div>
+
+            {avatarImage?.size ? (
+              <div
+                className="rounded-2xl border px-3 py-2 text-center text-[11px] font-semibold"
+                style={{ backgroundColor: "rgba(220,232,247,0.55)", borderColor: "#D5E2F2", color: T.textMuted }}
+              >
+                Ready to upload · {formatBytes(avatarImage.size)}
+              </div>
+            ) : null}
+
+            {avatarError ? (
+              <div
+                className="rounded-2xl border px-3 py-2 text-center text-[11px] font-semibold"
+                style={{ backgroundColor: "rgba(253,236,240,0.95)", borderColor: "#F3C7D1", color: "#B31942" }}
+              >
+                {avatarError}
+              </div>
+            ) : null}
+
+            <div className="flex flex-wrap gap-1.5">
+              {COLOR_OPTIONS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setColor(c)}
+                  className="h-7 w-7 rounded-full border-2 transition-transform hover:scale-110"
+                  style={{
+                    backgroundColor: c,
+                    borderColor: c === color ? "#FFFFFF" : "rgba(255,255,255,0.45)",
+                    boxShadow: c === color ? "0 0 0 2px #1E4E8C" : "none",
+                  }}
+                  aria-label={`Choose profile color ${c}`}
+                />
+              ))}
+            </div>
+
+            <TextInput label="Display name" value={name} onChange={(e) => setName(e.target.value)} />
+            <TextArea label="Bio" value={bio} onChange={(e) => setBio(e.target.value)} />
+
+            <div className="rounded-2xl border px-3 py-2 text-xs" style={{ backgroundColor: "rgba(244,248,253,0.95)", borderColor: "#D5E2F2", color: T.textSubtle }}>
+              Verified email: {displayEmail} · email cannot be changed after verification.
+            </div>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-2 min-[420px]:grid-cols-2">
+            <Button
+              variant="primary"
+              onClick={save}
+              icon={avatarSaving ? Loader2 : Check}
+              disabled={avatarSaving}
+            >
+              {avatarSaving ? "Saving…" : "Save profile"}
+            </Button>
+            <Button variant="ghost" onClick={cancel} disabled={avatarSaving}>
+              Cancel
+            </Button>
+          </div>
+
+          {!showPasswordForm ? (
+            <button
+              type="button"
+              onClick={openPasswordForm}
+              className="mt-4 inline-flex items-center gap-2 rounded-full px-1 py-1 text-sm font-bold transition hover:translate-x-0.5"
+              style={{ color: "#B31942" }}
+            >
+              <KeyRound size={15} />
+              Change current password
+            </button>
+          ) : (
+            <div className="mt-4 rounded-3xl border p-4" style={{ backgroundColor: "rgba(244,248,253,0.95)", borderColor: "#D5E2F2" }}>
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl" style={{ backgroundColor: "rgba(220,232,247,0.95)", color: T.blue }}>
+                    <KeyRound size={18} />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black" style={{ color: T.navy }}>
+                      Change password
+                    </h3>
+                    <p className="mt-0.5 text-xs leading-5" style={{ color: T.textMuted }}>
+                      Enter your current password first, then choose a new password.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={closePasswordForm}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border"
+                  style={{ backgroundColor: T.card, borderColor: "#D5E2F2", color: T.textMuted }}
+                  aria-label="Close password form"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+
+              <div className="grid gap-3">
+                <TextInput label="Current password" type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} autoComplete="current-password" />
+                <TextInput label="New password" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} autoComplete="new-password" />
+                <TextInput label="Confirm new password" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} autoComplete="new-password" />
+              </div>
+
+              {passwordError ? (
+                <div
+                  className="mt-3 flex items-start gap-2 rounded-2xl border px-3 py-2 text-xs"
+                  style={{ backgroundColor: "rgba(253,236,240,0.95)", borderColor: "#F3C7D1", color: "#B31942" }}
+                >
+                  <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+                  {passwordError}
                 </div>
               ) : null}
 
-              <div className="flex flex-wrap gap-1.5">
-                {COLOR_OPTIONS.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => setColor(c)}
-                    className="h-7 w-7 rounded-full border-2 transition-transform hover:scale-110"
-                    style={{
-                      backgroundColor: c,
-                      borderColor: c === color ? "#FFFFFF" : "rgba(255,255,255,0.45)",
-                      boxShadow: c === color ? "0 0 0 2px #1E4E8C" : "none",
-                    }}
-                    aria-label={`Choose profile color ${c}`}
-                  />
-                ))}
-              </div>
+              {passwordSuccess ? (
+                <div
+                  className="mt-3 flex items-start gap-2 rounded-2xl border px-3 py-2 text-xs"
+                  style={{ backgroundColor: "rgba(220,232,247,0.95)", borderColor: "#BCD0EA", color: T.blue }}
+                >
+                  <Check size={14} className="mt-0.5 shrink-0" />
+                  {passwordSuccess}
+                </div>
+              ) : null}
 
-              <TextInput label="Display name" value={name} onChange={(e) => setName(e.target.value)} />
-              <TextArea label="Bio" value={bio} onChange={(e) => setBio(e.target.value)} />
-
-              <div className="rounded-2xl border px-3 py-2 text-xs" style={{ backgroundColor: "rgba(244,248,253,0.95)", borderColor: "#D5E2F2", color: T.textSubtle }}>
-                Verified email: {displayEmail} · email cannot be changed after verification.
+              <div className="mt-3 grid grid-cols-1 gap-2 min-[420px]:grid-cols-2">
+                <Button variant="ghost" onClick={changePassword} icon={KeyRound} disabled={passwordSaving}>
+                  {passwordSaving ? "Updating…" : "Update password"}
+                </Button>
+                <Button variant="ghost" onClick={closePasswordForm}>
+                  Cancel
+                </Button>
               </div>
             </div>
-
-            <div className="mt-4 grid grid-cols-1 gap-2 min-[420px]:grid-cols-2">
-              <Button
-                variant="primary"
-                onClick={save}
-                icon={avatarSaving ? Loader2 : Check}
-                disabled={avatarSaving}
-              >
-                {avatarSaving ? "Saving…" : "Save profile"}
-              </Button>
-              <Button variant="ghost" onClick={cancel} disabled={avatarSaving}>
-                Cancel
-              </Button>
-            </div>
-
-            {!showPasswordForm ? (
-              <button
-                type="button"
-                onClick={openPasswordForm}
-                className="mt-4 inline-flex items-center gap-2 rounded-full px-1 py-1 text-sm font-bold transition hover:translate-x-0.5"
-                style={{ color: "#B31942" }}
-              >
-                <KeyRound size={15} />
-                Change current password
-              </button>
-            ) : (
-              <div className="mt-4 rounded-3xl border p-4" style={{ backgroundColor: "rgba(244,248,253,0.95)", borderColor: "#D5E2F2" }}>
-                <div className="mb-3 flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl" style={{ backgroundColor: "rgba(220,232,247,0.95)", color: T.blue }}>
-                      <KeyRound size={18} />
-                    </div>
-                    <div>
-                      <h3 className="text-base font-black" style={{ color: T.navy }}>
-                        Change password
-                      </h3>
-                      <p className="mt-0.5 text-xs leading-5" style={{ color: T.textMuted }}>
-                        Enter your current password first, then choose a new password.
-                      </p>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={closePasswordForm}
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border"
-                    style={{ backgroundColor: T.card, borderColor: "#D5E2F2", color: T.textMuted }}
-                    aria-label="Close password form"
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-
-                <div className="grid gap-3">
-                  <TextInput label="Current password" type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} autoComplete="current-password" />
-                  <TextInput label="New password" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} autoComplete="new-password" />
-                  <TextInput label="Confirm new password" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} autoComplete="new-password" />
-                </div>
-
-                {passwordError ? (
-                  <div
-                    className="mt-3 flex items-start gap-2 rounded-2xl border px-3 py-2 text-xs"
-                    style={{ backgroundColor: "rgba(253,236,240,0.95)", borderColor: "#F3C7D1", color: "#B31942" }}
-                  >
-                    <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-                    {passwordError}
-                  </div>
-                ) : null}
-
-                {passwordSuccess ? (
-                  <div
-                    className="mt-3 flex items-start gap-2 rounded-2xl border px-3 py-2 text-xs"
-                    style={{ backgroundColor: "rgba(220,232,247,0.95)", borderColor: "#BCD0EA", color: T.blue }}
-                  >
-                    <Check size={14} className="mt-0.5 shrink-0" />
-                    {passwordSuccess}
-                  </div>
-                ) : null}
-
-                <div className="mt-3 grid grid-cols-1 gap-2 min-[420px]:grid-cols-2">
-                  <Button variant="ghost" onClick={changePassword} icon={KeyRound} disabled={passwordSaving}>
-                    {passwordSaving ? "Updating…" : "Update password"}
-                  </Button>
-                  <Button variant="ghost" onClick={closePasswordForm}>
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </section>
   );
 }
