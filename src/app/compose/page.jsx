@@ -130,7 +130,7 @@ export default function ComposePage() {
     if (!rect) return;
 
     const scrollerRect = scroller.getBoundingClientRect();
-    const bottomBuffer = 132;
+    const bottomBuffer = 56;
     const topBuffer = 28;
 
     if (rect.bottom > scrollerRect.bottom - bottomBuffer) {
@@ -448,8 +448,8 @@ export default function ComposePage() {
               className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5"
               style={{
                 WebkitOverflowScrolling: "touch",
-                paddingBottom: "calc(env(safe-area-inset-bottom) + 150px)",
-                scrollPaddingBottom: "150px",
+                paddingBottom: "calc(env(safe-area-inset-bottom) + 44px)",
+                scrollPaddingBottom: "44px",
               }}
             >
               {!longEditorText ? (
@@ -487,7 +487,7 @@ export default function ComposePage() {
                   color: T.text,
                   whiteSpace: "pre-wrap",
                   overflowWrap: "anywhere",
-                  paddingBottom: "96px",
+                  paddingBottom: "28px",
                 }}
               />
             </div>
