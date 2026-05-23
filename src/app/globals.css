@@ -478,6 +478,21 @@ article button[aria-label="Open post image"][style*="aspect-ratio"] > img {
   object-position: center center !important;
 }
 
+/* Laptop/desktop feed image cap: normal portraits should not cover the whole screen. */
+@media (min-width: 768px) {
+  article button[aria-label="Open post image"] {
+    max-height: 520px !important;
+  }
+
+  article button[aria-label="Open post image"][style*="aspect-ratio"] {
+    max-height: 520px !important;
+  }
+
+  article button[aria-label="Open post image"][style*="aspect-ratio"] > img {
+    object-fit: contain !important;
+  }
+}
+
 @media (min-width: 768px) {
   .sh-card-hover:hover {
     transform: translateY(-2px);
