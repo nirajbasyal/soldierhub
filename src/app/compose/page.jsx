@@ -18,11 +18,14 @@ import PostComposer from "@/components/feed/PostComposer";
 const LONG_TEXT_EDITOR_HEIGHT_TRIGGER = 232;
 const LONG_TEXT_EDITOR_OVERFLOW_ALLOWANCE = 18;
 const LONG_TEXT_EDITOR_SUPPRESS_MS = 750;
-const LONG_TEXT_EDITOR_ANIMATION_MS = 340;
-const LONG_TEXT_EDITOR_MORPH_MS = 420;
-const LONG_TEXT_EDITOR_FOCUS_DELAY_MS = 50;
+const LONG_TEXT_EDITOR_ANIMATION_MS = 240;
+const LONG_TEXT_EDITOR_MORPH_MS = 300;
+const LONG_TEXT_EDITOR_FOCUS_DELAY_MS = 20;
+const LONG_TEXT_EDITOR_RETURN_DELAY_MS = 70;
 const LONG_TEXT_EDITOR_HEADER_HEIGHT = 58;
 const LONG_TEXT_EDITOR_TOOLBAR_HEIGHT = 57;
+const LONG_TEXT_EDITOR_SMALL_ROW_LIMIT = 6.1;
+const SMALL_COMPOSER_WRAP_CHARS = 34;
 const LONG_TEXT_EDITOR_BACKGROUND = "#F8FAFD";
 const COMPOSER_EDITOR_SELECTOR =
   'div[contenteditable="true"][aria-label="Write your SoldierHub post"]';
@@ -50,6 +53,30 @@ function getViewportSnapshot() {
     height: Math.max(320, Math.floor(viewport?.height || window.innerHeight || 0)),
     top: Math.max(0, Math.floor(viewport?.offsetTop || 0)),
   };
+}
+
+function estimateSmallComposerRows(rawText = "") {
+  const normalized = String(rawText || "")
+    .replace(/\u200B/g, "")
+    .replace(/\u00a0/g, " ");
+
+  const lines = normalized.split(/\n/);
+
+  return lines.reduce((total, line) => {
+    const visualRows = Math.max(1, Math.ceil(line.length / SMALL_COMPOSER_WRAP_CHARS));
+    return total + visualRows;
+  }, 0);
+}
+
+function shouldReturnToSmallEditor(editor) {
+  if (!editor) return false;
+
+  const rawText = (editor.innerText || "").replace(/\u200B/g, "").replace(/\u00a0/g, " ");
+  const text = rawText.trim();
+
+  if (!text) return true;
+
+  return estimateSmallComposerRows(rawText) <= LONG_TEXT_EDITOR_SMALL_ROW_LIMIT;
 }
 
 function shouldOpenLongTextEditor(editor) {
@@ -155,7 +182,9 @@ export default function ComposePage() {
   const longEditorCloseTimerRef = useRef(null);
   const longEditorMorphTimerRef = useRef(null);
   const longEditorFocusTimerRef = useRef(null);
+  const longEditorReturnTimerRef = useRef(null);
   const longEditorMorphingRef = useRef(false);
+  const longEditorReturningRef = useRef(false);
 
   const getComposerEditor = () => {
     if (typeof document === "undefined") return null;
@@ -169,7 +198,7 @@ export default function ComposePage() {
   };
 
   const scrollLongEditorCaretIntoView = () => {
-    if (longEditorMorphingRef.current) return;
+    if (longEditorMorphingRef.current || longEditorReturningRef.current) return;
 
     const scroller = longEditorScrollRef.current;
     const editor = expandedEditorRef.current;
@@ -224,14 +253,7 @@ export default function ComposePage() {
     window.requestAnimationFrame?.(scrollLongEditorCaretIntoView);
   };
 
-  const openLongTextEditor = (editor) => {
-    if (!editor || longEditorOpen || !isPhoneWidth()) return;
-
-    if (longEditorCloseTimerRef.current) {
-      window.clearTimeout(longEditorCloseTimerRef.current);
-      longEditorCloseTimerRef.current = null;
-    }
-
+  const clearTransitionTimers = () => {
     if (longEditorMorphTimerRef.current) {
       window.clearTimeout(longEditorMorphTimerRef.current);
       longEditorMorphTimerRef.current = null;
@@ -241,6 +263,22 @@ export default function ComposePage() {
       window.clearTimeout(longEditorFocusTimerRef.current);
       longEditorFocusTimerRef.current = null;
     }
+
+    if (longEditorReturnTimerRef.current) {
+      window.clearTimeout(longEditorReturnTimerRef.current);
+      longEditorReturnTimerRef.current = null;
+    }
+  };
+
+  const openLongTextEditor = (editor) => {
+    if (!editor || longEditorOpen || !isPhoneWidth()) return;
+
+    if (longEditorCloseTimerRef.current) {
+      window.clearTimeout(longEditorCloseTimerRef.current);
+      longEditorCloseTimerRef.current = null;
+    }
+
+    clearTransitionTimers();
 
     const rect = editor.getBoundingClientRect();
     const computedStyle = window.getComputedStyle(editor);
@@ -256,12 +294,12 @@ export default function ComposePage() {
       targetTop,
       targetHeight: Math.max(190, viewport.height - targetTop),
       borderRadius: computedStyle.borderRadius || "24px",
-      fontSize: computedStyle.fontSize || "17px",
-      lineHeight: computedStyle.lineHeight || "26px",
-      paddingTop: computedStyle.paddingTop || "16px",
-      paddingRight: computedStyle.paddingRight || "16px",
-      paddingBottom: computedStyle.paddingBottom || "16px",
-      paddingLeft: computedStyle.paddingLeft || "16px",
+      fontSize: computedStyle.fontSize || "18px",
+      lineHeight: computedStyle.lineHeight || "32px",
+      paddingTop: computedStyle.paddingTop || "12px",
+      paddingRight: computedStyle.paddingRight || "14px",
+      paddingBottom: computedStyle.paddingBottom || "12px",
+      paddingLeft: computedStyle.paddingLeft || "14px",
       scrollTop: Math.max(0, editor.scrollTop || 0),
     });
 
@@ -269,6 +307,7 @@ export default function ComposePage() {
     sourceHtmlRef.current = editor.innerHTML || "";
     setLongEditorText(getEditorText(editor));
     setLongEditorClosing(false);
+    longEditorReturningRef.current = false;
     longEditorMorphingRef.current = true;
     setLongEditorMorphing(true);
     setLongEditorOpen(true);
@@ -297,9 +336,66 @@ export default function ComposePage() {
     }, LONG_TEXT_EDITOR_MORPH_MS);
   };
 
-  const syncLongEditorText = () => {
+  const closeLongEditorToSmallComposer = () => {
+    if (longEditorReturningRef.current) return;
+
+    const expandedEditor = expandedEditorRef.current;
+    const sourceEditor = sourceEditorRef.current || getComposerEditor();
+    const nextHtml = expandedEditor?.innerHTML || sourceHtmlRef.current || "";
+
+    if (sourceEditor) {
+      sourceEditor.innerHTML = nextHtml;
+      dispatchComposerInput(sourceEditor);
+    }
+
+    suppressLongEditorUntilRef.current = Date.now() + LONG_TEXT_EDITOR_SUPPRESS_MS;
+    longEditorReturningRef.current = true;
+    longEditorMorphingRef.current = false;
+    setLongEditorMorphing(false);
+    setLongEditorClosing(true);
+    clearTransitionTimers();
+
+    if (longEditorCloseTimerRef.current) {
+      window.clearTimeout(longEditorCloseTimerRef.current);
+    }
+
+    longEditorCloseTimerRef.current = window.setTimeout(() => {
+      setLongEditorOpen(false);
+      setLongEditorClosing(false);
+      setLongEditorText("");
+      setLongEditorFormats({});
+      setLongEditorMorph(null);
+      longEditorReturningRef.current = false;
+      longEditorCloseTimerRef.current = null;
+
+      window.requestAnimationFrame?.(() => {
+        placeCursorAtEnd(sourceEditor);
+      });
+    }, LONG_TEXT_EDITOR_ANIMATION_MS);
+  };
+
+  const syncLongEditorText = (event) => {
     const editor = expandedEditorRef.current;
-    setLongEditorText(getEditorText(editor));
+    const nextText = getEditorText(editor);
+    const inputType = event?.nativeEvent?.inputType || event?.inputType || "";
+    const deleting = inputType.startsWith("delete");
+
+    sourceHtmlRef.current = editor?.innerHTML || sourceHtmlRef.current;
+    setLongEditorText(nextText);
+
+    if (longEditorReturnTimerRef.current) {
+      window.clearTimeout(longEditorReturnTimerRef.current);
+      longEditorReturnTimerRef.current = null;
+    }
+
+    if (deleting && !longEditorMorphingRef.current && shouldReturnToSmallEditor(editor)) {
+      longEditorReturnTimerRef.current = window.setTimeout(() => {
+        closeLongEditorToSmallComposer();
+        longEditorReturnTimerRef.current = null;
+      }, LONG_TEXT_EDITOR_RETURN_DELAY_MS);
+      return;
+    }
+
     window.requestAnimationFrame?.(() => {
       syncLongEditorFormats();
       scrollLongEditorCaretIntoView();
@@ -354,19 +450,11 @@ export default function ComposePage() {
     suppressLongEditorUntilRef.current = Date.now() + LONG_TEXT_EDITOR_SUPPRESS_MS;
     expandedEditor?.blur?.();
     sourceEditor?.blur?.();
+    longEditorReturningRef.current = false;
     longEditorMorphingRef.current = false;
     setLongEditorMorphing(false);
     setLongEditorClosing(true);
-
-    if (longEditorMorphTimerRef.current) {
-      window.clearTimeout(longEditorMorphTimerRef.current);
-      longEditorMorphTimerRef.current = null;
-    }
-
-    if (longEditorFocusTimerRef.current) {
-      window.clearTimeout(longEditorFocusTimerRef.current);
-      longEditorFocusTimerRef.current = null;
-    }
+    clearTransitionTimers();
 
     if (longEditorCloseTimerRef.current) {
       window.clearTimeout(longEditorCloseTimerRef.current);
@@ -388,13 +476,7 @@ export default function ComposePage() {
         window.clearTimeout(longEditorCloseTimerRef.current);
       }
 
-      if (longEditorMorphTimerRef.current) {
-        window.clearTimeout(longEditorMorphTimerRef.current);
-      }
-
-      if (longEditorFocusTimerRef.current) {
-        window.clearTimeout(longEditorFocusTimerRef.current);
-      }
+      clearTransitionTimers();
     };
   }, []);
 
@@ -643,7 +725,7 @@ export default function ComposePage() {
 
             <div
               ref={longEditorScrollRef}
-              className="sh-long-editor-body relative min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5"
+              className="sh-long-editor-body relative min-h-0 flex-1 overflow-y-auto overscroll-contain px-3.5 py-3"
               style={{
                 backgroundColor: LONG_TEXT_EDITOR_BACKGROUND,
                 WebkitOverflowScrolling: "touch",
@@ -653,8 +735,8 @@ export default function ComposePage() {
             >
               {!longEditorText ? (
                 <div
-                  className="pointer-events-none absolute left-5 right-5 top-5 text-[28px] font-extrabold leading-tight tracking-[-0.03em]"
-                  style={{ color: "#707783" }}
+                  className="pointer-events-none absolute left-3.5 right-14 top-3.5 text-[18px] leading-8"
+                  style={{ color: "#A8ABB2" }}
                 >
                   What&apos;s on your mind?
                 </div>
@@ -681,7 +763,7 @@ export default function ComposePage() {
                   scrollLongEditorCaretIntoView();
                 }}
                 onPaste={handleLongEditorPaste}
-                className="min-h-full w-full bg-transparent text-[22px] leading-9 tracking-[-0.02em] outline-none [&_blockquote]:my-3 [&_blockquote]:rounded-[18px] [&_blockquote]:border-0 [&_blockquote]:bg-[#DDE8F3] [&_blockquote]:px-5 [&_blockquote]:py-3 [&_blockquote]:font-normal [&_blockquote]:text-[#102033] [&_div]:min-h-[1.65em] [&_div]:whitespace-pre-wrap [&_em]:italic [&_li]:pl-1 [&_ol]:ml-5 [&_ol]:list-decimal [&_ol]:space-y-1 [&_p]:min-h-[1.65em] [&_p]:whitespace-pre-wrap [&_strong]:font-extrabold [&_ul]:ml-5 [&_ul]:list-disc [&_ul]:space-y-1"
+                className="min-h-full w-full bg-transparent pr-10 text-[18px] leading-8 outline-none [&_blockquote]:my-3 [&_blockquote]:rounded-[18px] [&_blockquote]:border-0 [&_blockquote]:bg-[#DDE8F3] [&_blockquote]:px-5 [&_blockquote]:py-3 [&_blockquote]:font-normal [&_blockquote]:text-[#102033] [&_div]:min-h-[1.65em] [&_div]:whitespace-pre-wrap [&_em]:italic [&_li]:pl-1 [&_ol]:ml-5 [&_ol]:list-decimal [&_ol]:space-y-1 [&_p]:min-h-[1.65em] [&_p]:whitespace-pre-wrap [&_strong]:font-extrabold [&_ul]:ml-5 [&_ul]:list-disc [&_ul]:space-y-1"
                 style={{
                   color: T.text,
                   whiteSpace: "pre-wrap",
@@ -735,7 +817,7 @@ export default function ComposePage() {
             }
             to {
               opacity: 0;
-              transform: translate3d(0, 20px, 0) scale(0.99);
+              transform: translate3d(0, 10px, 0) scale(0.995);
             }
           }
 
@@ -780,9 +862,10 @@ export default function ComposePage() {
               width: 100vw;
               height: var(--sh-target-height);
               border-radius: 0;
-              padding: 20px;
-              font-size: 22px;
-              line-height: 36px;
+              padding: var(--sh-origin-padding-top) var(--sh-origin-padding-right)
+                var(--sh-origin-padding-bottom) var(--sh-origin-padding-left);
+              font-size: var(--sh-origin-font-size);
+              line-height: var(--sh-origin-line-height);
               box-shadow: none;
               opacity: 0;
             }
@@ -800,20 +883,20 @@ export default function ComposePage() {
           }
 
           .sh-long-editor-enter {
-            animation: soldierhubLongEditorIn 120ms ease-out both;
+            animation: soldierhubLongEditorIn 80ms ease-out both;
             will-change: opacity;
           }
 
           .sh-long-editor-exit {
             pointer-events: none;
-            animation: soldierhubLongEditorOut 300ms cubic-bezier(0.4, 0, 0.2, 1) both;
+            animation: soldierhubLongEditorOut 240ms cubic-bezier(0.4, 0, 0.2, 1) both;
             transform-origin: bottom center;
             will-change: opacity, transform;
           }
 
           .sh-long-editor-enter .sh-long-editor-top,
           .sh-long-editor-enter .sh-long-editor-toolbar {
-            animation: soldierhubLongEditorToolbarIn 220ms ease-out 130ms both;
+            animation: soldierhubLongEditorToolbarIn 180ms ease-out 80ms both;
           }
 
           .sh-long-editor-morphing .sh-long-editor-body {
@@ -821,7 +904,7 @@ export default function ComposePage() {
           }
 
           .sh-long-editor-ready .sh-long-editor-body {
-            animation: soldierhubLongEditorBodyIn 120ms ease-out both;
+            animation: soldierhubLongEditorBodyIn 90ms ease-out both;
           }
 
           .sh-editor-morph-card {
@@ -833,8 +916,8 @@ export default function ComposePage() {
             white-space: pre-wrap;
             overflow-wrap: anywhere;
             pointer-events: none;
-            animation: soldierhubEditorMorphCard 420ms cubic-bezier(0.2, 0.82, 0.2, 1) both;
-            will-change: left, top, width, height, border-radius, padding, font-size, line-height, opacity;
+            animation: soldierhubEditorMorphCard 300ms cubic-bezier(0.2, 0.82, 0.2, 1) both;
+            will-change: left, top, width, height, border-radius, padding, opacity;
           }
 
           .sh-editor-morph-text {
