@@ -18,7 +18,7 @@ import PostComposer from "@/components/feed/PostComposer";
 const LONG_TEXT_EDITOR_HEIGHT_TRIGGER = 232;
 const LONG_TEXT_EDITOR_OVERFLOW_ALLOWANCE = 18;
 const LONG_TEXT_EDITOR_SUPPRESS_MS = 750;
-const LONG_TEXT_EDITOR_ANIMATION_MS = 240;
+const LONG_TEXT_EDITOR_ANIMATION_MS = 340;
 const LONG_TEXT_EDITOR_BACKGROUND = "#F8FAFD";
 const COMPOSER_EDITOR_SELECTOR =
   'div[contenteditable="true"][aria-label="Write your SoldierHub post"]';
@@ -202,7 +202,6 @@ export default function ComposePage() {
     sourceHtmlRef.current = editor.innerHTML || "";
     setLongEditorText(getEditorText(editor));
     setLongEditorClosing(false);
-    editor.blur?.();
     setLongEditorOpen(true);
   };
 
@@ -371,14 +370,14 @@ export default function ComposePage() {
     window.requestAnimationFrame?.(() => {
       if (!expandedEditorRef.current) return;
       expandedEditorRef.current.innerHTML = sourceHtmlRef.current || "";
-      window.requestAnimationFrame?.(() => {
+      window.setTimeout(() => {
         placeCursorAtEnd(expandedEditorRef.current);
         syncLongEditorFormats();
         scrollLongEditorCaretIntoView();
-      });
+      }, 110);
     });
 
-    window.setTimeout(scrollLongEditorCaretIntoView, 260);
+    window.setTimeout(scrollLongEditorCaretIntoView, 340);
 
     return () => {
       document.documentElement.style.overflow = previousHtmlOverflow;
@@ -560,7 +559,11 @@ export default function ComposePage() {
           @keyframes soldierhubLongEditorIn {
             from {
               opacity: 0;
-              transform: translate3d(0, 24px, 0) scale(0.985);
+              transform: translate3d(0, 42px, 0) scale(0.975);
+            }
+            62% {
+              opacity: 1;
+              transform: translate3d(0, -2px, 0) scale(1.002);
             }
             to {
               opacity: 1;
@@ -575,14 +578,14 @@ export default function ComposePage() {
             }
             to {
               opacity: 0;
-              transform: translate3d(0, 16px, 0) scale(0.99);
+              transform: translate3d(0, 20px, 0) scale(0.99);
             }
           }
 
           @keyframes soldierhubLongEditorToolbarIn {
             from {
               opacity: 0;
-              transform: translate3d(0, -8px, 0);
+              transform: translate3d(0, -10px, 0);
             }
             to {
               opacity: 1;
@@ -593,7 +596,7 @@ export default function ComposePage() {
           @keyframes soldierhubLongEditorBodyIn {
             from {
               opacity: 0;
-              transform: translate3d(0, 10px, 0);
+              transform: translate3d(0, 16px, 0);
             }
             to {
               opacity: 1;
@@ -602,25 +605,25 @@ export default function ComposePage() {
           }
 
           .sh-long-editor-enter {
-            animation: soldierhubLongEditorIn 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+            animation: soldierhubLongEditorIn 430ms cubic-bezier(0.16, 1, 0.3, 1) both;
             transform-origin: bottom center;
             will-change: opacity, transform;
           }
 
           .sh-long-editor-exit {
             pointer-events: none;
-            animation: soldierhubLongEditorOut 200ms cubic-bezier(0.4, 0, 0.2, 1) both;
+            animation: soldierhubLongEditorOut 300ms cubic-bezier(0.4, 0, 0.2, 1) both;
             transform-origin: bottom center;
             will-change: opacity, transform;
           }
 
           .sh-long-editor-enter .sh-long-editor-top,
           .sh-long-editor-enter .sh-long-editor-toolbar {
-            animation: soldierhubLongEditorToolbarIn 260ms cubic-bezier(0.2, 0.8, 0.2, 1) 55ms both;
+            animation: soldierhubLongEditorToolbarIn 390ms cubic-bezier(0.16, 1, 0.3, 1) 115ms both;
           }
 
           .sh-long-editor-enter .sh-long-editor-body {
-            animation: soldierhubLongEditorBodyIn 280ms cubic-bezier(0.2, 0.8, 0.2, 1) 80ms both;
+            animation: soldierhubLongEditorBodyIn 430ms cubic-bezier(0.16, 1, 0.3, 1) 140ms both;
           }
 
           @keyframes soldierhubAnonymousComposeNotice {
