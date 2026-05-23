@@ -1,0 +1,88 @@
+/*
+  SoldierHub feed/profile polish overrides.
+  Keep this file small and loaded after globals.css so it can safely refine spacing
+  without removing existing post composer, image, avatar, or moderation logic.
+*/
+
+:where(.sh-feed-post-list > article, .sh-feed-post-list > article *) {
+  min-width: 0;
+}
+
+.sh-feed-post-list > article {
+  overflow: hidden;
+}
+
+.sh-feed-post-list > article :where(p, span, div, a, li) {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.sh-feed-post-list > article :where([class*="whitespace-pre-wrap"], [class*="prose"], blockquote) {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Desktop: keep the feed/profile post list closer to Facebook size instead of stretching across the laptop screen. */
+@media (min-width: 768px) {
+  .sh-feed-post-list {
+    width: 100%;
+    max-width: 620px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .sh-feed-post-list > article {
+    width: 100%;
+    max-width: 620px;
+    margin-left: auto;
+    margin-right: auto;
+    border-radius: 24px !important;
+  }
+
+  .sh-feed-post-list > article > div:first-child {
+    padding-top: 0.82rem !important;
+    padding-bottom: 0.78rem !important;
+  }
+
+  article button[aria-label="Open post image"] {
+    margin-top: 0.75rem !important;
+    max-height: 420px !important;
+    border-radius: 20px !important;
+    background: #F4F8FD !important;
+    overflow: hidden !important;
+  }
+
+  article button[aria-label="Open post image"][style*="aspect-ratio"] {
+    max-height: 420px !important;
+  }
+
+  article button[aria-label="Open post image"]:not([style*="aspect-ratio"]) {
+    height: clamp(250px, 34vh, 390px) !important;
+    max-height: 390px !important;
+  }
+
+  article button[aria-label="Open post image"] > img {
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+    object-position: center center !important;
+  }
+
+  article button[aria-label="Open post image"][style*="aspect-ratio"] > img {
+    object-fit: contain !important;
+  }
+
+  article button[aria-label="Open post image"]:not([style*="aspect-ratio"]) > img {
+    object-fit: cover !important;
+    object-position: top center !important;
+  }
+}
+
+/* Mobile keeps the edge-to-edge post cards, but long unbroken text still stays inside the card. */
+@media (max-width: 767px) {
+  .sh-feed-post-list > article :where(p, span, div, a, li) {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+}
