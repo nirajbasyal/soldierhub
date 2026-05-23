@@ -16,7 +16,7 @@ import AppShell from "@/components/layout/AppShell";
 import PostComposer from "@/components/feed/PostComposer";
 
 const LONG_TEXT_EDITOR_THRESHOLD = 420;
-const LONG_TEXT_EDITOR_REOPEN_GAP = 80;
+const LONG_TEXT_EDITOR_SUPPRESS_MS = 750;
 const COMPOSER_EDITOR_SELECTOR =
   'div[contenteditable="true"][aria-label="Write your SoldierHub post"]';
 
@@ -97,11 +97,17 @@ export default function ComposePage() {
   const expandedEditorRef = useRef(null);
   const sourceEditorRef = useRef(null);
   const sourceHtmlRef = useRef("");
-  const lastClosedLengthRef = useRef(0);
+  const suppressLongEditorUntilRef = useRef(0);
 
   const getComposerEditor = () => {
     if (typeof document === "undefined") return null;
     return document.querySelector(COMPOSER_EDITOR_SELECTOR);
+  };
+
+  const getComposerEditorFromEvent = (event) => {
+    const target = event?.target;
+    if (!(target instanceof Element)) return null;
+    return target.closest(COMPOSER_EDITOR_SELECTOR);
   };
 
   const syncLongEditorFormats = () => {
@@ -171,22 +177,18 @@ export default function ComposePage() {
     const expandedEditor = expandedEditorRef.current;
     const sourceEditor = sourceEditorRef.current || getComposerEditor();
     const nextHtml = expandedEditor?.innerHTML || "";
-    const nextText = getEditorText(expandedEditor);
 
     if (sourceEditor) {
       sourceEditor.innerHTML = nextHtml;
       dispatchComposerInput(sourceEditor);
     }
 
-    lastClosedLengthRef.current = nextText.length;
+    suppressLongEditorUntilRef.current = Date.now() + LONG_TEXT_EDITOR_SUPPRESS_MS;
+    expandedEditor?.blur?.();
+    sourceEditor?.blur?.();
     setLongEditorOpen(false);
     setLongEditorText("");
     setLongEditorFormats({});
-
-    window.requestAnimationFrame?.(() => {
-      sourceEditor?.focus?.({ preventScroll: true });
-      placeCursorAtEnd(sourceEditor);
-    });
   };
 
   useEffect(() => {
@@ -210,27 +212,24 @@ export default function ComposePage() {
   useEffect(() => {
     const maybeOpenLongEditor = (event) => {
       if (longEditorOpen || !isPhoneWidth()) return;
+      if (Date.now() < suppressLongEditorUntilRef.current) return;
 
-      const target = event.target;
-      const editor =
-        target instanceof Element && target.matches(COMPOSER_EDITOR_SELECTOR)
-          ? target
-          : getComposerEditor();
-
+      const editor = getComposerEditorFromEvent(event);
       if (!editor) return;
 
-      const textLength = getEditorText(editor).length;
-      const canReopen = textLength >= lastClosedLengthRef.current + LONG_TEXT_EDITOR_REOPEN_GAP;
-
-      if (textLength >= LONG_TEXT_EDITOR_THRESHOLD && canReopen) {
+      if (getEditorText(editor).length >= LONG_TEXT_EDITOR_THRESHOLD) {
         openLongTextEditor(editor);
       }
     };
 
+    document.addEventListener("pointerdown", maybeOpenLongEditor, true);
+    document.addEventListener("click", maybeOpenLongEditor, true);
     document.addEventListener("input", maybeOpenLongEditor, true);
     document.addEventListener("focusin", maybeOpenLongEditor, true);
 
     return () => {
+      document.removeEventListener("pointerdown", maybeOpenLongEditor, true);
+      document.removeEventListener("click", maybeOpenLongEditor, true);
       document.removeEventListener("input", maybeOpenLongEditor, true);
       document.removeEventListener("focusin", maybeOpenLongEditor, true);
     };
@@ -239,8 +238,10 @@ export default function ComposePage() {
   useEffect(() => {
     if (!longEditorOpen) return undefined;
 
-    const previousOverflow = document.body.style.overflow;
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
     document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
 
     window.requestAnimationFrame?.(() => {
       if (!expandedEditorRef.current) return;
@@ -250,7 +251,8 @@ export default function ComposePage() {
     });
 
     return () => {
-      document.body.style.overflow = previousOverflow;
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
     };
   }, [longEditorOpen]);
 
@@ -305,14 +307,14 @@ export default function ComposePage() {
 
         {longEditorOpen ? (
           <div
-            className="fixed inset-0 z-[140] flex flex-col md:hidden"
+            className="fixed inset-0 z-[140] flex h-[100dvh] flex-col overflow-hidden md:hidden"
             style={{ backgroundColor: T.bg }}
             role="dialog"
             aria-modal="true"
             aria-label="Expanded post text editor"
           >
             <div
-              className="flex h-[58px] shrink-0 items-center justify-between border-b px-4"
+              className="relative z-10 flex h-[58px] shrink-0 items-center justify-between border-b px-4"
               style={{ backgroundColor: "rgba(248,247,244,0.98)", borderColor: T.borderSoft }}
             >
               <div className="w-16" />
@@ -330,7 +332,7 @@ export default function ComposePage() {
             </div>
 
             <div
-              className="sh-long-editor-toolbar shrink-0 border-b px-3 py-2"
+              className="sh-long-editor-toolbar relative z-10 shrink-0 border-b px-3 py-2"
               style={{ backgroundColor: "rgba(255,255,255,0.96)", borderColor: T.borderSoft }}
               aria-label="Expanded editor formatting toolbar"
             >
@@ -362,7 +364,10 @@ export default function ComposePage() {
               </div>
             </div>
 
-            <div className="relative flex-1 overflow-y-auto px-5 py-5" style={{ WebkitOverflowScrolling: "touch" }}>
+            <div
+              className="relative min-h-0 flex-1 overflow-y-auto px-5 py-5"
+              style={{ WebkitOverflowScrolling: "touch" }}
+            >
               {!longEditorText ? (
                 <div
                   className="pointer-events-none absolute left-5 right-5 top-5 text-[28px] font-extrabold leading-tight tracking-[-0.03em]"
@@ -384,7 +389,7 @@ export default function ComposePage() {
                 onKeyUp={syncLongEditorFormats}
                 onMouseUp={syncLongEditorFormats}
                 onPaste={handleLongEditorPaste}
-                className="min-h-[72vh] w-full bg-transparent text-[22px] leading-9 tracking-[-0.02em] outline-none [&_blockquote]:my-3 [&_blockquote]:rounded-[18px] [&_blockquote]:border-0 [&_blockquote]:bg-[#DDE8F3] [&_blockquote]:px-5 [&_blockquote]:py-3 [&_blockquote]:font-normal [&_blockquote]:text-[#102033] [&_div]:min-h-[1.65em] [&_div]:whitespace-pre-wrap [&_em]:italic [&_li]:pl-1 [&_ol]:ml-5 [&_ol]:list-decimal [&_ol]:space-y-1 [&_p]:min-h-[1.65em] [&_p]:whitespace-pre-wrap [&_strong]:font-extrabold [&_ul]:ml-5 [&_ul]:list-disc [&_ul]:space-y-1"
+                className="min-h-full w-full bg-transparent text-[22px] leading-9 tracking-[-0.02em] outline-none [&_blockquote]:my-3 [&_blockquote]:rounded-[18px] [&_blockquote]:border-0 [&_blockquote]:bg-[#DDE8F3] [&_blockquote]:px-5 [&_blockquote]:py-3 [&_blockquote]:font-normal [&_blockquote]:text-[#102033] [&_div]:min-h-[1.65em] [&_div]:whitespace-pre-wrap [&_em]:italic [&_li]:pl-1 [&_ol]:ml-5 [&_ol]:list-decimal [&_ol]:space-y-1 [&_p]:min-h-[1.65em] [&_p]:whitespace-pre-wrap [&_strong]:font-extrabold [&_ul]:ml-5 [&_ul]:list-disc [&_ul]:space-y-1"
                 style={{ color: T.text, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}
               />
             </div>
