@@ -537,7 +537,6 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
         imageProcessing={imageProcessing}
         submitting={submitting}
         clearedDraft={clearedDraft}
-        error={error}
         onClearText={clearTextWithUndo}
         onRestoreText={restoreClearedText}
         onRemoveImage={removeSelectedImage}
@@ -551,16 +550,6 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
         onPaste={handlePaste}
       />
 
-      {anonymous && (
-        <div
-          className="mt-2 flex items-start gap-2 rounded-2xl border px-3 py-2.5 text-xs font-medium"
-          style={{ backgroundColor: T.redBg, borderColor: "rgba(179, 25, 66, 0.18)", color: T.red }}
-        >
-          <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-          <span>Anonymous mode is on. Do not include names, unit details, or personal contact info in the post body.</span>
-        </div>
-      )}
-
       {imageNotice ? (
         <div
           className="mt-2 rounded-2xl border px-3 py-2 text-[11px] font-semibold"
@@ -569,6 +558,16 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
           {imageNotice}
         </div>
       ) : null}
+
+      {error && (
+        <div
+          className="my-3 flex items-start gap-2 rounded-xl px-3 py-2 text-xs"
+          style={{ backgroundColor: T.redBg, color: T.red }}
+        >
+          <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
 
       <ComposerActionBar
         pageMode={pageMode}
@@ -584,6 +583,16 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
         draftStatus={draftStatus}
         onSaveDraft={handleSaveDraft}
       />
+
+      {anonymous && (
+        <div
+          className="mt-2 flex items-start gap-2 rounded-2xl border px-3 py-2.5 text-xs font-medium"
+          style={{ backgroundColor: T.redBg, borderColor: "rgba(179, 25, 66, 0.18)", color: T.red }}
+        >
+          <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+          <span>Anonymous mode is on. Do not include names, unit details, or personal contact info in the post body.</span>
+        </div>
+      )}
     </div>
   );
 }
