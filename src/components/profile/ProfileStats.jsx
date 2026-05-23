@@ -1,7 +1,7 @@
 import { FileText, Loader2, UsersRound } from "lucide-react";
 import { T } from "@/lib/theme";
 
-function ProfileStatItem({ icon: Icon, label, value, loading = false, onClick }) {
+function ProfileStatItem({ icon: Icon, label, value, loading = false, href }) {
   const content = (
     <div className="flex min-w-0 items-center justify-center gap-2 px-2 py-3 sm:justify-start sm:px-3">
       <div
@@ -28,20 +28,19 @@ function ProfileStatItem({ icon: Icon, label, value, loading = false, onClick })
     </div>
   );
 
-  if (!onClick) {
+  if (!href) {
     return <div className="min-w-0">{content}</div>;
   }
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="group min-w-0 text-left transition-colors hover:bg-[#DCE8F7]/70 focus-visible:bg-[#DCE8F7]/70 focus-visible:outline-none"
+    <a
+      href={href}
+      className="group block min-w-0 text-left transition-colors hover:bg-[#DCE8F7]/70 focus-visible:bg-[#DCE8F7]/70 focus-visible:outline-none"
     >
       <div className="transition-colors group-hover:bg-[#DCE8F7]/70 group-focus-visible:bg-[#DCE8F7]/70">
         {content}
       </div>
-    </button>
+    </a>
   );
 }
 
@@ -50,8 +49,6 @@ export default function ProfileStats({
   followersCount = 0,
   followingCount = 0,
   loading = false,
-  onOpenFollowers,
-  onOpenFollowing,
 }) {
   return (
     <div
@@ -69,7 +66,7 @@ export default function ProfileStats({
           label="Followers"
           value={followersCount}
           loading={loading}
-          onClick={onOpenFollowers}
+          href="/profile/connections?tab=followers"
         />
       </div>
       <div className="border-t min-[440px]:border-l min-[440px]:border-t-0" style={{ borderColor: "#E4EDF7" }}>
@@ -78,7 +75,7 @@ export default function ProfileStats({
           label="Following"
           value={followingCount}
           loading={loading}
-          onClick={onOpenFollowing}
+          href="/profile/connections?tab=following"
         />
       </div>
     </div>
