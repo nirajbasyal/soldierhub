@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, FileText, Loader2, UserCheck, UserPlus, UserRound } from "lucide-react";
+import { ArrowLeft, FileText, UserRound } from "lucide-react";
 import { T } from "@/lib/theme";
 import { colorFromString } from "@/lib/helpers";
 import { useApp } from "@/store/AppContext";
@@ -12,11 +12,10 @@ import * as Follows from "@/lib/supabase/follows";
 import AppShell from "@/components/layout/AppShell";
 import Footer from "@/components/layout/Footer";
 import Button from "@/components/ui/Button";
-import Avatar from "@/components/ui/Avatar";
 import EmptyState from "@/components/ui/EmptyState";
 import PostCard from "@/components/feed/PostCard";
 import PostSkeleton from "@/components/ui/PostSkeleton";
-import ShareProfileButton from "@/components/profile/ShareProfileButton";
+import VisitorProfileHero from "@/components/profile/VisitorProfileHero";
 
 const VISITOR_PROFILE_CACHE_PREFIX = "soldierhub_visitor_profile_v5:";
 const VISITOR_PROFILE_CACHE_MAX_AGE_MS = 1000 * 60 * 5;
@@ -179,22 +178,6 @@ async function resolveProfileIdFromLookup(rawLookup) {
       status: "verified",
     },
   };
-}
-
-function StatCard({ label, value }) {
-  return (
-    <div
-      className="rounded-2xl border px-2 py-2.5 md:p-3 text-center md:text-left"
-      style={{ backgroundColor: "rgba(244,248,253,0.9)", borderColor: "#D5E2F2" }}
-    >
-      <div className="text-xl md:text-2xl font-extrabold tabular-nums" style={{ color: T.navy }}>
-        {value}
-      </div>
-      <div className="text-[10px] md:text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: T.textSubtle }}>
-        {label}
-      </div>
-    </div>
-  );
 }
 
 export default function VisitorProfilePage() {
@@ -483,129 +466,71 @@ export default function VisitorProfilePage() {
             "radial-gradient(circle at top left, rgba(220,232,247,0.9), transparent 32%), linear-gradient(180deg, #F4F8FD 0%, #FFFFFF 48%, #F4F8FD 100%)",
         }}
       >
-        <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-10">
-          <Button variant="secondary" icon={ArrowLeft} onClick={() => router.back()}>
-            Back
-          </Button>
-
-          <section
-            className="mt-5 rounded-[26px] md:rounded-[32px] border overflow-hidden relative"
-            style={{
-              borderColor: "#D5E2F2",
-              backgroundColor: "rgba(255,255,255,0.92)",
-              boxShadow: "0 14px 38px rgba(7,27,51,0.07)",
-            }}
+        <div className="mx-auto w-full max-w-5xl px-3 py-4 sm:px-5 md:px-6 md:py-8">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="mb-4 flex h-10 w-10 items-center justify-center rounded-full border border-[#D5E2F2] bg-white text-[#0B1C2C] shadow-sm"
+            aria-label="Back"
           >
-            <div className="absolute left-5 right-5 top-0 h-1 rounded-b-full" style={{ backgroundColor: "rgba(30,78,140,0.72)" }} />
+            <ArrowLeft size={18} />
+          </button>
 
-            <div className="px-4 py-5 md:p-8">
-              {loading ? (
-                <div className="flex items-center gap-4">
-                  <div className="h-20 w-20 animate-pulse rounded-[26px] bg-[#DDE6EF]" />
-                  <div className="min-w-0 flex-1">
-                    <div className="h-6 w-48 animate-pulse rounded-full bg-[#DDE6EF]" />
-                    <div className="mt-3 h-4 w-72 max-w-full animate-pulse rounded-full bg-[#E8EEF5]" />
-                  </div>
+          {loading ? (
+            <section className="overflow-hidden rounded-[28px] border border-[#D5E2F2] bg-white shadow-[0_18px_42px_rgba(7,27,51,0.11)]">
+              <div className="flex min-h-[210px] items-center gap-4 bg-[#0B1C2C] px-4 py-5">
+                <div className="h-[76px] w-[76px] animate-pulse rounded-full bg-white/20" />
+                <div className="min-w-0 flex-1">
+                  <div className="h-7 w-44 animate-pulse rounded-full bg-white/20" />
+                  <div className="mt-3 h-4 w-64 max-w-full animate-pulse rounded-full bg-white/15" />
                 </div>
-              ) : profile ? (
-                <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-5">
-                  <div
-                    className="rounded-[22px] md:rounded-[28px] p-1.5 md:p-2 border shrink-0 mx-auto md:mx-0"
-                    style={{ backgroundColor: "#FFFFFF", borderColor: "#D5E2F2" }}
-                  >
-                    <Avatar
-                      name={profile.full_name}
-                      color={profile.avatar_color}
-                      src={profile.avatar_url}
-                      size={84}
-                    />
-                  </div>
-
-                  <div className="min-w-0 flex-1 text-center md:text-left">
-                    <div
-                      className="inline-flex items-center gap-1.5 md:gap-2 rounded-full border px-2.5 md:px-3 py-1 md:py-1.5 text-[10px] md:text-xs font-bold uppercase tracking-[0.12em]"
-                      style={{ backgroundColor: "rgba(244,248,253,0.95)", borderColor: "#D5E2F2", color: T.blue }}
-                    >
-                      <UserRound size={13} />
-                      Member Profile
-                      {refreshingProfile ? <Loader2 size={12} className="animate-spin" /> : null}
-                    </div>
-
-                    <h1 className="mt-3 text-[2rem] sm:text-4xl md:text-5xl font-extrabold tracking-[-0.04em] leading-[0.95]" style={{ color: T.navy }}>
-                      {profile.full_name}
-                    </h1>
-
-                    <p className="mt-2 text-sm md:text-base leading-6 md:leading-7 max-w-2xl mx-auto md:mx-0" style={{ color: profile.bio ? T.text : T.textMuted }}>
-                      {profile.bio || "This member has not added a bio yet."}
-                    </p>
-
-                    <div className="mt-4 flex flex-col sm:flex-row justify-center md:justify-start gap-2">
-                      <button
-                        type="button"
-                        onClick={handleFollowToggle}
-                        disabled={followLoading || !canUseFollowButton}
-                        className="inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-bold transition hover:-translate-y-0.5 disabled:opacity-60"
-                        style={{
-                          backgroundColor: followSummary.isFollowing ? "rgba(220,232,247,0.96)" : T.navy,
-                          borderColor: followSummary.isFollowing ? "#BCD0EA" : "rgba(7,27,51,0.18)",
-                          color: followSummary.isFollowing ? T.blue : "#FFFFFF",
-                        }}
-                      >
-                        {followLoading ? (
-                          <Loader2 size={16} className="animate-spin" />
-                        ) : followSummary.isFollowing ? (
-                          <UserCheck size={16} />
-                        ) : (
-                          <UserPlus size={16} />
-                        )}
-                        {followSummary.isFollowing ? "Following" : "Follow"}
-                      </button>
-
-                      <ShareProfileButton
-                        profileId={targetProfileId || profile?.id || routeProfileLookup}
-                        profileName={profile.full_name}
-                        pushToast={pushToast}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 md:grid-cols-1 gap-2 md:min-w-[150px]">
-                    <StatCard label="Posts" value={publicPostCount} />
-                    <StatCard label="Followers" value={followLoading && !followSummary.followersCount ? "…" : followSummary.followersCount || 0} />
-                    <StatCard label="Following" value={followLoading && !followSummary.followingCount ? "…" : followSummary.followingCount || 0} />
-                  </div>
-                </div>
-              ) : (
-                <EmptyState icon={UserRound} title="Profile not found" body="This profile may not be available." />
-              )}
-            </div>
-          </section>
+              </div>
+            </section>
+          ) : profile ? (
+            <VisitorProfileHero
+              profile={profile}
+              postCount={publicPostCount}
+              followersCount={followSummary.followersCount}
+              followingCount={followSummary.followingCount}
+              followLoading={followLoading}
+              isFollowing={followSummary.isFollowing}
+              canFollow={canUseFollowButton}
+              refreshing={refreshingProfile}
+              profileId={targetProfileId || profile?.id || routeProfileLookup}
+              pushToast={pushToast}
+              onFollowToggle={handleFollowToggle}
+            />
+          ) : (
+            <section className="rounded-[28px] border border-[#D5E2F2] bg-white p-8 shadow-[0_18px_42px_rgba(7,27,51,0.09)]">
+              <EmptyState icon={UserRound} title="Profile not found" body="This profile may not be available." />
+            </section>
+          )}
 
           {(loading || profile) ? (
             <section className="mt-6">
               <div
-                className="rounded-3xl border p-4 md:p-5 mb-4 flex items-center justify-between gap-3"
+                className="mb-4 flex items-center justify-between gap-3 rounded-3xl border p-4 md:p-5"
                 style={{ backgroundColor: T.card, borderColor: T.border }}
               >
-                <div className="flex items-center gap-3 min-w-0">
+                <div className="flex min-w-0 items-center gap-3">
                   <div
-                    className="h-11 w-11 rounded-2xl flex items-center justify-center shrink-0"
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl"
                     style={{ backgroundColor: T.softBlue || "#EAF2FC" }}
                   >
                     <FileText size={20} style={{ color: T.blue }} />
                   </div>
                   <div className="min-w-0">
-                    <h2 className="text-xl md:text-2xl font-extrabold tracking-[-0.02em]" style={{ color: T.navy }}>
+                    <h2 className="text-xl font-extrabold tracking-[-0.02em] md:text-2xl" style={{ color: T.navy }}>
                       Public posts
                     </h2>
-                    <p className="text-sm mt-0.5" style={{ color: T.textMuted }}>
+                    <p className="mt-0.5 text-sm" style={{ color: T.textMuted }}>
                       Non-anonymous posts shared by this member.
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div className="-mx-4 md:mx-0 flex flex-col gap-2.5 sh-feed-post-list">
+              <div className="-mx-3 flex flex-col gap-2.5 sh-feed-post-list sm:mx-0">
                 {loading ? (
                   <>
                     <PostSkeleton />
@@ -615,7 +540,7 @@ export default function VisitorProfilePage() {
                   userPosts.map((post) => <PostCard key={post.id} post={post} />)
                 ) : (
                   <div
-                    className="mx-4 md:mx-0 rounded-3xl border p-8 md:p-10 text-center"
+                    className="mx-3 rounded-3xl border p-8 text-center md:mx-0 md:p-10"
                     style={{ backgroundColor: T.card, borderColor: T.border }}
                   >
                     <EmptyState
