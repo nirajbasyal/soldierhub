@@ -26,6 +26,10 @@ export default function ComposerEditor({
   onPaste,
 }) {
   const showTextClearControl = Boolean(plainText?.trim()) || Boolean(clearedDraft);
+  const selectedImageAspectRatio =
+    selectedImage?.width && selectedImage?.height
+      ? `${selectedImage.width} / ${selectedImage.height}`
+      : "16 / 10";
 
   return (
     <>
@@ -107,6 +111,7 @@ export default function ComposerEditor({
                 src={selectedImage.previewUrl}
                 alt="Selected post preview"
                 className="block max-h-[62vh] w-full object-cover md:max-h-[340px]"
+                style={{ aspectRatio: selectedImageAspectRatio }}
               />
               <button
                 type="button"
