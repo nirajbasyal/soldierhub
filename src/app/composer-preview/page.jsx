@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertTriangle, ArrowLeft, Bold, Italic, List, ListOrdered, Quote } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { T } from "@/lib/theme";
@@ -78,15 +78,39 @@ function selectionInsideTag(editor, selector) {
   return Boolean(element?.closest?.(selector));
 }
 
+function queryCommandIsActive(command) {
+  if (typeof document === "undefined" || typeof document.queryCommandState !== "function") return false;
+
+  try {
+    return Boolean(document.queryCommandState(command));
+  } catch {
+    return false;
+  }
+}
+
 export default function ComposerPreviewPage() {
   const router = useRouter();
   const [longEditorOpen, setLongEditorOpen] = useState(false);
   const [longEditorText, setLongEditorText] = useState("");
   const [longEditorViewport, setLongEditorViewport] = useState({ height: null, top: 0 });
+  const [expandedActiveFormats, setExpandedActiveFormats] = useState({});
   const expandedEditorRef = useRef(null);
   const sourceEditorRef = useRef(null);
   const sourceHtmlRef = useRef("");
   const suppressLongEditorUntilRef = useRef(0);
+
+  const syncExpandedFormatState = useCallback(() => {
+    const editor = expandedEditorRef.current;
+    if (!editor) return;
+
+    setExpandedActiveFormats({
+      bold: queryCommandIsActive("bold") || selectionInsideTag(editor, "strong,b"),
+      italic: queryCommandIsActive("italic") || selectionInsideTag(editor, "em,i"),
+      bullet: queryCommandIsActive("insertUnorderedList") || selectionInsideTag(editor, "ul"),
+      number: queryCommandIsActive("insertOrderedList") || selectionInsideTag(editor, "ol"),
+      quote: selectionInsideTag(editor, "blockquote"),
+    });
+  }, []);
 
   const getViewportSnapshot = () => {
     const viewport = window.visualViewport;
@@ -104,12 +128,14 @@ export default function ComposerPreviewPage() {
     sourceHtmlRef.current = editor.innerHTML || "";
     setLongEditorText(getEditorText(editor));
     setLongEditorViewport(viewport);
+    setExpandedActiveFormats({});
     setLongEditorOpen(true);
 
     window.requestAnimationFrame?.(() => {
       if (!expandedEditorRef.current) return;
       expandedEditorRef.current.innerHTML = sourceHtmlRef.current || "";
       placeCursorAtEnd(expandedEditorRef.current);
+      syncExpandedFormatState();
     });
   };
 
@@ -131,6 +157,7 @@ export default function ComposerPreviewPage() {
     suppressLongEditorUntilRef.current = Date.now() + 750;
     setLongEditorOpen(false);
     setLongEditorText("");
+    setExpandedActiveFormats({});
   };
 
   const applyExpandedFormatting = (action) => {
@@ -152,7 +179,7 @@ export default function ComposerPreviewPage() {
 
     window.requestAnimationFrame?.(() => {
       setLongEditorText(getEditorText(editor));
-      placeCursorAtEnd(editor);
+      syncExpandedFormatState();
     });
   };
 
@@ -298,15 +325,21 @@ export default function ComposerPreviewPage() {
               <div className="grid grid-cols-5 items-center gap-2">
                 {EXPANDED_FORMAT_ACTIONS.map((action) => {
                   const Icon = action.icon;
+                  const isActive = Boolean(expandedActiveFormats[action.key]);
                   return (
                     <button
                       key={action.key}
                       type="button"
                       onMouseDown={(event) => event.preventDefault()}
                       onClick={() => applyExpandedFormatting(action)}
-                      className="sh-tap flex h-10 w-full items-center justify-center rounded-full border transition active:scale-[0.97]"
-                      style={{ backgroundColor: "#FFFFFF", borderColor: T.border, color: T.navy }}
+                      className="sh-tap flex h-10 w-full items-center justify-center rounded-full border shadow-sm transition active:scale-[0.97]"
+                      style={{
+                        backgroundColor: isActive ? T.navy : "#FFFFFF",
+                        borderColor: isActive ? T.navy : T.border,
+                        color: isActive ? "#FFFFFF" : T.navy,
+                      }}
                       aria-label={action.label}
+                      aria-pressed={isActive}
                       title={action.label}
                     >
                       <Icon size={18} strokeWidth={2.65} />
@@ -341,7 +374,13 @@ export default function ComposerPreviewPage() {
                 role="textbox"
                 aria-label="Expanded SoldierHub post text"
                 aria-multiline="true"
-                onInput={() => setLongEditorText(getEditorText(expandedEditorRef.current))}
+                onInput={() => {
+                  setLongEditorText(getEditorText(expandedEditorRef.current));
+                  syncExpandedFormatState();
+                }}
+                onKeyUp={syncExpandedFormatState}
+                onMouseUp={syncExpandedFormatState}
+                onFocus={syncExpandedFormatState}
                 onPaste={(event) => {
                   event.preventDefault();
                   const text = event.clipboardData?.getData("text/plain") || "";
@@ -352,7 +391,10 @@ export default function ComposerPreviewPage() {
                       expandedEditorRef.current.textContent = `${expandedEditorRef.current.textContent || ""}${text}`;
                     }
                   }
-                  window.requestAnimationFrame?.(() => setLongEditorText(getEditorText(expandedEditorRef.current)));
+                  window.requestAnimationFrame?.(() => {
+                    setLongEditorText(getEditorText(expandedEditorRef.current));
+                    syncExpandedFormatState();
+                  });
                 }}
                 className="min-h-full w-full bg-transparent pr-10 text-[18px] leading-8 outline-none [&_blockquote]:my-3 [&_blockquote]:rounded-[18px] [&_blockquote]:border-0 [&_blockquote]:bg-[#DDE8F3] [&_blockquote]:px-5 [&_blockquote]:py-3 [&_blockquote]:font-normal [&_blockquote]:text-[#102033] [&_div]:min-h-[1.65em] [&_div]:whitespace-pre-wrap [&_em]:italic [&_li]:pl-1 [&_ol]:ml-5 [&_ol]:list-decimal [&_ol]:space-y-1 [&_p]:min-h-[1.65em] [&_p]:whitespace-pre-wrap [&_strong]:font-extrabold [&_ul]:ml-5 [&_ul]:list-disc [&_ul]:space-y-1"
                 style={{ color: T.text, whiteSpace: "pre-wrap", overflowWrap: "anywhere", paddingBottom: "28px" }}
