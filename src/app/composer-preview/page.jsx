@@ -1,13 +1,176 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { T } from "@/lib/theme";
 import AppShell from "@/components/layout/AppShell";
 import PostComposer from "@/components/feed/composer/PostComposer";
 
+const COMPOSER_EDITOR_SELECTOR =
+  'div[contenteditable="true"][aria-label="Write your SoldierHub post"]';
+const LONG_EDITOR_TRIGGER_ROWS = 6;
+const LONG_EDITOR_TRIGGER_HEIGHT = 232;
+const LONG_EDITOR_BACKGROUND = "#F8FAFD";
+
+function isPhoneWidth() {
+  if (typeof window === "undefined") return false;
+  return window.matchMedia?.("(max-width: 640px)")?.matches ?? window.innerWidth <= 640;
+}
+
+function getEditorText(editor) {
+  return (editor?.innerText || "").replace(/\u200B/g, "").replace(/\u00a0/g, " ").trim();
+}
+
+function getEditorRows(editor) {
+  const rawText = (editor?.innerText || "").replace(/\u200B/g, "").replace(/\u00a0/g, " ");
+  return rawText.split(/\n/).reduce((total, line) => total + Math.max(1, Math.ceil(line.length / 34)), 0);
+}
+
+function shouldOpenLongEditor(editor) {
+  if (!editor || !isPhoneWidth()) return false;
+  if (!getEditorText(editor)) return false;
+
+  if (getEditorRows(editor) > LONG_EDITOR_TRIGGER_ROWS) return true;
+  if (editor.scrollHeight > editor.clientHeight + 18) return true;
+
+  const height = editor.getBoundingClientRect?.().height || 0;
+  return height >= LONG_EDITOR_TRIGGER_HEIGHT && editor.scrollHeight >= LONG_EDITOR_TRIGGER_HEIGHT;
+}
+
+function placeCursorAtEnd(element) {
+  if (typeof window === "undefined" || !element) return;
+  element.focus({ preventScroll: true });
+  const range = document.createRange();
+  range.selectNodeContents(element);
+  range.collapse(false);
+  const selection = window.getSelection?.();
+  selection?.removeAllRanges();
+  selection?.addRange(range);
+}
+
+function dispatchComposerInput(editor) {
+  if (!editor || typeof window === "undefined") return;
+
+  const inputEvent =
+    typeof InputEvent === "function"
+      ? new InputEvent("input", { bubbles: true, inputType: "insertText" })
+      : new Event("input", { bubbles: true });
+
+  editor.dispatchEvent(inputEvent);
+  editor.dispatchEvent(new Event("keyup", { bubbles: true }));
+}
+
 export default function ComposerPreviewPage() {
   const router = useRouter();
+  const [longEditorOpen, setLongEditorOpen] = useState(false);
+  const [longEditorText, setLongEditorText] = useState("");
+  const [longEditorViewport, setLongEditorViewport] = useState({ height: null, top: 0 });
+  const expandedEditorRef = useRef(null);
+  const sourceEditorRef = useRef(null);
+  const sourceHtmlRef = useRef("");
+  const suppressLongEditorUntilRef = useRef(0);
+
+  const getViewportSnapshot = () => {
+    const viewport = window.visualViewport;
+    return {
+      height: Math.max(320, Math.floor(viewport?.height || window.innerHeight || 0)),
+      top: Math.max(0, Math.floor(viewport?.offsetTop || 0)),
+    };
+  };
+
+  const openLongEditor = (editor) => {
+    if (!editor || longEditorOpen) return;
+
+    const viewport = getViewportSnapshot();
+    sourceEditorRef.current = editor;
+    sourceHtmlRef.current = editor.innerHTML || "";
+    setLongEditorText(getEditorText(editor));
+    setLongEditorViewport(viewport);
+    setLongEditorOpen(true);
+
+    window.requestAnimationFrame?.(() => {
+      if (!expandedEditorRef.current) return;
+      expandedEditorRef.current.innerHTML = sourceHtmlRef.current || "";
+      placeCursorAtEnd(expandedEditorRef.current);
+    });
+  };
+
+  const closeLongEditor = ({ focusSmallEditor = false } = {}) => {
+    const expandedEditor = expandedEditorRef.current;
+    const sourceEditor = sourceEditorRef.current || document.querySelector(COMPOSER_EDITOR_SELECTOR);
+    const nextHtml = expandedEditor?.innerHTML || sourceHtmlRef.current || "";
+
+    if (sourceEditor) {
+      sourceEditor.innerHTML = nextHtml;
+      dispatchComposerInput(sourceEditor);
+      if (focusSmallEditor) {
+        window.requestAnimationFrame?.(() => placeCursorAtEnd(sourceEditor));
+      } else {
+        sourceEditor.blur?.();
+      }
+    }
+
+    suppressLongEditorUntilRef.current = Date.now() + 750;
+    setLongEditorOpen(false);
+    setLongEditorText("");
+  };
+
+  useEffect(() => {
+    const maybeOpenLongEditor = (event) => {
+      if (longEditorOpen || Date.now() < suppressLongEditorUntilRef.current) return;
+      const target = event?.target;
+      if (!(target instanceof Element)) return;
+
+      const editor = target.closest(COMPOSER_EDITOR_SELECTOR);
+      if (shouldOpenLongEditor(editor)) openLongEditor(editor);
+    };
+
+    document.addEventListener("input", maybeOpenLongEditor, true);
+    return () => document.removeEventListener("input", maybeOpenLongEditor, true);
+  }, [longEditorOpen]);
+
+  useEffect(() => {
+    if (!longEditorOpen) return undefined;
+
+    const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousBodyPosition = document.body.style.position;
+    const previousBodyTop = document.body.style.top;
+    const previousBodyWidth = document.body.style.width;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = "100%";
+
+    return () => {
+      document.documentElement.style.overflow = previousHtmlOverflow;
+      document.body.style.overflow = previousBodyOverflow;
+      document.body.style.position = previousBodyPosition;
+      document.body.style.top = previousBodyTop;
+      document.body.style.width = previousBodyWidth;
+      window.scrollTo(0, scrollY);
+    };
+  }, [longEditorOpen]);
+
+  useEffect(() => {
+    if (!longEditorOpen) return undefined;
+
+    const updateViewport = () => setLongEditorViewport(getViewportSnapshot());
+    updateViewport();
+    window.visualViewport?.addEventListener("resize", updateViewport);
+    window.visualViewport?.addEventListener("scroll", updateViewport);
+    window.addEventListener("resize", updateViewport);
+
+    return () => {
+      window.visualViewport?.removeEventListener("resize", updateViewport);
+      window.visualViewport?.removeEventListener("scroll", updateViewport);
+      window.removeEventListener("resize", updateViewport);
+    };
+  }, [longEditorOpen]);
 
   return (
     <AppShell hideNav>
@@ -58,6 +221,81 @@ export default function ComposerPreviewPage() {
           <PostComposer startOpen pageMode />
         </div>
 
+        {longEditorOpen ? (
+          <div
+            className="fixed left-0 right-0 z-[140] flex max-h-[100dvh] flex-col overflow-hidden overscroll-contain md:hidden"
+            style={{
+              backgroundColor: LONG_EDITOR_BACKGROUND,
+              height: longEditorViewport.height ? `${longEditorViewport.height}px` : "100dvh",
+              top: `${longEditorViewport.top || 0}px`,
+            }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Expanded post text editor"
+          >
+            <div
+              className="relative z-10 flex h-[58px] shrink-0 items-center justify-between border-b px-4"
+              style={{ backgroundColor: "rgba(248,250,253,0.98)", borderColor: T.borderSoft }}
+            >
+              <div className="w-16" />
+              <div className="text-[21px] font-extrabold tracking-[-0.03em]" style={{ color: T.text }}>
+                Add text
+              </div>
+              <button
+                type="button"
+                onClick={() => closeLongEditor()}
+                className="sh-tap w-16 rounded-full px-2 py-2 text-right text-[17px] font-bold active:scale-[0.98]"
+                style={{ color: T.navy }}
+              >
+                Done
+              </button>
+            </div>
+
+            <div
+              className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain px-3.5 py-3"
+              style={{
+                backgroundColor: LONG_EDITOR_BACKGROUND,
+                WebkitOverflowScrolling: "touch",
+                paddingBottom: "calc(env(safe-area-inset-bottom) + 44px)",
+                scrollPaddingBottom: "44px",
+              }}
+            >
+              {!longEditorText ? (
+                <div
+                  className="pointer-events-none absolute left-3.5 right-14 top-3.5 text-[18px] leading-8"
+                  style={{ color: "#A8ABB2" }}
+                >
+                  What&apos;s on your mind?
+                </div>
+              ) : null}
+
+              <div
+                ref={expandedEditorRef}
+                contentEditable
+                suppressContentEditableWarning
+                role="textbox"
+                aria-label="Expanded SoldierHub post text"
+                aria-multiline="true"
+                onInput={() => setLongEditorText(getEditorText(expandedEditorRef.current))}
+                onPaste={(event) => {
+                  event.preventDefault();
+                  const text = event.clipboardData?.getData("text/plain") || "";
+                  try {
+                    document.execCommand("insertText", false, text);
+                  } catch {
+                    if (expandedEditorRef.current) {
+                      expandedEditorRef.current.textContent = `${expandedEditorRef.current.textContent || ""}${text}`;
+                    }
+                  }
+                  window.requestAnimationFrame?.(() => setLongEditorText(getEditorText(expandedEditorRef.current)));
+                }}
+                className="min-h-full w-full bg-transparent pr-10 text-[18px] leading-8 outline-none [&_blockquote]:my-3 [&_blockquote]:rounded-[18px] [&_blockquote]:border-0 [&_blockquote]:bg-[#DDE8F3] [&_blockquote]:px-5 [&_blockquote]:py-3 [&_blockquote]:font-normal [&_blockquote]:text-[#102033] [&_div]:min-h-[1.65em] [&_div]:whitespace-pre-wrap [&_em]:italic [&_li]:pl-1 [&_ol]:ml-5 [&_ol]:list-decimal [&_ol]:space-y-1 [&_p]:min-h-[1.65em] [&_p]:whitespace-pre-wrap [&_strong]:font-extrabold [&_ul]:ml-5 [&_ul]:list-disc [&_ul]:space-y-1"
+                style={{ color: T.text, whiteSpace: "pre-wrap", overflowWrap: "anywhere", paddingBottom: "28px" }}
+              />
+            </div>
+          </div>
+        ) : null}
+
         <style jsx global>{`
           @keyframes soldierhubAnonymousComposeNotice {
             0% {
@@ -70,16 +308,7 @@ export default function ComposerPreviewPage() {
               border-width: 0;
               transform: translateY(8px) scale(0.985);
             }
-            12% {
-              opacity: 1;
-              max-height: 120px;
-              margin-top: 8px;
-              margin-bottom: -2px;
-              padding-top: 0.625rem;
-              padding-bottom: 0.625rem;
-              border-width: 1px;
-              transform: translateY(0) scale(1);
-            }
+            12%,
             72% {
               opacity: 1;
               max-height: 120px;
