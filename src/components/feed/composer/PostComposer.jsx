@@ -82,6 +82,8 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     setPlainText(cleanText);
     setStructured(hasStructuredContent(editor));
     setClearedDraft(null);
+    setDraftSaved(false);
+    setDraftStatus("");
     bodyValueRef.current = cleanHtml;
     plainTextValueRef.current = cleanText;
     setError("");
