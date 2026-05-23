@@ -218,10 +218,10 @@ function PostImagePreview({ image, onOpen }) {
       className="mt-4 block w-full overflow-hidden rounded-[22px] border text-left transition active:scale-[0.995] focus:outline-none focus:ring-2 focus:ring-[#3F5F7D]/25"
       style={{
         borderColor: T.borderSoft || T.border,
-        backgroundColor: isVeryTall ? "#101418" : "#F4F8FD",
-        height: isVeryTall ? "clamp(390px, 68vh, 620px)" : undefined,
+        backgroundColor: "#F4F8FD",
+        height: isVeryTall ? "clamp(260px, 46vh, 430px)" : undefined,
         aspectRatio: isVeryTall ? undefined : aspectRatio,
-        maxHeight: isVeryTall ? undefined : "620px",
+        maxHeight: isVeryTall ? "430px" : "620px",
       }}
       aria-label="Open post image"
     >
