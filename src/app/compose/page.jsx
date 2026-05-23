@@ -15,8 +15,10 @@ import { T } from "@/lib/theme";
 import AppShell from "@/components/layout/AppShell";
 import PostComposer from "@/components/feed/PostComposer";
 
-const LONG_TEXT_EDITOR_THRESHOLD = 420;
+const LONG_TEXT_EDITOR_HEIGHT_TRIGGER = 232;
+const LONG_TEXT_EDITOR_OVERFLOW_ALLOWANCE = 18;
 const LONG_TEXT_EDITOR_SUPPRESS_MS = 750;
+const LONG_TEXT_EDITOR_BACKGROUND = "#F8FAFD";
 const COMPOSER_EDITOR_SELECTOR =
   'div[contenteditable="true"][aria-label="Write your SoldierHub post"]';
 
@@ -38,25 +40,26 @@ function shouldOpenLongTextEditor(editor) {
   const text = getEditorText(editor);
   if (!text) return false;
 
-  const hasScrollableText = editor.scrollHeight > editor.clientHeight + 10;
-  if (hasScrollableText) return true;
+  const scrollOverflow =
+    editor.scrollHeight > editor.clientHeight + LONG_TEXT_EDITOR_OVERFLOW_ALLOWANCE;
+  if (scrollOverflow) return true;
 
   const computedStyle = window.getComputedStyle(editor);
   const maxHeight = Number.parseFloat(computedStyle.maxHeight || "0");
-  const currentHeight = editor.getBoundingClientRect().height;
 
-  if (Number.isFinite(maxHeight) && maxHeight > 0 && currentHeight >= maxHeight - 10) {
+  if (
+    Number.isFinite(maxHeight) &&
+    maxHeight > 0 &&
+    editor.scrollHeight > maxHeight + LONG_TEXT_EDITOR_OVERFLOW_ALLOWANCE
+  ) {
     return true;
   }
 
-  const lineHeight = Number.parseFloat(computedStyle.lineHeight || "0") || 28;
-  const estimatedLines = Math.ceil(editor.scrollHeight / lineHeight);
-  const manualLineBreaks = (editor.innerText?.match(/\n/g) || []).length;
+  const currentHeight = editor.getBoundingClientRect().height;
 
   return (
-    text.length >= LONG_TEXT_EDITOR_THRESHOLD ||
-    estimatedLines >= 8 ||
-    manualLineBreaks >= 7
+    currentHeight >= LONG_TEXT_EDITOR_HEIGHT_TRIGGER &&
+    editor.scrollHeight >= LONG_TEXT_EDITOR_HEIGHT_TRIGGER
   );
 }
 
@@ -287,11 +290,9 @@ export default function ComposePage() {
     };
 
     document.addEventListener("input", maybeOpenLongEditor, true);
-    document.addEventListener("click", maybeOpenLongEditor, true);
 
     return () => {
       document.removeEventListener("input", maybeOpenLongEditor, true);
-      document.removeEventListener("click", maybeOpenLongEditor, true);
     };
   }, [longEditorOpen]);
 
@@ -412,7 +413,7 @@ export default function ComposePage() {
           <div
             className="fixed left-0 right-0 z-[140] flex max-h-[100dvh] flex-col overflow-hidden overscroll-contain md:hidden"
             style={{
-              backgroundColor: T.bg,
+              backgroundColor: LONG_TEXT_EDITOR_BACKGROUND,
               height: longEditorViewport.height ? `${longEditorViewport.height}px` : "100dvh",
               top: `${longEditorViewport.top || 0}px`,
             }}
@@ -422,7 +423,7 @@ export default function ComposePage() {
           >
             <div
               className="relative z-10 flex h-[58px] shrink-0 items-center justify-between border-b px-4"
-              style={{ backgroundColor: "rgba(248,247,244,0.98)", borderColor: T.borderSoft }}
+              style={{ backgroundColor: "rgba(248,250,253,0.98)", borderColor: T.borderSoft }}
             >
               <div className="w-16" />
               <div className="text-[21px] font-extrabold tracking-[-0.03em]" style={{ color: T.text }}>
@@ -440,7 +441,7 @@ export default function ComposePage() {
 
             <div
               className="sh-long-editor-toolbar relative z-10 shrink-0 border-b px-3 py-2"
-              style={{ backgroundColor: "rgba(255,255,255,0.96)", borderColor: T.borderSoft }}
+              style={{ backgroundColor: "rgba(248,250,253,0.98)", borderColor: T.borderSoft }}
               aria-label="Expanded editor formatting toolbar"
             >
               <div className="grid grid-cols-5 gap-2">
@@ -475,6 +476,7 @@ export default function ComposePage() {
               ref={longEditorScrollRef}
               className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5"
               style={{
+                backgroundColor: LONG_TEXT_EDITOR_BACKGROUND,
                 WebkitOverflowScrolling: "touch",
                 paddingBottom: "calc(env(safe-area-inset-bottom) + 44px)",
                 scrollPaddingBottom: "44px",
