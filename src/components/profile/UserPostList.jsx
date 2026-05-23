@@ -10,8 +10,49 @@ function getPostId(post) {
   return post?.id || post?.postId || post?.post?.id || post?.post_id || null;
 }
 
+function getPostOwnerId(post) {
+  return (
+    post?.author_id ||
+    post?.user_id ||
+    post?.profile_id ||
+    post?.created_by ||
+    post?.author_user_id ||
+    post?.author?.id ||
+    post?.profile?.id ||
+    post?.user?.id ||
+    null
+  );
+}
+
+function hasTrustedViewerOwnershipFlag(post) {
+  return (
+    post?.viewer_is_author === true ||
+    post?.viewer_is_owner === true ||
+    post?.viewer_owns_post === true ||
+    post?.viewer_can_manage === true ||
+    post?.viewer_can_delete === true ||
+    post?.can_delete === true ||
+    post?.is_mine === true
+  );
+}
+
+function postBelongsToCurrentUser(post, currentUser, { allowViewerFlag = false } = {}) {
+  if (!post || !currentUser?.id) return false;
+
+  const ownerId = getPostOwnerId(post);
+
+  // Real ownership id always wins. This prevents public/profile cached rows from
+  // showing the delete menu for posts that Supabase will reject server-side.
+  if (ownerId) return ownerId === currentUser.id;
+
+  // Only trust viewer ownership flags for rows already loaded from the user's
+  // private profile list. Do not trust this flag from the public home feed.
+  return allowViewerFlag && hasTrustedViewerOwnershipFlag(post);
+}
+
 function normalizeProfilePost(post, currentUser) {
   const id = getPostId(post);
+  const ownerId = getPostOwnerId(post) || currentUser?.id || null;
 
   const commentCount =
     post?.comment_count ?? post?.comments_count ?? post?.reply_count ?? 0;
@@ -21,14 +62,8 @@ function normalizeProfilePost(post, currentUser) {
     ...post,
     id,
     post_id: id,
-    author_id:
-      post?.author_id ||
-      post?.user_id ||
-      post?.profile_id ||
-      post?.created_by ||
-      post?.author_user_id ||
-      currentUser?.id ||
-      null,
+    author_id: ownerId,
+    author_user_id: ownerId,
     author_name:
       post?.author_name ||
       post?.author_name_cached ||
@@ -43,10 +78,26 @@ function normalizeProfilePost(post, currentUser) {
       post?.profile_avatar_color ||
       currentUser?.avatar_color ||
       "#314A66",
+    author_avatar_url:
+      post?.author_avatar_url ||
+      post?.author_avatar_url_cached ||
+      post?.profile_avatar_url ||
+      post?.avatar_url ||
+      currentUser?.avatar_url ||
+      null,
+    author_avatar_url_cached:
+      post?.author_avatar_url ||
+      post?.author_avatar_url_cached ||
+      post?.profile_avatar_url ||
+      post?.avatar_url ||
+      currentUser?.avatar_url ||
+      null,
     upvote_count: upvoteCount,
     comment_count: commentCount,
     reply_count: commentCount,
     viewer_is_author: true,
+    viewer_is_owner: true,
+    viewer_can_delete: true,
   };
 }
 
@@ -84,35 +135,25 @@ function dedupePosts(posts, currentUser) {
   );
 }
 
-function postBelongsToCurrentUser(post, currentUser) {
-  if (!post || !currentUser?.id) return false;
-
-  return (
-    post.viewer_is_author === true ||
-    post.author_id === currentUser.id ||
-    post.user_id === currentUser.id ||
-    post.profile_id === currentUser.id ||
-    post.created_by === currentUser.id ||
-    post.author_user_id === currentUser.id
-  );
-}
-
 export default function UserPostList() {
   const { currentUser, posts = [], myPosts: userPosts = [] } = useApp();
 
   const visiblePosts = useMemo(() => {
     if (!currentUser?.id) return [];
 
-    // Put home feed posts last so their live upvote/reply counts can win
-    // over an older myPosts copy when both contain the same post id.
-    const combined = [
-      ...(Array.isArray(userPosts) ? userPosts : []),
-      ...(Array.isArray(posts)
-        ? posts.filter((post) => postBelongsToCurrentUser(post, currentUser))
-        : []),
-    ];
+    const privateProfilePosts = Array.isArray(userPosts)
+      ? userPosts.filter((post) =>
+          postBelongsToCurrentUser(post, currentUser, { allowViewerFlag: true })
+        )
+      : [];
 
-    return dedupePosts(combined, currentUser);
+    const ownedFeedPosts = Array.isArray(posts)
+      ? posts.filter((post) =>
+          postBelongsToCurrentUser(post, currentUser, { allowViewerFlag: false })
+        )
+      : [];
+
+    return dedupePosts([...privateProfilePosts, ...ownedFeedPosts], currentUser);
   }, [currentUser, posts, userPosts]);
 
   return (
