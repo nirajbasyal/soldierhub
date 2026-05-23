@@ -3,22 +3,22 @@ import { T } from "@/lib/theme";
 
 function ProfileStatItem({ icon: Icon, label, value, loading = false, href }) {
   const content = (
-    <div className="flex min-w-0 items-center justify-center gap-2 px-2 py-3 sm:justify-start sm:px-3">
+    <div className="flex min-w-0 flex-col items-center justify-center gap-1 px-1.5 py-3 min-[420px]:flex-row min-[420px]:gap-2 min-[420px]:px-2 sm:justify-start sm:px-3">
       <div
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-2xl"
+        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-2xl min-[380px]:h-8 min-[380px]:w-8"
         style={{
           backgroundColor: "rgba(244,248,253,0.96)",
           color: T.navy,
         }}
       >
-        <Icon size={16} strokeWidth={2.4} />
+        <Icon size={15} strokeWidth={2.4} />
       </div>
-      <div className="min-w-0 text-left">
-        <div className="text-base font-black leading-none tabular-nums" style={{ color: T.navy }}>
+      <div className="min-w-0 text-center min-[420px]:text-left">
+        <div className="text-sm font-black leading-none tabular-nums min-[380px]:text-base" style={{ color: T.navy }}>
           {value}
         </div>
         <div
-          className="mt-1 flex items-center gap-1 truncate text-[10px] font-extrabold uppercase tracking-[0.11em]"
+          className="mt-1 flex items-center justify-center gap-1 truncate text-[9px] font-extrabold uppercase tracking-[0.08em] min-[420px]:justify-start min-[420px]:text-[10px] min-[420px]:tracking-[0.11em]"
           style={{ color: T.textSubtle }}
         >
           {label}
@@ -52,7 +52,7 @@ export default function ProfileStats({
 }) {
   return (
     <div
-      className="relative z-20 mx-4 -mt-7 grid grid-cols-1 overflow-hidden rounded-3xl border min-[440px]:grid-cols-3 sm:mx-5"
+      className="relative z-20 mx-3 -mt-7 grid grid-cols-3 overflow-hidden rounded-3xl border sm:mx-5"
       style={{
         backgroundColor: "rgba(255,255,255,0.98)",
         borderColor: "#D5E2F2",
@@ -60,7 +60,7 @@ export default function ProfileStats({
       }}
     >
       <ProfileStatItem icon={FileText} label="Posts" value={postsCount} />
-      <div className="border-t min-[440px]:border-l min-[440px]:border-t-0" style={{ borderColor: "#E4EDF7" }}>
+      <div className="border-l" style={{ borderColor: "#E4EDF7" }}>
         <ProfileStatItem
           icon={UsersRound}
           label="Followers"
@@ -69,7 +69,7 @@ export default function ProfileStats({
           href="/profile/connections?tab=followers"
         />
       </div>
-      <div className="border-t min-[440px]:border-l min-[440px]:border-t-0" style={{ borderColor: "#E4EDF7" }}>
+      <div className="border-l" style={{ borderColor: "#E4EDF7" }}>
         <ProfileStatItem
           icon={UsersRound}
           label="Following"
