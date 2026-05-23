@@ -164,10 +164,50 @@ function safeRequestAnimationFrame(callback) {
   window.requestAnimationFrame(callback);
 }
 
-function placeCursorAtEnd(element) {
-  if (typeof window === "undefined" || !element) return;
+function createEmptyParagraph() {
+  const paragraph = document.createElement("p");
+  paragraph.innerHTML = "<br>";
+  return paragraph;
+}
 
-  element.focus({ preventScroll: true });
+function isElementContentEmpty(element) {
+  if (!element) return false;
+  return !element.textContent?.replaceAll(FORMAT_BOUNDARY, "").replace(/\u00a0/g, " ").trim();
+}
+
+function isEmptyEditableBlock(element) {
+  if (!element) return false;
+
+  const tagName = element.tagName?.toLowerCase();
+  if (!["p", "div"].includes(tagName)) return false;
+
+  return isElementContentEmpty(element);
+}
+
+function getCurrentQuote(editor) {
+  const startElement = getSelectionElement(editor);
+  const quote = startElement?.closest?.("blockquote");
+  return quote && editor?.contains(quote) ? quote : null;
+}
+
+function getCurrentListItem(editor) {
+  const startElement = getSelectionElement(editor);
+  const listItem = startElement?.closest?.("li");
+  return listItem && editor?.contains(listItem) ? listItem : null;
+}
+
+function ensureQuoteExitSpace(editor) {
+  if (!editor || typeof document === "undefined") return;
+
+  Array.from(editor.querySelectorAll("blockquote")).forEach((quote) => {
+    if (!quote.nextElementSibling) {
+      quote.parentNode?.insertBefore(createEmptyParagraph(), quote.nextSibling);
+    }
+  });
+}
+
+function placeCaretInElement(element) {
+  if (typeof window === "undefined" || !element) return;
 
   const range = document.createRange();
   range.selectNodeContents(element);
@@ -176,6 +216,13 @@ function placeCursorAtEnd(element) {
   const selection = window.getSelection?.();
   selection?.removeAllRanges();
   selection?.addRange(range);
+}
+
+function placeCursorAtEnd(element) {
+  if (typeof window === "undefined" || !element) return;
+
+  element.focus({ preventScroll: true });
+  placeCaretInElement(element);
 }
 
 function readSavedDraft(userId) {
@@ -353,6 +400,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
 
     if (editorRef.current) {
       editorRef.current.innerHTML = savedDraft.body;
+      ensureQuoteExitSpace(editorRef.current);
     }
 
     setBody(savedDraft.body);
@@ -405,6 +453,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
 
   const syncFormatState = () => {
     const editor = editorRef.current;
+    ensureQuoteExitSpace(editor);
     setStructured(hasStructuredContent(editor));
 
     if (!editor || typeof document === "undefined") return;
@@ -423,6 +472,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
 
   const syncEditorState = () => {
     const editor = editorRef.current;
+    ensureQuoteExitSpace(editor);
     const cleanHtml = sanitizeComposerHtml(editor?.innerHTML || "");
     const cleanText = getPlainEditorText(editor);
 
@@ -504,6 +554,73 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     }
   };
 
+  const clearBlockFormats = () => {
+    setActiveFormats((current) => ({ ...current, bullet: false, number: false, quote: false }));
+  };
+
+  const exitEmptyQuote = (quote) => {
+    const editor = editorRef.current;
+    if (!editor || !quote) return false;
+
+    const paragraph = createEmptyParagraph();
+    const nextElement = quote.nextElementSibling;
+
+    quote.parentNode?.insertBefore(paragraph, quote);
+    quote.remove();
+
+    if (isEmptyEditableBlock(nextElement)) {
+      nextElement.remove();
+    }
+
+    editor.focus({ preventScroll: true });
+    placeCaretInElement(paragraph);
+    clearBlockFormats();
+    safeRequestAnimationFrame(syncEditorState);
+    return true;
+  };
+
+  const exitEmptyListItem = (listItem) => {
+    const editor = editorRef.current;
+    const list = listItem?.closest?.("ul,ol");
+    if (!editor || !listItem || !list) return false;
+
+    const paragraph = createEmptyParagraph();
+    const listHasOneItem = list.querySelectorAll(":scope > li").length <= 1;
+
+    if (listHasOneItem) {
+      list.parentNode?.insertBefore(paragraph, list);
+      list.remove();
+    } else {
+      list.parentNode?.insertBefore(paragraph, list.nextSibling);
+      listItem.remove();
+    }
+
+    editor.focus({ preventScroll: true });
+    placeCaretInElement(paragraph);
+    clearBlockFormats();
+    safeRequestAnimationFrame(syncEditorState);
+    return true;
+  };
+
+  const exitEmptyStructureIfNeeded = (event) => {
+    const editor = editorRef.current;
+    if (!editor) return false;
+
+    const quote = getCurrentQuote(editor);
+    if (quote && isElementContentEmpty(quote)) {
+      event.preventDefault();
+      return exitEmptyQuote(quote);
+    }
+
+    const listItem = getCurrentListItem(editor);
+    if (listItem && isElementContentEmpty(listItem)) {
+      event.preventDefault();
+      return exitEmptyListItem(listItem);
+    }
+
+    return false;
+  };
+
   const applyFormatting = (action) => {
     if (submittingValueRef.current) return;
     const editor = editorRef.current;
@@ -516,6 +633,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
         const isQuoteActive =
           Boolean(activeFormatsRef.current?.quote) || selectionInsideTag(editor, "blockquote");
         document.execCommand("formatBlock", false, isQuoteActive ? "p" : "blockquote");
+        safeRequestAnimationFrame(() => ensureQuoteExitSpace(editor));
       } else {
         document.execCommand(action.command, false, null);
       }
@@ -523,6 +641,77 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
       // Keep the composer usable even if a browser blocks an older execCommand call.
     }
 
+    safeRequestAnimationFrame(syncEditorState);
+  };
+
+  const insertQuoteLineBreak = (event) => {
+    const editor = editorRef.current;
+    if (!editor || !selectionInsideTag(editor, "blockquote")) return false;
+
+    event.preventDefault();
+    document.execCommand("insertHTML", false, "<br><br>");
+    setActiveFormats((current) => ({ ...current, quote: true }));
+    safeRequestAnimationFrame(syncEditorState);
+    return true;
+  };
+
+  const handleEditorBeforeInput = (event) => {
+    if (submittingValueRef.current) return;
+
+    if (event.nativeEvent?.inputType === "deleteContentBackward") {
+      exitEmptyStructureIfNeeded(event);
+      return;
+    }
+
+    if (event.nativeEvent?.inputType === "insertParagraph") {
+      insertQuoteLineBreak(event);
+    }
+  };
+
+  const handleEditorKeyDown = (event) => {
+    if (event.key === "Backspace" && exitEmptyStructureIfNeeded(event)) return;
+    if (event.key === "Enter") insertQuoteLineBreak(event);
+  };
+
+  const handleEditorPointerDown = (event) => {
+    const editor = editorRef.current;
+    if (!editor || submittingValueRef.current) return;
+
+    const clickedElement = event.target instanceof Element ? event.target : null;
+    const clickedInsideQuote = clickedElement?.closest?.("blockquote");
+    if (clickedInsideQuote && editor.contains(clickedInsideQuote)) return;
+
+    const clickedEditableBlock = clickedElement?.closest?.("p,div");
+    if (
+      clickedEditableBlock &&
+      editor.contains(clickedEditableBlock) &&
+      isEmptyEditableBlock(clickedEditableBlock) &&
+      clickedEditableBlock.previousElementSibling?.tagName?.toLowerCase() === "blockquote"
+    ) {
+      clearBlockFormats();
+      return;
+    }
+
+    const quoteToExit = Array.from(editor.querySelectorAll("blockquote")).find((quote) => {
+      const rect = quote.getBoundingClientRect();
+      return (
+        event.clientY >= rect.bottom &&
+        event.clientY <= rect.bottom + 56 &&
+        event.clientX >= rect.left - 18 &&
+        event.clientX <= rect.right + 18
+      );
+    });
+
+    if (!quoteToExit) return;
+
+    ensureQuoteExitSpace(editor);
+    const exitBlock = quoteToExit.nextElementSibling;
+    if (!isEmptyEditableBlock(exitBlock)) return;
+
+    event.preventDefault();
+    editor.focus({ preventScroll: true });
+    placeCaretInElement(exitBlock);
+    clearBlockFormats();
     safeRequestAnimationFrame(syncEditorState);
   };
 
@@ -578,6 +767,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
 
     if (editorRef.current) {
       editorRef.current.innerHTML = clearedDraft.body;
+      ensureQuoteExitSpace(editorRef.current);
     }
 
     setBody(clearedDraft.body);
@@ -932,11 +1122,14 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
           aria-label="Write your SoldierHub post"
           aria-multiline="true"
           onFocus={() => safeRequestAnimationFrame(syncFormatState)}
+          onPointerDown={handleEditorPointerDown}
           onInput={syncEditorState}
+          onBeforeInput={handleEditorBeforeInput}
+          onKeyDown={handleEditorKeyDown}
           onKeyUp={syncFormatState}
           onMouseUp={syncFormatState}
           onPaste={handlePaste}
-          className="w-full appearance-none border-0 bg-transparent pr-10 text-[18px] leading-8 shadow-none outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0 md:text-[17px] md:leading-7 [&_blockquote]:my-3 [&_blockquote]:rounded-[18px] [&_blockquote]:border-0 [&_blockquote]:bg-[#DDE8F3] [&_blockquote]:px-5 [&_blockquote]:py-3 [&_blockquote]:font-normal [&_blockquote]:text-[#102033] [&_div]:min-h-[1.65em] [&_div]:whitespace-pre-wrap [&_em]:italic [&_li]:pl-1 [&_ol]:ml-5 [&_ol]:list-decimal [&_ol]:space-y-1 [&_p]:min-h-[1.65em] [&_p]:whitespace-pre-wrap [&_strong]:font-extrabold [&_ul]:ml-5 [&_ul]:list-disc [&_ul]:space-y-1"
+          className="w-full appearance-none border-0 bg-transparent pr-10 text-[18px] leading-8 shadow-none outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0 md:text-[17px] md:leading-7 [&_blockquote]:relative [&_blockquote]:my-3 [&_blockquote]:rounded-[18px] [&_blockquote]:border-0 [&_blockquote]:bg-[#DDE8F3] [&_blockquote]:px-5 [&_blockquote]:py-3 [&_blockquote]:font-normal [&_blockquote]:text-[#102033] [&_blockquote]:before:absolute [&_blockquote]:before:left-2 [&_blockquote]:before:top-1 [&_blockquote]:before:text-2xl [&_blockquote]:before:font-black [&_blockquote]:before:text-[#3F5F7D] [&_blockquote]:before:content-['“'] [&_blockquote]:after:ml-1 [&_blockquote]:after:text-2xl [&_blockquote]:after:font-black [&_blockquote]:after:text-[#3F5F7D] [&_blockquote]:after:content-['”'] [&_div]:min-h-[1.65em] [&_div]:whitespace-pre-wrap [&_em]:italic [&_li]:pl-1 [&_ol]:ml-5 [&_ol]:list-decimal [&_ol]:space-y-1 [&_p]:min-h-[1.65em] [&_p]:whitespace-pre-wrap [&_strong]:font-extrabold [&_ul]:ml-5 [&_ul]:list-disc [&_ul]:space-y-1"
           style={{ color: T.text, border: "none", boxShadow: "none" }}
         />
 
