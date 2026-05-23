@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  ArrowLeft,
   BookMarked,
   ExternalLink,
   FileText,
@@ -18,6 +17,7 @@ import { useApp } from "@/store/AppContext";
 import AppShell from "@/components/layout/AppShell";
 import Footer from "@/components/layout/Footer";
 import ResourceCard from "@/components/resources/ResourceCard";
+import CircularBackButton from "@/components/ui/CircularBackButton";
 
 function normalizeText(value) {
   return String(value || "").toLowerCase().trim();
@@ -67,7 +67,7 @@ function StatusCard({ icon: Icon, title, body }) {
   );
 }
 
-function ComingSoonResources({ onBack }) {
+function ComingSoonResources() {
   return (
     <AppShell hideNav>
       <main
@@ -78,19 +78,7 @@ function ComingSoonResources({ onBack }) {
         }}
       >
         <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 md:py-10">
-          <button
-            type="button"
-            onClick={onBack}
-            className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition hover:-translate-y-0.5"
-            style={{
-              backgroundColor: "rgba(255,255,255,0.86)",
-              borderColor: "#D5E2F2",
-              color: T.navy,
-            }}
-          >
-            <ArrowLeft size={16} />
-            Back to feed
-          </button>
+          <CircularBackButton href="/" label="Back to feed" />
 
           <section
             className="mt-6 rounded-[26px] md:rounded-[30px] border relative"
@@ -237,7 +225,7 @@ export default function ResourcesPage() {
   }, [filteredResources]);
 
   if (!isAdmin) {
-    return <ComingSoonResources onBack={() => router.push("/")} />;
+    return <ComingSoonResources />;
   }
 
   return (
@@ -250,19 +238,7 @@ export default function ResourcesPage() {
         }}
       >
         <div className="max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-10">
-          <button
-            type="button"
-            onClick={() => router.push("/")}
-            className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition hover:-translate-y-0.5"
-            style={{
-              backgroundColor: "rgba(255,255,255,0.86)",
-              borderColor: "#D5E2F2",
-              color: T.navy,
-            }}
-          >
-            <ArrowLeft size={16} />
-            Back to feed
-          </button>
+          <CircularBackButton href="/" label="Back to feed" />
 
           <section
             className="mt-6 rounded-[26px] md:rounded-[30px] border relative"
