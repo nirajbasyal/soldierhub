@@ -1,14 +1,193 @@
 "use client";
 
-import { useEffect } from "react";
-import { AlertTriangle, ArrowLeft } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Bold,
+  Italic,
+  List,
+  ListOrdered,
+  Quote,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { T } from "@/lib/theme";
 import AppShell from "@/components/layout/AppShell";
 import PostComposer from "@/components/feed/PostComposer";
 
+const LONG_TEXT_EDITOR_THRESHOLD = 420;
+const LONG_TEXT_EDITOR_REOPEN_GAP = 80;
+const COMPOSER_EDITOR_SELECTOR =
+  'div[contenteditable="true"][aria-label="Write your SoldierHub post"]';
+
+const LONG_EDITOR_FORMAT_ACTIONS = [
+  { key: "bold", command: "bold", label: "Bold", shortLabel: "B", icon: Bold },
+  { key: "italic", command: "italic", label: "Italic", shortLabel: "I", icon: Italic },
+  { key: "bullet", command: "insertUnorderedList", label: "Bullet list", shortLabel: "•", icon: List },
+  { key: "number", command: "insertOrderedList", label: "Numbered list", shortLabel: "1", icon: ListOrdered },
+  { key: "quote", command: "formatBlock", label: "Quote", shortLabel: "Quote", icon: Quote },
+];
+
+function getEditorText(editor) {
+  return (editor?.innerText || "").replace(/\u200B/g, "").replace(/\u00a0/g, " ").trim();
+}
+
+function placeCursorAtEnd(element) {
+  if (typeof window === "undefined" || !element) return;
+
+  element.focus({ preventScroll: true });
+
+  const range = document.createRange();
+  range.selectNodeContents(element);
+  range.collapse(false);
+
+  const selection = window.getSelection?.();
+  selection?.removeAllRanges();
+  selection?.addRange(range);
+}
+
+function queryCommandIsActive(command) {
+  if (typeof document === "undefined" || typeof document.queryCommandState !== "function") {
+    return false;
+  }
+
+  try {
+    return Boolean(document.queryCommandState(command));
+  } catch {
+    return false;
+  }
+}
+
+function getSelectionElement(editor) {
+  if (typeof window === "undefined") return null;
+
+  const selection = window.getSelection?.();
+  const anchorNode = selection?.anchorNode;
+  if (!editor || !anchorNode || !editor.contains(anchorNode)) return null;
+
+  return anchorNode.nodeType === Node.TEXT_NODE ? anchorNode.parentElement : anchorNode;
+}
+
+function selectionInsideTag(editor, tagName) {
+  return Boolean(getSelectionElement(editor)?.closest?.(tagName));
+}
+
+function isPhoneWidth() {
+  if (typeof window === "undefined") return false;
+  return window.matchMedia?.("(max-width: 640px)")?.matches ?? window.innerWidth <= 640;
+}
+
+function dispatchComposerInput(editor) {
+  if (!editor || typeof window === "undefined") return;
+
+  const inputEvent =
+    typeof InputEvent === "function"
+      ? new InputEvent("input", { bubbles: true, inputType: "insertText" })
+      : new Event("input", { bubbles: true });
+
+  editor.dispatchEvent(inputEvent);
+  editor.dispatchEvent(new Event("keyup", { bubbles: true }));
+}
+
 export default function ComposePage() {
   const router = useRouter();
+  const [longEditorOpen, setLongEditorOpen] = useState(false);
+  const [longEditorText, setLongEditorText] = useState("");
+  const [longEditorFormats, setLongEditorFormats] = useState({});
+  const expandedEditorRef = useRef(null);
+  const sourceEditorRef = useRef(null);
+  const sourceHtmlRef = useRef("");
+  const lastClosedLengthRef = useRef(0);
+
+  const getComposerEditor = () => {
+    if (typeof document === "undefined") return null;
+    return document.querySelector(COMPOSER_EDITOR_SELECTOR);
+  };
+
+  const syncLongEditorFormats = () => {
+    const editor = expandedEditorRef.current;
+    if (!editor || typeof document === "undefined") return;
+
+    setLongEditorFormats({
+      bold: queryCommandIsActive("bold") || selectionInsideTag(editor, "strong,b"),
+      italic: queryCommandIsActive("italic") || selectionInsideTag(editor, "em,i"),
+      bullet: queryCommandIsActive("insertUnorderedList") || selectionInsideTag(editor, "ul"),
+      number: queryCommandIsActive("insertOrderedList") || selectionInsideTag(editor, "ol"),
+      quote: selectionInsideTag(editor, "blockquote"),
+    });
+  };
+
+  const openLongTextEditor = (editor) => {
+    if (!editor || longEditorOpen || !isPhoneWidth()) return;
+
+    sourceEditorRef.current = editor;
+    sourceHtmlRef.current = editor.innerHTML || "";
+    setLongEditorText(getEditorText(editor));
+    setLongEditorOpen(true);
+  };
+
+  const syncLongEditorText = () => {
+    const editor = expandedEditorRef.current;
+    setLongEditorText(getEditorText(editor));
+    window.requestAnimationFrame?.(syncLongEditorFormats);
+  };
+
+  const applyLongEditorFormat = (action) => {
+    const editor = expandedEditorRef.current;
+    if (!editor || typeof document === "undefined") return;
+
+    editor.focus({ preventScroll: true });
+
+    try {
+      if (action.command === "formatBlock") {
+        const isQuoteActive =
+          Boolean(longEditorFormats.quote) || selectionInsideTag(editor, "blockquote");
+        document.execCommand("formatBlock", false, isQuoteActive ? "p" : "blockquote");
+      } else {
+        document.execCommand(action.command, false, null);
+      }
+    } catch {
+      // Keep the long editor usable if a browser blocks an older execCommand call.
+    }
+
+    window.requestAnimationFrame?.(syncLongEditorText);
+  };
+
+  const handleLongEditorPaste = (event) => {
+    event.preventDefault();
+    const text = event.clipboardData?.getData("text/plain") || "";
+
+    try {
+      document.execCommand("insertText", false, text);
+    } catch {
+      const editor = expandedEditorRef.current;
+      if (editor) editor.textContent = `${editor.textContent || ""}${text}`;
+    }
+
+    window.requestAnimationFrame?.(syncLongEditorText);
+  };
+
+  const finishLongTextEditor = () => {
+    const expandedEditor = expandedEditorRef.current;
+    const sourceEditor = sourceEditorRef.current || getComposerEditor();
+    const nextHtml = expandedEditor?.innerHTML || "";
+    const nextText = getEditorText(expandedEditor);
+
+    if (sourceEditor) {
+      sourceEditor.innerHTML = nextHtml;
+      dispatchComposerInput(sourceEditor);
+    }
+
+    lastClosedLengthRef.current = nextText.length;
+    setLongEditorOpen(false);
+    setLongEditorText("");
+    setLongEditorFormats({});
+
+    window.requestAnimationFrame?.(() => {
+      sourceEditor?.focus?.({ preventScroll: true });
+      placeCursorAtEnd(sourceEditor);
+    });
+  };
 
   useEffect(() => {
     const forceSingleImagePicker = () => {
@@ -27,6 +206,53 @@ export default function ComposePage() {
       document.removeEventListener("click", forceSingleImagePicker, true);
     };
   }, []);
+
+  useEffect(() => {
+    const maybeOpenLongEditor = (event) => {
+      if (longEditorOpen || !isPhoneWidth()) return;
+
+      const target = event.target;
+      const editor =
+        target instanceof Element && target.matches(COMPOSER_EDITOR_SELECTOR)
+          ? target
+          : getComposerEditor();
+
+      if (!editor) return;
+
+      const textLength = getEditorText(editor).length;
+      const canReopen = textLength >= lastClosedLengthRef.current + LONG_TEXT_EDITOR_REOPEN_GAP;
+
+      if (textLength >= LONG_TEXT_EDITOR_THRESHOLD && canReopen) {
+        openLongTextEditor(editor);
+      }
+    };
+
+    document.addEventListener("input", maybeOpenLongEditor, true);
+    document.addEventListener("focusin", maybeOpenLongEditor, true);
+
+    return () => {
+      document.removeEventListener("input", maybeOpenLongEditor, true);
+      document.removeEventListener("focusin", maybeOpenLongEditor, true);
+    };
+  }, [longEditorOpen]);
+
+  useEffect(() => {
+    if (!longEditorOpen) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    window.requestAnimationFrame?.(() => {
+      if (!expandedEditorRef.current) return;
+      expandedEditorRef.current.innerHTML = sourceHtmlRef.current || "";
+      placeCursorAtEnd(expandedEditorRef.current);
+      syncLongEditorFormats();
+    });
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [longEditorOpen]);
 
   return (
     <AppShell hideNav>
@@ -76,6 +302,94 @@ export default function ComposePage() {
         <div className="compose-shell mx-auto w-full max-w-[860px] px-3 pt-3 sm:px-6 md:px-8 md:pt-8">
           <PostComposer startOpen pageMode />
         </div>
+
+        {longEditorOpen ? (
+          <div
+            className="fixed inset-0 z-[140] flex flex-col md:hidden"
+            style={{ backgroundColor: T.bg }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Expanded post text editor"
+          >
+            <div
+              className="flex h-[58px] shrink-0 items-center justify-between border-b px-4"
+              style={{ backgroundColor: "rgba(248,247,244,0.98)", borderColor: T.borderSoft }}
+            >
+              <div className="w-16" />
+              <div className="text-[21px] font-extrabold tracking-[-0.03em]" style={{ color: T.text }}>
+                Add text
+              </div>
+              <button
+                type="button"
+                onClick={finishLongTextEditor}
+                className="sh-tap w-16 rounded-full px-2 py-2 text-right text-[17px] font-bold active:scale-[0.98]"
+                style={{ color: T.navy }}
+              >
+                Done
+              </button>
+            </div>
+
+            <div
+              className="sh-long-editor-toolbar shrink-0 border-b px-3 py-2"
+              style={{ backgroundColor: "rgba(255,255,255,0.96)", borderColor: T.borderSoft }}
+              aria-label="Expanded editor formatting toolbar"
+            >
+              <div className="grid grid-cols-5 gap-2">
+                {LONG_EDITOR_FORMAT_ACTIONS.map((action) => {
+                  const Icon = action.icon;
+                  const active = Boolean(longEditorFormats[action.key]);
+
+                  return (
+                    <button
+                      key={action.key}
+                      type="button"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => applyLongEditorFormat(action)}
+                      className="sh-tap flex h-10 items-center justify-center rounded-full border text-[12px] font-extrabold transition active:scale-[0.98]"
+                      style={{
+                        backgroundColor: active ? "rgba(63, 95, 125, 0.15)" : "#FFFFFF",
+                        borderColor: active ? "rgba(63, 95, 125, 0.32)" : T.border,
+                        color: active ? T.navy : T.textSubtle,
+                      }}
+                      aria-label={action.label}
+                      aria-pressed={active}
+                      title={action.label}
+                    >
+                      <Icon size={18} strokeWidth={2.5} />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="relative flex-1 overflow-y-auto px-5 py-5" style={{ WebkitOverflowScrolling: "touch" }}>
+              {!longEditorText ? (
+                <div
+                  className="pointer-events-none absolute left-5 right-5 top-5 text-[28px] font-extrabold leading-tight tracking-[-0.03em]"
+                  style={{ color: "#707783" }}
+                >
+                  What&apos;s on your mind?
+                </div>
+              ) : null}
+
+              <div
+                ref={expandedEditorRef}
+                contentEditable
+                suppressContentEditableWarning
+                role="textbox"
+                aria-label="Expanded SoldierHub post text"
+                aria-multiline="true"
+                onInput={syncLongEditorText}
+                onFocus={syncLongEditorFormats}
+                onKeyUp={syncLongEditorFormats}
+                onMouseUp={syncLongEditorFormats}
+                onPaste={handleLongEditorPaste}
+                className="min-h-[72vh] w-full bg-transparent text-[22px] leading-9 tracking-[-0.02em] outline-none [&_blockquote]:my-3 [&_blockquote]:rounded-[18px] [&_blockquote]:border-0 [&_blockquote]:bg-[#DDE8F3] [&_blockquote]:px-5 [&_blockquote]:py-3 [&_blockquote]:font-normal [&_blockquote]:text-[#102033] [&_div]:min-h-[1.65em] [&_div]:whitespace-pre-wrap [&_em]:italic [&_li]:pl-1 [&_ol]:ml-5 [&_ol]:list-decimal [&_ol]:space-y-1 [&_p]:min-h-[1.65em] [&_p]:whitespace-pre-wrap [&_strong]:font-extrabold [&_ul]:ml-5 [&_ul]:list-disc [&_ul]:space-y-1"
+                style={{ color: T.text, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}
+              />
+            </div>
+          </div>
+        ) : null}
 
         <style jsx global>{`
           @keyframes soldierhubAnonymousComposeNotice {
