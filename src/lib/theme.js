@@ -1,39 +1,53 @@
 // Single source of truth for colors. Change values here to reskin the app.
-// SoldierHub front-end theme: U.S. flag inspired, light, premium, and readable.
+// SoldierHub front-end theme: independent, unofficial, light, premium, and readable.
 export const T = {
-  // Surface
-  bg: "#EAF0F8",
+  // Production design tokens
+  brandNavy: "#071B33",
+  brandNavySoft: "#102E52",
+  brandBlue: "#1E4E8C",
+  brandBlueSoft: "#DCE8F7",
+  brandRed: "#B31942",
+  brandRedSoft: "#FDECF0",
+
+  background: "#EAF0F8",
+  backgroundSoft: "#F7FAFE",
   card: "#FDFEFF",
   surface: "#F3F6FB",
+  surfaceSoft: "#F8FAFD",
 
-  // Brand
+  textPrimary: "#081827",
+  textSecondary: "#43556B",
+  textMuted: "#7B8797",
+
+  border: "#CFDAE8",
+  borderSoft: "#E2E9F3",
+
+  danger: "#B31942",
+  dangerBg: "#FDECF0",
+  success: "#247151",
+  successBg: "#E4F3EC",
+  warning: "#B86A00",
+  warningBg: "#FFF1D7",
+
+  // Backward-compatible aliases. Keep these so older components do not break.
+  bg: "#EAF0F8",
   navy: "#071B33",
   navy90: "#102E52",
   navy70: "#31577E",
   blue: "#1E4E8C",
   blueSoft: "#DCE8F7",
-
-  // Accent
-  gold: "#B31942",       // U.S. flag red, used for primary energy/CTA moments
+  gold: "#B31942",       // Legacy alias: primary SoldierHub red, not yellow/gold.
   goldSoft: "#F7D6DE",
   goldBg: "#FDECF0",
-
-  // State
   green: "#247151",
   greenBg: "#E4F3EC",
   red: "#B31942",
   redBg: "#FDECF0",
   amber: "#B86A00",
   amberBg: "#FFF1D7",
-
-  // Text
   text: "#081827",
   textMuted: "#43556B",
   textSubtle: "#7B8797",
-
-  // Borders
-  border: "#CFDAE8",
-  borderSoft: "#E2E9F3",
 };
 
 export const TONE_STYLES = {
