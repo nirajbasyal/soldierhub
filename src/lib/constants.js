@@ -2,15 +2,19 @@ export const ADMIN_EMAIL = "niraj.basyal2054@gmail.com";
 
 // Add or rename categories here — they will appear everywhere automatically.
 export const CATEGORIES = [
-  { key: "All",                 label: "All",                 tone: "navy" },
-  { key: "General Q&A",         label: "General Q&A",         tone: "indigo" },
-  { key: "Resources & Support", label: "Resources & Support", tone: "rose" },
-  { key: "Events & Community",  label: "Events & Community",  tone: "blue" },
-  { key: "Single Soldier Guide", label: "Single Soldier Guide", tone: "amber" },
-  { key: "Local Help",          label: "Local Help",          tone: "violet" },
-  { key: "On-Base Guide",       label: "On-Base Guide",       tone: "navy" },
-  { key: "Things To Do",        label: "Things To Do",        tone: "teal" },
-  { key: "New Soldier Help",    label: "New Soldier Help",    tone: "blue" },
+  { key: "All",                   label: "All",                   tone: "navy" },
+  { key: "General Q&A",           label: "General Q&A",           tone: "indigo" },
+  { key: "PCS / Moving",          label: "PCS / Moving",          tone: "blue" },
+  { key: "On-Base Guide",         label: "On-Base Guide",         tone: "navy" },
+  { key: "Housing",               label: "Housing",               tone: "amber" },
+  { key: "Barracks",              label: "Barracks",              tone: "violet" },
+  { key: "Local Recommendations", label: "Local Recommendations", tone: "rose" },
+  { key: "Things to Do",          label: "Things to Do",          tone: "teal" },
+  { key: "Finance",               label: "Finance",               tone: "amber" },
+  { key: "Education",             label: "Education",             tone: "blue" },
+  { key: "Family / Spouse",       label: "Family / Spouse",       tone: "violet" },
+  { key: "Resources",             label: "Resources",             tone: "rose" },
+  { key: "Events & Community",    label: "Events & Community",    tone: "blue" },
 ];
 
 export const GATES = [
