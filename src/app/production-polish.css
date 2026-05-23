@@ -144,6 +144,80 @@
   box-shadow: 0 12px 24px rgba(7, 27, 51, 0.055);
 }
 
+/* Cleaner profile identity header: fewer badges, lighter avatar, verified as a check mark. */
+.soldierhub-profile-shell section:first-of-type > div:nth-child(2) > div:first-child > div:first-child[class*="rounded-[22px]"] {
+  border: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.soldierhub-profile-shell section:first-of-type > div:nth-child(2) > div:first-child > div:first-child[class*="rounded-[22px]"] > div {
+  box-shadow: 0 12px 26px rgba(7, 27, 51, 0.12) !important;
+}
+
+.soldierhub-profile-shell section:first-of-type h1 {
+  display: inline-flex !important;
+  max-width: 100% !important;
+  align-items: center !important;
+  gap: 0.55rem !important;
+  white-space: normal !important;
+}
+
+.soldierhub-profile-shell section:first-of-type h1::after {
+  content: "✓";
+  display: inline-flex;
+  width: 1.35rem;
+  height: 1.35rem;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #2E6FB7 0%, #174C8A 100%);
+  color: #FFFFFF;
+  font-size: 0.82rem;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: 0 8px 16px rgba(30, 78, 140, 0.22);
+}
+
+.soldierhub-profile-shell section:first-of-type svg.lucide-user-round,
+.soldierhub-profile-shell section:first-of-type svg.lucide-shield-check {
+  display: none !important;
+}
+
+.soldierhub-profile-shell section:first-of-type svg.lucide-user-round:closest,
+.soldierhub-profile-shell section:first-of-type svg.lucide-shield-check:closest {
+  display: none !important;
+}
+
+.soldierhub-profile-shell section:first-of-type > div:nth-child(2) > div:first-child > div:nth-child(2) > div:first-child > div:has(svg.lucide-user-round),
+.soldierhub-profile-shell section:first-of-type > div:nth-child(2) > div:first-child > div:nth-child(2) > div:first-child > div:has(svg.lucide-shield-check) {
+  display: none !important;
+}
+
+.soldierhub-profile-shell section:first-of-type > div:nth-child(2) > div:first-child > div:nth-child(2)::before {
+  content: "Your profile";
+  display: block;
+  margin-bottom: 0.18rem;
+  color: #6E7F94;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.soldierhub-profile-shell section:first-of-type > div:nth-child(2) > div:first-child > div:nth-child(2) > div:first-child {
+  margin-top: 0.35rem !important;
+}
+
+.soldierhub-profile-shell section:first-of-type > div:nth-child(2) > div:first-child > div:nth-child(2) > div:first-child > div:has(svg.lucide-shield) {
+  min-height: 1.85rem !important;
+  padding: 0.32rem 0.72rem !important;
+  font-size: 0.76rem !important;
+  box-shadow: 0 8px 18px rgba(122, 92, 32, 0.08) !important;
+}
+
 .soldierhub-profile-shell section:first-of-type button,
 .soldierhub-profile-shell section:first-of-type a {
   transition-duration: 155ms;
@@ -191,6 +265,12 @@
 
   .soldierhub-profile-shell section:first-of-type > div:nth-child(2) {
     padding: 0.9rem !important;
+  }
+
+  .soldierhub-profile-shell section:first-of-type h1::after {
+    width: 1.15rem;
+    height: 1.15rem;
+    font-size: 0.72rem;
   }
 }
 
