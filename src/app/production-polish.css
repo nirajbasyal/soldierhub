@@ -87,3 +87,72 @@
 .sh-feed-post-list input[placeholder="Write a reply..."] {
   font-size: 14px !important;
 }
+
+/* Desktop sidebar dashboard consistency. Visual only; widget data and behavior stay unchanged. */
+@media (min-width: 1024px) {
+  main aside.lg\:flex {
+    gap: 0.85rem !important;
+  }
+
+  main aside.lg\:flex > div {
+    position: relative;
+    overflow: hidden;
+    border-radius: 24px !important;
+    border: 1px solid rgba(207, 218, 232, 0.94) !important;
+    background:
+      linear-gradient(180deg, rgba(253, 254, 255, 0.99) 0%, rgba(247, 250, 254, 0.98) 100%) !important;
+    box-shadow: 0 14px 32px rgba(7, 27, 51, 0.065) !important;
+  }
+
+  main aside.lg\:flex > div::before {
+    content: "";
+    display: block;
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, #B31942 0%, #1E4E8C 54%, rgba(207, 218, 232, 0.92) 100%);
+    opacity: 0.9;
+    pointer-events: none;
+  }
+
+  main aside.lg\:flex > div:hover {
+    border-color: rgba(188, 208, 234, 0.98) !important;
+    box-shadow: 0 18px 38px rgba(7, 27, 51, 0.082) !important;
+  }
+
+  main aside.lg\:flex h3,
+  main aside.lg\:flex [class*="text-lg"][class*="font-extrabold"] {
+    letter-spacing: -0.025em !important;
+  }
+
+  main aside.lg\:flex select,
+  main aside.lg\:flex a,
+  main aside.lg\:flex button {
+    transition-duration: 150ms;
+    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  main aside.lg\:flex select {
+    min-height: 2.85rem;
+    border-radius: 18px !important;
+    background-color: rgba(255, 255, 255, 0.96) !important;
+  }
+
+  main aside.lg\:flex button:hover,
+  main aside.lg\:flex a:hover {
+    transform: translateY(-1px);
+  }
+
+  main aside.lg\:flex button:active,
+  main aside.lg\:flex a:active {
+    transform: scale(0.98);
+  }
+
+  main aside.lg\:flex > div > div:first-child:is(.mb-3, .mb-4),
+  main aside.lg\:flex > div > div:first-child > div:first-child:is(.mb-3, .mb-4) {
+    opacity: 0;
+    height: 0 !important;
+    margin: 0 !important;
+  }
+}
