@@ -1,5 +1,6 @@
 import "./globals.css";
 import Providers from "./providers";
+import LongEditorFocusBridge from "@/components/system/LongEditorFocusBridge";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://soldierhub.com";
 const SITE_NAME = "SoldierHub";
@@ -27,7 +28,7 @@ const siteSchema = {
   potentialAction: {
     "@type": "SearchAction",
     target: `${SITE_URL}/?q={search_term_string}`,
-    "query-input": "required name=search_term_string",
+    "query-input": "required name={search_term_string}",
   },
   audience: {
     "@type": "Audience",
@@ -189,6 +190,7 @@ export default function RootLayout({ children }) {
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(siteSchema) }}
         />
+        <LongEditorFocusBridge />
         <Providers>{children}</Providers>
       </body>
     </html>
