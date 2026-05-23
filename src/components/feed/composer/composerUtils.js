@@ -1,6 +1,6 @@
 import { Bold, Italic, List, ListOrdered, Quote } from "lucide-react";
 
-export const COMPOSER_DRAFT_KEY = "soldierhub_post_composer_draft_v2";
+export const COMPOSER_DRAFT_KEY = "soldierhub_post_composer_draft_v1";
 export const AUTO_SAVE_DELAY_MS = 1200;
 export const FORMAT_BOUNDARY = "\u200B";
 
