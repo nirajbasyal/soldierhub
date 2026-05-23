@@ -59,6 +59,25 @@ export default function ComposePage() {
         </div>
 
         <style jsx global>{`
+          @keyframes soldierhubAnonymousNotice {
+            0% {
+              opacity: 0;
+              transform: translateY(-8px) scale(0.985);
+            }
+            12% {
+              opacity: 1;
+              transform: translateY(0) scale(1);
+            }
+            72% {
+              opacity: 1;
+              transform: translateY(0) scale(1);
+            }
+            100% {
+              opacity: 0;
+              transform: translateY(-5px) scale(0.99);
+            }
+          }
+
           @media (max-width: 520px) {
             html,
             body {
@@ -250,14 +269,18 @@ export default function ComposePage() {
             }
 
             div[class*="sticky"][class*="bottom-2"][class*="z-40"] > div.grid {
-              grid-template-columns: minmax(0, 1.15fr) 46px minmax(0, 0.95fr) !important;
+              grid-template-columns: minmax(0, 1.14fr) 46px minmax(0, 0.94fr) !important;
               gap: 8px !important;
+              align-items: center !important;
             }
 
             div[class*="sticky"][class*="bottom-2"][class*="z-40"] > div.grid > button:first-child {
-              height: 54px !important;
+              height: 56px !important;
+              min-width: 0 !important;
               border-radius: 18px !important;
+              display: inline-flex !important;
               flex-direction: column !important;
+              align-items: center !important;
               justify-content: center !important;
               gap: 4px !important;
               padding: 0 7px !important;
@@ -267,6 +290,7 @@ export default function ComposePage() {
             }
 
             div[class*="sticky"][class*="bottom-2"][class*="z-40"] > div.grid > button:first-child > span:first-child {
+              display: block !important;
               width: 100% !important;
               max-width: 100% !important;
               white-space: nowrap !important;
@@ -274,28 +298,52 @@ export default function ComposePage() {
               text-overflow: ellipsis !important;
               font-size: 9.5px !important;
               font-weight: 500 !important;
-              line-height: 1.1 !important;
+              line-height: 1.05 !important;
               letter-spacing: 0 !important;
               color: #334155 !important;
               text-align: center !important;
             }
 
             div[class*="sticky"][class*="bottom-2"][class*="z-40"] > div.grid > button:first-child > span:nth-child(2) {
-              width: 48px !important;
-              height: 27px !important;
+              position: relative !important;
+              display: inline-flex !important;
+              width: 50px !important;
+              height: 28px !important;
+              margin: 0 auto !important;
+              align-items: center !important;
+              border-radius: 999px !important;
+            }
+
+            div[class*="sticky"][class*="bottom-2"][class*="z-40"] > div.grid > button:first-child > span:nth-child(2) > span:first-child,
+            div[class*="sticky"][class*="bottom-2"][class*="z-40"] > div.grid > button:first-child > span:nth-child(2) > span:nth-child(2) {
+              top: 50% !important;
+              transform: translateY(-50%) !important;
+              line-height: 1 !important;
             }
 
             div[class*="sticky"][class*="bottom-2"][class*="z-40"] > div.grid > button:first-child > span:nth-child(2) > span:last-child {
-              width: 20px !important;
-              height: 20px !important;
+              left: 3px !important;
+              top: 3px !important;
+              width: 22px !important;
+              height: 22px !important;
+            }
+
+            div[class*="sticky"][class*="bottom-2"][class*="z-40"] > div.grid > button:first-child[aria-pressed="false"] > span:nth-child(2) > span:last-child {
+              transform: translateX(0) !important;
+            }
+
+            div[class*="sticky"][class*="bottom-2"][class*="z-40"] > div.grid > button:first-child[aria-pressed="true"] > span:nth-child(2) > span:last-child {
+              transform: translateX(22px) !important;
             }
 
             div[class*="sticky"][class*="bottom-2"][class*="z-40"] > div.grid > button:nth-child(2) {
               display: inline-flex !important;
-              height: 54px !important;
+              height: 56px !important;
               width: 46px !important;
               border-radius: 18px !important;
               padding: 0 !important;
+              align-items: center !important;
+              justify-content: center !important;
               background: rgba(255,255,255,0.9) !important;
               border-color: rgba(190,202,216,0.9) !important;
               color: #0b1c2c !important;
@@ -307,7 +355,7 @@ export default function ComposePage() {
             }
 
             div[class*="sticky"][class*="bottom-2"][class*="z-40"] > div.grid > button:nth-child(3) {
-              height: 54px !important;
+              height: 56px !important;
               border-radius: 18px !important;
               font-size: 14px !important;
               font-weight: 800 !important;
@@ -342,6 +390,27 @@ export default function ComposePage() {
 
             div[class*="sticky"][class*="bottom-2"][class*="z-40"] > div.mt-2 > span {
               display: none !important;
+            }
+
+            .compose-wrap > div.relative.flex.flex-col > div.mt-2.flex.items-start.gap-2.rounded-2xl.border {
+              position: absolute !important;
+              top: 12px !important;
+              left: 12px !important;
+              right: 12px !important;
+              z-index: 75 !important;
+              margin-top: 0 !important;
+              padding: 9px 11px !important;
+              border-radius: 18px !important;
+              font-size: 11px !important;
+              line-height: 1.35 !important;
+              box-shadow: 0 14px 30px rgba(179, 25, 66, 0.16), inset 0 1px 0 rgba(255,255,255,0.72) !important;
+              pointer-events: none !important;
+              animation: soldierhubAnonymousNotice 4.4s ease-in-out forwards;
+            }
+
+            .compose-wrap > div.relative.flex.flex-col > div.mt-2.flex.items-start.gap-2.rounded-2xl.border svg {
+              width: 14px !important;
+              height: 14px !important;
             }
           }
 
