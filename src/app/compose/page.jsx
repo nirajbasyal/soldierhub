@@ -94,7 +94,9 @@ export default function ComposePage() {
   const [longEditorOpen, setLongEditorOpen] = useState(false);
   const [longEditorText, setLongEditorText] = useState("");
   const [longEditorFormats, setLongEditorFormats] = useState({});
+  const [longEditorViewport, setLongEditorViewport] = useState({ height: null, top: 0 });
   const expandedEditorRef = useRef(null);
+  const longEditorScrollRef = useRef(null);
   const sourceEditorRef = useRef(null);
   const sourceHtmlRef = useRef("");
   const suppressLongEditorUntilRef = useRef(0);
@@ -108,6 +110,37 @@ export default function ComposePage() {
     const target = event?.target;
     if (!(target instanceof Element)) return null;
     return target.closest(COMPOSER_EDITOR_SELECTOR);
+  };
+
+  const scrollLongEditorCaretIntoView = () => {
+    const scroller = longEditorScrollRef.current;
+    const editor = expandedEditorRef.current;
+    if (!scroller || !editor || typeof window === "undefined") return;
+
+    const selection = window.getSelection?.();
+    if (!selection?.rangeCount || !selection.anchorNode || !editor.contains(selection.anchorNode)) return;
+
+    const range = selection.getRangeAt(0).cloneRange();
+    let rect = range.getBoundingClientRect();
+
+    if ((!rect || (rect.width === 0 && rect.height === 0)) && selection.anchorNode.parentElement) {
+      rect = selection.anchorNode.parentElement.getBoundingClientRect();
+    }
+
+    if (!rect) return;
+
+    const scrollerRect = scroller.getBoundingClientRect();
+    const bottomBuffer = 132;
+    const topBuffer = 28;
+
+    if (rect.bottom > scrollerRect.bottom - bottomBuffer) {
+      scroller.scrollTop += rect.bottom - (scrollerRect.bottom - bottomBuffer);
+      return;
+    }
+
+    if (rect.top < scrollerRect.top + topBuffer) {
+      scroller.scrollTop -= scrollerRect.top + topBuffer - rect.top;
+    }
   };
 
   const syncLongEditorFormats = () => {
@@ -135,7 +168,10 @@ export default function ComposePage() {
   const syncLongEditorText = () => {
     const editor = expandedEditorRef.current;
     setLongEditorText(getEditorText(editor));
-    window.requestAnimationFrame?.(syncLongEditorFormats);
+    window.requestAnimationFrame?.(() => {
+      syncLongEditorFormats();
+      scrollLongEditorCaretIntoView();
+    });
   };
 
   const applyLongEditorFormat = (action) => {
@@ -234,6 +270,34 @@ export default function ComposePage() {
   useEffect(() => {
     if (!longEditorOpen) return undefined;
 
+    const updateVisibleViewport = () => {
+      const viewport = window.visualViewport;
+      const nextHeight = Math.max(320, Math.floor(viewport?.height || window.innerHeight || 0));
+      const nextTop = Math.max(0, Math.floor(viewport?.offsetTop || 0));
+
+      setLongEditorViewport({ height: nextHeight, top: nextTop });
+      window.requestAnimationFrame?.(() => {
+        scrollLongEditorCaretIntoView();
+      });
+      window.setTimeout(scrollLongEditorCaretIntoView, 140);
+    };
+
+    updateVisibleViewport();
+
+    window.visualViewport?.addEventListener("resize", updateVisibleViewport);
+    window.visualViewport?.addEventListener("scroll", updateVisibleViewport);
+    window.addEventListener("resize", updateVisibleViewport);
+
+    return () => {
+      window.visualViewport?.removeEventListener("resize", updateVisibleViewport);
+      window.visualViewport?.removeEventListener("scroll", updateVisibleViewport);
+      window.removeEventListener("resize", updateVisibleViewport);
+    };
+  }, [longEditorOpen]);
+
+  useEffect(() => {
+    if (!longEditorOpen) return undefined;
+
     const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
     const previousBodyOverflow = document.body.style.overflow;
     const previousBodyPosition = document.body.style.position;
@@ -252,7 +316,10 @@ export default function ComposePage() {
       expandedEditorRef.current.innerHTML = sourceHtmlRef.current || "";
       placeCursorAtEnd(expandedEditorRef.current);
       syncLongEditorFormats();
+      scrollLongEditorCaretIntoView();
     });
+
+    window.setTimeout(scrollLongEditorCaretIntoView, 220);
 
     return () => {
       document.documentElement.style.overflow = previousHtmlOverflow;
@@ -315,8 +382,12 @@ export default function ComposePage() {
 
         {longEditorOpen ? (
           <div
-            className="fixed inset-0 z-[140] flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden overscroll-contain md:hidden"
-            style={{ backgroundColor: T.bg }}
+            className="fixed left-0 right-0 z-[140] flex max-h-[100dvh] flex-col overflow-hidden overscroll-contain md:hidden"
+            style={{
+              backgroundColor: T.bg,
+              height: longEditorViewport.height ? `${longEditorViewport.height}px` : "100dvh",
+              top: `${longEditorViewport.top || 0}px`,
+            }}
             role="dialog"
             aria-modal="true"
             aria-label="Expanded post text editor"
@@ -373,8 +444,13 @@ export default function ComposePage() {
             </div>
 
             <div
+              ref={longEditorScrollRef}
               className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5"
-              style={{ WebkitOverflowScrolling: "touch" }}
+              style={{
+                WebkitOverflowScrolling: "touch",
+                paddingBottom: "calc(env(safe-area-inset-bottom) + 150px)",
+                scrollPaddingBottom: "150px",
+              }}
             >
               {!longEditorText ? (
                 <div
@@ -393,12 +469,26 @@ export default function ComposePage() {
                 aria-label="Expanded SoldierHub post text"
                 aria-multiline="true"
                 onInput={syncLongEditorText}
-                onFocus={syncLongEditorFormats}
-                onKeyUp={syncLongEditorFormats}
-                onMouseUp={syncLongEditorFormats}
+                onFocus={() => {
+                  syncLongEditorFormats();
+                  window.setTimeout(scrollLongEditorCaretIntoView, 180);
+                }}
+                onKeyUp={() => {
+                  syncLongEditorFormats();
+                  scrollLongEditorCaretIntoView();
+                }}
+                onMouseUp={() => {
+                  syncLongEditorFormats();
+                  scrollLongEditorCaretIntoView();
+                }}
                 onPaste={handleLongEditorPaste}
                 className="min-h-full w-full bg-transparent text-[22px] leading-9 tracking-[-0.02em] outline-none [&_blockquote]:my-3 [&_blockquote]:rounded-[18px] [&_blockquote]:border-0 [&_blockquote]:bg-[#DDE8F3] [&_blockquote]:px-5 [&_blockquote]:py-3 [&_blockquote]:font-normal [&_blockquote]:text-[#102033] [&_div]:min-h-[1.65em] [&_div]:whitespace-pre-wrap [&_em]:italic [&_li]:pl-1 [&_ol]:ml-5 [&_ol]:list-decimal [&_ol]:space-y-1 [&_p]:min-h-[1.65em] [&_p]:whitespace-pre-wrap [&_strong]:font-extrabold [&_ul]:ml-5 [&_ul]:list-disc [&_ul]:space-y-1"
-                style={{ color: T.text, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}
+                style={{
+                  color: T.text,
+                  whiteSpace: "pre-wrap",
+                  overflowWrap: "anywhere",
+                  paddingBottom: "96px",
+                }}
               />
             </div>
           </div>
