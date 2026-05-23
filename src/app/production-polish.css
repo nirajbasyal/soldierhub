@@ -97,6 +97,103 @@
   font-size: 14px !important;
 }
 
+/* Profile page polish. Visual only; avatar, edit profile, follow, password, and post logic stay unchanged. */
+.soldierhub-profile-shell {
+  max-width: 700px !important;
+}
+
+.soldierhub-profile-shell > div:first-child {
+  position: sticky;
+  top: 0.75rem;
+  z-index: 12;
+  border: 1px solid rgba(207, 218, 232, 0.72);
+  border-radius: 999px;
+  padding: 0.35rem;
+  background: rgba(248, 251, 255, 0.82);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 12px 28px rgba(7, 27, 51, 0.055);
+}
+
+.soldierhub-profile-shell > div:first-child a,
+.soldierhub-profile-shell > div:first-child button {
+  min-height: 2.45rem;
+  box-shadow: 0 8px 18px rgba(7, 27, 51, 0.035);
+}
+
+.soldierhub-profile-shell section:first-of-type {
+  border-radius: 30px !important;
+  border-color: rgba(207, 218, 232, 0.98) !important;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(220, 232, 247, 0.78), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.99) 0%, rgba(248, 251, 255, 0.98) 100%) !important;
+  box-shadow: 0 18px 42px rgba(7, 27, 51, 0.082) !important;
+}
+
+.soldierhub-profile-shell section:first-of-type > div:first-child[style*="background-color"] {
+  left: 1.25rem !important;
+  right: 1.25rem !important;
+  height: 0.28rem !important;
+  background: linear-gradient(90deg, #B31942 0%, #1E4E8C 68%, rgba(207, 218, 232, 0.92) 100%) !important;
+}
+
+.soldierhub-profile-shell section:first-of-type h1 {
+  letter-spacing: -0.045em !important;
+}
+
+.soldierhub-profile-shell section:first-of-type [class*="rounded-[22px]"][class*="border"] {
+  box-shadow: 0 12px 24px rgba(7, 27, 51, 0.055);
+}
+
+.soldierhub-profile-shell section:first-of-type button,
+.soldierhub-profile-shell section:first-of-type a {
+  transition-duration: 155ms;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.soldierhub-profile-shell section:first-of-type button:active,
+.soldierhub-profile-shell section:first-of-type a:active {
+  transform: scale(0.98);
+}
+
+.soldierhub-profile-shell section:first-of-type input,
+.soldierhub-profile-shell section:first-of-type textarea,
+.soldierhub-profile-shell section:first-of-type select {
+  border-radius: 18px !important;
+}
+
+.soldierhub-profile-shell section + section,
+.soldierhub-profile-shell section + div,
+.soldierhub-profile-shell > div:not(:first-child):not(:last-child) {
+  border-radius: 26px !important;
+}
+
+@media (max-width: 520px) {
+  .soldierhub-profile-shell {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+
+  .soldierhub-profile-shell > div:first-child {
+    top: 0.45rem;
+    margin-bottom: 0.75rem !important;
+  }
+
+  .soldierhub-profile-shell > div:first-child a,
+  .soldierhub-profile-shell > div:first-child button {
+    padding-left: 0.8rem !important;
+    padding-right: 0.8rem !important;
+    font-size: 0.78rem !important;
+  }
+
+  .soldierhub-profile-shell section:first-of-type {
+    border-radius: 24px !important;
+  }
+
+  .soldierhub-profile-shell section:first-of-type > div:nth-child(2) {
+    padding: 0.9rem !important;
+  }
+}
+
 /* Desktop sidebar dashboard consistency. Visual only; widget data and behavior stay unchanged. */
 @media (min-width: 1024px) {
   main aside.lg\:flex {
