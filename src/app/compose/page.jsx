@@ -81,19 +81,43 @@ export default function ComposePage() {
           @keyframes soldierhubAnonymousComposeNotice {
             0% {
               opacity: 0;
+              max-height: 0;
+              margin-top: 0;
+              margin-bottom: 0;
+              padding-top: 0;
+              padding-bottom: 0;
+              border-width: 0;
               transform: translateY(8px) scale(0.985);
             }
             12% {
               opacity: 1;
+              max-height: 120px;
+              margin-top: 8px;
+              margin-bottom: -2px;
+              padding-top: 0.625rem;
+              padding-bottom: 0.625rem;
+              border-width: 1px;
               transform: translateY(0) scale(1);
             }
             72% {
               opacity: 1;
+              max-height: 120px;
+              margin-top: 8px;
+              margin-bottom: -2px;
+              padding-top: 0.625rem;
+              padding-bottom: 0.625rem;
+              border-width: 1px;
               transform: translateY(0) scale(1);
             }
             100% {
               opacity: 0;
-              transform: translateY(5px) scale(0.99);
+              max-height: 0;
+              margin-top: 0;
+              margin-bottom: 0;
+              padding-top: 0;
+              padding-bottom: 0;
+              border-width: 0;
+              transform: translateY(4px) scale(0.99);
             }
           }
 
@@ -106,10 +130,13 @@ export default function ComposePage() {
             position: relative;
             z-index: 55;
             pointer-events: none;
+            overflow: hidden;
+            max-height: 120px;
             margin-top: 8px !important;
             margin-bottom: -2px !important;
             box-shadow: 0 14px 30px rgba(179, 25, 66, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.75);
-            animation: soldierhubAnonymousComposeNotice 4.4s ease-in-out forwards;
+            animation: soldierhubAnonymousComposeNotice 4.6s ease-in-out forwards;
+            will-change: opacity, max-height, margin, padding, transform;
           }
         `}</style>
       </main>
