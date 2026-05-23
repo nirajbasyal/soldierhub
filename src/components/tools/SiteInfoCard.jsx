@@ -16,28 +16,32 @@ export default function SiteInfoCard({ onNavigate }) {
 
   return (
     <div
-      className="rounded-2xl border overflow-hidden"
-      style={{ backgroundColor: T.card, borderColor: T.border }}
+      className="overflow-hidden rounded-[28px] border shadow-sm"
+      style={{
+        background: "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,251,255,0.96) 100%)",
+        borderColor: "rgba(188,208,234,0.86)",
+        boxShadow: "0 16px 36px rgba(11,28,44,0.07)",
+      }}
     >
       {/* Header */}
       <div
-        className="p-5 border-b relative overflow-hidden"
+        className="relative overflow-hidden border-b px-5 py-5"
         style={{
-          borderColor: "#D5E2F2",
-          background:
-            "linear-gradient(135deg, rgba(220,232,247,0.95) 0%, rgba(253,254,255,0.96) 55%, rgba(253,236,240,0.88) 100%)",
+          borderColor: "rgba(213,226,242,0.92)",
+          background: "linear-gradient(135deg, rgba(238,245,253,0.96) 0%, rgba(255,255,255,0.98) 62%, rgba(255,246,248,0.9) 100%)",
         }}
       >
-        <div className="absolute left-0 top-0 h-full w-1.5 bg-[#B31942]" />
-        <div className="absolute right-0 top-0 h-full w-1.5 bg-[#1E4E8C]" />
+        <div className="mb-4 h-1.5 overflow-hidden rounded-full bg-[#DDE8F3]">
+          <div className="h-full w-1/3 rounded-full bg-[#B31942]" />
+        </div>
 
-        <div className="flex flex-col items-start pl-1">
+        <div className="flex min-h-[116px] items-center justify-center rounded-[24px] border bg-white/70 px-4 py-4">
           <Image
             src={SIDEBAR_LOGO_SRC}
             alt="SoldierHub logo"
             width={260}
             height={120}
-            className="h-20 w-auto object-contain"
+            className="h-auto max-h-[92px] w-full max-w-[238px] object-contain"
             priority={false}
           />
         </div>
@@ -46,18 +50,13 @@ export default function SiteInfoCard({ onNavigate }) {
       <div className="p-5">
         {/* Disclaimer */}
         <div
-          className="rounded-2xl border px-3.5 py-3 flex gap-2.5"
+          className="flex gap-2.5 rounded-2xl border px-3.5 py-3"
           style={{
-            background:
-              "linear-gradient(135deg, rgba(244,248,253,0.95), rgba(253,254,255,0.95))",
-            borderColor: "#D5E2F2",
+            backgroundColor: "rgba(244,248,253,0.78)",
+            borderColor: "rgba(213,226,242,0.9)",
           }}
         >
-          <ShieldCheck
-            size={16}
-            className="shrink-0 mt-0.5"
-            style={{ color: T.blue }}
-          />
+          <ShieldCheck size={16} className="mt-0.5 shrink-0" style={{ color: T.blue }} />
 
           <p className="text-xs leading-relaxed" style={{ color: T.textMuted }}>
             Independent and unofficial. Not affiliated with, endorsed by,
@@ -70,7 +69,7 @@ export default function SiteInfoCard({ onNavigate }) {
           <Link
             href="/privacy"
             onClick={handleNavigate}
-            className="rounded-xl px-3 py-2.5 text-sm font-semibold text-center transition-opacity hover:opacity-75"
+            className="rounded-2xl px-3 py-2.5 text-center text-sm font-bold transition-opacity hover:opacity-75"
             style={{
               color: T.navy,
               backgroundColor: "rgba(220,232,247,0.55)",
@@ -83,7 +82,7 @@ export default function SiteInfoCard({ onNavigate }) {
           <Link
             href="/terms"
             onClick={handleNavigate}
-            className="rounded-xl px-3 py-2.5 text-sm font-semibold text-center transition-opacity hover:opacity-75"
+            className="rounded-2xl px-3 py-2.5 text-center text-sm font-bold transition-opacity hover:opacity-75"
             style={{
               color: T.navy,
               backgroundColor: "rgba(253,236,240,0.55)",
@@ -95,21 +94,15 @@ export default function SiteInfoCard({ onNavigate }) {
         </div>
 
         {/* Support email */}
-        <div
-          className="mt-4 pt-4 border-t"
-          style={{ borderColor: T.borderSoft }}
-        >
-          <p
-            className="text-[11px] uppercase tracking-wider font-semibold mb-1"
-            style={{ color: T.textSubtle }}
-          >
+        <div className="mt-4 border-t pt-4" style={{ borderColor: T.borderSoft }}>
+          <p className="mb-1 text-[11px] font-extrabold uppercase tracking-[0.14em]" style={{ color: T.textSubtle }}>
             Contact Us
           </p>
 
           <a
             href="mailto:support@soldierhub.com?subject=SoldierHub%20Contact%20%2F%20Feedback"
             onClick={handleNavigate}
-            className="text-sm font-semibold break-all hover:underline underline-offset-4"
+            className="break-all text-sm font-bold underline-offset-4 hover:underline"
             style={{ color: T.navy }}
           >
             support@soldierhub.com
