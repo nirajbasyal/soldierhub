@@ -30,6 +30,16 @@ function isEmailSearch(value) {
   return EMAIL_SEARCH_PATTERN.test(String(value || "").trim().toLowerCase());
 }
 
+function getUserAvatarUrl(user) {
+  return (
+    user?.avatar_url ||
+    user?.profile_avatar_url ||
+    user?.author_avatar_url ||
+    user?.author_avatar_url_cached ||
+    null
+  );
+}
+
 export default function TopNav() {
   const router = useRouter();
   const [profileSearchLoading, setProfileSearchLoading] = useState(false);
@@ -54,6 +64,7 @@ export default function TopNav() {
   const displayName = safeUser?.full_name || safeUser?.email || "SoldierHub user";
   const displayEmail = safeUser?.email || safeUser?.personal_email || "";
   const firstName = displayName.split(" ")[0] || "Profile";
+  const userAvatarUrl = getUserAvatarUrl(safeUser);
   const userStatus = safeUser?.status || safeUser?.verification_status || "pending";
   const notificationCount = Math.max(0, Number(unreadCount) || 0);
   const showNotificationBadge =
@@ -466,6 +477,7 @@ export default function TopNav() {
                 <Avatar
                   name={displayName}
                   color={safeUser.avatar_color}
+                  src={userAvatarUrl}
                   size={34}
                 />
 
