@@ -26,7 +26,7 @@ export default function Modal({ open, onClose, children, maxWidth = 480 }) {
 
   return (
     <div
-      className="sh-modal-backdrop fixed inset-0 z-[70] flex items-center justify-center p-4 overflow-y-auto"
+      className="sh-modal-backdrop fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto"
       style={{
         backgroundColor: "rgba(11,28,44,0.45)",
         backdropFilter: "blur(7px)",
