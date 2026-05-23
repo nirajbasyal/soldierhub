@@ -1,15 +1,15 @@
 "use client";
 
 import { useEffect } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, LogOut, UserRound } from "lucide-react";
+import { UserRound } from "lucide-react";
 import { T } from "@/lib/theme";
 import { useApp } from "@/store/AppContext";
 import AppShell from "@/components/layout/AppShell";
 import Footer from "@/components/layout/Footer";
 import Button from "@/components/ui/Button";
 import ProfileHeader from "@/components/profile/ProfileHeader";
+import ProfileTopBar from "@/components/profile/ProfileTopBar";
 import UserPostList from "@/components/profile/UserPostList";
 
 function ProfileStatusCard({ icon: Icon, title, body, action }) {
@@ -129,35 +129,8 @@ export default function ProfilePage() {
             "radial-gradient(circle at top left, rgba(220,232,247,0.9), transparent 32%), linear-gradient(180deg, #F4F8FD 0%, #FFFFFF 48%, #F4F8FD 100%)",
         }}
       >
-        <div className="soldierhub-profile-shell mx-auto w-full max-w-[660px] px-4 py-4 sm:px-5 md:px-6 md:py-6">
-          <div className="flex items-center justify-between gap-3 mb-4 md:mb-5">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition hover:-translate-y-0.5"
-              style={{
-                backgroundColor: "rgba(255,255,255,0.86)",
-                borderColor: "#D5E2F2",
-                color: T.navy,
-              }}
-            >
-              <ArrowLeft size={16} />
-              Back to feed
-            </Link>
-
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition hover:-translate-y-0.5"
-              style={{
-                backgroundColor: "rgba(255,255,255,0.86)",
-                borderColor: "#D5E2F2",
-                color: T.textMuted,
-              }}
-            >
-              <LogOut size={16} />
-              Sign out
-            </button>
-          </div>
+        <div className="soldierhub-profile-shell mx-auto w-full max-w-[660px] px-3 py-4 sm:px-5 md:px-6 md:py-6">
+          <ProfileTopBar onSignOut={handleLogout} />
 
           <ProfileHeader />
 
