@@ -222,26 +222,30 @@ export default function ComposePage() {
       }
     };
 
-    document.addEventListener("pointerdown", maybeOpenLongEditor, true);
-    document.addEventListener("click", maybeOpenLongEditor, true);
     document.addEventListener("input", maybeOpenLongEditor, true);
-    document.addEventListener("focusin", maybeOpenLongEditor, true);
+    document.addEventListener("click", maybeOpenLongEditor, true);
 
     return () => {
-      document.removeEventListener("pointerdown", maybeOpenLongEditor, true);
-      document.removeEventListener("click", maybeOpenLongEditor, true);
       document.removeEventListener("input", maybeOpenLongEditor, true);
-      document.removeEventListener("focusin", maybeOpenLongEditor, true);
+      document.removeEventListener("click", maybeOpenLongEditor, true);
     };
   }, [longEditorOpen]);
 
   useEffect(() => {
     if (!longEditorOpen) return undefined;
 
+    const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
     const previousBodyOverflow = document.body.style.overflow;
+    const previousBodyPosition = document.body.style.position;
+    const previousBodyTop = document.body.style.top;
+    const previousBodyWidth = document.body.style.width;
     const previousHtmlOverflow = document.documentElement.style.overflow;
-    document.body.style.overflow = "hidden";
+
     document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = "100%";
 
     window.requestAnimationFrame?.(() => {
       if (!expandedEditorRef.current) return;
@@ -251,8 +255,12 @@ export default function ComposePage() {
     });
 
     return () => {
-      document.body.style.overflow = previousBodyOverflow;
       document.documentElement.style.overflow = previousHtmlOverflow;
+      document.body.style.overflow = previousBodyOverflow;
+      document.body.style.position = previousBodyPosition;
+      document.body.style.top = previousBodyTop;
+      document.body.style.width = previousBodyWidth;
+      window.scrollTo(0, scrollY);
     };
   }, [longEditorOpen]);
 
@@ -307,7 +315,7 @@ export default function ComposePage() {
 
         {longEditorOpen ? (
           <div
-            className="fixed inset-0 z-[140] flex h-[100dvh] flex-col overflow-hidden md:hidden"
+            className="fixed inset-0 z-[140] flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden overscroll-contain md:hidden"
             style={{ backgroundColor: T.bg }}
             role="dialog"
             aria-modal="true"
@@ -365,7 +373,7 @@ export default function ComposePage() {
             </div>
 
             <div
-              className="relative min-h-0 flex-1 overflow-y-auto px-5 py-5"
+              className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5"
               style={{ WebkitOverflowScrolling: "touch" }}
             >
               {!longEditorText ? (
