@@ -11,7 +11,6 @@ import FeedHero from "@/components/feed/FeedHero";
 import PostComposer from "@/components/feed/PostComposer";
 import CategoryStrip from "@/components/feed/CategoryStrip";
 import PostCard from "@/components/feed/PostCard";
-import ImageLightboxBridge from "@/components/feed/ImageLightboxBridge";
 import PostSkeleton from "@/components/ui/PostSkeleton";
 import EmptyState from "@/components/ui/EmptyState";
 import MobileWeatherStrip from "@/components/tools/MobileWeatherStrip";
@@ -314,7 +313,6 @@ export default function HomePage() {
 
   return (
     <AppShell>
-      <ImageLightboxBridge />
       <main className="mx-auto w-full max-w-[1080px] overflow-x-hidden px-4 pt-0 pb-24 sm:px-5 md:px-7 md:pt-6 md:pb-10 xl:px-8">
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_292px] lg:gap-5">
           <div className="flex min-w-0 flex-col gap-3">
