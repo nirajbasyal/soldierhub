@@ -1,14 +1,14 @@
 import { FileText, Loader2, UsersRound } from "lucide-react";
 import { T } from "@/lib/theme";
 
-function ProfileStatItem({ icon: Icon, label, value, loading = false, active = false, onClick }) {
+function ProfileStatItem({ icon: Icon, label, value, loading = false, href }) {
   const content = (
     <div className="flex min-w-0 items-center justify-center gap-2 px-2 py-3 sm:justify-start sm:px-3">
       <div
         className="flex h-8 w-8 shrink-0 items-center justify-center rounded-2xl"
         style={{
-          backgroundColor: active ? "rgba(220,232,247,0.98)" : "rgba(244,248,253,0.96)",
-          color: active ? T.blue : T.navy,
+          backgroundColor: "rgba(244,248,253,0.96)",
+          color: T.navy,
         }}
       >
         <Icon size={16} strokeWidth={2.4} />
@@ -28,14 +28,19 @@ function ProfileStatItem({ icon: Icon, label, value, loading = false, active = f
     </div>
   );
 
-  if (!onClick) {
+  if (!href) {
     return <div className="min-w-0">{content}</div>;
   }
 
   return (
-    <button type="button" onClick={onClick} className="min-w-0 text-left transition hover:bg-[#F4F8FD]">
-      {content}
-    </button>
+    <a
+      href={href}
+      className="group block min-w-0 text-left transition-colors hover:bg-[#DCE8F7]/70 focus-visible:bg-[#DCE8F7]/70 focus-visible:outline-none"
+    >
+      <div className="transition-colors group-hover:bg-[#DCE8F7]/70 group-focus-visible:bg-[#DCE8F7]/70">
+        {content}
+      </div>
+    </a>
   );
 }
 
@@ -44,9 +49,6 @@ export default function ProfileStats({
   followersCount = 0,
   followingCount = 0,
   loading = false,
-  activeTab = null,
-  onOpenFollowers,
-  onOpenFollowing,
 }) {
   return (
     <div
@@ -64,8 +66,7 @@ export default function ProfileStats({
           label="Followers"
           value={followersCount}
           loading={loading}
-          active={activeTab === "followers"}
-          onClick={onOpenFollowers}
+          href="/profile/connections?tab=followers"
         />
       </div>
       <div className="border-t min-[440px]:border-l min-[440px]:border-t-0" style={{ borderColor: "#E4EDF7" }}>
@@ -74,8 +75,7 @@ export default function ProfileStats({
           label="Following"
           value={followingCount}
           loading={loading}
-          active={activeTab === "following"}
-          onClick={onOpenFollowing}
+          href="/profile/connections?tab=following"
         />
       </div>
     </div>
