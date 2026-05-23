@@ -23,7 +23,7 @@ import Button from "@/components/ui/Button";
 
 const EMAIL_SEARCH_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const SEARCH_ACTIVE_COLOR = "#B31942";
-const SEARCH_IDLE_COLOR = "#9F3C55";
+const SEARCH_IDLE_COLOR = "#8A5570";
 const LOGO_SRC = "/brand/soldierhub-logo-header.svg";
 
 function isEmailSearch(value) {
@@ -73,7 +73,7 @@ export default function TopNav() {
   const hasSearchText = String(search || "").trim().length > 0;
   const searchIconColor = hasSearchText ? SEARCH_ACTIVE_COLOR : SEARCH_IDLE_COLOR;
   const rightSearchButtonActive = hasSearchText || searchFocused;
-  const rightSearchButtonColor = rightSearchButtonActive ? "#8F1534" : SEARCH_IDLE_COLOR;
+  const rightSearchButtonColor = rightSearchButtonActive ? SEARCH_ACTIVE_COLOR : SEARCH_IDLE_COLOR;
 
   const clearSearchNotice = () => {
     if (searchNotice) setSearchNotice(null);
@@ -209,7 +209,7 @@ export default function TopNav() {
       <div
         className="mt-2 rounded-2xl border px-3.5 py-3 shadow-sm"
         style={{
-          backgroundColor: isInfo ? "rgba(239,246,255,0.96)" : "rgba(255,241,245,0.96)",
+          backgroundColor: isInfo ? "rgba(239,246,255,0.98)" : "rgba(255,241,245,0.98)",
           borderColor: isInfo ? "rgba(63,95,125,0.24)" : "rgba(179,25,66,0.22)",
           boxShadow: isInfo
             ? "0 10px 24px rgba(63,95,125,0.08)"
@@ -255,6 +255,13 @@ export default function TopNav() {
     );
   };
 
+  const iconButtonStyle = ({ active = false, alert = false } = {}) => ({
+    borderColor: active || alert ? "rgba(179,25,66,0.32)" : "rgba(207,218,232,0.88)",
+    backgroundColor: active || alert ? "rgba(253,236,240,0.92)" : "rgba(255,255,255,0.88)",
+    color: active || alert ? SEARCH_ACTIVE_COLOR : T.navy,
+    boxShadow: active || alert ? "0 8px 18px rgba(179,25,66,0.08)" : "0 8px 18px rgba(7,27,51,0.045)",
+  });
+
   const searchForm = (mode = "desktop") => {
     const hideLeftIcon = mode === "mobile" && searchFocused;
     const isMobile = mode === "mobile";
@@ -262,11 +269,7 @@ export default function TopNav() {
     return (
       <form
         onSubmit={handleSearchSubmit}
-        className={
-          mode === "desktop"
-            ? "hidden md:flex min-w-0 flex-1 ml-1"
-            : "w-full"
-        }
+        className={mode === "desktop" ? "hidden min-w-0 flex-1 md:flex" : "w-full"}
       >
         <div className="w-full">
           <div className="relative w-full">
@@ -289,27 +292,30 @@ export default function TopNav() {
                 if (mode === "mobile") setMobileSearchOpen(true);
               }}
               onBlur={() => setSearchFocused(false)}
-              placeholder={mode === "mobile" ? "Search posts or exact email…" : "Search posts or email"}
+              placeholder={mode === "mobile" ? "Search posts or exact email…" : "Search posts or member email"}
               autoComplete="off"
               inputMode="search"
               enterKeyHint="go"
-              className={`w-full h-11 ${hideLeftIcon ? "pl-4" : "pl-11"} pr-16 rounded-2xl text-sm outline-none border shadow-sm transition-all`}
+              className={`h-11 w-full ${hideLeftIcon ? "pl-4" : "pl-11"} rounded-full border pr-16 text-sm font-medium outline-none shadow-sm transition-all`}
               style={{
-                borderColor: searchFocused ? "rgba(179,25,66,0.34)" : T.border,
-                backgroundColor: "rgba(253,254,255,0.92)",
+                borderColor: searchFocused ? "rgba(179,25,66,0.30)" : "rgba(207,218,232,0.92)",
+                background:
+                  "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,251,255,0.98) 100%)",
                 color: T.text,
-                boxShadow: searchFocused ? "0 0 0 4px rgba(179,25,66,0.08)" : undefined,
+                boxShadow: searchFocused
+                  ? "0 0 0 4px rgba(179,25,66,0.075), 0 12px 24px rgba(7,27,51,0.055)"
+                  : "0 8px 18px rgba(7,27,51,0.035)",
               }}
             />
 
             <button
               type="submit"
               disabled={profileSearchLoading}
-              className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-xl border transition-all active:scale-95 disabled:cursor-wait disabled:opacity-80"
+              className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border transition-all active:scale-95 disabled:cursor-wait disabled:opacity-80"
               style={{
                 color: rightSearchButtonColor,
-                borderColor: rightSearchButtonActive ? "rgba(143,21,52,0.42)" : "rgba(159,60,85,0.28)",
-                backgroundColor: rightSearchButtonActive ? "rgba(179,25,66,0.13)" : "rgba(179,25,66,0.045)",
+                borderColor: rightSearchButtonActive ? "rgba(179,25,66,0.34)" : "rgba(207,218,232,0.86)",
+                backgroundColor: rightSearchButtonActive ? "rgba(253,236,240,0.96)" : "rgba(255,255,255,0.86)",
               }}
               aria-label={profileSearchLoading ? "Searching profile" : "Run search"}
               title={profileSearchLoading ? "Searching profile..." : "Search"}
@@ -325,44 +331,41 @@ export default function TopNav() {
   };
 
   return (
-    <div className="sticky top-0 z-40 mb-3 md:mb-0">
+    <div className="sticky top-0 z-40 mb-2 md:mb-0">
       <div
         className="border-b backdrop-blur-xl"
         style={{
-          borderColor: "rgba(207,218,232,0.95)",
+          borderColor: "rgba(207,218,232,0.82)",
           background:
-            "linear-gradient(180deg, rgba(253,254,255,0.96) 0%, rgba(243,246,251,0.92) 100%)",
+            "linear-gradient(180deg, rgba(253,254,255,0.94) 0%, rgba(248,251,255,0.90) 100%)",
+          boxShadow: "0 8px 24px rgba(7,27,51,0.045)",
         }}
       >
-        <div className="max-w-6xl mx-auto px-4 md:px-6 h-[68px] md:h-[84px] flex items-center gap-3 md:gap-5">
-          <Link href="/" className="flex items-center shrink-0 min-w-0">
+        <div className="mx-auto flex h-[60px] max-w-6xl items-center gap-2.5 px-3 sm:px-4 md:h-[78px] md:gap-4 md:px-6">
+          <Link href="/" className="flex min-w-0 shrink-0 items-center" aria-label="Go to SoldierHub home">
             <Image
               src={LOGO_SRC}
               alt="SoldierHub"
               width={220}
               height={90}
               priority
-              className="h-11 md:h-16 w-auto object-contain"
+              className="h-9 w-auto object-contain sm:h-10 md:h-14"
             />
           </Link>
 
           {searchForm("desktop")}
 
-          <div className="md:hidden flex-1" />
+          <div className="flex-1 md:hidden" />
 
-          <div className="md:hidden flex items-center gap-2 shrink-0">
+          <div className="flex shrink-0 items-center gap-1.5 md:hidden">
             <button
               type="button"
               onClick={() => {
                 setMobileSearchOpen((open) => !open);
                 if (mobileSearchOpen) setSearchNotice(null);
               }}
-              className="w-9 h-9 rounded-2xl border flex items-center justify-center shrink-0 transition-all active:scale-95"
-              style={{
-                borderColor: hasSearchText || mobileSearchOpen ? "rgba(179,25,66,0.35)" : "rgba(159,60,85,0.28)",
-                backgroundColor: hasSearchText || mobileSearchOpen ? "rgba(179,25,66,0.08)" : "rgba(179,25,66,0.045)",
-                color: hasSearchText || mobileSearchOpen ? SEARCH_ACTIVE_COLOR : SEARCH_IDLE_COLOR,
-              }}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition-all active:scale-95"
+              style={iconButtonStyle({ active: hasSearchText || mobileSearchOpen })}
               aria-label={mobileSearchOpen ? "Close search" : "Open search"}
             >
               {mobileSearchOpen ? <X size={17} /> : <Search size={17} />}
@@ -371,12 +374,8 @@ export default function TopNav() {
             <button
               type="button"
               onClick={goNotifications}
-              className="relative w-9 h-9 rounded-2xl border flex items-center justify-center shrink-0 transition-all active:scale-95"
-              style={{
-                borderColor: showNotificationBadge ? "rgba(179,25,66,0.35)" : T.border,
-                backgroundColor: showNotificationBadge ? "rgba(179,25,66,0.08)" : "rgba(253,254,255,0.92)",
-                color: showNotificationBadge ? SEARCH_ACTIVE_COLOR : T.navy,
-              }}
+              className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition-all active:scale-95"
+              style={iconButtonStyle({ alert: showNotificationBadge })}
               aria-label={
                 showNotificationBadge
                   ? `Open notifications, ${notificationCount} unread`
@@ -387,7 +386,7 @@ export default function TopNav() {
 
               {showNotificationBadge && (
                 <span
-                  className="absolute -right-1.5 -top-1.5 min-w-[18px] h-[18px] px-1 rounded-full border flex items-center justify-center text-[9px] font-bold leading-none shadow-sm"
+                  className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full border px-1 text-[9px] font-bold leading-none shadow-sm"
                   style={{
                     backgroundColor: "#B31942",
                     borderColor: "rgba(255,255,255,0.95)",
@@ -402,28 +401,20 @@ export default function TopNav() {
             <button
               type="button"
               onClick={() => setMobileMenu(true)}
-              className="w-9 h-9 rounded-2xl border flex items-center justify-center shrink-0 transition-all active:scale-95"
-              style={{
-                borderColor: mobileMenu ? "rgba(179,25,66,0.35)" : T.border,
-                backgroundColor: mobileMenu ? "rgba(179,25,66,0.08)" : "rgba(253,254,255,0.92)",
-                color: mobileMenu ? SEARCH_ACTIVE_COLOR : T.navy,
-              }}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition-all active:scale-95"
+              style={iconButtonStyle({ active: mobileMenu })}
               aria-label="Open menu"
             >
               <Menu size={18} />
             </button>
           </div>
 
-          <div className="hidden md:flex items-center gap-2 shrink-0">
+          <div className="hidden shrink-0 items-center gap-2 md:flex">
             <button
               type="button"
               onClick={goNotifications}
-              className="relative w-11 h-11 rounded-2xl border flex items-center justify-center transition-all hover:-translate-y-0.5 hover:shadow-sm"
-              style={{
-                borderColor: T.border,
-                backgroundColor: "rgba(253,254,255,0.92)",
-                color: T.navy,
-              }}
+              className="relative flex h-11 w-11 items-center justify-center rounded-full border transition-all hover:-translate-y-0.5 hover:shadow-sm"
+              style={iconButtonStyle({ alert: showNotificationBadge })}
               aria-label={
                 showNotificationBadge
                   ? `Open notifications, ${notificationCount} unread`
@@ -434,7 +425,7 @@ export default function TopNav() {
 
               {showNotificationBadge && (
                 <span
-                  className="absolute -right-1.5 -top-1.5 min-w-[19px] h-[19px] px-1 rounded-full border flex items-center justify-center text-[10px] font-bold leading-none shadow-sm"
+                  className="absolute -right-1.5 -top-1.5 flex h-[19px] min-w-[19px] items-center justify-center rounded-full border px-1 text-[10px] font-bold leading-none shadow-sm"
                   style={{
                     backgroundColor: "#B31942",
                     borderColor: "rgba(255,255,255,0.95)",
@@ -449,7 +440,7 @@ export default function TopNav() {
             {isAdmin && (
               <Link
                 href="/resources"
-                className="px-3 h-11 rounded-2xl text-sm font-semibold flex items-center gap-1.5"
+                className="flex h-11 items-center gap-1.5 rounded-full px-3 text-sm font-semibold transition hover:bg-white/60"
                 style={{ color: T.navy }}
               >
                 <BookMarked size={16} />
@@ -472,10 +463,11 @@ export default function TopNav() {
               <button
                 type="button"
                 onClick={goProfile}
-                className="rounded-2xl border p-1 pr-3 flex items-center gap-2 hover:shadow-md hover:-translate-y-0.5 transition-all"
+                className="flex items-center gap-2 rounded-full border p-1 pr-3 transition-all hover:-translate-y-0.5 hover:shadow-md"
                 style={{
-                  borderColor: T.border,
-                  backgroundColor: "rgba(253,254,255,0.95)",
+                  borderColor: "rgba(207,218,232,0.9)",
+                  backgroundColor: "rgba(255,255,255,0.9)",
+                  boxShadow: "0 8px 18px rgba(7,27,51,0.04)",
                 }}
               >
                 <Avatar
@@ -508,12 +500,13 @@ export default function TopNav() {
         </div>
 
         {mobileSearchOpen ? (
-          <div className="md:hidden px-4 pb-3 -mt-1">
+          <div className="px-3 pb-3 md:hidden sm:px-4">
             <div
               className="rounded-[24px] border p-2 shadow-sm"
               style={{
-                backgroundColor: T.card,
-                borderColor: searchNotice ? "rgba(179,25,66,0.18)" : T.border,
+                background:
+                  "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,251,255,0.98) 100%)",
+                borderColor: searchNotice ? "rgba(179,25,66,0.18)" : "rgba(207,218,232,0.9)",
                 boxShadow: searchNotice
                   ? "0 16px 36px rgba(179,25,66,0.08)"
                   : "0 12px 28px rgba(11,28,44,0.06)",
