@@ -248,10 +248,14 @@ export default function useComposerFormatting({
           : Date.now();
 
       // Prevent duplicate Enter handling from beforeinput + keydown firing together.
-      if (now - lastQuoteEnterAtRef.current < 120) return true;
+      if (now - lastQuoteEnterAtRef.current < 180) return true;
       lastQuoteEnterAtRef.current = now;
 
-      document.execCommand("insertHTML", false, "<br><br>");
+      try {
+        document.execCommand("insertLineBreak", false, null);
+      } catch {
+        document.execCommand("insertHTML", false, "<br>");
+      }
       setActiveFormats((current) => ({ ...current, quote: true }));
       safeRequestAnimationFrame(syncEditorState);
       return true;
@@ -304,12 +308,13 @@ export default function useComposerFormatting({
       }
 
       const quoteToExit = Array.from(editor.querySelectorAll("blockquote")).find((quote) => {
-        const rect = quote.getBoundingClientRect();
+        const quoteRect = quote.getBoundingClientRect();
+        const editorRect = editor.getBoundingClientRect();
         return (
-          event.clientY >= rect.bottom &&
-          event.clientY <= rect.bottom + 56 &&
-          event.clientX >= rect.left - 18 &&
-          event.clientX <= rect.right + 18
+          event.clientY >= quoteRect.bottom &&
+          event.clientY <= Math.max(quoteRect.bottom + 80, editorRect.bottom) &&
+          event.clientX >= editorRect.left - 18 &&
+          event.clientX <= editorRect.right + 18
         );
       });
 
