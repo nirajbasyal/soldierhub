@@ -78,6 +78,30 @@ export default function ComposePage() {
             }
           }
 
+          .compose-wrap > div.relative.flex.flex-col > div.relative.overflow-hidden.rounded-\[24px\] {
+            overflow: visible !important;
+          }
+
+          .compose-wrap div[contenteditable="true"][aria-label="Write your SoldierHub post"] {
+            display: block !important;
+            height: auto !important;
+            max-height: none !important;
+            overflow-x: hidden !important;
+            overflow-y: visible !important;
+            white-space: pre-wrap !important;
+            overflow-wrap: anywhere !important;
+            word-break: break-word !important;
+            position: relative !important;
+            z-index: 1 !important;
+          }
+
+          .compose-wrap img[alt="Selected post preview"] {
+            display: block !important;
+            position: relative !important;
+            z-index: 1 !important;
+            margin-top: 0 !important;
+          }
+
           @media (max-width: 520px) {
             html,
             body {
@@ -217,6 +241,7 @@ export default function ComposePage() {
               border-radius: 22px !important;
               min-height: 205px !important;
               padding: 14px 14px 10px !important;
+              overflow: visible !important;
               background: rgba(248, 250, 253, 0.88) !important;
               border-color: rgba(190, 202, 216, 0.9) !important;
               box-shadow: inset 0 1px 0 rgba(255,255,255,0.9) !important;
@@ -224,14 +249,20 @@ export default function ComposePage() {
             }
 
             div[contenteditable="true"][aria-label="Write your SoldierHub post"] {
+              display: block !important;
               min-height: 155px !important;
+              height: auto !important;
               max-height: none !important;
+              overflow-x: hidden !important;
               overflow-y: visible !important;
               padding-right: 6px !important;
               font-size: 16px !important;
               line-height: 1.6 !important;
               letter-spacing: -0.01em !important;
               color: #101828 !important;
+              white-space: pre-wrap !important;
+              overflow-wrap: anywhere !important;
+              word-break: break-word !important;
               -webkit-user-select: text !important;
               user-select: text !important;
               touch-action: pan-y !important;
@@ -246,6 +277,13 @@ export default function ComposePage() {
               line-height: 1.6 !important;
               letter-spacing: -0.01em !important;
               color: #6b7280 !important;
+            }
+
+            .compose-wrap > div.relative.flex.flex-col > div.relative.overflow-hidden.rounded-\[24px\] > div.mt-3.overflow-hidden.rounded-\[22px\].border {
+              position: relative !important;
+              clear: both !important;
+              z-index: 1 !important;
+              margin-top: 14px !important;
             }
 
             img[alt="Selected post preview"] {
