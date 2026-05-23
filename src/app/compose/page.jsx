@@ -19,6 +19,10 @@ const LONG_TEXT_EDITOR_HEIGHT_TRIGGER = 232;
 const LONG_TEXT_EDITOR_OVERFLOW_ALLOWANCE = 18;
 const LONG_TEXT_EDITOR_SUPPRESS_MS = 750;
 const LONG_TEXT_EDITOR_ANIMATION_MS = 340;
+const LONG_TEXT_EDITOR_MORPH_MS = 520;
+const LONG_TEXT_EDITOR_FOCUS_DELAY_MS = 460;
+const LONG_TEXT_EDITOR_HEADER_HEIGHT = 58;
+const LONG_TEXT_EDITOR_TOOLBAR_HEIGHT = 57;
 const LONG_TEXT_EDITOR_BACKGROUND = "#F8FAFD";
 const COMPOSER_EDITOR_SELECTOR =
   'div[contenteditable="true"][aria-label="Write your SoldierHub post"]';
@@ -125,6 +129,8 @@ export default function ComposePage() {
   const router = useRouter();
   const [longEditorOpen, setLongEditorOpen] = useState(false);
   const [longEditorClosing, setLongEditorClosing] = useState(false);
+  const [longEditorMorphing, setLongEditorMorphing] = useState(false);
+  const [longEditorMorph, setLongEditorMorph] = useState(null);
   const [longEditorText, setLongEditorText] = useState("");
   const [longEditorFormats, setLongEditorFormats] = useState({});
   const [longEditorViewport, setLongEditorViewport] = useState({ height: null, top: 0 });
@@ -134,6 +140,7 @@ export default function ComposePage() {
   const sourceHtmlRef = useRef("");
   const suppressLongEditorUntilRef = useRef(0);
   const longEditorCloseTimerRef = useRef(null);
+  const longEditorMorphTimerRef = useRef(null);
 
   const getComposerEditor = () => {
     if (typeof document === "undefined") return null;
@@ -198,11 +205,47 @@ export default function ComposePage() {
       longEditorCloseTimerRef.current = null;
     }
 
+    if (longEditorMorphTimerRef.current) {
+      window.clearTimeout(longEditorMorphTimerRef.current);
+      longEditorMorphTimerRef.current = null;
+    }
+
+    const rect = editor.getBoundingClientRect();
+    const computedStyle = window.getComputedStyle(editor);
+    const viewport = window.visualViewport;
+    const viewportTop = Math.max(0, Math.floor(viewport?.offsetTop || 0));
+    const viewportHeight = Math.max(320, Math.floor(viewport?.height || window.innerHeight || 0));
+    const targetTop = LONG_TEXT_EDITOR_HEADER_HEIGHT + LONG_TEXT_EDITOR_TOOLBAR_HEIGHT;
+
+    setLongEditorViewport({ height: viewportHeight, top: viewportTop });
+    setLongEditorMorph({
+      left: Math.max(0, rect.left),
+      top: Math.max(0, rect.top - viewportTop),
+      width: Math.max(1, rect.width),
+      height: Math.max(1, rect.height),
+      targetTop,
+      targetHeight: Math.max(190, viewportHeight - targetTop),
+      borderRadius: computedStyle.borderRadius || "24px",
+      fontSize: computedStyle.fontSize || "17px",
+      lineHeight: computedStyle.lineHeight || "26px",
+      paddingTop: computedStyle.paddingTop || "16px",
+      paddingRight: computedStyle.paddingRight || "16px",
+      paddingBottom: computedStyle.paddingBottom || "16px",
+      paddingLeft: computedStyle.paddingLeft || "16px",
+      scrollTop: Math.max(0, editor.scrollTop || 0),
+    });
+
     sourceEditorRef.current = editor;
     sourceHtmlRef.current = editor.innerHTML || "";
     setLongEditorText(getEditorText(editor));
     setLongEditorClosing(false);
+    setLongEditorMorphing(true);
     setLongEditorOpen(true);
+
+    longEditorMorphTimerRef.current = window.setTimeout(() => {
+      setLongEditorMorphing(false);
+      longEditorMorphTimerRef.current = null;
+    }, LONG_TEXT_EDITOR_MORPH_MS);
   };
 
   const syncLongEditorText = () => {
@@ -262,7 +305,13 @@ export default function ComposePage() {
     suppressLongEditorUntilRef.current = Date.now() + LONG_TEXT_EDITOR_SUPPRESS_MS;
     expandedEditor?.blur?.();
     sourceEditor?.blur?.();
+    setLongEditorMorphing(false);
     setLongEditorClosing(true);
+
+    if (longEditorMorphTimerRef.current) {
+      window.clearTimeout(longEditorMorphTimerRef.current);
+      longEditorMorphTimerRef.current = null;
+    }
 
     if (longEditorCloseTimerRef.current) {
       window.clearTimeout(longEditorCloseTimerRef.current);
@@ -273,6 +322,7 @@ export default function ComposePage() {
       setLongEditorClosing(false);
       setLongEditorText("");
       setLongEditorFormats({});
+      setLongEditorMorph(null);
       longEditorCloseTimerRef.current = null;
     }, LONG_TEXT_EDITOR_ANIMATION_MS);
   };
@@ -281,6 +331,10 @@ export default function ComposePage() {
     return () => {
       if (longEditorCloseTimerRef.current) {
         window.clearTimeout(longEditorCloseTimerRef.current);
+      }
+
+      if (longEditorMorphTimerRef.current) {
+        window.clearTimeout(longEditorMorphTimerRef.current);
       }
     };
   }, []);
@@ -332,6 +386,14 @@ export default function ComposePage() {
       const nextTop = Math.max(0, Math.floor(viewport?.offsetTop || 0));
 
       setLongEditorViewport({ height: nextHeight, top: nextTop });
+      setLongEditorMorph((current) =>
+        current
+          ? {
+              ...current,
+              targetHeight: Math.max(190, nextHeight - current.targetTop),
+            }
+          : current
+      );
       window.requestAnimationFrame?.(() => {
         scrollLongEditorCaretIntoView();
       });
@@ -374,10 +436,10 @@ export default function ComposePage() {
         placeCursorAtEnd(expandedEditorRef.current);
         syncLongEditorFormats();
         scrollLongEditorCaretIntoView();
-      }, 110);
+      }, LONG_TEXT_EDITOR_FOCUS_DELAY_MS);
     });
 
-    window.setTimeout(scrollLongEditorCaretIntoView, 340);
+    window.setTimeout(scrollLongEditorCaretIntoView, LONG_TEXT_EDITOR_MORPH_MS + 100);
 
     return () => {
       document.documentElement.style.overflow = previousHtmlOverflow;
@@ -442,7 +504,7 @@ export default function ComposePage() {
           <div
             className={`fixed left-0 right-0 z-[140] flex max-h-[100dvh] flex-col overflow-hidden overscroll-contain md:hidden ${
               longEditorClosing ? "sh-long-editor-exit" : "sh-long-editor-enter"
-            }`}
+            } ${longEditorMorphing ? "sh-long-editor-morphing" : "sh-long-editor-ready"}`}
             style={{
               backgroundColor: LONG_TEXT_EDITOR_BACKGROUND,
               height: longEditorViewport.height ? `${longEditorViewport.height}px` : "100dvh",
@@ -552,6 +614,31 @@ export default function ComposePage() {
                 }}
               />
             </div>
+
+            {longEditorMorphing && longEditorMorph ? (
+              <div
+                className="sh-editor-morph-card"
+                aria-hidden="true"
+                style={{
+                  "--sh-origin-left": `${longEditorMorph.left}px`,
+                  "--sh-origin-top": `${longEditorMorph.top}px`,
+                  "--sh-origin-width": `${longEditorMorph.width}px`,
+                  "--sh-origin-height": `${longEditorMorph.height}px`,
+                  "--sh-target-top": `${longEditorMorph.targetTop}px`,
+                  "--sh-target-height": `${longEditorMorph.targetHeight}px`,
+                  "--sh-origin-radius": longEditorMorph.borderRadius,
+                  "--sh-origin-font-size": longEditorMorph.fontSize,
+                  "--sh-origin-line-height": longEditorMorph.lineHeight,
+                  "--sh-origin-padding-top": longEditorMorph.paddingTop,
+                  "--sh-origin-padding-right": longEditorMorph.paddingRight,
+                  "--sh-origin-padding-bottom": longEditorMorph.paddingBottom,
+                  "--sh-origin-padding-left": longEditorMorph.paddingLeft,
+                  "--sh-source-scroll": `${longEditorMorph.scrollTop}px`,
+                }}
+              >
+                <div className="sh-editor-morph-text">{longEditorText}</div>
+              </div>
+            ) : null}
           </div>
         ) : null}
 
@@ -559,15 +646,9 @@ export default function ComposePage() {
           @keyframes soldierhubLongEditorIn {
             from {
               opacity: 0;
-              transform: translate3d(0, 42px, 0) scale(0.985);
-            }
-            62% {
-              opacity: 1;
-              transform: translate3d(0, 8px, 0) scale(0.997);
             }
             to {
               opacity: 1;
-              transform: translate3d(0, 0, 0) scale(1);
             }
           }
 
@@ -585,7 +666,7 @@ export default function ComposePage() {
           @keyframes soldierhubLongEditorToolbarIn {
             from {
               opacity: 0;
-              transform: translate3d(0, -10px, 0);
+              transform: translate3d(0, -8px, 0);
             }
             to {
               opacity: 1;
@@ -596,7 +677,7 @@ export default function ComposePage() {
           @keyframes soldierhubLongEditorBodyIn {
             from {
               opacity: 0;
-              transform: translate3d(0, 16px, 0);
+              transform: translate3d(0, 6px, 0);
             }
             to {
               opacity: 1;
@@ -604,10 +685,40 @@ export default function ComposePage() {
             }
           }
 
+          @keyframes soldierhubEditorMorphCard {
+            0% {
+              left: var(--sh-origin-left);
+              top: var(--sh-origin-top);
+              width: var(--sh-origin-width);
+              height: var(--sh-origin-height);
+              border-radius: var(--sh-origin-radius);
+              padding: var(--sh-origin-padding-top) var(--sh-origin-padding-right)
+                var(--sh-origin-padding-bottom) var(--sh-origin-padding-left);
+              font-size: var(--sh-origin-font-size);
+              line-height: var(--sh-origin-line-height);
+              box-shadow: 0 18px 40px rgba(11, 28, 44, 0.08);
+              opacity: 1;
+            }
+            76% {
+              opacity: 1;
+            }
+            100% {
+              left: 0;
+              top: var(--sh-target-top);
+              width: 100vw;
+              height: var(--sh-target-height);
+              border-radius: 0;
+              padding: 20px;
+              font-size: 22px;
+              line-height: 36px;
+              box-shadow: none;
+              opacity: 0;
+            }
+          }
+
           .sh-long-editor-enter {
-            animation: soldierhubLongEditorIn 430ms cubic-bezier(0.22, 1, 0.36, 1) both;
-            transform-origin: bottom center;
-            will-change: opacity, transform;
+            animation: soldierhubLongEditorIn 180ms ease-out both;
+            will-change: opacity;
           }
 
           .sh-long-editor-exit {
@@ -619,11 +730,32 @@ export default function ComposePage() {
 
           .sh-long-editor-enter .sh-long-editor-top,
           .sh-long-editor-enter .sh-long-editor-toolbar {
-            animation: soldierhubLongEditorToolbarIn 390ms cubic-bezier(0.22, 1, 0.36, 1) 115ms both;
+            animation: soldierhubLongEditorToolbarIn 340ms cubic-bezier(0.22, 1, 0.36, 1) 220ms both;
           }
 
-          .sh-long-editor-enter .sh-long-editor-body {
-            animation: soldierhubLongEditorBodyIn 430ms cubic-bezier(0.22, 1, 0.36, 1) 140ms both;
+          .sh-long-editor-morphing .sh-long-editor-body {
+            opacity: 0;
+          }
+
+          .sh-long-editor-ready .sh-long-editor-body {
+            animation: soldierhubLongEditorBodyIn 190ms ease-out both;
+          }
+
+          .sh-editor-morph-card {
+            position: absolute;
+            z-index: 35;
+            overflow: hidden;
+            background: #f8fafd;
+            color: #102033;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            pointer-events: none;
+            animation: soldierhubEditorMorphCard 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+            will-change: left, top, width, height, border-radius, padding, font-size, line-height, opacity;
+          }
+
+          .sh-editor-morph-text {
+            transform: translateY(calc(-1 * var(--sh-source-scroll, 0px)));
           }
 
           @keyframes soldierhubAnonymousComposeNotice {
