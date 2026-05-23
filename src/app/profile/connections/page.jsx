@@ -183,7 +183,7 @@ function ConnectionsContent() {
                           <Avatar name={profile.full_name} color={profile.avatar_color} src={profile.avatar_url} size={46} />
                         </button>
                         <button type="button" onClick={() => openProfile(profile)} className="min-w-0 flex-1 text-left focus-visible:outline-none">
-                          <div className="truncate text-sm font-black hover:underline" style={{ color: T.navy }}>
+                          <div className="truncate text-sm font-black transition-colors hover:text-[#1E4E8C]" style={{ color: T.navy }}>
                             {profile.full_name || "Soldier Hub member"}
                           </div>
                           <div className="truncate text-xs font-semibold" style={{ color: T.textMuted }}>
