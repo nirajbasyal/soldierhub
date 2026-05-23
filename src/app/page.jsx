@@ -8,7 +8,7 @@ import { subscribeToPosts } from "@/lib/db/realtime";
 import { useApp } from "@/store/AppContext";
 import AppShell from "@/components/layout/AppShell";
 import FeedHero from "@/components/feed/FeedHero";
-import PostComposer from "@/components/feed/PostComposer";
+import PostComposer from "@/components/feed/composer/PostComposer";
 import CategoryStrip from "@/components/feed/CategoryStrip";
 import PostCard from "@/components/feed/PostCard";
 import PostSkeleton from "@/components/ui/PostSkeleton";
