@@ -1,6 +1,5 @@
 import "./globals.css";
 import Providers from "./providers";
-import LongEditorFocusBridge from "@/components/system/LongEditorFocusBridge";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://soldierhub.com";
 const SITE_NAME = "SoldierHub";
@@ -190,7 +189,6 @@ export default function RootLayout({ children }) {
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(siteSchema) }}
         />
-        <LongEditorFocusBridge />
         <Providers>{children}</Providers>
       </body>
     </html>
