@@ -1,7 +1,5 @@
 import { FileText, Loader2, UsersRound } from "lucide-react";
 import { T } from "@/lib/theme";
-import { useApp } from "@/store/AppContext";
-import ProfileAboutCard from "@/components/profile/ProfileAboutCard";
 
 function ProfileStatItem({ icon: Icon, label, value, loading = false, href }) {
   const content = (
@@ -52,40 +50,34 @@ export default function ProfileStats({
   followingCount = 0,
   loading = false,
 }) {
-  const { currentUser } = useApp() || {};
-
   return (
-    <>
-      <div
-        className="relative z-20 mx-4 -mt-7 grid grid-cols-1 overflow-hidden rounded-3xl border min-[440px]:grid-cols-3 sm:mx-5"
-        style={{
-          backgroundColor: "rgba(255,255,255,0.98)",
-          borderColor: "#D5E2F2",
-          boxShadow: "0 14px 30px rgba(7,27,51,0.13)",
-        }}
-      >
-        <ProfileStatItem icon={FileText} label="Posts" value={postsCount} />
-        <div className="border-t min-[440px]:border-l min-[440px]:border-t-0" style={{ borderColor: "#E4EDF7" }}>
-          <ProfileStatItem
-            icon={UsersRound}
-            label="Followers"
-            value={followersCount}
-            loading={loading}
-            href="/profile/connections?tab=followers"
-          />
-        </div>
-        <div className="border-t min-[440px]:border-l min-[440px]:border-t-0" style={{ borderColor: "#E4EDF7" }}>
-          <ProfileStatItem
-            icon={UsersRound}
-            label="Following"
-            value={followingCount}
-            loading={loading}
-            href="/profile/connections?tab=following"
-          />
-        </div>
+    <div
+      className="relative z-20 mx-4 -mt-7 grid grid-cols-1 overflow-hidden rounded-3xl border min-[440px]:grid-cols-3 sm:mx-5"
+      style={{
+        backgroundColor: "rgba(255,255,255,0.98)",
+        borderColor: "#D5E2F2",
+        boxShadow: "0 14px 30px rgba(7,27,51,0.13)",
+      }}
+    >
+      <ProfileStatItem icon={FileText} label="Posts" value={postsCount} />
+      <div className="border-t min-[440px]:border-l min-[440px]:border-t-0" style={{ borderColor: "#E4EDF7" }}>
+        <ProfileStatItem
+          icon={UsersRound}
+          label="Followers"
+          value={followersCount}
+          loading={loading}
+          href="/profile/connections?tab=followers"
+        />
       </div>
-
-      <ProfileAboutCard bio={currentUser?.bio} />
-    </>
+      <div className="border-t min-[440px]:border-l min-[440px]:border-t-0" style={{ borderColor: "#E4EDF7" }}>
+        <ProfileStatItem
+          icon={UsersRound}
+          label="Following"
+          value={followingCount}
+          loading={loading}
+          href="/profile/connections?tab=following"
+        />
+      </div>
+    </div>
   );
 }
