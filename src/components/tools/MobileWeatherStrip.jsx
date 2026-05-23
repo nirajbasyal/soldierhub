@@ -221,48 +221,62 @@ export default function MobileWeatherStrip() {
   const recommendations = Array.isArray(ptUniform.recommendations) ? ptUniform.recommendations : [];
 
   return (
-    <div className="rounded-2xl border p-3" style={{ backgroundColor: T.card, borderColor: T.border }}>
-      <div className="flex items-start gap-2.5">
-        <div className="h-9 w-9 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: T.goldBg }}>
-          <CloudSun size={18} style={{ color: T.gold }} strokeWidth={2.1} />
+    <div
+      className="rounded-[28px] border p-4 shadow-sm"
+      style={{
+        background: "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,251,255,0.96) 100%)",
+        borderColor: "rgba(188,208,234,0.86)",
+        boxShadow: "0 16px 36px rgba(11,28,44,0.07)",
+      }}
+    >
+      <div className="mb-4 h-1.5 overflow-hidden rounded-full bg-[#DDE8F3]">
+        <div className="h-full w-2/5 rounded-full bg-[#B31942]" />
+      </div>
+
+      <div className="flex items-start gap-3">
+        <div
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border"
+          style={{ backgroundColor: "rgba(220,232,247,0.78)", borderColor: "rgba(188,208,234,0.9)" }}
+        >
+          <CloudSun size={20} style={{ color: T.blue }} strokeWidth={2.2} />
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-base font-semibold leading-none" style={{ color: T.navy }}>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-lg font-extrabold leading-none tracking-[-0.02em]" style={{ color: T.navy }}>
               Fort Bliss
             </span>
-            <span className="inline-flex items-center gap-1 text-xs" style={{ color: T.textSubtle }}>
+            <span className="inline-flex items-center gap-1 rounded-full bg-white/80 px-2 py-1 text-[11px] font-bold" style={{ color: T.textSubtle }}>
               <MapPin size={12} /> El Paso, TX
             </span>
           </div>
 
-          <div className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs" style={{ color: T.text }}>
-            <span className="inline-flex items-center gap-1 font-medium tabular-nums">
+          <div className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs" style={{ color: T.text }}>
+            <span className="inline-flex items-center gap-1 font-bold tabular-nums">
               <Clock3 size={12} /> {time}
             </span>
             <span style={{ color: T.textSubtle }}>•</span>
-            <span className="font-semibold">{tempText}</span>
+            <span className="font-extrabold">{tempText}</span>
             {conditionText ? (
               <>
                 <span style={{ color: T.textSubtle }}>•</span>
-                <span className="truncate">{conditionText}</span>
+                <span className="truncate font-medium">{conditionText}</span>
               </>
             ) : null}
           </div>
 
-          <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[11px]">
+          <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[11px] leading-5">
             <span style={{ color: T.textSubtle }}>{date}</span>
             <span style={{ color: T.textSubtle }}>•</span>
             <span style={{ color: T.textMuted }}>{checkedLabel}</span>
             <span style={{ color: T.textSubtle }}>•</span>
-            <span className="inline-flex shrink-0 whitespace-nowrap items-center gap-1">
+            <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap">
               <span style={{ color: T.textMuted }}>Powered by</span>
               <a
                 href="https://www.weather.gov/epz/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-semibold underline underline-offset-2"
+                className="font-bold underline underline-offset-2"
                 style={{ color: T.blue }}
               >
                 National Weather Service
@@ -273,51 +287,51 @@ export default function MobileWeatherStrip() {
       </div>
 
       <div
-        className="mt-3 rounded-xl border px-2.5 py-2 relative overflow-hidden"
+        className="mt-4 overflow-hidden rounded-[24px] border px-3 py-3"
         style={{
-          background: "linear-gradient(135deg, rgba(220,232,247,0.9) 0%, rgba(255,255,255,0.94) 60%, rgba(253,236,240,0.75) 100%)",
-          borderColor: "#BCD0EA",
+          background: "linear-gradient(135deg, rgba(238,245,253,0.96) 0%, rgba(255,255,255,0.98) 58%, rgba(255,246,248,0.92) 100%)",
+          borderColor: "rgba(188,208,234,0.92)",
         }}
       >
-        <div className="absolute left-0 top-0 h-full w-1 bg-[#B31942]" />
-        <div className="absolute right-0 top-0 h-full w-1 bg-[#1E4E8C]" />
-
-        <div className="flex items-start gap-2 pl-1.5">
-          <div className="mt-0.5 shrink-0 h-7 w-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: "rgba(7,27,51,0.08)" }}>
-            <Shirt size={14} style={{ color: T.navy }} strokeWidth={2.2} />
+        <div className="flex items-start gap-3">
+          <div
+            className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border"
+            style={{ backgroundColor: "rgba(255,255,255,0.82)", borderColor: "rgba(188,208,234,0.75)" }}
+          >
+            <Shirt size={18} style={{ color: T.navy }} strokeWidth={2.3} />
           </div>
 
           <div className="min-w-0 flex-1">
-            <div className="rounded-xl border bg-white/90 px-2.5 py-2" style={{ borderColor: "rgba(232,160,32,0.55)" }}>
+            <div className="rounded-2xl border bg-white/82 px-3 py-3" style={{ borderColor: "rgba(188,208,234,0.75)" }}>
               <div className="flex items-center justify-between gap-2">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.11em]" style={{ color: T.blue }}>
+                <div className="text-[11px] font-extrabold uppercase tracking-[0.14em]" style={{ color: T.blue }}>
                   Current PT Uniform
                 </div>
-                <span className="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em]" style={{ backgroundColor: T.goldBg, color: T.gold }}>
+                <span className="rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.1em]" style={{ backgroundColor: "rgba(179,25,66,0.09)", color: "#B31942" }}>
                   Now
                 </span>
               </div>
 
-              <div className="mt-0.5 text-base font-bold leading-tight" style={{ color: T.navy }}>
+              <div className="mt-1 text-xl font-extrabold leading-tight tracking-[-0.03em]" style={{ color: T.navy }}>
                 {ptUniform.title}
               </div>
-              <div className="text-xs font-medium leading-snug" style={{ color: T.text }}>
+              <div className="mt-0.5 text-sm font-semibold leading-snug" style={{ color: T.text }}>
                 {ptUniform.detail}
               </div>
             </div>
 
             {recommendations.length > 0 ? (
-              <div className="mt-2 border-t pt-2" style={{ borderColor: "rgba(63,95,125,0.16)" }}>
-                <div className="text-[10px] font-semibold uppercase tracking-[0.11em]" style={{ color: T.blue }}>
+              <div className="mt-3 border-t pt-3" style={{ borderColor: "rgba(63,95,125,0.16)" }}>
+                <div className="text-[11px] font-extrabold uppercase tracking-[0.14em]" style={{ color: T.blue }}>
                   Note
                 </div>
-                <div className="mt-1 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {recommendations.map((item) => (
-                    <div key={`${item.type}-${item.title}`} className="rounded-lg bg-white/60 px-2 py-1.5">
-                      <div className="text-[10px] font-semibold" style={{ color: T.textSubtle }}>
+                    <div key={`${item.type}-${item.title}`} className="rounded-2xl border bg-white/72 px-3 py-2" style={{ borderColor: "rgba(213,226,242,0.9)" }}>
+                      <div className="text-[11px] font-bold" style={{ color: T.textSubtle }}>
                         {item.label}
                       </div>
-                      <div className="text-xs font-semibold leading-snug sm:whitespace-nowrap" style={{ color: T.navy }}>
+                      <div className="mt-0.5 text-sm font-extrabold leading-snug" style={{ color: T.navy }}>
                         {item.title}
                       </div>
                     </div>
@@ -330,7 +344,7 @@ export default function MobileWeatherStrip() {
       </div>
 
       {status === "error" && !weather ? (
-        <div className="mt-1.5 text-xs" style={{ color: T.textSubtle }}>
+        <div className="mt-2 text-xs" style={{ color: T.textSubtle }}>
           Weather could not load right now. Time is still shown.
         </div>
       ) : null}
