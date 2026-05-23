@@ -69,13 +69,44 @@ function dispatchComposerInput(editor) {
   editor.dispatchEvent(new Event("keyup", { bubbles: true }));
 }
 
-function selectionInsideTag(editor, selector) {
-  if (typeof window === "undefined" || !editor) return false;
+function getSelectionElement(editor) {
+  if (typeof window === "undefined" || !editor) return null;
+
   const selection = window.getSelection?.();
   const anchorNode = selection?.anchorNode;
-  if (!anchorNode || !editor.contains(anchorNode)) return false;
-  const element = anchorNode.nodeType === Node.TEXT_NODE ? anchorNode.parentElement : anchorNode;
-  return Boolean(element?.closest?.(selector));
+  if (!anchorNode || !editor.contains(anchorNode)) return null;
+
+  return anchorNode.nodeType === Node.TEXT_NODE ? anchorNode.parentElement : anchorNode;
+}
+
+function selectionInsideTag(editor, selector) {
+  return Boolean(getSelectionElement(editor)?.closest?.(selector));
+}
+
+function getCurrentQuote(editor) {
+  const quote = getSelectionElement(editor)?.closest?.("blockquote");
+  return quote && editor?.contains(quote) ? quote : null;
+}
+
+function unwrapCurrentQuote(editor) {
+  const quote = getCurrentQuote(editor);
+  if (!editor || !quote) return false;
+
+  const normalBlock = document.createElement("div");
+  normalBlock.className = "min-h-[1.65em] whitespace-pre-wrap";
+
+  while (quote.firstChild) {
+    normalBlock.appendChild(quote.firstChild);
+  }
+
+  if (!normalBlock.childNodes.length || !normalBlock.textContent?.trim()) {
+    normalBlock.innerHTML = "<br>";
+  }
+
+  quote.replaceWith(normalBlock);
+  placeCursorAtEnd(normalBlock);
+  dispatchComposerInput(editor);
+  return true;
 }
 
 function queryCommandIsActive(command) {
@@ -167,9 +198,13 @@ export default function ComposerPreviewPage() {
     editor.focus({ preventScroll: true });
 
     try {
-      if (action.command === "formatBlock") {
-        const isQuoteActive = selectionInsideTag(editor, "blockquote");
-        document.execCommand("formatBlock", false, isQuoteActive ? "p" : "blockquote");
+      if (action.key === "quote") {
+        const quoteWasActive = Boolean(getCurrentQuote(editor));
+        if (quoteWasActive) {
+          unwrapCurrentQuote(editor);
+        } else {
+          document.execCommand("formatBlock", false, "blockquote");
+        }
       } else {
         document.execCommand(action.command, false, null);
       }
