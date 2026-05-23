@@ -49,14 +49,12 @@ function DependencyButton({ active, children, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className="rounded-xl px-3 py-2 text-sm font-semibold transition"
+      className="rounded-2xl px-3 py-2 text-sm font-bold transition active:scale-[0.98]"
       style={{
-        background: active
-          ? "linear-gradient(135deg, #071B33 0%, #1E4E8C 100%)"
-          : "#FFFFFF",
+        backgroundColor: active ? T.navy : "rgba(255,255,255,0.94)",
         color: active ? "#FFFFFF" : T.text,
-        border: `1px solid ${active ? "#1E4E8C" : T.border}`,
-        boxShadow: active ? "0 8px 18px rgba(7,27,51,0.14)" : "none",
+        border: `1px solid ${active ? T.navy : T.border}`,
+        boxShadow: active ? "0 10px 22px rgba(11,28,44,0.16)" : "0 6px 16px rgba(11,28,44,0.04)",
       }}
     >
       {children}
@@ -82,30 +80,32 @@ export default function BAHCard() {
 
   return (
     <div
-      className="rounded-2xl border p-4"
+      className="rounded-[28px] border p-4 shadow-sm"
       style={{
-        backgroundColor: T.card,
-        borderColor: T.border,
+        background: "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,251,255,0.96) 100%)",
+        borderColor: "rgba(188,208,234,0.86)",
+        boxShadow: "0 16px 36px rgba(11,28,44,0.07)",
       }}
     >
+      <div className="mb-4 h-1.5 overflow-hidden rounded-full bg-[#DDE8F3]">
+        <div className="h-full w-2/5 rounded-full bg-[#B31942]" />
+      </div>
+
       {/* Header */}
       <div className="flex items-start gap-3">
         <div
-          className="h-11 w-11 rounded-full flex items-center justify-center shrink-0"
-          style={{ backgroundColor: "rgba(220,232,247,0.95)" }}
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border"
+          style={{ backgroundColor: "rgba(220,232,247,0.78)", borderColor: "rgba(188,208,234,0.9)" }}
         >
           <Calculator size={20} style={{ color: T.blue }} strokeWidth={2.2} />
         </div>
 
         <div className="min-w-0 flex-1">
-          <h3
-            className="text-lg font-semibold leading-none"
-            style={{ color: T.navy }}
-          >
+          <h3 className="text-lg font-extrabold leading-none tracking-[-0.02em]" style={{ color: T.navy }}>
             BAH Estimate
           </h3>
 
-          <p className="mt-1 text-xs" style={{ color: T.textSubtle }}>
+          <p className="mt-1 text-xs font-medium" style={{ color: T.textSubtle }}>
             {location?.label} · {location?.city} · {bahData.year}
           </p>
         </div>
@@ -113,19 +113,16 @@ export default function BAHCard() {
 
       {/* Rank chooser */}
       <div className="mt-4">
-        <label
-          className="text-[11px] font-semibold uppercase tracking-[0.12em]"
-          style={{ color: T.textSubtle }}
-        >
+        <label className="text-[11px] font-extrabold uppercase tracking-[0.14em]" style={{ color: T.textSubtle }}>
           Choose Rank
         </label>
 
         <select
           value={rank}
           onChange={(e) => setRank(e.target.value)}
-          className="mt-2 w-full rounded-xl border px-3 py-3 text-sm font-semibold outline-none"
+          className="mt-2 w-full rounded-2xl border px-3 py-3 text-sm font-bold outline-none transition focus:ring-4"
           style={{
-            backgroundColor: "#FFFFFF",
+            backgroundColor: "rgba(255,255,255,0.96)",
             borderColor: T.border,
             color: T.navy,
           }}
@@ -158,25 +155,16 @@ export default function BAHCard() {
 
       {/* Dependency chooser */}
       <div className="mt-4">
-        <div
-          className="text-[11px] font-semibold uppercase tracking-[0.12em]"
-          style={{ color: T.textSubtle }}
-        >
+        <div className="text-[11px] font-extrabold uppercase tracking-[0.14em]" style={{ color: T.textSubtle }}>
           Dependency Status
         </div>
 
         <div className="mt-2 grid grid-cols-2 gap-2">
-          <DependencyButton
-            active={dependencyStatus === "with"}
-            onClick={() => setDependencyStatus("with")}
-          >
+          <DependencyButton active={dependencyStatus === "with"} onClick={() => setDependencyStatus("with")}>
             With
           </DependencyButton>
 
-          <DependencyButton
-            active={dependencyStatus === "without"}
-            onClick={() => setDependencyStatus("without")}
-          >
+          <DependencyButton active={dependencyStatus === "without"} onClick={() => setDependencyStatus("without")}>
             Without
           </DependencyButton>
         </div>
@@ -184,57 +172,45 @@ export default function BAHCard() {
 
       {/* Result below rank/dependency */}
       <div
-        className="mt-4 rounded-2xl border px-4 py-4 relative overflow-hidden"
+        className="mt-4 overflow-hidden rounded-[24px] border px-4 py-4"
         style={{
-          background:
-            "linear-gradient(135deg, rgba(220,232,247,0.95) 0%, rgba(253,254,255,0.96) 55%, rgba(253,236,240,0.88) 100%)",
-          borderColor: "#BCD0EA",
+          background: "linear-gradient(135deg, rgba(238,245,253,0.96) 0%, rgba(255,255,255,0.98) 58%, rgba(255,246,248,0.92) 100%)",
+          borderColor: "rgba(188,208,234,0.92)",
         }}
       >
-        <div className="absolute left-0 top-0 h-full w-1.5 bg-[#B31942]" />
-        <div className="absolute right-0 top-0 h-full w-1.5 bg-[#1E4E8C]" />
-
-        <div className="flex items-center justify-between gap-3 pl-2">
-          <div>
-            <div
-              className="text-xs font-semibold uppercase tracking-[0.12em]"
-              style={{ color: T.blue }}
-            >
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-[11px] font-extrabold uppercase tracking-[0.16em]" style={{ color: T.blue }}>
               Monthly BAH
             </div>
 
-            <div
-              className="mt-1 text-3xl font-semibold tabular-nums"
-              style={{ color: T.navy }}
-            >
+            <div className="mt-1 text-[42px] font-extrabold leading-none tracking-[-0.05em] tabular-nums" style={{ color: T.navy }}>
               {formatMoney(estimate.monthlyBah)}
             </div>
 
-            <div className="mt-1 text-xs" style={{ color: T.textMuted }}>
-              {rank} ·{" "}
-              {dependencyStatus === "with"
-                ? "With dependents"
-                : "Without dependents"}
+            <div className="mt-2 text-sm font-medium" style={{ color: T.textMuted }}>
+              {rank} · {dependencyStatus === "with" ? "With dependents" : "Without dependents"}
             </div>
           </div>
 
           <div
-            className="h-11 w-11 rounded-xl flex items-center justify-center shrink-0"
-            style={{ backgroundColor: "rgba(7,27,51,0.08)" }}
+            className="flex h-13 w-13 shrink-0 items-center justify-center rounded-[22px] border"
+            style={{ backgroundColor: "rgba(255,255,255,0.82)", borderColor: "rgba(188,208,234,0.75)" }}
           >
-            <Home size={25} style={{ color: T.navy }} />
+            <Home size={27} style={{ color: T.navy }} strokeWidth={2.3} />
           </div>
         </div>
 
         <div
-          className="mt-3 ml-2 rounded-xl px-3 py-2 text-sm"
+          className="mt-4 rounded-2xl border px-3 py-3 text-sm"
           style={{
-            backgroundColor: "rgba(255,255,255,0.78)",
+            backgroundColor: "rgba(255,255,255,0.82)",
+            borderColor: "rgba(255,255,255,0.82)",
             color: T.text,
           }}
         >
           Annual estimate:{" "}
-          <span className="font-semibold tabular-nums" style={{ color: T.navy }}>
+          <span className="font-extrabold tabular-nums" style={{ color: T.navy }}>
             {formatMoney(estimate.annualBah)}
           </span>
         </div>
@@ -242,11 +218,10 @@ export default function BAHCard() {
 
       {/* Note */}
       <div
-        className="mt-3 flex items-start gap-2 rounded-xl border px-3 py-2 text-xs leading-relaxed"
+        className="mt-3 flex items-start gap-2 rounded-2xl border px-3 py-2.5 text-xs leading-relaxed"
         style={{
-          background:
-            "linear-gradient(135deg, rgba(244,248,253,0.95), rgba(253,254,255,0.95))",
-          borderColor: "#D5E2F2",
+          backgroundColor: "rgba(244,248,253,0.78)",
+          borderColor: "rgba(213,226,242,0.9)",
           color: T.textMuted,
         }}
       >
