@@ -3,10 +3,9 @@
   Front-end only. No auth, Supabase, SQL, post, comment, report, or moderation logic changed.
 */
 
-/* Make feed cards visibly more premium in the PR preview. */
+/* Feed card polish */
 .sh-feed-post-list > article {
-  background:
-    linear-gradient(180deg, rgba(253, 254, 255, 1) 0%, rgba(248, 251, 255, 0.98) 100%) !important;
+  background: linear-gradient(180deg, rgba(253, 254, 255, 1) 0%, rgba(248, 251, 255, 0.98) 100%) !important;
   border: 1px solid rgba(207, 218, 232, 0.98) !important;
   border-radius: 24px !important;
   box-shadow: 0 14px 34px rgba(7, 27, 51, 0.075) !important;
@@ -26,7 +25,6 @@
   }
 }
 
-/* Extra-tight spacing for small phones so cards do not feel squeezed inward. */
 @media (max-width: 520px) {
   .sh-feed-post-list {
     gap: 0.55rem !important;
@@ -35,13 +33,11 @@
   }
 }
 
-/* Post header: slightly more breathing room and cleaner separation. */
 .sh-feed-post-list > article > div:first-child {
   padding-top: 1.05rem !important;
   padding-bottom: 0.9rem !important;
 }
 
-/* Post body: tighter, cleaner reading rhythm than leading-8. */
 .sh-feed-post-list > article > div:first-child [class*="leading-8"] {
   font-size: 16px !important;
   line-height: 1.72rem !important;
@@ -55,7 +51,6 @@
   }
 }
 
-/* Category/report chips: make metadata feel less default. */
 .sh-feed-post-list > article span[class*="rounded-full"][class*="text-[11px]"] {
   min-height: 1.55rem !important;
   padding-left: 0.65rem !important;
@@ -63,13 +58,11 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72) !important;
 }
 
-/* Post action bar: make Upvote / Replies / Share read as a polished footer strip. */
 .sh-feed-post-list > article > div:nth-of-type(2) {
   margin-left: 0 !important;
   margin-right: 0 !important;
   padding: 0.45rem 0.75rem !important;
-  background:
-    linear-gradient(180deg, rgba(248, 251, 255, 0.94) 0%, rgba(241, 246, 252, 0.94) 100%) !important;
+  background: linear-gradient(180deg, rgba(248, 251, 255, 0.94) 0%, rgba(241, 246, 252, 0.94) 100%) !important;
   border-top: 1px solid rgba(226, 233, 243, 0.98) !important;
   border-bottom-left-radius: inherit !important;
   border-bottom-right-radius: inherit !important;
@@ -86,18 +79,16 @@
   background-color: rgba(7, 27, 51, 0.055) !important;
 }
 
-/* Comments section: clearer visual separation from the footer strip. */
 .sh-feed-post-list > article > div:nth-of-type(3) {
   padding-top: 0.75rem !important;
   background: rgba(253, 254, 255, 0.72) !important;
 }
 
-/* Reply input: slightly more app-like and less raw input field. */
 .sh-feed-post-list input[placeholder="Write a reply..."] {
   font-size: 14px !important;
 }
 
-/* Profile page polish. Visual only; avatar, edit profile, follow, password, and post logic stay unchanged. */
+/* Profile page shell */
 .soldierhub-profile-shell {
   max-width: 700px !important;
 }
@@ -123,9 +114,7 @@
 .soldierhub-profile-shell section:first-of-type {
   border-radius: 30px !important;
   border-color: rgba(207, 218, 232, 0.98) !important;
-  background:
-    radial-gradient(circle at 18% 0%, rgba(220, 232, 247, 0.78), transparent 34%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.99) 0%, rgba(248, 251, 255, 0.98) 100%) !important;
+  background: radial-gradient(circle at 18% 0%, rgba(220, 232, 247, 0.78), transparent 34%), linear-gradient(180deg, rgba(255, 255, 255, 0.99) 0%, rgba(248, 251, 255, 0.98) 100%) !important;
   box-shadow: 0 18px 42px rgba(7, 27, 51, 0.082) !important;
 }
 
@@ -136,24 +125,39 @@
   background: linear-gradient(90deg, #B31942 0%, #1E4E8C 68%, rgba(207, 218, 232, 0.92) 100%) !important;
 }
 
-.soldierhub-profile-shell section:first-of-type h1 {
-  letter-spacing: -0.045em !important;
-}
-
-.soldierhub-profile-shell section:first-of-type [class*="rounded-[22px]"][class*="border"] {
-  box-shadow: 0 12px 24px rgba(7, 27, 51, 0.055);
-}
-
-/* Cleaner profile identity header: fewer badges, lighter avatar, verified as a check mark. */
-.soldierhub-profile-shell section:first-of-type > div:nth-child(2) > div:first-child > div:first-child[class*="rounded-[22px]"] {
+/* Real ProfileHeader structure: section > accent div + content div > header row > avatar + identity. */
+.soldierhub-profile-shell section:first-of-type > div:nth-child(2) > div:first-child > div:first-child {
   border: 0 !important;
   padding: 0 !important;
   background: transparent !important;
   box-shadow: none !important;
+  border-radius: 999px !important;
 }
 
-.soldierhub-profile-shell section:first-of-type > div:nth-child(2) > div:first-child > div:first-child[class*="rounded-[22px]"] > div {
-  box-shadow: 0 12px 26px rgba(7, 27, 51, 0.12) !important;
+.soldierhub-profile-shell section:first-of-type > div:nth-child(2) > div:first-child > div:first-child > div {
+  border-radius: 999px !important;
+  box-shadow: 0 12px 26px rgba(7, 27, 51, 0.13) !important;
+}
+
+/* Hide the heavy My Profile pill. */
+.soldierhub-profile-shell section:first-of-type > div:nth-child(2) > div:first-child > div:nth-child(2) > div:first-child > div:first-child {
+  display: none !important;
+}
+
+/* Hide the heavy Verified pill and replace it with a small check next to the name. */
+.soldierhub-profile-shell section:first-of-type > div:nth-child(2) > div:first-child > div:nth-child(2) > div:first-child > div:has(svg.lucide-shield-check) {
+  display: none !important;
+}
+
+.soldierhub-profile-shell section:first-of-type > div:nth-child(2) > div:first-child > div:nth-child(2)::before {
+  content: "Your profile";
+  display: block;
+  margin-bottom: 0.18rem;
+  color: #6E7F94;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 
 .soldierhub-profile-shell section:first-of-type h1 {
@@ -162,6 +166,7 @@
   align-items: center !important;
   gap: 0.55rem !important;
   white-space: normal !important;
+  letter-spacing: -0.045em !important;
 }
 
 .soldierhub-profile-shell section:first-of-type h1::after {
@@ -181,41 +186,16 @@
   box-shadow: 0 8px 16px rgba(30, 78, 140, 0.22);
 }
 
-.soldierhub-profile-shell section:first-of-type svg.lucide-user-round,
-.soldierhub-profile-shell section:first-of-type svg.lucide-shield-check {
-  display: none !important;
-}
-
-.soldierhub-profile-shell section:first-of-type svg.lucide-user-round:closest,
-.soldierhub-profile-shell section:first-of-type svg.lucide-shield-check:closest {
-  display: none !important;
-}
-
-.soldierhub-profile-shell section:first-of-type > div:nth-child(2) > div:first-child > div:nth-child(2) > div:first-child > div:has(svg.lucide-user-round),
-.soldierhub-profile-shell section:first-of-type > div:nth-child(2) > div:first-child > div:nth-child(2) > div:first-child > div:has(svg.lucide-shield-check) {
-  display: none !important;
-}
-
-.soldierhub-profile-shell section:first-of-type > div:nth-child(2) > div:first-child > div:nth-child(2)::before {
-  content: "Your profile";
-  display: block;
-  margin-bottom: 0.18rem;
-  color: #6E7F94;
-  font-size: 0.68rem;
-  font-weight: 900;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-.soldierhub-profile-shell section:first-of-type > div:nth-child(2) > div:first-child > div:nth-child(2) > div:first-child {
-  margin-top: 0.35rem !important;
-}
-
+/* Keep Admin, but make it lighter and smaller. */
 .soldierhub-profile-shell section:first-of-type > div:nth-child(2) > div:first-child > div:nth-child(2) > div:first-child > div:has(svg.lucide-shield) {
   min-height: 1.85rem !important;
   padding: 0.32rem 0.72rem !important;
   font-size: 0.76rem !important;
   box-shadow: 0 8px 18px rgba(122, 92, 32, 0.08) !important;
+}
+
+.soldierhub-profile-shell section:first-of-type > div:nth-child(2) > div:first-child > div:nth-child(2) > div:first-child {
+  margin-top: 0.35rem !important;
 }
 
 .soldierhub-profile-shell section:first-of-type button,
@@ -285,8 +265,7 @@
     overflow: hidden;
     border-radius: 24px !important;
     border: 1px solid rgba(207, 218, 232, 0.94) !important;
-    background:
-      linear-gradient(180deg, rgba(253, 254, 255, 0.99) 0%, rgba(247, 250, 254, 0.98) 100%) !important;
+    background: linear-gradient(180deg, rgba(253, 254, 255, 0.99) 0%, rgba(247, 250, 254, 0.98) 100%) !important;
     box-shadow: 0 14px 32px rgba(7, 27, 51, 0.065) !important;
   }
 
