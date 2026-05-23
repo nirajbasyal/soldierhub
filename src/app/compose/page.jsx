@@ -18,6 +18,7 @@ import PostComposer from "@/components/feed/PostComposer";
 const LONG_TEXT_EDITOR_HEIGHT_TRIGGER = 232;
 const LONG_TEXT_EDITOR_OVERFLOW_ALLOWANCE = 18;
 const LONG_TEXT_EDITOR_SUPPRESS_MS = 750;
+const LONG_TEXT_EDITOR_ANIMATION_MS = 240;
 const LONG_TEXT_EDITOR_BACKGROUND = "#F8FAFD";
 const COMPOSER_EDITOR_SELECTOR =
   'div[contenteditable="true"][aria-label="Write your SoldierHub post"]';
@@ -123,6 +124,7 @@ function dispatchComposerInput(editor) {
 export default function ComposePage() {
   const router = useRouter();
   const [longEditorOpen, setLongEditorOpen] = useState(false);
+  const [longEditorClosing, setLongEditorClosing] = useState(false);
   const [longEditorText, setLongEditorText] = useState("");
   const [longEditorFormats, setLongEditorFormats] = useState({});
   const [longEditorViewport, setLongEditorViewport] = useState({ height: null, top: 0 });
@@ -131,6 +133,7 @@ export default function ComposePage() {
   const sourceEditorRef = useRef(null);
   const sourceHtmlRef = useRef("");
   const suppressLongEditorUntilRef = useRef(0);
+  const longEditorCloseTimerRef = useRef(null);
 
   const getComposerEditor = () => {
     if (typeof document === "undefined") return null;
@@ -190,9 +193,16 @@ export default function ComposePage() {
   const openLongTextEditor = (editor) => {
     if (!editor || longEditorOpen || !isPhoneWidth()) return;
 
+    if (longEditorCloseTimerRef.current) {
+      window.clearTimeout(longEditorCloseTimerRef.current);
+      longEditorCloseTimerRef.current = null;
+    }
+
     sourceEditorRef.current = editor;
     sourceHtmlRef.current = editor.innerHTML || "";
     setLongEditorText(getEditorText(editor));
+    setLongEditorClosing(false);
+    editor.blur?.();
     setLongEditorOpen(true);
   };
 
@@ -253,10 +263,28 @@ export default function ComposePage() {
     suppressLongEditorUntilRef.current = Date.now() + LONG_TEXT_EDITOR_SUPPRESS_MS;
     expandedEditor?.blur?.();
     sourceEditor?.blur?.();
-    setLongEditorOpen(false);
-    setLongEditorText("");
-    setLongEditorFormats({});
+    setLongEditorClosing(true);
+
+    if (longEditorCloseTimerRef.current) {
+      window.clearTimeout(longEditorCloseTimerRef.current);
+    }
+
+    longEditorCloseTimerRef.current = window.setTimeout(() => {
+      setLongEditorOpen(false);
+      setLongEditorClosing(false);
+      setLongEditorText("");
+      setLongEditorFormats({});
+      longEditorCloseTimerRef.current = null;
+    }, LONG_TEXT_EDITOR_ANIMATION_MS);
   };
+
+  useEffect(() => {
+    return () => {
+      if (longEditorCloseTimerRef.current) {
+        window.clearTimeout(longEditorCloseTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const forceSingleImagePicker = () => {
@@ -343,12 +371,14 @@ export default function ComposePage() {
     window.requestAnimationFrame?.(() => {
       if (!expandedEditorRef.current) return;
       expandedEditorRef.current.innerHTML = sourceHtmlRef.current || "";
-      placeCursorAtEnd(expandedEditorRef.current);
-      syncLongEditorFormats();
-      scrollLongEditorCaretIntoView();
+      window.requestAnimationFrame?.(() => {
+        placeCursorAtEnd(expandedEditorRef.current);
+        syncLongEditorFormats();
+        scrollLongEditorCaretIntoView();
+      });
     });
 
-    window.setTimeout(scrollLongEditorCaretIntoView, 220);
+    window.setTimeout(scrollLongEditorCaretIntoView, 260);
 
     return () => {
       document.documentElement.style.overflow = previousHtmlOverflow;
@@ -411,7 +441,9 @@ export default function ComposePage() {
 
         {longEditorOpen ? (
           <div
-            className="fixed left-0 right-0 z-[140] flex max-h-[100dvh] flex-col overflow-hidden overscroll-contain md:hidden"
+            className={`fixed left-0 right-0 z-[140] flex max-h-[100dvh] flex-col overflow-hidden overscroll-contain md:hidden ${
+              longEditorClosing ? "sh-long-editor-exit" : "sh-long-editor-enter"
+            }`}
             style={{
               backgroundColor: LONG_TEXT_EDITOR_BACKGROUND,
               height: longEditorViewport.height ? `${longEditorViewport.height}px` : "100dvh",
@@ -422,7 +454,7 @@ export default function ComposePage() {
             aria-label="Expanded post text editor"
           >
             <div
-              className="relative z-10 flex h-[58px] shrink-0 items-center justify-between border-b px-4"
+              className="sh-long-editor-top relative z-10 flex h-[58px] shrink-0 items-center justify-between border-b px-4"
               style={{ backgroundColor: "rgba(248,250,253,0.98)", borderColor: T.borderSoft }}
             >
               <div className="w-16" />
@@ -474,7 +506,7 @@ export default function ComposePage() {
 
             <div
               ref={longEditorScrollRef}
-              className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5"
+              className="sh-long-editor-body relative min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5"
               style={{
                 backgroundColor: LONG_TEXT_EDITOR_BACKGROUND,
                 WebkitOverflowScrolling: "touch",
@@ -525,6 +557,72 @@ export default function ComposePage() {
         ) : null}
 
         <style jsx global>{`
+          @keyframes soldierhubLongEditorIn {
+            from {
+              opacity: 0;
+              transform: translate3d(0, 24px, 0) scale(0.985);
+            }
+            to {
+              opacity: 1;
+              transform: translate3d(0, 0, 0) scale(1);
+            }
+          }
+
+          @keyframes soldierhubLongEditorOut {
+            from {
+              opacity: 1;
+              transform: translate3d(0, 0, 0) scale(1);
+            }
+            to {
+              opacity: 0;
+              transform: translate3d(0, 16px, 0) scale(0.99);
+            }
+          }
+
+          @keyframes soldierhubLongEditorToolbarIn {
+            from {
+              opacity: 0;
+              transform: translate3d(0, -8px, 0);
+            }
+            to {
+              opacity: 1;
+              transform: translate3d(0, 0, 0);
+            }
+          }
+
+          @keyframes soldierhubLongEditorBodyIn {
+            from {
+              opacity: 0;
+              transform: translate3d(0, 10px, 0);
+            }
+            to {
+              opacity: 1;
+              transform: translate3d(0, 0, 0);
+            }
+          }
+
+          .sh-long-editor-enter {
+            animation: soldierhubLongEditorIn 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+            transform-origin: bottom center;
+            will-change: opacity, transform;
+          }
+
+          .sh-long-editor-exit {
+            pointer-events: none;
+            animation: soldierhubLongEditorOut 200ms cubic-bezier(0.4, 0, 0.2, 1) both;
+            transform-origin: bottom center;
+            will-change: opacity, transform;
+          }
+
+          .sh-long-editor-enter .sh-long-editor-top,
+          .sh-long-editor-enter .sh-long-editor-toolbar {
+            animation: soldierhubLongEditorToolbarIn 260ms cubic-bezier(0.2, 0.8, 0.2, 1) 55ms both;
+          }
+
+          .sh-long-editor-enter .sh-long-editor-body {
+            animation: soldierhubLongEditorBodyIn 280ms cubic-bezier(0.2, 0.8, 0.2, 1) 80ms both;
+          }
+
           @keyframes soldierhubAnonymousComposeNotice {
             0% {
               opacity: 0;
