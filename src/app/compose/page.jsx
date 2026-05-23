@@ -66,7 +66,7 @@ export default function ComposePage() {
             }
 
             .compose-page {
-              scroll-padding-bottom: 180px !important;
+              scroll-padding-bottom: 190px !important;
               -webkit-overflow-scrolling: touch !important;
             }
 
@@ -91,7 +91,7 @@ export default function ComposePage() {
               box-sizing: border-box !important;
               border-radius: 24px !important;
               padding: 14px !important;
-              background: rgba(255, 255, 255, 0.8) !important;
+              background: rgba(255, 255, 255, 0.84) !important;
               border-color: rgba(199, 210, 224, 0.9) !important;
               box-shadow: 0 10px 28px rgba(11, 28, 44, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.86) !important;
               backdrop-filter: blur(16px);
@@ -132,45 +132,44 @@ export default function ComposePage() {
             .compose-wrap > div.relative.flex.flex-col > div.relative.-mx-1.mb-3 div.overflow-x-auto {
               max-width: 100% !important;
               overflow-x: auto !important;
+              overflow-y: hidden !important;
+              padding-bottom: 1px !important;
             }
 
             .compose-wrap > div.relative.flex.flex-col > div.relative.-mx-1.mb-3 div.flex.w-max {
-              display: flex !important;
-              gap: 8px !important;
+              display: grid !important;
+              grid-auto-flow: column !important;
+              grid-template-rows: repeat(2, 32px) !important;
+              grid-auto-columns: max-content !important;
+              column-gap: 7px !important;
+              row-gap: 7px !important;
               padding: 0 34px 0 0 !important;
               width: max-content !important;
               min-width: 0 !important;
             }
 
             .compose-wrap > div.relative.flex.flex-col > div.relative.-mx-1.mb-3 button {
-              height: 38px !important;
+              height: 32px !important;
               border-radius: 999px !important;
-              padding-left: 13px !important;
-              padding-right: 13px !important;
-              font-size: 13px !important;
-              font-weight: 700 !important;
-              letter-spacing: -0.01em !important;
+              padding-left: 11px !important;
+              padding-right: 11px !important;
+              font-size: 11px !important;
+              font-weight: 650 !important;
+              letter-spacing: -0.005em !important;
               white-space: nowrap !important;
-              background-color: rgba(255,255,255,0.74) !important;
-              border-color: rgba(150, 161, 176, 0.48) !important;
-              color: #182230 !important;
-              box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 6px 14px rgba(11,28,44,0.035) !important;
-            }
-
-            .compose-wrap > div.relative.flex.flex-col > div.relative.-mx-1.mb-3 button[style*="rgba"],
-            .compose-wrap > div.relative.flex.flex-col > div.relative.-mx-1.mb-3 button[aria-pressed="true"] {
-              background: linear-gradient(135deg, rgba(126,164,197,0.96), rgba(103,148,190,0.92)) !important;
-              border-color: rgba(90, 138, 181, 0.42) !important;
-              color: #0b1c2c !important;
+              background-color: rgba(255, 255, 255, 0.9) !important;
+              border-color: rgba(190, 202, 216, 0.9) !important;
+              color: #334155 !important;
+              box-shadow: inset 0 1px 0 rgba(255,255,255,0.96), 0 4px 10px rgba(11,28,44,0.025) !important;
             }
 
             [aria-label="Post formatting toolbar"] {
               margin-bottom: 10px !important;
               border-radius: 999px !important;
               padding: 7px !important;
-              background: rgba(238, 243, 248, 0.9) !important;
-              border-color: rgba(150, 161, 176, 0.48) !important;
-              box-shadow: inset 0 1px 0 rgba(255,255,255,0.82) !important;
+              background: rgba(248, 250, 253, 0.96) !important;
+              border-color: rgba(190, 202, 216, 0.9) !important;
+              box-shadow: inset 0 1px 0 rgba(255,255,255,0.9) !important;
             }
 
             [aria-label="Post formatting toolbar"] > div.grid {
@@ -199,9 +198,9 @@ export default function ComposePage() {
               border-radius: 22px !important;
               min-height: 205px !important;
               padding: 14px 14px 10px !important;
-              background: rgba(248, 250, 253, 0.82) !important;
-              border-color: rgba(150, 161, 176, 0.48) !important;
-              box-shadow: inset 0 1px 0 rgba(255,255,255,0.88) !important;
+              background: rgba(248, 250, 253, 0.88) !important;
+              border-color: rgba(190, 202, 216, 0.9) !important;
+              box-shadow: inset 0 1px 0 rgba(255,255,255,0.9) !important;
               touch-action: pan-y !important;
             }
 
@@ -244,14 +243,14 @@ export default function ComposePage() {
               margin-top: 10px !important;
               padding: 8px !important;
               border-radius: 22px !important;
-              background: rgba(255, 255, 255, 0.92) !important;
-              border-color: rgba(150, 161, 176, 0.48) !important;
-              box-shadow: 0 10px 24px rgba(11, 28, 44, 0.12), inset 0 1px 0 rgba(255,255,255,0.88) !important;
+              background: rgba(255, 255, 255, 0.94) !important;
+              border-color: rgba(190, 202, 216, 0.9) !important;
+              box-shadow: 0 10px 24px rgba(11, 28, 44, 0.12), inset 0 1px 0 rgba(255,255,255,0.9) !important;
               backdrop-filter: blur(18px);
             }
 
             div[class*="sticky"][class*="bottom-2"][class*="z-40"] > div.grid {
-              grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+              grid-template-columns: minmax(0, 1.15fr) 46px minmax(0, 0.95fr) !important;
               gap: 8px !important;
             }
 
@@ -260,11 +259,11 @@ export default function ComposePage() {
               border-radius: 18px !important;
               flex-direction: column !important;
               justify-content: center !important;
-              gap: 3px !important;
-              padding: 0 8px !important;
+              gap: 4px !important;
+              padding: 0 7px !important;
               text-align: center !important;
-              background: rgba(255,255,255,0.78) !important;
-              border-color: rgba(150,161,176,0.48) !important;
+              background: rgba(255,255,255,0.88) !important;
+              border-color: rgba(190,202,216,0.9) !important;
             }
 
             div[class*="sticky"][class*="bottom-2"][class*="z-40"] > div.grid > button:first-child > span:first-child {
@@ -273,40 +272,57 @@ export default function ComposePage() {
               white-space: nowrap !important;
               overflow: hidden !important;
               text-overflow: ellipsis !important;
-              font-size: 10px !important;
+              font-size: 9.5px !important;
               font-weight: 500 !important;
               line-height: 1.1 !important;
               letter-spacing: 0 !important;
-              color: #101828 !important;
+              color: #334155 !important;
               text-align: center !important;
             }
 
             div[class*="sticky"][class*="bottom-2"][class*="z-40"] > div.grid > button:first-child > span:nth-child(2) {
-              width: 50px !important;
-              height: 28px !important;
+              width: 48px !important;
+              height: 27px !important;
+            }
+
+            div[class*="sticky"][class*="bottom-2"][class*="z-40"] > div.grid > button:first-child > span:nth-child(2) > span:last-child {
+              width: 20px !important;
+              height: 20px !important;
             }
 
             div[class*="sticky"][class*="bottom-2"][class*="z-40"] > div.grid > button:nth-child(2) {
-              display: none !important;
+              display: inline-flex !important;
+              height: 54px !important;
+              width: 46px !important;
+              border-radius: 18px !important;
+              padding: 0 !important;
+              background: rgba(255,255,255,0.9) !important;
+              border-color: rgba(190,202,216,0.9) !important;
+              color: #0b1c2c !important;
+            }
+
+            div[class*="sticky"][class*="bottom-2"][class*="z-40"] > div.grid > button:nth-child(2) svg {
+              width: 19px !important;
+              height: 19px !important;
             }
 
             div[class*="sticky"][class*="bottom-2"][class*="z-40"] > div.grid > button:nth-child(3) {
               height: 54px !important;
               border-radius: 18px !important;
-              font-size: 16px !important;
+              font-size: 14px !important;
               font-weight: 800 !important;
               background: linear-gradient(135deg, #B31942, #D9485F) !important;
               box-shadow: 0 10px 20px rgba(179,25,66,0.16) !important;
             }
 
             div[class*="sticky"][class*="bottom-2"][class*="z-40"] > div.grid > button:nth-child(3) svg {
-              width: 18px !important;
-              height: 18px !important;
+              width: 17px !important;
+              height: 17px !important;
             }
 
             div[class*="sticky"][class*="bottom-2"][class*="z-40"] > div.mt-2 {
               margin-top: 8px !important;
-              min-height: 46px !important;
+              min-height: 44px !important;
               border-radius: 18px !important;
               justify-content: center !important;
               background: linear-gradient(135deg, #4f7fab, #6aa3d8) !important;
@@ -316,7 +332,7 @@ export default function ComposePage() {
 
             div[class*="sticky"][class*="bottom-2"][class*="z-40"] > div.mt-2 button {
               color: #ffffff !important;
-              font-size: 15px !important;
+              font-size: 14px !important;
               font-weight: 800 !important;
             }
 
