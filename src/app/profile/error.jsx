@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, ArrowLeft, RefreshCw } from "lucide-react";
+import { AlertTriangle, RefreshCw } from "lucide-react";
 import { T } from "@/lib/theme";
 import Button from "@/components/ui/Button";
 
@@ -43,13 +43,18 @@ export default function ProfileError({ error, reset }) {
             Try again
           </Button>
 
-          <Button
-            variant="secondary"
-            icon={ArrowLeft}
+          <button
+            type="button"
             onClick={() => router.push("/")}
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-[#D5E2F2] bg-white text-[#0B1C2C] shadow-sm transition hover:-translate-y-0.5 hover:bg-[#F4F8FD] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1E4E8C]/35"
+            aria-label="Back to feed"
+            title="Back to feed"
           >
-            Back to feed
-          </Button>
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m12 19-7-7 7-7" />
+              <path d="M19 12H5" />
+            </svg>
+          </button>
         </div>
       </div>
     </main>
