@@ -31,7 +31,7 @@ export default function ComposePage() {
   return (
     <AppShell hideNav>
       <main
-        className="min-h-[100dvh] overflow-x-hidden overflow-y-auto pb-24 md:pb-10"
+        className="compose-page min-h-[100dvh] overflow-x-hidden overflow-y-auto pb-24 md:pb-10"
         style={{ backgroundColor: T.bg, WebkitOverflowScrolling: "touch" }}
       >
         <div
@@ -73,9 +73,45 @@ export default function ComposePage() {
           </div>
         </div>
 
-        <div className="mx-auto w-full max-w-[860px] px-3 pt-3 sm:px-6 md:px-8 md:pt-8">
+        <div className="compose-shell mx-auto w-full max-w-[860px] px-3 pt-3 sm:px-6 md:px-8 md:pt-8">
           <PostComposer startOpen pageMode />
         </div>
+
+        <style jsx global>{`
+          @keyframes soldierhubAnonymousComposeNotice {
+            0% {
+              opacity: 0;
+              transform: translateY(8px) scale(0.985);
+            }
+            12% {
+              opacity: 1;
+              transform: translateY(0) scale(1);
+            }
+            72% {
+              opacity: 1;
+              transform: translateY(0) scale(1);
+            }
+            100% {
+              opacity: 0;
+              transform: translateY(5px) scale(0.99);
+            }
+          }
+
+          .compose-shell > div.relative.flex.flex-col > div[class*="sticky"][class*="bottom-2"][class*="z-40"] {
+            order: 40;
+          }
+
+          .compose-shell > div.relative.flex.flex-col > div.mt-2.flex.items-start.gap-2.rounded-2xl.border {
+            order: 35;
+            position: relative;
+            z-index: 55;
+            pointer-events: none;
+            margin-top: 8px !important;
+            margin-bottom: -2px !important;
+            box-shadow: 0 14px 30px rgba(179, 25, 66, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.75);
+            animation: soldierhubAnonymousComposeNotice 4.4s ease-in-out forwards;
+          }
+        `}</style>
       </main>
     </AppShell>
   );
