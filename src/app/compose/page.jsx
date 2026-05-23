@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { AlertTriangle, ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { T } from "@/lib/theme";
@@ -8,6 +9,24 @@ import PostComposer from "@/components/feed/PostComposer";
 
 export default function ComposePage() {
   const router = useRouter();
+
+  useEffect(() => {
+    const forceSingleImagePicker = () => {
+      document.querySelectorAll('input[type="file"][accept*="image"]').forEach((input) => {
+        input.multiple = false;
+        input.removeAttribute("multiple");
+      });
+    };
+
+    forceSingleImagePicker();
+    document.addEventListener("pointerdown", forceSingleImagePicker, true);
+    document.addEventListener("click", forceSingleImagePicker, true);
+
+    return () => {
+      document.removeEventListener("pointerdown", forceSingleImagePicker, true);
+      document.removeEventListener("click", forceSingleImagePicker, true);
+    };
+  }, []);
 
   return (
     <AppShell hideNav>
