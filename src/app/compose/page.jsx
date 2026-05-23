@@ -559,11 +559,11 @@ export default function ComposePage() {
           @keyframes soldierhubLongEditorIn {
             from {
               opacity: 0;
-              transform: translate3d(0, 42px, 0) scale(0.975);
+              transform: translate3d(0, 42px, 0) scale(0.985);
             }
             62% {
               opacity: 1;
-              transform: translate3d(0, -2px, 0) scale(1.002);
+              transform: translate3d(0, 8px, 0) scale(0.997);
             }
             to {
               opacity: 1;
@@ -605,7 +605,7 @@ export default function ComposePage() {
           }
 
           .sh-long-editor-enter {
-            animation: soldierhubLongEditorIn 430ms cubic-bezier(0.16, 1, 0.3, 1) both;
+            animation: soldierhubLongEditorIn 430ms cubic-bezier(0.22, 1, 0.36, 1) both;
             transform-origin: bottom center;
             will-change: opacity, transform;
           }
@@ -619,11 +619,11 @@ export default function ComposePage() {
 
           .sh-long-editor-enter .sh-long-editor-top,
           .sh-long-editor-enter .sh-long-editor-toolbar {
-            animation: soldierhubLongEditorToolbarIn 390ms cubic-bezier(0.16, 1, 0.3, 1) 115ms both;
+            animation: soldierhubLongEditorToolbarIn 390ms cubic-bezier(0.22, 1, 0.36, 1) 115ms both;
           }
 
           .sh-long-editor-enter .sh-long-editor-body {
-            animation: soldierhubLongEditorBodyIn 430ms cubic-bezier(0.16, 1, 0.3, 1) 140ms both;
+            animation: soldierhubLongEditorBodyIn 430ms cubic-bezier(0.22, 1, 0.36, 1) 140ms both;
           }
 
           @keyframes soldierhubAnonymousComposeNotice {
