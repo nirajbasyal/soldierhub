@@ -262,7 +262,11 @@ export default function TopNav() {
     return (
       <form
         onSubmit={handleSearchSubmit}
-        className={mode === "desktop" ? "hidden md:flex flex-1 max-w-sm ml-1" : "w-full"}
+        className={
+          mode === "desktop"
+            ? "hidden md:flex min-w-0 flex-1 ml-1"
+            : "w-full"
+        }
       >
         <div className="w-full">
           <div className="relative w-full">
@@ -344,7 +348,7 @@ export default function TopNav() {
 
           {searchForm("desktop")}
 
-          <div className="flex-1" />
+          <div className="md:hidden flex-1" />
 
           <div className="md:hidden flex items-center gap-2 shrink-0">
             <button
@@ -410,7 +414,7 @@ export default function TopNav() {
             </button>
           </div>
 
-          <div className="hidden md:flex items-center gap-2">
+          <div className="hidden md:flex items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={goNotifications}
