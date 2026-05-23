@@ -1,6 +1,6 @@
 "use client";
 
-import { ImagePlus, Loader2, Send } from "lucide-react";
+import { AlertTriangle, ImagePlus, Loader2, Send } from "lucide-react";
 import { T } from "@/lib/theme";
 import Button from "@/components/ui/Button";
 import ComposerDraftStatus from "./ComposerDraftStatus";
@@ -98,6 +98,16 @@ export default function ComposerActionBar({
           </span>
         </Button>
       </div>
+
+      {anonymous ? (
+        <div
+          className="mt-2 flex items-start gap-2 rounded-2xl border px-3 py-2 text-[11px] font-semibold leading-snug"
+          style={{ backgroundColor: T.redBg, borderColor: "rgba(179, 25, 66, 0.18)", color: T.red }}
+        >
+          <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+          <span>Anonymous mode is on. Do not include names, unit details, or personal contact info.</span>
+        </div>
+      ) : null}
 
       <ComposerDraftStatus
         draftSaved={draftSaved}
