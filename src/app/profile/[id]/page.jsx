@@ -11,7 +11,6 @@ import { findProfileByEmailForSearch } from "@/lib/db/profiles";
 import * as Follows from "@/lib/supabase/follows";
 import AppShell from "@/components/layout/AppShell";
 import Footer from "@/components/layout/Footer";
-import Button from "@/components/ui/Button";
 import EmptyState from "@/components/ui/EmptyState";
 import PostCard from "@/components/feed/PostCard";
 import PostSkeleton from "@/components/ui/PostSkeleton";
