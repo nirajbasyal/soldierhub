@@ -295,7 +295,7 @@ export default function ComposerPreviewPage() {
               className="sticky top-[58px] z-20 shrink-0 border-b px-3 py-2"
               style={{ backgroundColor: "rgba(248,250,253,0.98)", borderColor: T.borderSoft }}
             >
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <div className="grid grid-cols-5 items-center gap-2">
                 {EXPANDED_FORMAT_ACTIONS.map((action) => {
                   const Icon = action.icon;
                   return (
@@ -304,13 +304,12 @@ export default function ComposerPreviewPage() {
                       type="button"
                       onMouseDown={(event) => event.preventDefault()}
                       onClick={() => applyExpandedFormatting(action)}
-                      className="sh-tap inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[12px] font-extrabold transition active:scale-[0.97]"
+                      className="sh-tap flex h-10 w-full items-center justify-center rounded-full border transition active:scale-[0.97]"
                       style={{ backgroundColor: "#FFFFFF", borderColor: T.border, color: T.navy }}
                       aria-label={action.label}
                       title={action.label}
                     >
-                      <Icon size={16} strokeWidth={2.55} />
-                      <span>{action.label}</span>
+                      <Icon size={18} strokeWidth={2.65} />
                     </button>
                   );
                 })}
