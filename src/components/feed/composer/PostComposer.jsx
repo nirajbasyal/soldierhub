@@ -557,6 +557,10 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
         onPaste={handlePaste}
       />
 
+      <p className="mt-2 text-[11px] font-medium leading-5" style={{ color: T.textSubtle }}>
+        Ask a question, share local tips, or help someone new to Fort Bliss.
+      </p>
+
       {imageNotice ? (
         <div
           className="mt-2 rounded-2xl border px-3 py-2 text-[11px] font-semibold"
@@ -597,7 +601,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
           style={{ backgroundColor: T.redBg, borderColor: "rgba(179, 25, 66, 0.18)", color: T.red }}
         >
           <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-          <span>Anonymous mode is on. Do not include names, unit details, or personal contact info in the post body.</span>
+          <span>Anonymous mode hides your public name. Avoid names, unit details, phone numbers, or sensitive information.</span>
         </div>
       )}
     </div>

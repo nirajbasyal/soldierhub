@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Geist:wght@300;400;500;600;700;800&display=swap');
+@import "./production-polish.css";
 
 @tailwind base;
 @tailwind components;
@@ -430,17 +431,24 @@ div:has(> [aria-label="Write your SoldierHub post"] ol) > .pointer-events-none {
   }
 }
 
-/* Facebook-style mobile feed: posts touch both sides of the phone screen. */
+/* Production mobile feed polish: keep posts readable while avoiding harsh edge-to-edge cards. */
 @media (max-width: 767px) {
+  .sh-feed-post-list {
+    gap: 0.7rem !important;
+    padding-left: 0.55rem !important;
+    padding-right: 0.55rem !important;
+  }
+
   .sh-feed-post-list > article {
-    border-left: 0 !important;
-    border-right: 0 !important;
-    border-radius: 0 !important;
-    box-shadow: 0 8px 18px rgba(7, 27, 51, 0.045) !important;
+    border-left: 1px solid rgba(207, 218, 232, 0.95) !important;
+    border-right: 1px solid rgba(207, 218, 232, 0.95) !important;
+    border-radius: 20px !important;
+    box-shadow: 0 10px 24px rgba(7, 27, 51, 0.055) !important;
+    overflow: visible !important;
   }
 
   .sh-feed-post-list > article > div:first-child {
-    padding-top: 0.9rem;
+    padding-top: 0.95rem;
   }
 }
 
