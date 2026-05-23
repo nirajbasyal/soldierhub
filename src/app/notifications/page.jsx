@@ -2,13 +2,13 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Bell } from "lucide-react";
+import { Bell } from "lucide-react";
 import { T } from "@/lib/theme";
 import { useApp } from "@/store/AppContext";
 import AppShell from "@/components/layout/AppShell";
 import Footer from "@/components/layout/Footer";
-import Button from "@/components/ui/Button";
 import EmptyState from "@/components/ui/EmptyState";
+import CircularBackButton from "@/components/ui/CircularBackButton";
 import NotificationItem from "@/components/notifications/NotificationItem";
 
 function getNotificationTime(notification) {
@@ -143,9 +143,7 @@ export default function NotificationsPage() {
     <AppShell hideNav>
       <main className="min-h-screen bg-[#F3F6FA] pb-24 md:pb-12">
         <div className="mx-auto w-full max-w-2xl px-4 py-5 md:px-6 md:py-10">
-          <Button variant="secondary" icon={ArrowLeft} onClick={() => router.push("/")}>
-            Back to feed
-          </Button>
+          <CircularBackButton href="/" label="Back to feed" />
 
           <section className="mt-5 mb-5 rounded-[28px] border border-white/80 bg-white/90 p-5 shadow-sm backdrop-blur">
             <div className="flex items-center gap-3">
