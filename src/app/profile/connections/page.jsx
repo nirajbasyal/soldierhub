@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, Loader2, Search, UsersRound } from "lucide-react";
+import { ArrowLeft, Loader2, Search, UserMinus, UsersRound } from "lucide-react";
 import { T } from "@/lib/theme";
 import { useApp } from "@/store/AppContext";
 import * as Follows from "@/lib/supabase/follows";
@@ -10,16 +10,21 @@ import AppShell from "@/components/layout/AppShell";
 import Footer from "@/components/layout/Footer";
 import Avatar from "@/components/ui/Avatar";
 
+function getProfileFromItem(item) {
+  return item?.profile || item?.profiles || item?.following_profile || item?.follower_profile || item || {};
+}
+
 function ConnectionsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { currentUser, authLoading, setAuthModal } = useApp();
+  const { currentUser, authLoading, setAuthModal, pushToast } = useApp();
   const initialTab = searchParams.get("tab") === "following" ? "following" : "followers";
   const [activeTab, setActiveTab] = useState(initialTab);
   const [query, setQuery] = useState("");
   const [items, setItems] = useState({ followers: [], following: [] });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [unfollowingId, setUnfollowingId] = useState("");
 
   useEffect(() => {
     const nextTab = searchParams.get("tab") === "following" ? "following" : "followers";
@@ -60,11 +65,42 @@ function ConnectionsContent() {
     if (!cleanQuery) return rawItems;
 
     return rawItems.filter((item) => {
-      const profile = item.profile || item;
+      const profile = getProfileFromItem(item);
       const haystack = `${profile.full_name || ""} ${profile.base || ""}`.toLowerCase();
       return haystack.includes(cleanQuery);
     });
   }, [activeTab, items, query]);
+
+  const openProfile = (profile) => {
+    if (!profile?.id) return;
+    if (profile.id === currentUser?.id) {
+      router.push("/profile");
+      return;
+    }
+    router.push(`/profile/${profile.id}?name=${encodeURIComponent(profile.full_name || "Soldier Hub member")}`);
+  };
+
+  const handleUnfollow = async (profile) => {
+    if (!profile?.id || unfollowingId) return;
+
+    const previousFollowing = items.following || [];
+    setUnfollowingId(profile.id);
+    setItems((previous) => ({
+      ...previous,
+      following: previous.following.filter((item) => getProfileFromItem(item)?.id !== profile.id),
+    }));
+
+    const { error: unfollowError } = await Follows.unfollowUser(profile.id);
+    setUnfollowingId("");
+
+    if (unfollowError) {
+      setItems((previous) => ({ ...previous, following: previousFollowing }));
+      pushToast?.(unfollowError.message || "Could not unfollow this member.", "error");
+      return;
+    }
+
+    pushToast?.("Member unfollowed.", "success");
+  };
 
   const tabClasses = (tab) =>
     `flex-1 rounded-2xl px-4 py-3 text-sm font-black transition ${
@@ -81,7 +117,7 @@ function ConnectionsContent() {
         }}
       >
         <div className="mx-auto w-full max-w-[660px] px-3 py-4 sm:px-5 md:px-6 md:py-6">
-          <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="mb-4 flex items-center justify-start">
             <button
               type="button"
               onClick={() => router.push("/profile")}
@@ -90,15 +126,6 @@ function ConnectionsContent() {
             >
               <ArrowLeft size={18} />
             </button>
-            <div className="min-w-0 flex-1 text-center">
-              <h1 className="truncate text-lg font-black tracking-[-0.03em]" style={{ color: T.navy }}>
-                Connections
-              </h1>
-              <p className="text-xs font-semibold" style={{ color: T.textMuted }}>
-                Followers and following
-              </p>
-            </div>
-            <div className="h-10 w-10" />
           </div>
 
           <section className="overflow-hidden rounded-[28px] border border-[#D5E2F2] bg-white shadow-[0_18px_42px_rgba(7,27,51,0.09)]">
@@ -148,18 +175,33 @@ function ConnectionsContent() {
               ) : (
                 <div className="space-y-2">
                   {visibleItems.map((item) => {
-                    const profile = item.profile || item;
+                    const profile = getProfileFromItem(item);
+                    const isUnfollowing = unfollowingId === profile.id;
                     return (
                       <div key={profile.id} className="flex items-center gap-3 rounded-3xl border border-[#E4EDF7] bg-white p-3 transition hover:bg-[#F4F8FD]">
-                        <Avatar name={profile.full_name} color={profile.avatar_color} src={profile.avatar_url} size={46} />
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm font-black" style={{ color: T.navy }}>
+                        <button type="button" onClick={() => openProfile(profile)} className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1E4E8C]" aria-label={`Open ${profile.full_name || "member"} profile`}>
+                          <Avatar name={profile.full_name} color={profile.avatar_color} src={profile.avatar_url} size={46} />
+                        </button>
+                        <button type="button" onClick={() => openProfile(profile)} className="min-w-0 flex-1 text-left focus-visible:outline-none">
+                          <div className="truncate text-sm font-black hover:underline" style={{ color: T.navy }}>
                             {profile.full_name || "Soldier Hub member"}
                           </div>
                           <div className="truncate text-xs font-semibold" style={{ color: T.textMuted }}>
                             {profile.base || "Fort Bliss"}
                           </div>
-                        </div>
+                        </button>
+
+                        {activeTab === "following" ? (
+                          <button
+                            type="button"
+                            onClick={() => handleUnfollow(profile)}
+                            disabled={isUnfollowing}
+                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#F3C7D1] bg-[#FDECF0]/80 text-[#B31942] transition hover:bg-[#FADBE3] disabled:cursor-not-allowed disabled:opacity-60"
+                            aria-label={`Unfollow ${profile.full_name || "member"}`}
+                          >
+                            {isUnfollowing ? <Loader2 size={15} className="animate-spin" /> : <UserMinus size={16} />}
+                          </button>
+                        ) : null}
                       </div>
                     );
                   })}
