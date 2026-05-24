@@ -47,6 +47,24 @@ export default function useComposerDraft({
     return { draftBody, draftText };
   }, [bodyValueRef, editorRef, plainTextValueRef]);
 
+  const removeSavedDraft = useCallback(
+    ({ silent = false } = {}) => {
+      if (typeof window === "undefined") return false;
+
+      try {
+        window.localStorage.removeItem(COMPOSER_DRAFT_KEY);
+        setDraftSaved(false);
+        if (!silent) setDraftStatus("Draft cleared from this device");
+        return true;
+      } catch {
+        setDraftSaved(false);
+        if (!silent) setDraftStatus("Draft could not be cleared on this device.");
+        return false;
+      }
+    },
+    []
+  );
+
   const persistDraft = useCallback(
     ({ silent = false } = {}) => {
       if (typeof window === "undefined" || !currentUser?.id || submitting || imageProcessing) return false;
@@ -54,9 +72,7 @@ export default function useComposerDraft({
       const { draftBody, draftText } = getCurrentDraftValues();
 
       if (!hasMeaningfulDraft(draftBody, draftText)) {
-        setDraftSaved(false);
-        if (!silent) setDraftStatus("Write something before saving a draft.");
-        return false;
+        return removeSavedDraft({ silent });
       }
 
       try {
@@ -87,6 +103,7 @@ export default function useComposerDraft({
       currentUser?.id,
       getCurrentDraftValues,
       imageProcessing,
+      removeSavedDraft,
       structured,
       submitting,
     ]
@@ -174,7 +191,7 @@ export default function useComposerDraft({
   const saveDraft = () => persistDraft({ silent: false });
 
   const clearDraftState = () => {
-    setDraftSaved(false);
+    removeSavedDraft({ silent: true });
     setDraftStatus("");
   };
 
