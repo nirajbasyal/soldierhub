@@ -80,23 +80,24 @@ export default function ComposerCategoryPicker({ category, onSelectCategory, sub
         type="button"
         onClick={scrollCategoriesRight}
         disabled={!canScrollRight}
-        className="absolute inset-y-0 right-0 z-10 flex w-12 items-center justify-end pr-2 transition disabled:pointer-events-none disabled:opacity-0"
+        className="absolute inset-y-0 right-0 z-10 flex w-14 items-center justify-end pr-2 transition disabled:pointer-events-none disabled:opacity-0"
         style={{
           background:
-            "linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.82) 62%, rgba(255,255,255,1) 100%)",
+            "linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.88) 54%, rgba(255,255,255,1) 100%)",
         }}
         aria-label="Scroll categories right"
         title="Scroll categories"
       >
         <span
-          className="flex h-8 w-8 items-center justify-center rounded-full border shadow-sm transition hover:-translate-y-0.5 active:scale-[0.96]"
+          className="flex h-9 w-9 items-center justify-center rounded-full border transition hover:-translate-y-0.5 active:scale-[0.96]"
           style={{
-            backgroundColor: "rgba(255,255,255,0.96)",
-            borderColor: T.border,
+            backgroundColor: "rgba(255,255,255,0.98)",
+            borderColor: "rgba(188,207,229,0.95)",
             color: T.navy,
+            boxShadow: "0 12px 24px rgba(11,28,44,0.18), 0 2px 6px rgba(11,28,44,0.08)",
           }}
         >
-          <ChevronRight size={19} strokeWidth={2.8} />
+          <ChevronRight size={20} strokeWidth={3} />
         </span>
       </button>
     </div>
