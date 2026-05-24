@@ -45,7 +45,7 @@
 
 @media (max-width: 767px) {
   .sh-feed-post-list {
-    gap: 0.62rem !important;
+    gap: 0.48rem !important;
     padding-left: 0.28rem !important;
     padding-right: 0.28rem !important;
   }
@@ -57,6 +57,37 @@
     margin-left: 0.28rem !important;
     margin-right: 0.28rem !important;
     width: auto !important;
+  }
+
+  /* Tighten the vertical rhythm between the top feed sections. */
+  main > div.grid > div.mx-auto {
+    gap: 0.55rem !important;
+  }
+
+  main > div.grid > div.mx-auto > div:nth-child(1) {
+    min-height: auto !important;
+  }
+
+  main > div.grid > div.mx-auto > div:nth-child(1) > div {
+    padding-top: 0.62rem !important;
+    padding-bottom: 0.62rem !important;
+  }
+
+  main > div.grid > div.mx-auto > div:nth-child(1) [class*="text-3xl"],
+  main > div.grid > div.mx-auto > div:nth-child(1) [class*="text-4xl"],
+  main > div.grid > div.mx-auto > div:nth-child(1) [class*="text-5xl"] {
+    font-size: 1.35rem !important;
+    line-height: 1.25 !important;
+  }
+
+  main > div.grid > div.mx-auto > div:nth-child(1) [class*="gap-3"],
+  main > div.grid > div.mx-auto > div:nth-child(1) [class*="gap-4"] {
+    gap: 0.48rem !important;
+  }
+
+  main > div.grid > div.mx-auto > div:nth-child(1) p,
+  main > div.grid > div.mx-auto > div:nth-child(1) span {
+    line-height: 1.2 !important;
   }
 
   main > div.grid > div.mx-auto > div:nth-child(4) {
@@ -71,9 +102,13 @@
 
 @media (max-width: 520px) {
   .sh-feed-post-list {
-    gap: 0.55rem !important;
+    gap: 0.42rem !important;
     padding-left: 0.16rem !important;
     padding-right: 0.16rem !important;
+  }
+
+  main > div.grid > div.mx-auto {
+    gap: 0.48rem !important;
   }
 
   main > div.grid > div.mx-auto > div:nth-child(1),
@@ -81,6 +116,11 @@
   main > div.grid > div.mx-auto > div:nth-child(4) {
     margin-left: 0.16rem !important;
     margin-right: 0.16rem !important;
+  }
+
+  main > div.grid > div.mx-auto > div:nth-child(1) > div {
+    padding-top: 0.52rem !important;
+    padding-bottom: 0.52rem !important;
   }
 }
 
