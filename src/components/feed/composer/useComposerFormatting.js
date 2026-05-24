@@ -16,7 +16,7 @@ export function safeRequestAnimationFrame(callback) {
 }
 
 export function ensureQuoteExitSpace() {
-  // Legacy no-op retained for existing composer imports.
+  // Quote formatting has been removed from the composer.
 }
 
 export function placeCaretInElement(element) {
@@ -58,15 +58,6 @@ function readCommandState(command) {
   }
 }
 
-function readEditorFormats() {
-  return {
-    bold: readCommandState("bold"),
-    italic: readCommandState("italic"),
-    bullet: readCommandState("insertUnorderedList"),
-    number: readCommandState("insertOrderedList"),
-  };
-}
-
 function normalizeFormats(nextFormats) {
   return {
     bold: Boolean(nextFormats?.bold),
@@ -74,10 +65,6 @@ function normalizeFormats(nextFormats) {
     bullet: Boolean(nextFormats?.bullet),
     number: Boolean(nextFormats?.number),
   };
-}
-
-function clearInlineFormatIfNeeded(command) {
-  if (readCommandState(command)) runEditorCommand(command);
 }
 
 export default function useComposerFormatting({
@@ -124,16 +111,12 @@ export default function useComposerFormatting({
   }, [activeFormats, activeFormatsRef, editorRef, setControlledFormats]);
 
   const syncFormatState = useCallback(() => {
+    // Keep this lightweight. This function is called during typing through the
+    // composer sync path; updating toolbar state on every keystroke caused
+    // contentEditable typing regressions on some browsers.
     const editor = editorRef.current;
     setStructured(hasStructuredContent(editor));
-
-    if (!editor || typeof document === "undefined") {
-      setControlledFormats(activeFormatsRef?.current || activeFormats);
-      return;
-    }
-
-    setControlledFormats(readEditorFormats());
-  }, [activeFormats, activeFormatsRef, editorRef, setControlledFormats, setStructured]);
+  }, [editorRef, setStructured]);
 
   const applyFormatting = useCallback(
     (action) => {
@@ -143,37 +126,48 @@ export default function useComposerFormatting({
 
       editor.focus({ preventScroll: true });
 
-      if (action.command === "insertUnorderedList" && readCommandState("insertOrderedList")) {
-        runEditorCommand("insertOrderedList");
+      const current = normalizeFormats(activeFormatsRef?.current || activeFormats);
+      let nextFormats = { ...current };
+
+      if (action.command === "bold") {
+        runEditorCommand("bold");
+        nextFormats.bold = !current.bold;
       }
 
-      if (action.command === "insertOrderedList" && readCommandState("insertUnorderedList")) {
+      if (action.command === "italic") {
+        runEditorCommand("italic");
+        nextFormats.italic = !current.italic;
+      }
+
+      if (action.command === "insertUnorderedList") {
+        if (current.number || readCommandState("insertOrderedList")) runEditorCommand("insertOrderedList");
         runEditorCommand("insertUnorderedList");
+        nextFormats = { ...nextFormats, bullet: !current.bullet, number: false };
       }
 
-      runEditorCommand(action.command);
+      if (action.command === "insertOrderedList") {
+        if (current.bullet || readCommandState("insertUnorderedList")) runEditorCommand("insertUnorderedList");
+        runEditorCommand("insertOrderedList");
+        nextFormats = { ...nextFormats, number: !current.number, bullet: false };
+      }
+
+      setControlledFormats(nextFormats);
 
       safeRequestAnimationFrame(() => {
-        const nextFormats = readEditorFormats();
-        setControlledFormats(nextFormats);
         setStructured(hasStructuredContent(editor));
         syncEditorState();
       });
     },
-    [editorRef, setControlledFormats, setStructured, submittingValueRef, syncEditorState]
+    [activeFormats, activeFormatsRef, editorRef, setControlledFormats, setStructured, submittingValueRef, syncEditorState]
   );
 
   const handleEditorBeforeInput = useCallback(() => {
-    // Important: do not force execCommand here. Forcing formatting before every
-    // keystroke can break contentEditable typing on mobile and desktop browsers.
+    // Do not run execCommand during beforeinput. The browser must own typing.
   }, []);
 
   const handleEditorKeyDown = useCallback(
     (event) => {
       if (submittingValueRef.current) return;
-
-      const editor = editorRef.current;
-      if (!editor) return;
 
       if ((event.ctrlKey || event.metaKey) && !event.altKey) {
         const key = event.key.toLowerCase();
@@ -181,40 +175,21 @@ export default function useComposerFormatting({
         if (key === "b") {
           event.preventDefault();
           applyFormatting({ command: "bold" });
-          return;
         }
 
         if (key === "i") {
           event.preventDefault();
           applyFormatting({ command: "italic" });
-          return;
         }
       }
-
-      if (event.key === "Enter") {
-        safeRequestAnimationFrame(() => {
-          setStructured(hasStructuredContent(editor));
-          setControlledFormats(readEditorFormats());
-          syncEditorState();
-        });
-        return;
-      }
-
-      if (event.key === "Backspace" || event.key === "Delete" || event.key.length === 1) {
-        safeRequestAnimationFrame(() => {
-          setStructured(hasStructuredContent(editor));
-          setControlledFormats(readEditorFormats());
-          syncEditorState();
-        });
-      }
     },
-    [applyFormatting, editorRef, setControlledFormats, setStructured, submittingValueRef, syncEditorState]
+    [applyFormatting, submittingValueRef]
   );
 
   const handleEditorPointerDown = useCallback(() => {
-    if (submittingValueRef.current) return;
-    safeRequestAnimationFrame(syncFormatState);
-  }, [submittingValueRef, syncFormatState]);
+    // Keep pointer interaction passive so clicking/tapping inside the editor
+    // never blocks text input or selection.
+  }, []);
 
   return {
     activeFormats,
