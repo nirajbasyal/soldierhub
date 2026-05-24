@@ -121,14 +121,13 @@ export default function TipTapComposerEditor({
       window.clearTimeout(focusTimerRef.current);
       focusTimerRef.current = null;
     }
-    syncContent(editorInstanceRef.current);
-    editorInstanceRef.current?.commands.blur();
-    setWritingModeVisible(false);
-    if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
-    closeTimerRef.current = window.setTimeout(() => {
-      setWritingModeMounted(false);
+    if (closeTimerRef.current) {
+      window.clearTimeout(closeTimerRef.current);
       closeTimerRef.current = null;
-    }, 140);
+    }
+    syncContent(editorInstanceRef.current);
+    setWritingModeVisible(false);
+    setWritingModeMounted(false);
   };
 
   const editor = useEditor({
@@ -148,6 +147,24 @@ export default function TipTapComposerEditor({
       },
       transformPastedText(text) {
         return String(text || "");
+      },
+      handlePaste(view, event) {
+        const html = event?.clipboardData?.getData("text/html") || "";
+        if (!html) return false;
+
+        const cleanHtml = sanitizeComposerHtml(html);
+        if (!cleanHtml) return false;
+
+        event.preventDefault();
+        const tiptap = editorInstanceRef.current;
+        tiptap
+          ?.chain()
+          .focus(undefined, { scrollIntoView: false })
+          .insertContent(cleanHtml, { parseOptions: { preserveWhitespace: false } })
+          .run();
+
+        window.requestAnimationFrame?.(() => syncContent(tiptap));
+        return true;
       },
       handleFocus: () => {
         openWritingMode();
@@ -300,7 +317,7 @@ export default function TipTapComposerEditor({
           top: `${viewport.top || 0}px`,
           opacity: writingModeVisible ? 1 : 0,
           transform: "translate3d(0,0,0)",
-          transition: "opacity 140ms ease-out",
+          transition: "opacity 120ms ease-out",
           willChange: "opacity",
         }}
         role="dialog"
@@ -322,7 +339,7 @@ export default function TipTapComposerEditor({
             borderColor: T.borderSoft,
             opacity: writingModeVisible ? 1 : 0,
             transform: "none",
-            transition: "opacity 160ms ease-out 30ms",
+            transition: "opacity 140ms ease-out 20ms",
           }}
         >
           <div className="grid grid-cols-4 items-center gap-2">
@@ -354,7 +371,7 @@ export default function TipTapComposerEditor({
         <style jsx global>{`
           .soldierhub-writing-editor,
           .soldierhub-writing-editor > div { min-height: 100%; width: 100%; display: flex; flex: 1 1 auto; background: #F8FAFD !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; outline: 0 !important; }
-          .soldierhub-writing-editor .ProseMirror { flex: 1 1 auto; min-height: 100%; width: 100%; margin: 0 !important; padding: 20px 18px calc(env(safe-area-inset-bottom) + 110px) !important; color: ${T.text}; background: #F8FAFD !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; outline: 0 !important; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 18px; line-height: 2rem; transition: opacity 160ms ease-out 40ms; opacity: ${writingModeVisible ? 1 : 0}; transform: none; }
+          .soldierhub-writing-editor .ProseMirror { flex: 1 1 auto; min-height: 100%; width: 100%; margin: 0 !important; padding: 20px 18px calc(env(safe-area-inset-bottom) + 110px) !important; color: ${T.text}; background: #F8FAFD !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; outline: 0 !important; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 18px; line-height: 2rem; transition: opacity 140ms ease-out 30ms; opacity: ${writingModeVisible ? 1 : 0}; transform: none; }
           .soldierhub-writing-editor .ProseMirror p.is-editor-empty:first-child::before { content: attr(data-placeholder); float: left; color: #a8abb2; pointer-events: none; height: 0; }
         `}</style>
       </div>
