@@ -8,6 +8,8 @@ import { Loader2, X } from "lucide-react";
 import { T } from "@/lib/theme";
 import { EDITOR_CLASSNAME, FORMAT_ACTIONS, sanitizeComposerHtml } from "./composerUtils";
 
+const COMPOSER_PLACEHOLDER = "Ask, share, or help the Fort Bliss community.";
+
 function isEmptyEditorHtml(html = "") {
   return !String(html || "")
     .replace(/<p><\/p>|<p><br><\/p>|<br\s*\/?/gi, "")
@@ -55,7 +57,7 @@ export default function TipTapComposerEditor({
         strike: false,
       }),
       Placeholder.configure({
-        placeholder: "What's on your mind?",
+        placeholder: COMPOSER_PLACEHOLDER,
         emptyEditorClass: "is-editor-empty",
       }),
     ],
