@@ -272,10 +272,11 @@ export default function MobileWeatherStrip() {
               href="https://www.weather.gov/epz/"
               target="_blank"
               rel="noopener noreferrer"
-              className="font-bold underline underline-offset-2"
+              className="max-w-[8.75rem] truncate whitespace-nowrap text-[9.5px] font-extrabold uppercase tracking-[0.08em] underline underline-offset-2"
               style={{ color: T.blue }}
+              aria-label="Open National Weather Service forecast"
             >
-              NWS
+              National Weather Service
             </a>
           </div>
         </div>
