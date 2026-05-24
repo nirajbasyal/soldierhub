@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Pencil, Plus } from "lucide-react";
+import { AlertTriangle, Pencil, Plus, X } from "lucide-react";
 import { T } from "@/lib/theme";
 import { moderateAsync } from "@/lib/moderation-client";
 import { useApp } from "@/store/AppContext";
@@ -358,6 +358,17 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     if (!saved) focusComposerField();
   };
 
+  const closeComposer = () => {
+    if (submittingValueRef.current || imageProcessing) return;
+
+    if (pageMode) {
+      router.push("/");
+      return;
+    }
+
+    setOpen(false);
+  };
+
   const submit = async () => {
     if (submittingValueRef.current || imageProcessing) return;
 
@@ -517,6 +528,22 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
             Posting on SoldierHub
           </div>
         </div>
+
+        <button
+          type="button"
+          onClick={closeComposer}
+          disabled={submitting || imageProcessing}
+          className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full border shadow-sm transition hover:-translate-y-0.5 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-50 md:inline-flex"
+          style={{
+            backgroundColor: "rgba(255,255,255,0.96)",
+            borderColor: T.border,
+            color: T.navy,
+          }}
+          aria-label="Close composer"
+          title="Close composer"
+        >
+          <X size={18} strokeWidth={2.8} />
+        </button>
       </div>
 
       <ComposerCategoryPicker
