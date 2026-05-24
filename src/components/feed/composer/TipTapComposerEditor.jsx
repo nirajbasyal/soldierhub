@@ -190,12 +190,16 @@ export default function TipTapComposerEditor({
     },
     onUpdate({ editor: tiptap }) {
       syncContent(tiptap);
+      window.requestAnimationFrame?.(() => syncFormats(tiptap));
     },
     onSelectionUpdate({ editor: tiptap }) {
       syncFormats(tiptap);
     },
     onFocus({ editor: tiptap }) {
       syncFormats(tiptap);
+    },
+    onTransaction({ editor: tiptap }) {
+      window.requestAnimationFrame?.(() => syncFormats(tiptap));
     },
   });
 
@@ -313,7 +317,24 @@ export default function TipTapComposerEditor({
     if (nextHtml !== currentHtml) editor.commands.setContent(nextHtml || "", false);
   }, [body, editor, writingModeMounted]);
 
-  const applyMobileFormatting = (command) => runCommand(editor, syncFormats, command);
+  const handleFormatPointerDown = (event, command) => {
+    event.preventDefault();
+    event.stopPropagation();
+    runCommand(editor, syncFormats, command);
+  };
+
+  const handleFormatClick = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+  };
+
+  const handleFormatKeyDown = (event, command) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    event.stopPropagation();
+    runCommand(editor, syncFormats, command);
+  };
+
   const editorContent = <EditorContent editor={editor} />;
 
   if (writingModeMounted) {
@@ -359,9 +380,10 @@ export default function TipTapComposerEditor({
                 <button
                   key={action.key}
                   type="button"
-                  onPointerDown={(event) => event.preventDefault()}
+                  onPointerDown={(event) => handleFormatPointerDown(event, action.command)}
                   onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => applyMobileFormatting(action.command)}
+                  onClick={handleFormatClick}
+                  onKeyDown={(event) => handleFormatKeyDown(event, action.command)}
                   className="sh-tap flex h-10 w-full items-center justify-center rounded-full border shadow-sm transition active:scale-[0.97]"
                   style={{ backgroundColor: isActive ? T.navy : "#FFFFFF", borderColor: isActive ? T.navy : T.border, color: isActive ? "#FFFFFF" : T.navy }}
                   aria-label={action.label}
@@ -427,11 +449,12 @@ export default function TipTapComposerEditor({
 function runCommand(editor, syncFormats, command) {
   if (!editor) return;
 
-  const chain = editor.chain().focus(undefined, { scrollIntoView: false });
-  if (command === "bold") chain.toggleBold().run();
-  if (command === "italic") chain.toggleItalic().run();
-  if (command === "insertUnorderedList") chain.toggleBulletList().run();
-  if (command === "insertOrderedList") chain.toggleOrderedList().run();
+  editor.commands.focus(undefined, { scrollIntoView: false });
+
+  if (command === "bold") editor.commands.toggleBold();
+  if (command === "italic") editor.commands.toggleItalic();
+  if (command === "insertUnorderedList") editor.commands.toggleBulletList();
+  if (command === "insertOrderedList") editor.commands.toggleOrderedList();
 
   window.requestAnimationFrame?.(() => syncFormats?.(editor));
 }
