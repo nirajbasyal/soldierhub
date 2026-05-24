@@ -17,7 +17,7 @@ export function safeRequestAnimationFrame(callback) {
 
 export function ensureQuoteExitSpace() {
   // Intentionally empty.
-  // Formatting is now controlled only by the user's toolbar selections.
+  // Formatting is controlled only by the user's toolbar selections and editor clicks.
 }
 
 export function placeCaretInElement(element) {
@@ -87,6 +87,15 @@ function applyActiveTypingState(activeFormats) {
   normalizeCommandState("bold", Boolean(activeFormats?.bold));
   normalizeCommandState("italic", Boolean(activeFormats?.italic));
   normalizeBlockState(activeFormats);
+}
+
+function createPlainParagraphAfter(editor) {
+  if (typeof document === "undefined" || !editor) return null;
+
+  const paragraph = document.createElement("p");
+  paragraph.appendChild(document.createElement("br"));
+  editor.appendChild(paragraph);
+  return paragraph;
 }
 
 export default function useComposerFormatting({
@@ -203,17 +212,24 @@ export default function useComposerFormatting({
   );
 
   const handleEditorKeyDown = useCallback(
+    () => {
+      if (submittingValueRef.current) return;
+      // Do not auto-disable quote, list, bold, or italic on Enter.
+      // Enter keeps the current user-selected mode active, including new lines inside quote blocks.
+    },
+    [submittingValueRef]
+  );
+
+  const handleEditorPointerDown = useCallback(
     (event) => {
       if (submittingValueRef.current) return;
 
       const editor = editorRef.current;
-      if (!editor) return;
+      const current = activeFormatsRef?.current || activeFormats;
 
-      if (event.key === "Enter") {
-        const current = activeFormatsRef?.current || activeFormats;
+      if (current.quote && editor && event?.target === editor) {
+        event.preventDefault?.();
 
-        // Enter should not automatically trap the user in quote/list mode.
-        // Inline formats remain only when the user keeps those toolbar buttons active.
         const nextFormats = {
           ...current,
           bullet: false,
@@ -221,25 +237,24 @@ export default function useComposerFormatting({
           quote: false,
         };
 
-        if (current.bullet || current.number || current.quote) {
-          setControlledFormats(nextFormats);
-          safeRequestAnimationFrame(() => {
-            editor.focus({ preventScroll: true });
-            applyActiveTypingState(nextFormats);
-            syncEditorState();
-          });
-        }
+        const paragraph = createPlainParagraphAfter(editor);
+        setControlledFormats(nextFormats);
+
+        safeRequestAnimationFrame(() => {
+          editor.focus({ preventScroll: true });
+          placeCaretInElement(paragraph || editor);
+          applyActiveTypingState(nextFormats);
+          syncEditorState();
+        });
+        return;
       }
+
+      safeRequestAnimationFrame(() => {
+        applyActiveTypingState(activeFormatsRef?.current || activeFormats);
+      });
     },
     [activeFormats, activeFormatsRef, editorRef, setControlledFormats, submittingValueRef, syncEditorState]
   );
-
-  const handleEditorPointerDown = useCallback(() => {
-    if (submittingValueRef.current) return;
-    safeRequestAnimationFrame(() => {
-      applyActiveTypingState(activeFormatsRef?.current || activeFormats);
-    });
-  }, [activeFormats, activeFormatsRef, submittingValueRef]);
 
   return {
     activeFormats,
