@@ -9,6 +9,16 @@ import { T } from "@/lib/theme";
 import { EDITOR_CLASSNAME, FORMAT_ACTIONS, sanitizeComposerHtml } from "./composerUtils";
 
 const PLACEHOLDER = "Ask, share, or help the Fort Bliss community.";
+const MOBILE_TOOLBAR_HEIGHT = 113;
+
+function getVisualViewportBox() {
+  if (typeof window === "undefined") return { top: 0, height: 720 };
+  const vv = window.visualViewport;
+  return {
+    top: Math.max(0, Math.floor(vv?.offsetTop || 0)),
+    height: Math.max(320, Math.floor(vv?.height || window.innerHeight || 720)),
+  };
+}
 
 function isEmptyHtml(html = "") {
   return !String(html || "")
@@ -43,12 +53,17 @@ export default function TipTapComposerEditor({
   const selectedImageAspectRatio = selectedImage?.width && selectedImage?.height ? `${selectedImage.width} / ${selectedImage.height}` : "16 / 10";
   const [writingModeOpen, setWritingModeOpen] = useState(false);
   const [phoneScreen, setPhoneScreen] = useState(false);
+  const [viewportBox, setViewportBox] = useState({ top: 0, height: 720 });
   const [activeFormats, setActiveFormats] = useState({ bold: false, italic: false, bullet: false, number: false });
   const editorScrollRef = useRef(null);
   const savedSelectionRef = useRef(null);
   const suppressOpenUntilRef = useRef(0);
   const phoneScreenRef = useRef(false);
   const manualInlineFormatsRef = useRef({ bold: false, italic: false });
+
+  const updateViewportBox = useCallback(() => {
+    setViewportBox(getVisualViewportBox());
+  }, []);
 
   const extensions = useMemo(
     () => [
@@ -128,10 +143,10 @@ export default function TipTapComposerEditor({
         const position = tiptap.state.selection?.to ?? tiptap.state.doc.content.size;
         const cursor = tiptap.view.coordsAtPos(position);
         const box = scrollBox.getBoundingClientRect();
-        const safeBottom = box.bottom - 130;
+        const safeBottom = box.bottom - 150;
         const safeTop = box.top + 24;
 
-        if (cursor.bottom > safeBottom) scrollBox.scrollTop += cursor.bottom - safeBottom + 92;
+        if (cursor.bottom > safeBottom) scrollBox.scrollTop += cursor.bottom - safeBottom + 110;
         if (cursor.top < safeTop) scrollBox.scrollTop -= safeTop - cursor.top + 28;
       } catch {
         scrollBox.scrollTop = scrollBox.scrollHeight;
@@ -198,15 +213,17 @@ export default function TipTapComposerEditor({
     if (!pageMode || !phoneScreenRef.current || submitting) return;
     if (Date.now() < suppressOpenUntilRef.current) return;
 
+    updateViewportBox();
     setWritingModeOpen(true);
     window.setTimeout(() => {
+      updateViewportBox();
       editor?.chain().focus("end", { scrollIntoView: false }).run();
       applyStoredMarks(editor);
       rememberSelection(editor);
       syncFormats(editor);
       keepCursorVisible(editor, true);
-    }, 100);
-  }, [applyStoredMarks, editor, keepCursorVisible, pageMode, rememberSelection, submitting, syncFormats]);
+    }, 120);
+  }, [applyStoredMarks, editor, keepCursorVisible, pageMode, rememberSelection, submitting, syncFormats, updateViewportBox]);
 
   const closeWritingMode = useCallback(() => {
     suppressOpenUntilRef.current = Date.now() + 500;
@@ -299,17 +316,24 @@ export default function TipTapComposerEditor({
   useEffect(() => {
     if (!writingModeOpen) return undefined;
 
-    const update = () => window.setTimeout(() => keepCursorVisible(editor, true), 80);
+    const update = () => {
+      updateViewportBox();
+      window.setTimeout(() => keepCursorVisible(editor, true), 80);
+    };
+
+    update();
     window.visualViewport?.addEventListener("resize", update);
     window.visualViewport?.addEventListener("scroll", update);
     window.addEventListener("resize", update);
+    window.addEventListener("orientationchange", update);
 
     return () => {
       window.visualViewport?.removeEventListener("resize", update);
       window.visualViewport?.removeEventListener("scroll", update);
       window.removeEventListener("resize", update);
+      window.removeEventListener("orientationchange", update);
     };
-  }, [editor, keepCursorVisible, writingModeOpen]);
+  }, [editor, keepCursorVisible, updateViewportBox, writingModeOpen]);
 
   useEffect(() => {
     if (!editor || editor.isFocused || writingModeOpen) return;
@@ -357,9 +381,18 @@ export default function TipTapComposerEditor({
   const editorContent = <EditorContent editor={editor} />;
 
   if (writingModeOpen) {
+    const shellHeight = Math.max(320, viewportBox.height);
+    const editorTop = `calc(env(safe-area-inset-top) + ${MOBILE_TOOLBAR_HEIGHT}px)`;
+
     return (
-      <div className="fixed inset-0 z-[2147483000] h-[100dvh] max-h-[100dvh] overflow-hidden overscroll-none bg-[#F8FAFD] md:hidden" role="dialog" aria-modal="true" aria-label="Expanded post text editor">
-        <div className="fixed left-0 right-0 top-0 z-[2147483647] border-b bg-[#F8FAFD]/98 shadow-[0_12px_28px_rgba(15,23,42,0.08)] backdrop-blur-xl" style={{ borderColor: T.borderSoft, paddingTop: "env(safe-area-inset-top)" }}>
+      <div
+        className="fixed left-0 right-0 z-[2147483000] overflow-hidden overscroll-none bg-[#F8FAFD] md:hidden"
+        style={{ top: `${viewportBox.top}px`, height: `${shellHeight}px`, maxHeight: `${shellHeight}px` }}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Expanded post text editor"
+      >
+        <div className="absolute left-0 right-0 top-0 z-[2147483647] border-b bg-[#F8FAFD]/98 shadow-[0_12px_28px_rgba(15,23,42,0.08)] backdrop-blur-xl" style={{ borderColor: T.borderSoft, paddingTop: "env(safe-area-inset-top)" }}>
           <div className="flex h-[56px] items-center justify-between px-4">
             <div className="w-16" />
             <div className="text-[21px] font-extrabold tracking-[-0.03em]" style={{ color: T.text }}>Add Text</div>
@@ -402,8 +435,8 @@ export default function TipTapComposerEditor({
 
         <div
           ref={editorScrollRef}
-          className="soldierhub-writing-editor fixed bottom-0 left-0 right-0 overflow-y-auto overscroll-contain bg-[#F8FAFD]"
-          style={{ top: "calc(env(safe-area-inset-top) + 113px)", WebkitOverflowScrolling: "touch", scrollPaddingTop: "18px", scrollPaddingBottom: "34vh" }}
+          className="soldierhub-writing-editor absolute bottom-0 left-0 right-0 overflow-y-auto overscroll-contain bg-[#F8FAFD]"
+          style={{ top: editorTop, WebkitOverflowScrolling: "touch", scrollPaddingTop: "18px", scrollPaddingBottom: "220px" }}
           onClick={() => {
             editor?.chain().focus("end", { scrollIntoView: false }).run();
             keepCursorVisible(editor, true);
@@ -415,7 +448,7 @@ export default function TipTapComposerEditor({
         <style jsx global>{`
           .soldierhub-writing-editor,
           .soldierhub-writing-editor > div { min-height: 100%; width: 100%; display: flex; flex: 1 1 auto; background: #F8FAFD !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; outline: 0 !important; }
-          .soldierhub-writing-editor .ProseMirror { flex: 1 1 auto; min-height: 100%; width: 100%; margin: 0 !important; padding: 20px 18px calc(env(safe-area-inset-bottom) + 34vh) !important; color: ${T.text}; background: #F8FAFD !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; outline: 0 !important; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 18px; line-height: 2rem; }
+          .soldierhub-writing-editor .ProseMirror { flex: 1 1 auto; min-height: 100%; width: 100%; margin: 0 !important; padding: 20px 18px calc(env(safe-area-inset-bottom) + 220px) !important; color: ${T.text}; background: #F8FAFD !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; outline: 0 !important; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 18px; line-height: 2rem; }
           .soldierhub-writing-editor .ProseMirror p.is-editor-empty:first-child::before { content: attr(data-placeholder); float: left; color: #a8abb2; pointer-events: none; height: 0; }
         `}</style>
       </div>
