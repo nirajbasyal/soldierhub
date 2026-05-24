@@ -50,6 +50,8 @@ export default function TipTapComposerEditor({
   const focusTimerRef = useRef(null);
   const lastSelectionRef = useRef(null);
   const manualInlineFormatsRef = useRef({ bold: false, italic: false });
+  const phoneScreenRef = useRef(false);
+  const writingModeMountedRef = useRef(false);
 
   const extensions = useMemo(
     () => [
@@ -114,7 +116,7 @@ export default function TipTapComposerEditor({
   };
 
   const openWritingMode = () => {
-    if (!pageMode || !phoneScreen || writingModeMounted || submitting) return;
+    if (!pageMode || !phoneScreenRef.current || writingModeMountedRef.current || submitting) return;
     if (Date.now() < suppressWritingModeUntilRef.current) return;
 
     if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
@@ -136,7 +138,7 @@ export default function TipTapComposerEditor({
   };
 
   const shouldOpenWritingModeFromEvent = (event) => {
-    if (!pageMode || !phoneScreen || submitting) return false;
+    if (!pageMode || !phoneScreenRef.current || submitting) return false;
     const target = event?.target;
     if (!(target instanceof Element)) return false;
     return Boolean(target.closest(".soldierhub-normal-editor .ProseMirror"));
@@ -183,7 +185,31 @@ export default function TipTapComposerEditor({
       transformPastedText(text) {
         return String(text || "");
       },
+      handleDOMEvents: {
+        beforeinput(view, event) {
+          if (pageMode && phoneScreenRef.current && !writingModeMountedRef.current) {
+            event.preventDefault();
+            openWritingMode();
+            return true;
+          }
+          return false;
+        },
+        keydown(view, event) {
+          if (pageMode && phoneScreenRef.current && !writingModeMountedRef.current) {
+            event.preventDefault();
+            openWritingMode();
+            return true;
+          }
+          return false;
+        },
+      },
       handlePaste(view, event) {
+        if (pageMode && phoneScreenRef.current && !writingModeMountedRef.current) {
+          event.preventDefault();
+          openWritingMode();
+          return true;
+        }
+
         const html = event?.clipboardData?.getData("text/html") || "";
         if (!html) return false;
 
@@ -249,6 +275,10 @@ export default function TipTapComposerEditor({
     editorInstanceRef.current = editor;
   }, [editor]);
 
+  useEffect(() => {
+    writingModeMountedRef.current = writingModeMounted;
+  }, [writingModeMounted]);
+
   useEffect(() => () => {
     if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
     if (focusTimerRef.current) window.clearTimeout(focusTimerRef.current);
@@ -262,7 +292,10 @@ export default function TipTapComposerEditor({
     if (typeof window === "undefined") return undefined;
 
     const query = window.matchMedia("(max-width: 640px)");
-    const updatePhoneScreen = () => setPhoneScreen(query.matches);
+    const updatePhoneScreen = () => {
+      phoneScreenRef.current = query.matches;
+      setPhoneScreen(query.matches);
+    };
     updatePhoneScreen();
 
     if (query.addEventListener) {
@@ -396,46 +429,47 @@ export default function TipTapComposerEditor({
         aria-modal="true"
         aria-label="Expanded post text editor"
       >
-        <div className="relative z-10 flex h-[58px] shrink-0 items-center justify-between border-b px-4" style={{ backgroundColor: "rgba(248,250,253,0.98)", borderColor: T.borderSoft }}>
-          <div className="w-16" />
-          <div className="text-[21px] font-extrabold tracking-[-0.03em]" style={{ color: T.text }}>Add Text</div>
-          <button type="button" onClick={closeWritingMode} className="sh-tap w-16 rounded-full px-2 py-2 text-right text-[17px] font-bold transition active:scale-[0.98]" style={{ color: T.navy }}>
-            Done
-          </button>
-        </div>
+        <div className="relative z-30 shrink-0 shadow-[0_12px_24px_rgba(15,23,42,0.05)]" style={{ backgroundColor: "rgba(248,250,253,0.98)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)" }}>
+          <div className="flex h-[58px] items-center justify-between border-b px-4" style={{ borderColor: T.borderSoft }}>
+            <div className="w-16" />
+            <div className="text-[21px] font-extrabold tracking-[-0.03em]" style={{ color: T.text }}>Add Text</div>
+            <button type="button" onClick={closeWritingMode} className="sh-tap w-16 rounded-full px-2 py-2 text-right text-[17px] font-bold transition active:scale-[0.98]" style={{ color: T.navy }}>
+              Done
+            </button>
+          </div>
 
-        <div
-          className="z-20 shrink-0 border-b px-3 py-2"
-          style={{
-            backgroundColor: "rgba(248,250,253,0.98)",
-            borderColor: T.borderSoft,
-            opacity: writingModeVisible ? 1 : 0,
-            transform: "none",
-            transition: "opacity 140ms ease-out 20ms",
-          }}
-        >
-          <div className="grid grid-cols-4 items-center gap-2">
-            {FORMAT_ACTIONS.map((action) => {
-              const Icon = action.icon;
-              const isActive = Boolean(activeFormats[action.key]);
-              return (
-                <button
-                  key={action.key}
-                  type="button"
-                  onPointerDown={(event) => handleFormatPointerDown(event, action.command)}
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={handleFormatClick}
-                  onKeyDown={(event) => handleFormatKeyDown(event, action.command)}
-                  className="sh-tap flex h-10 w-full items-center justify-center rounded-full border shadow-sm transition active:scale-[0.97]"
-                  style={{ backgroundColor: isActive ? T.navy : "#FFFFFF", borderColor: isActive ? T.navy : T.border, color: isActive ? "#FFFFFF" : T.navy }}
-                  aria-label={action.label}
-                  aria-pressed={isActive}
-                  title={action.label}
-                >
-                  <Icon size={18} strokeWidth={2.65} />
-                </button>
-              );
-            })}
+          <div
+            className="border-b px-3 py-2"
+            style={{
+              borderColor: T.borderSoft,
+              opacity: writingModeVisible ? 1 : 0,
+              transform: "none",
+              transition: "opacity 140ms ease-out 20ms",
+            }}
+          >
+            <div className="grid grid-cols-4 items-center gap-2">
+              {FORMAT_ACTIONS.map((action) => {
+                const Icon = action.icon;
+                const isActive = Boolean(activeFormats[action.key]);
+                return (
+                  <button
+                    key={action.key}
+                    type="button"
+                    onPointerDown={(event) => handleFormatPointerDown(event, action.command)}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={handleFormatClick}
+                    onKeyDown={(event) => handleFormatKeyDown(event, action.command)}
+                    className="sh-tap flex h-10 w-full items-center justify-center rounded-full border shadow-sm transition active:scale-[0.97]"
+                    style={{ backgroundColor: isActive ? T.navy : "#FFFFFF", borderColor: isActive ? T.navy : T.border, color: isActive ? "#FFFFFF" : T.navy }}
+                    aria-label={action.label}
+                    aria-pressed={isActive}
+                    title={action.label}
+                  >
+                    <Icon size={18} strokeWidth={2.65} />
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 
@@ -454,7 +488,7 @@ export default function TipTapComposerEditor({
   }
 
   return (
-    <div className="soldierhub-normal-editor relative overflow-hidden px-1 py-2 md:px-1.5 md:py-2.5" style={{ backgroundColor: "transparent" }} onPointerDownCapture={handleNormalEditorPointerDown} onClick={handleNormalEditorClick}>
+    <div className="soldierhub-normal-editor relative max-h-[190px] overflow-hidden px-1 py-2 md:max-h-none md:px-1.5 md:py-2.5" style={{ backgroundColor: "transparent" }} onPointerDownCapture={handleNormalEditorPointerDown} onClick={handleNormalEditorClick}>
       {editorContent}
 
       {imageProcessing && !selectedImage ? (
@@ -481,7 +515,9 @@ export default function TipTapComposerEditor({
         .soldierhub-normal-editor,
         .soldierhub-normal-editor > div,
         .soldierhub-normal-editor .ProseMirror { background: transparent !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; outline: 0 !important; }
-        .soldierhub-normal-editor .ProseMirror { width: 100%; min-height: 170px; margin: 0 !important; padding: 2px 0 !important; color: ${T.text}; white-space: pre-wrap; overflow-wrap: anywhere; }
+        .soldierhub-normal-editor .ProseMirror { width: 100%; max-height: 170px; min-height: 170px; margin: 0 !important; padding: 2px 0 !important; color: ${T.text}; white-space: pre-wrap; overflow-wrap: anywhere; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        @media (max-width: 640px) { .soldierhub-normal-editor .ProseMirror { caret-color: transparent; cursor: pointer; user-select: none; } }
+        @media (min-width: 641px) { .soldierhub-normal-editor .ProseMirror { max-height: none; overflow-y: visible; user-select: text; caret-color: auto; cursor: text; } }
         .soldierhub-normal-editor .ProseMirror p.is-editor-empty:first-child::before { content: attr(data-placeholder); float: left; color: #a8abb2; pointer-events: none; height: 0; }
       `}</style>
     </div>
