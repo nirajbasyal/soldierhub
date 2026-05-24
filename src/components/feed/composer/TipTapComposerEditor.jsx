@@ -47,6 +47,7 @@ export default function TipTapComposerEditor({
   const suppressWritingModeUntilRef = useRef(0);
   const editorInstanceRef = useRef(null);
   const closeTimerRef = useRef(null);
+  const focusTimerRef = useRef(null);
 
   const extensions = useMemo(
     () => [
@@ -84,15 +85,18 @@ export default function TipTapComposerEditor({
     if (Date.now() < suppressWritingModeUntilRef.current) return;
 
     if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
+    if (focusTimerRef.current) window.clearTimeout(focusTimerRef.current);
+
     setViewport(getViewportSnapshot());
     setWritingModeMounted(true);
 
     window.requestAnimationFrame?.(() => {
       setWritingModeVisible(true);
-      window.requestAnimationFrame?.(() => {
+      focusTimerRef.current = window.setTimeout(() => {
         editorInstanceRef.current?.chain().focus("end", { scrollIntoView: false }).run();
         syncFormats(editorInstanceRef.current);
-      });
+        focusTimerRef.current = null;
+      }, 90);
     });
   };
 
@@ -112,7 +116,11 @@ export default function TipTapComposerEditor({
   };
 
   const closeWritingMode = () => {
-    suppressWritingModeUntilRef.current = Date.now() + 520;
+    suppressWritingModeUntilRef.current = Date.now() + 420;
+    if (focusTimerRef.current) {
+      window.clearTimeout(focusTimerRef.current);
+      focusTimerRef.current = null;
+    }
     syncContent(editorInstanceRef.current);
     editorInstanceRef.current?.commands.blur();
     setWritingModeVisible(false);
@@ -120,7 +128,7 @@ export default function TipTapComposerEditor({
     closeTimerRef.current = window.setTimeout(() => {
       setWritingModeMounted(false);
       closeTimerRef.current = null;
-    }, 220);
+    }, 140);
   };
 
   const editor = useEditor({
@@ -171,6 +179,7 @@ export default function TipTapComposerEditor({
 
   useEffect(() => () => {
     if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
+    if (focusTimerRef.current) window.clearTimeout(focusTimerRef.current);
   }, []);
 
   useEffect(() => {
@@ -290,9 +299,9 @@ export default function TipTapComposerEditor({
           height: viewport.height ? `${viewport.height}px` : "100dvh",
           top: `${viewport.top || 0}px`,
           opacity: writingModeVisible ? 1 : 0,
-          transform: writingModeVisible ? "translateY(0) scale(1)" : "translateY(18px) scale(0.985)",
-          transition: "opacity 220ms ease, transform 220ms cubic-bezier(0.22, 1, 0.36, 1)",
-          willChange: "opacity, transform",
+          transform: "translate3d(0,0,0)",
+          transition: "opacity 140ms ease-out",
+          willChange: "opacity",
         }}
         role="dialog"
         aria-modal="true"
@@ -312,8 +321,8 @@ export default function TipTapComposerEditor({
             backgroundColor: "rgba(248,250,253,0.98)",
             borderColor: T.borderSoft,
             opacity: writingModeVisible ? 1 : 0,
-            transform: writingModeVisible ? "translateY(0)" : "translateY(-6px)",
-            transition: "opacity 260ms ease 70ms, transform 260ms ease 70ms",
+            transform: "none",
+            transition: "opacity 160ms ease-out 30ms",
           }}
         >
           <div className="grid grid-cols-4 items-center gap-2">
@@ -345,7 +354,7 @@ export default function TipTapComposerEditor({
         <style jsx global>{`
           .soldierhub-writing-editor,
           .soldierhub-writing-editor > div { min-height: 100%; width: 100%; display: flex; flex: 1 1 auto; background: #F8FAFD !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; outline: 0 !important; }
-          .soldierhub-writing-editor .ProseMirror { flex: 1 1 auto; min-height: 100%; width: 100%; margin: 0 !important; padding: 20px 18px calc(env(safe-area-inset-bottom) + 110px) !important; color: ${T.text}; background: #F8FAFD !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; outline: 0 !important; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 18px; line-height: 2rem; transition: opacity 260ms ease 80ms, transform 260ms ease 80ms; opacity: ${writingModeVisible ? 1 : 0}; transform: ${writingModeVisible ? "translateY(0)" : "translateY(10px)"}; }
+          .soldierhub-writing-editor .ProseMirror { flex: 1 1 auto; min-height: 100%; width: 100%; margin: 0 !important; padding: 20px 18px calc(env(safe-area-inset-bottom) + 110px) !important; color: ${T.text}; background: #F8FAFD !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; outline: 0 !important; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 18px; line-height: 2rem; transition: opacity 160ms ease-out 40ms; opacity: ${writingModeVisible ? 1 : 0}; transform: none; }
           .soldierhub-writing-editor .ProseMirror p.is-editor-empty:first-child::before { content: attr(data-placeholder); float: left; color: #a8abb2; pointer-events: none; height: 0; }
         `}</style>
       </div>
