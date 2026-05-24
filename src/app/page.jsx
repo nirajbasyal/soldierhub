@@ -313,7 +313,7 @@ export default function HomePage() {
 
   return (
     <AppShell>
-      <main className="mx-auto w-full max-w-[1080px] overflow-x-hidden px-4 pt-0 pb-24 sm:px-5 md:px-7 md:pt-6 md:pb-10 xl:px-8">
+      <main className="mx-auto w-full max-w-[1080px] overflow-x-hidden px-1.5 pt-0 pb-24 sm:px-5 md:px-7 md:pt-6 md:pb-10 xl:px-8">
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_292px] lg:gap-5">
           <div className="mx-auto flex w-full max-w-[620px] min-w-0 flex-col gap-3">
             <div className="block pt-1 lg:hidden">
