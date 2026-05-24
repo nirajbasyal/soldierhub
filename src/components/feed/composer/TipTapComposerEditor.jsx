@@ -212,7 +212,7 @@ export default function TipTapComposerEditor({
   useImperativeHandle(
     editorRef,
     () => ({
-      focus: () => editor?.chain().focus().run(),
+      focus: () => editor?.commands.focus(),
       focusEnd: () => editor?.chain().focus("end").run(),
       get innerHTML() {
         return editor ? sanitizeComposerHtml(editor.getHTML()) : "";
@@ -301,7 +301,7 @@ export default function TipTapComposerEditor({
         <div
           className="soldierhub-long-editor min-h-0 flex-1 overflow-y-auto overscroll-contain"
           style={{ backgroundColor: "#F8FAFD", WebkitOverflowScrolling: "touch", scrollPaddingBottom: "96px" }}
-          onClick={() => editor?.chain().focus().run()}
+          onClick={() => editor?.commands.focus()}
         >
           {editorContent}
         </div>
@@ -417,10 +417,27 @@ export default function TipTapComposerEditor({
 
 function runCommand(editor, command) {
   if (!editor) return;
-  if (command === "bold") editor.chain().focus().toggleBold().run();
-  if (command === "italic") editor.chain().focus().toggleItalic().run();
-  if (command === "insertUnorderedList") editor.chain().focus().toggleBulletList().run();
-  if (command === "insertOrderedList") editor.chain().focus().toggleOrderedList().run();
+
+  const chain = editor.chain().focus(null, { scrollIntoView: false });
+
+  if (command === "bold") {
+    chain.toggleBold().run();
+    return;
+  }
+
+  if (command === "italic") {
+    chain.toggleItalic().run();
+    return;
+  }
+
+  if (command === "insertUnorderedList") {
+    chain.toggleBulletList().run();
+    return;
+  }
+
+  if (command === "insertOrderedList") {
+    chain.toggleOrderedList().run();
+  }
 }
 
 function getActiveFormats(editor) {
