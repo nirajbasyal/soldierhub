@@ -351,9 +351,9 @@ export default function TipTapComposerEditor({
   }
 
   return (
-    <div className="relative overflow-hidden rounded-[24px] border px-3.5 py-3 md:px-4 md:py-3.5" style={{ backgroundColor: "#F8FAFD", borderColor: T.borderSoft }}>
+    <div className="soldierhub-normal-editor relative overflow-hidden px-1 py-2 md:px-1.5 md:py-2.5" style={{ backgroundColor: "transparent" }}>
       {showTextClearControl ? (
-        <button type="button" onClick={clearedDraft ? onRestoreText : onClearText} disabled={submitting} className="sh-tap absolute right-3 top-3 z-20 inline-flex h-8 w-8 items-center justify-center rounded-full border shadow-sm transition active:scale-[0.96] disabled:opacity-50" style={{ backgroundColor: "rgba(255,255,255,0.96)", borderColor: T.border, color: T.navy }} aria-label={clearedDraft ? "Undo cleared text" : "Clear text"} title={clearedDraft ? "Undo" : "Clear text"}>
+        <button type="button" onClick={clearedDraft ? onRestoreText : onClearText} disabled={submitting} className="sh-tap absolute right-0 top-1 z-20 inline-flex h-8 w-8 items-center justify-center rounded-full border shadow-sm transition active:scale-[0.96] disabled:opacity-50" style={{ backgroundColor: "rgba(255,255,255,0.96)", borderColor: T.border, color: T.navy }} aria-label={clearedDraft ? "Undo cleared text" : "Clear text"} title={clearedDraft ? "Undo" : "Clear text"}>
           {clearedDraft ? <Undo2 size={16} strokeWidth={2.7} /> : <X size={16} strokeWidth={2.9} />}
         </button>
       ) : null}
@@ -384,8 +384,32 @@ export default function TipTapComposerEditor({
       ) : null}
 
       <style jsx global>{`
-        .ProseMirror { color: ${T.text}; border: none; box-shadow: none; outline: none; white-space: pre-wrap; overflow-wrap: anywhere; }
-        .ProseMirror p.is-editor-empty:first-child::before { content: attr(data-placeholder); float: left; color: #a8abb2; pointer-events: none; height: 0; }
+        .soldierhub-normal-editor,
+        .soldierhub-normal-editor > div,
+        .soldierhub-normal-editor .ProseMirror {
+          background: transparent !important;
+          border: 0 !important;
+          border-radius: 0 !important;
+          box-shadow: none !important;
+          outline: 0 !important;
+        }
+
+        .soldierhub-normal-editor .ProseMirror {
+          width: 100%;
+          margin: 0 !important;
+          padding: 2px 34px 2px 0 !important;
+          color: ${T.text};
+          white-space: pre-wrap;
+          overflow-wrap: anywhere;
+        }
+
+        .soldierhub-normal-editor .ProseMirror p.is-editor-empty:first-child::before {
+          content: attr(data-placeholder);
+          float: left;
+          color: #a8abb2;
+          pointer-events: none;
+          height: 0;
+        }
       `}</style>
     </div>
   );
