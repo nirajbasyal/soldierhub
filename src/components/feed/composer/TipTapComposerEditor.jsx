@@ -48,6 +48,7 @@ export default function TipTapComposerEditor({
   const editorInstanceRef = useRef(null);
   const closeTimerRef = useRef(null);
   const focusTimerRef = useRef(null);
+  const lastSelectionRef = useRef(null);
 
   const extensions = useMemo(
     () => [
@@ -66,6 +67,12 @@ export default function TipTapComposerEditor({
     ],
     []
   );
+
+  const rememberSelection = (tiptap) => {
+    const selection = tiptap?.state?.selection;
+    if (!selection) return;
+    lastSelectionRef.current = { from: selection.from, to: selection.to };
+  };
 
   const syncFormats = (tiptap) => {
     const nextFormats = getActiveFormats(tiptap);
@@ -100,6 +107,7 @@ export default function TipTapComposerEditor({
       setWritingModeVisible(true);
       focusTimerRef.current = window.setTimeout(() => {
         editorInstanceRef.current?.chain().focus("end", { scrollIntoView: false }).run();
+        rememberSelection(editorInstanceRef.current);
         syncFormats(editorInstanceRef.current);
         focusTimerRef.current = null;
       }, 90);
@@ -170,6 +178,7 @@ export default function TipTapComposerEditor({
           .run();
 
         window.requestAnimationFrame?.(() => {
+          rememberSelection(tiptap);
           syncContent(tiptap);
           syncFormats(tiptap);
         });
@@ -186,20 +195,23 @@ export default function TipTapComposerEditor({
     },
     onCreate({ editor: tiptap }) {
       editorInstanceRef.current = tiptap;
+      rememberSelection(tiptap);
       syncFormats(tiptap);
     },
     onUpdate({ editor: tiptap }) {
+      rememberSelection(tiptap);
       syncContent(tiptap);
-      window.requestAnimationFrame?.(() => syncFormats(tiptap));
     },
     onSelectionUpdate({ editor: tiptap }) {
+      rememberSelection(tiptap);
       syncFormats(tiptap);
     },
     onFocus({ editor: tiptap }) {
+      rememberSelection(tiptap);
       syncFormats(tiptap);
     },
-    onTransaction({ editor: tiptap }) {
-      window.requestAnimationFrame?.(() => syncFormats(tiptap));
+    onBlur({ editor: tiptap }) {
+      rememberSelection(tiptap);
     },
   });
 
@@ -304,7 +316,7 @@ export default function TipTapComposerEditor({
       getActiveFormats: () => getActiveFormats(editor),
       getHTML: () => (editor ? sanitizeComposerHtml(editor.getHTML()) : ""),
       getText: () => editor?.getText("\n") || "",
-      runCommand: (command) => runCommand(editor, syncFormats, command),
+      runCommand: (command) => runCommand(editor, syncFormats, command, lastSelectionRef.current),
       blur: () => editor?.commands.blur(),
     }),
     [editor, openWritingMode]
@@ -320,7 +332,7 @@ export default function TipTapComposerEditor({
   const handleFormatPointerDown = (event, command) => {
     event.preventDefault();
     event.stopPropagation();
-    runCommand(editor, syncFormats, command);
+    runCommand(editor, syncFormats, command, lastSelectionRef.current);
   };
 
   const handleFormatClick = (event) => {
@@ -332,7 +344,7 @@ export default function TipTapComposerEditor({
     if (event.key !== "Enter" && event.key !== " ") return;
     event.preventDefault();
     event.stopPropagation();
-    runCommand(editor, syncFormats, command);
+    runCommand(editor, syncFormats, command, lastSelectionRef.current);
   };
 
   const editorContent = <EditorContent editor={editor} />;
@@ -446,10 +458,15 @@ export default function TipTapComposerEditor({
   );
 }
 
-function runCommand(editor, syncFormats, command) {
+function runCommand(editor, syncFormats, command, savedSelection) {
   if (!editor) return;
 
+  const docSize = editor.state.doc.content.size;
+  const from = Math.max(0, Math.min(savedSelection?.from ?? editor.state.selection.from, docSize));
+  const to = Math.max(0, Math.min(savedSelection?.to ?? editor.state.selection.to, docSize));
+
   editor.commands.focus(undefined, { scrollIntoView: false });
+  editor.commands.setTextSelection({ from, to });
 
   if (command === "bold") editor.commands.toggleBold();
   if (command === "italic") editor.commands.toggleItalic();
