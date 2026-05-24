@@ -415,7 +415,7 @@ export default function TipTapComposerEditor({
   if (writingModeMounted) {
     return (
       <div
-        className="fixed left-0 right-0 z-[140] flex max-h-[100dvh] flex-col overflow-hidden overscroll-contain md:hidden"
+        className="fixed left-0 right-0 z-[140] overflow-hidden overscroll-none md:hidden"
         style={{
           backgroundColor: "#F8FAFD",
           height: viewport.height ? `${viewport.height}px` : "100dvh",
@@ -429,7 +429,7 @@ export default function TipTapComposerEditor({
         aria-modal="true"
         aria-label="Expanded post text editor"
       >
-        <div className="relative z-30 shrink-0 shadow-[0_12px_24px_rgba(15,23,42,0.05)]" style={{ backgroundColor: "rgba(248,250,253,0.98)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)" }}>
+        <div className="absolute left-0 right-0 top-0 z-30 shadow-[0_12px_24px_rgba(15,23,42,0.05)]" style={{ backgroundColor: "rgba(248,250,253,0.98)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)" }}>
           <div className="flex h-[58px] items-center justify-between border-b px-4" style={{ borderColor: T.borderSoft }}>
             <div className="w-16" />
             <div className="text-[21px] font-extrabold tracking-[-0.03em]" style={{ color: T.text }}>Add Text</div>
@@ -473,7 +473,7 @@ export default function TipTapComposerEditor({
           </div>
         </div>
 
-        <div className="soldierhub-writing-editor min-h-0 flex-1 overflow-y-auto overscroll-contain" style={{ backgroundColor: "#F8FAFD", WebkitOverflowScrolling: "touch", scrollPaddingBottom: "96px" }} onClick={() => editor?.chain().focus("end", { scrollIntoView: false }).run()}>
+        <div className="soldierhub-writing-editor absolute bottom-0 left-0 right-0 top-[117px] overflow-y-auto overscroll-contain" style={{ backgroundColor: "#F8FAFD", WebkitOverflowScrolling: "touch", scrollPaddingBottom: "96px" }} onClick={() => editor?.chain().focus("end", { scrollIntoView: false }).run()}>
           {editorContent}
         </div>
 
@@ -488,7 +488,7 @@ export default function TipTapComposerEditor({
   }
 
   return (
-    <div className="soldierhub-normal-editor relative max-h-[190px] overflow-hidden px-1 py-2 md:max-h-none md:px-1.5 md:py-2.5" style={{ backgroundColor: "transparent" }} onPointerDownCapture={handleNormalEditorPointerDown} onClick={handleNormalEditorClick}>
+    <div className="soldierhub-normal-editor relative overflow-visible px-1 py-2 md:px-1.5 md:py-2.5" style={{ backgroundColor: "transparent" }} onPointerDownCapture={handleNormalEditorPointerDown} onClick={handleNormalEditorClick}>
       {editorContent}
 
       {imageProcessing && !selectedImage ? (
