@@ -69,7 +69,14 @@ export default function TipTapComposerEditor({
 
   const syncFormats = (tiptap) => {
     const nextFormats = getActiveFormats(tiptap);
-    setActiveFormats(nextFormats);
+    setActiveFormats((currentFormats) => {
+      const unchanged =
+        currentFormats.bold === nextFormats.bold &&
+        currentFormats.italic === nextFormats.italic &&
+        currentFormats.bullet === nextFormats.bullet &&
+        currentFormats.number === nextFormats.number;
+      return unchanged ? currentFormats : nextFormats;
+    });
     onFormatChange?.(nextFormats);
   };
 
@@ -77,7 +84,6 @@ export default function TipTapComposerEditor({
     const html = sanitizeComposerHtml(tiptap?.getHTML?.() || "");
     const text = tiptap?.getText?.("\n")?.replace(/\u00a0/g, " ").trim() || "";
     onChange?.({ html: isEmptyEditorHtml(html) ? "" : html, text, structured: hasStructuredContent(tiptap) });
-    syncFormats(tiptap);
   };
 
   const openWritingMode = () => {
@@ -163,7 +169,10 @@ export default function TipTapComposerEditor({
           .insertContent(cleanHtml, { parseOptions: { preserveWhitespace: false } })
           .run();
 
-        window.requestAnimationFrame?.(() => syncContent(tiptap));
+        window.requestAnimationFrame?.(() => {
+          syncContent(tiptap);
+          syncFormats(tiptap);
+        });
         return true;
       },
       handleFocus: () => {
@@ -291,20 +300,20 @@ export default function TipTapComposerEditor({
       getActiveFormats: () => getActiveFormats(editor),
       getHTML: () => (editor ? sanitizeComposerHtml(editor.getHTML()) : ""),
       getText: () => editor?.getText("\n") || "",
-      runCommand: (command) => runCommand(editor, command, syncFormats),
+      runCommand: (command) => runCommand(editor, syncFormats, command),
       blur: () => editor?.commands.blur(),
     }),
     [editor, openWritingMode]
   );
 
   useEffect(() => {
-    if (!editor) return;
+    if (!editor || editor.isFocused || writingModeMounted) return;
     const currentHtml = sanitizeComposerHtml(editor.getHTML());
     const nextHtml = sanitizeComposerHtml(body || "");
-    if (nextHtml !== currentHtml && !editor.isFocused) editor.commands.setContent(nextHtml || "", false);
-  }, [body, editor]);
+    if (nextHtml !== currentHtml) editor.commands.setContent(nextHtml || "", false);
+  }, [body, editor, writingModeMounted]);
 
-  const applyMobileFormatting = (command) => runCommand(editor, command, syncFormats);
+  const applyMobileFormatting = (command) => runCommand(editor, syncFormats, command);
   const editorContent = <EditorContent editor={editor} />;
 
   if (writingModeMounted) {
@@ -350,6 +359,8 @@ export default function TipTapComposerEditor({
                 <button
                   key={action.key}
                   type="button"
+                  onPointerDown={(event) => event.preventDefault()}
+                  onMouseDown={(event) => event.preventDefault()}
                   onClick={() => applyMobileFormatting(action.command)}
                   className="sh-tap flex h-10 w-full items-center justify-center rounded-full border shadow-sm transition active:scale-[0.97]"
                   style={{ backgroundColor: isActive ? T.navy : "#FFFFFF", borderColor: isActive ? T.navy : T.border, color: isActive ? "#FFFFFF" : T.navy }}
@@ -413,13 +424,14 @@ export default function TipTapComposerEditor({
   );
 }
 
-function runCommand(editor, command, syncFormats) {
+function runCommand(editor, syncFormats, command) {
   if (!editor) return;
 
-  if (command === "bold") editor.chain().focus(undefined, { scrollIntoView: false }).toggleBold().run();
-  if (command === "italic") editor.chain().focus(undefined, { scrollIntoView: false }).toggleItalic().run();
-  if (command === "insertUnorderedList") editor.chain().focus(undefined, { scrollIntoView: false }).toggleBulletList().run();
-  if (command === "insertOrderedList") editor.chain().focus(undefined, { scrollIntoView: false }).toggleOrderedList().run();
+  const chain = editor.chain().focus(undefined, { scrollIntoView: false });
+  if (command === "bold") chain.toggleBold().run();
+  if (command === "italic") chain.toggleItalic().run();
+  if (command === "insertUnorderedList") chain.toggleBulletList().run();
+  if (command === "insertOrderedList") chain.toggleOrderedList().run();
 
   window.requestAnimationFrame?.(() => syncFormats?.(editor));
 }
