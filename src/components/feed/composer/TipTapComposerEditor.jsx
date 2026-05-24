@@ -10,6 +10,7 @@ import { EDITOR_CLASSNAME, FORMAT_ACTIONS, sanitizeComposerHtml } from "./compos
 
 const COMPOSER_PLACEHOLDER = "Ask, share, or help the Fort Bliss community.";
 const MOBILE_TOOLBAR_HEIGHT = 117;
+const MOBILE_KEYBOARD_SAFE_BOTTOM = 170;
 
 function isEmptyEditorHtml(html = "") {
   return !String(html || "")
@@ -47,6 +48,7 @@ export default function TipTapComposerEditor({
   const [activeFormats, setActiveFormats] = useState({});
   const suppressWritingModeUntilRef = useRef(0);
   const editorInstanceRef = useRef(null);
+  const editorScrollRef = useRef(null);
   const closeTimerRef = useRef(null);
   const focusTimerRef = useRef(null);
   const lastSelectionRef = useRef(null);
@@ -76,6 +78,31 @@ export default function TipTapComposerEditor({
     const selection = tiptap?.state?.selection;
     if (!selection) return;
     lastSelectionRef.current = { from: selection.from, to: selection.to };
+  };
+
+  const keepCursorAboveKeyboard = (tiptap = editorInstanceRef.current) => {
+    if (!tiptap?.view || !editorScrollRef.current || !writingModeMountedRef.current) return;
+
+    window.requestAnimationFrame?.(() => {
+      try {
+        const scrollBox = editorScrollRef.current;
+        if (!scrollBox) return;
+
+        const position = tiptap.state.selection?.to ?? tiptap.state.doc.content.size;
+        const cursor = tiptap.view.coordsAtPos(position);
+        const box = scrollBox.getBoundingClientRect();
+        const safeBottom = box.bottom - 34;
+        const safeTop = box.top + 14;
+
+        if (cursor.bottom > safeBottom) {
+          scrollBox.scrollTop += cursor.bottom - safeBottom + 28;
+        } else if (cursor.top < safeTop) {
+          scrollBox.scrollTop -= safeTop - cursor.top + 14;
+        }
+      } catch {
+        // Mobile browsers can throw during IME/composition. Ignore and let normal scrolling continue.
+      }
+    });
   };
 
   const applyManualStoredMarks = (tiptap) => {
@@ -133,6 +160,7 @@ export default function TipTapComposerEditor({
         rememberSelection(editorInstanceRef.current);
         applyManualStoredMarks(editorInstanceRef.current);
         syncFormats(editorInstanceRef.current);
+        keepCursorAboveKeyboard(editorInstanceRef.current);
         focusTimerRef.current = null;
       }, 90);
     });
@@ -235,7 +263,10 @@ export default function TipTapComposerEditor({
           rememberSelection(tiptap);
           syncContent(tiptap);
           syncFormats(tiptap);
-          window.setTimeout(() => applyManualStoredMarks(tiptap), 0);
+          window.setTimeout(() => {
+            applyManualStoredMarks(tiptap);
+            keepCursorAboveKeyboard(tiptap);
+          }, 0);
         });
         return true;
       },
@@ -245,6 +276,7 @@ export default function TipTapComposerEditor({
       },
       handleClick: () => {
         openWritingMode();
+        keepCursorAboveKeyboard(editorInstanceRef.current);
         return false;
       },
     },
@@ -257,15 +289,18 @@ export default function TipTapComposerEditor({
       rememberSelection(tiptap);
       applyManualStoredMarks(tiptap);
       syncContent(tiptap);
+      keepCursorAboveKeyboard(tiptap);
     },
     onSelectionUpdate({ editor: tiptap }) {
       rememberSelection(tiptap);
       syncFormats(tiptap);
+      keepCursorAboveKeyboard(tiptap);
     },
     onFocus({ editor: tiptap }) {
       rememberSelection(tiptap);
       applyManualStoredMarks(tiptap);
       syncFormats(tiptap);
+      keepCursorAboveKeyboard(tiptap);
     },
     onBlur({ editor: tiptap }) {
       rememberSelection(tiptap);
@@ -337,7 +372,10 @@ export default function TipTapComposerEditor({
   useEffect(() => {
     if (!writingModeMounted) return undefined;
 
-    const updateViewport = () => setViewport(getViewportSnapshot());
+    const updateViewport = () => {
+      setViewport(getViewportSnapshot());
+      window.setTimeout(() => keepCursorAboveKeyboard(editorInstanceRef.current), 40);
+    };
     updateViewport();
     window.visualViewport?.addEventListener("resize", updateViewport);
     window.visualViewport?.addEventListener("scroll", updateViewport);
@@ -397,6 +435,7 @@ export default function TipTapComposerEditor({
     event.preventDefault();
     event.stopPropagation();
     runCommand(editor, syncFormats, command, lastSelectionRef.current, manualInlineFormatsRef, applyManualStoredMarks);
+    window.setTimeout(() => keepCursorAboveKeyboard(editor), 0);
   };
 
   const handleFormatClick = (event) => {
@@ -409,6 +448,7 @@ export default function TipTapComposerEditor({
     event.preventDefault();
     event.stopPropagation();
     runCommand(editor, syncFormats, command, lastSelectionRef.current, manualInlineFormatsRef, applyManualStoredMarks);
+    window.setTimeout(() => keepCursorAboveKeyboard(editor), 0);
   };
 
   const editorContent = <EditorContent editor={editor} />;
@@ -488,15 +528,19 @@ export default function TipTapComposerEditor({
         </div>
 
         <div
+          ref={editorScrollRef}
           className="soldierhub-writing-editor fixed left-0 right-0 overflow-y-auto overscroll-contain"
           style={{
             top: `${(viewport.top || 0) + MOBILE_TOOLBAR_HEIGHT}px`,
             height: viewport.height ? `${Math.max(240, viewport.height - MOBILE_TOOLBAR_HEIGHT)}px` : `calc(100dvh - ${MOBILE_TOOLBAR_HEIGHT}px)`,
             backgroundColor: "#F8FAFD",
             WebkitOverflowScrolling: "touch",
-            scrollPaddingBottom: "96px",
+            scrollPaddingBottom: `${MOBILE_KEYBOARD_SAFE_BOTTOM}px`,
           }}
-          onClick={() => editor?.chain().focus("end", { scrollIntoView: false }).run()}
+          onClick={() => {
+            editor?.chain().focus("end", { scrollIntoView: false }).run();
+            keepCursorAboveKeyboard(editor);
+          }}
         >
           {editorContent}
         </div>
@@ -505,7 +549,7 @@ export default function TipTapComposerEditor({
           .soldierhub-writing-toolbar { display: block !important; visibility: visible !important; opacity: 1 !important; pointer-events: auto !important; }
           .soldierhub-writing-editor,
           .soldierhub-writing-editor > div { min-height: 100%; width: 100%; display: flex; flex: 1 1 auto; background: #F8FAFD !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; outline: 0 !important; }
-          .soldierhub-writing-editor .ProseMirror { flex: 1 1 auto; min-height: 100%; width: 100%; margin: 0 !important; padding: 20px 18px calc(env(safe-area-inset-bottom) + 110px) !important; color: ${T.text}; background: #F8FAFD !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; outline: 0 !important; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 18px; line-height: 2rem; transition: opacity 140ms ease-out 30ms; opacity: ${writingModeVisible ? 1 : 0}; transform: none; }
+          .soldierhub-writing-editor .ProseMirror { flex: 1 1 auto; min-height: 100%; width: 100%; margin: 0 !important; padding: 20px 18px calc(env(safe-area-inset-bottom) + ${MOBILE_KEYBOARD_SAFE_BOTTOM}px) !important; color: ${T.text}; background: #F8FAFD !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; outline: 0 !important; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 18px; line-height: 2rem; transition: opacity 140ms ease-out 30ms; opacity: ${writingModeVisible ? 1 : 0}; transform: none; }
           .soldierhub-writing-editor .ProseMirror p.is-editor-empty:first-child::before { content: attr(data-placeholder); float: left; color: #a8abb2; pointer-events: none; height: 0; }
         `}</style>
       </div>
