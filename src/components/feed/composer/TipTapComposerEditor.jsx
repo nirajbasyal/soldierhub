@@ -192,17 +192,23 @@ export default function TipTapComposerEditor({
 
         event.preventDefault();
         const tiptap = editorInstanceRef.current;
-        tiptap
-          ?.chain()
-          .focus(undefined, { scrollIntoView: false })
-          .insertContent(cleanHtml, { parseOptions: { preserveWhitespace: false } })
-          .run();
+        if (!tiptap) return true;
+
+        const { from, to } = tiptap.state.selection;
+        tiptap.commands.insertContentAt(
+          { from, to },
+          cleanHtml,
+          {
+            parseOptions: { preserveWhitespace: "full" },
+            updateSelection: true,
+          }
+        );
 
         window.requestAnimationFrame?.(() => {
           rememberSelection(tiptap);
-          applyManualStoredMarks(tiptap);
           syncContent(tiptap);
           syncFormats(tiptap);
+          window.setTimeout(() => applyManualStoredMarks(tiptap), 0);
         });
         return true;
       },
