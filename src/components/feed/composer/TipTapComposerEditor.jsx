@@ -10,7 +10,7 @@ import { EDITOR_CLASSNAME, FORMAT_ACTIONS, sanitizeComposerHtml } from "./compos
 
 const COMPOSER_PLACEHOLDER = "Ask, share, or help the Fort Bliss community.";
 const MOBILE_TOOLBAR_HEIGHT = 117;
-const MOBILE_KEYBOARD_SAFE_BOTTOM = 170;
+const MOBILE_KEYBOARD_SAFE_BOTTOM = 300;
 
 function isEmptyEditorHtml(html = "") {
   return !String(html || "")
@@ -51,6 +51,7 @@ export default function TipTapComposerEditor({
   const editorScrollRef = useRef(null);
   const closeTimerRef = useRef(null);
   const focusTimerRef = useRef(null);
+  const cursorTimerRef = useRef(null);
   const lastSelectionRef = useRef(null);
   const manualInlineFormatsRef = useRef({ bold: false, italic: false });
   const phoneScreenRef = useRef(false);
@@ -80,29 +81,40 @@ export default function TipTapComposerEditor({
     lastSelectionRef.current = { from: selection.from, to: selection.to };
   };
 
-  const keepCursorAboveKeyboard = (tiptap = editorInstanceRef.current) => {
+  const keepCursorAboveKeyboard = (tiptap = editorInstanceRef.current, forceEnd = false) => {
     if (!tiptap?.view || !editorScrollRef.current || !writingModeMountedRef.current) return;
 
-    window.requestAnimationFrame?.(() => {
+    if (cursorTimerRef.current) window.clearTimeout(cursorTimerRef.current);
+
+    const scrollNow = () => {
       try {
         const scrollBox = editorScrollRef.current;
         if (!scrollBox) return;
 
-        const position = tiptap.state.selection?.to ?? tiptap.state.doc.content.size;
+        const position = forceEnd ? tiptap.state.doc.content.size : tiptap.state.selection?.to ?? tiptap.state.doc.content.size;
         const cursor = tiptap.view.coordsAtPos(position);
         const box = scrollBox.getBoundingClientRect();
-        const safeBottom = box.bottom - 34;
-        const safeTop = box.top + 14;
+        const safeBottom = box.bottom - 118;
+        const safeTop = box.top + 18;
+
+        if (forceEnd) {
+          scrollBox.scrollTop = scrollBox.scrollHeight;
+          return;
+        }
 
         if (cursor.bottom > safeBottom) {
-          scrollBox.scrollTop += cursor.bottom - safeBottom + 28;
+          scrollBox.scrollTop += cursor.bottom - safeBottom + 96;
         } else if (cursor.top < safeTop) {
-          scrollBox.scrollTop -= safeTop - cursor.top + 14;
+          scrollBox.scrollTop -= safeTop - cursor.top + 24;
         }
       } catch {
-        // Mobile browsers can throw during IME/composition. Ignore and let normal scrolling continue.
+        const scrollBox = editorScrollRef.current;
+        if (scrollBox) scrollBox.scrollTop = scrollBox.scrollHeight;
       }
-    });
+    };
+
+    window.requestAnimationFrame?.(scrollNow);
+    cursorTimerRef.current = window.setTimeout(scrollNow, 80);
   };
 
   const applyManualStoredMarks = (tiptap) => {
@@ -160,9 +172,9 @@ export default function TipTapComposerEditor({
         rememberSelection(editorInstanceRef.current);
         applyManualStoredMarks(editorInstanceRef.current);
         syncFormats(editorInstanceRef.current);
-        keepCursorAboveKeyboard(editorInstanceRef.current);
+        keepCursorAboveKeyboard(editorInstanceRef.current, true);
         focusTimerRef.current = null;
-      }, 90);
+      }, 120);
     });
   };
 
@@ -190,6 +202,10 @@ export default function TipTapComposerEditor({
     if (closeTimerRef.current) {
       window.clearTimeout(closeTimerRef.current);
       closeTimerRef.current = null;
+    }
+    if (cursorTimerRef.current) {
+      window.clearTimeout(cursorTimerRef.current);
+      cursorTimerRef.current = null;
     }
     syncContent(editorInstanceRef.current);
     setWritingModeVisible(false);
@@ -265,7 +281,7 @@ export default function TipTapComposerEditor({
           syncFormats(tiptap);
           window.setTimeout(() => {
             applyManualStoredMarks(tiptap);
-            keepCursorAboveKeyboard(tiptap);
+            keepCursorAboveKeyboard(tiptap, true);
           }, 0);
         });
         return true;
@@ -300,7 +316,7 @@ export default function TipTapComposerEditor({
       rememberSelection(tiptap);
       applyManualStoredMarks(tiptap);
       syncFormats(tiptap);
-      keepCursorAboveKeyboard(tiptap);
+      keepCursorAboveKeyboard(tiptap, true);
     },
     onBlur({ editor: tiptap }) {
       rememberSelection(tiptap);
@@ -318,6 +334,7 @@ export default function TipTapComposerEditor({
   useEffect(() => () => {
     if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
     if (focusTimerRef.current) window.clearTimeout(focusTimerRef.current);
+    if (cursorTimerRef.current) window.clearTimeout(cursorTimerRef.current);
   }, []);
 
   useEffect(() => {
@@ -374,7 +391,7 @@ export default function TipTapComposerEditor({
 
     const updateViewport = () => {
       setViewport(getViewportSnapshot());
-      window.setTimeout(() => keepCursorAboveKeyboard(editorInstanceRef.current), 40);
+      window.setTimeout(() => keepCursorAboveKeyboard(editorInstanceRef.current, true), 80);
     };
     updateViewport();
     window.visualViewport?.addEventListener("resize", updateViewport);
@@ -472,13 +489,13 @@ export default function TipTapComposerEditor({
         <div
           className="soldierhub-writing-toolbar"
           style={{
-            position: "fixed",
+            position: "absolute",
             left: 0,
             right: 0,
-            top: `${viewport.top || 0}px`,
+            top: 0,
             zIndex: 9999,
             height: `${MOBILE_TOOLBAR_HEIGHT}px`,
-            backgroundColor: "rgba(248,250,253,0.98)",
+            backgroundColor: "rgba(248,250,253,0.99)",
             backdropFilter: "blur(14px)",
             WebkitBackdropFilter: "blur(14px)",
             boxShadow: "0 12px 24px rgba(15,23,42,0.05)",
@@ -529,17 +546,17 @@ export default function TipTapComposerEditor({
 
         <div
           ref={editorScrollRef}
-          className="soldierhub-writing-editor fixed left-0 right-0 overflow-y-auto overscroll-contain"
+          className="soldierhub-writing-editor absolute bottom-0 left-0 right-0 overflow-y-auto overscroll-contain"
           style={{
-            top: `${(viewport.top || 0) + MOBILE_TOOLBAR_HEIGHT}px`,
-            height: viewport.height ? `${Math.max(240, viewport.height - MOBILE_TOOLBAR_HEIGHT)}px` : `calc(100dvh - ${MOBILE_TOOLBAR_HEIGHT}px)`,
+            top: `${MOBILE_TOOLBAR_HEIGHT}px`,
             backgroundColor: "#F8FAFD",
             WebkitOverflowScrolling: "touch",
+            scrollPaddingTop: "18px",
             scrollPaddingBottom: `${MOBILE_KEYBOARD_SAFE_BOTTOM}px`,
           }}
           onClick={() => {
             editor?.chain().focus("end", { scrollIntoView: false }).run();
-            keepCursorAboveKeyboard(editor);
+            keepCursorAboveKeyboard(editor, true);
           }}
         >
           {editorContent}
