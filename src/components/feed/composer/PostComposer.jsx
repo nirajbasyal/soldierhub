@@ -91,6 +91,21 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     safeRequestAnimationFrame(syncFormatState);
   };
 
+  const handleEditorChange = ({ html, text, structured: nextStructured }) => {
+    const cleanHtml = sanitizeComposerHtml(html || "");
+    const cleanText = String(text || "").trim();
+
+    setBody(cleanHtml);
+    setPlainText(cleanText);
+    setStructured(Boolean(nextStructured));
+    setClearedDraft(null);
+    setDraftSaved(false);
+    setDraftStatus("");
+    bodyValueRef.current = cleanHtml;
+    plainTextValueRef.current = cleanText;
+    setError("");
+  };
+
   const {
     activeFormats,
     setActiveFormats,
@@ -106,6 +121,10 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     setStructured,
     syncEditorState,
   });
+
+  const handleFormatChange = (nextFormats) => {
+    setActiveFormats(nextFormats || {});
+  };
 
   const {
     imageInputRef,
@@ -220,7 +239,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
 
   useEffect(() => {
     const editor = editorRef.current;
-    if (!editor) return undefined;
+    if (!editor?.style) return undefined;
 
     const resizeEditor = () => {
       const viewportHeight =
@@ -242,7 +261,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
           : 220;
 
       editor.style.maxHeight = `${maxHeight}px`;
-      editor.style.overflowY = editor.scrollHeight > maxHeight ? "auto" : "hidden";
+      editor.style.overflowY = "hidden";
     };
 
     resizeEditor();
@@ -272,20 +291,6 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     if (result?.ok === false) {
       setError(result.error || "Could not prepare this image. Please try another photo.");
     }
-  };
-
-  const handlePaste = (event) => {
-    event.preventDefault();
-    const text = event.clipboardData?.getData("text/plain") || "";
-
-    try {
-      document.execCommand("insertText", false, text);
-    } catch {
-      const editor = editorRef.current;
-      if (editor) editor.textContent = `${editor.textContent || ""}${text}`;
-    }
-
-    safeRequestAnimationFrame(syncEditorState);
   };
 
   const toggleAnonymous = () => {
@@ -565,6 +570,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
 
       <ComposerEditor
         editorRef={editorRef}
+        body={body}
         plainText={plainText}
         structured={structured}
         selectedImage={selectedImage}
@@ -574,6 +580,8 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
         onClearText={clearTextWithUndo}
         onRestoreText={restoreClearedText}
         onRemoveImage={removeSelectedImage}
+        onChange={handleEditorChange}
+        onFormatChange={handleFormatChange}
         onFocus={() => safeRequestAnimationFrame(syncFormatState)}
         onPointerDown={handleEditorPointerDown}
         onInput={syncEditorState}
@@ -581,7 +589,6 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
         onKeyDown={handleEditorKeyDown}
         onKeyUp={syncFormatState}
         onMouseUp={syncFormatState}
-        onPaste={handlePaste}
       />
 
       <p className="mt-2 text-[11px] font-medium leading-5" style={{ color: T.textSubtle }}>
