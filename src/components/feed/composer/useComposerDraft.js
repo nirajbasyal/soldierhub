@@ -3,6 +3,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AUTO_SAVE_DELAY_MS, COMPOSER_DRAFT_KEY, readSavedDraft, sanitizeComposerHtml } from "./composerUtils";
 
+function hasMeaningfulDraft(body = "", text = "") {
+  const cleanText = String(text || "").trim();
+  const cleanBody = String(body || "")
+    .replace(/<p><\/p>|<p><br><\/p>|<br\s*\/?/gi, "")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .trim();
+
+  return Boolean(cleanText || cleanBody);
+}
+
 export default function useComposerDraft({
   open,
   currentUser,
@@ -27,11 +38,11 @@ export default function useComposerDraft({
 
   const getCurrentDraftValues = useCallback(() => {
     const editor = editorRef.current;
-    const editorHtml = editor?.innerHTML ? sanitizeComposerHtml(editor.innerHTML) : "";
-    const editorText = editor?.innerText ? String(editor.innerText || "").replace(/\u00a0/g, " ").trim() : "";
+    const editorHtml = typeof editor?.getHTML === "function" ? editor.getHTML() : editor?.innerHTML;
+    const editorText = typeof editor?.getText === "function" ? editor.getText() : editor?.innerText;
 
     const draftBody = sanitizeComposerHtml(editorHtml || bodyValueRef.current || "");
-    const draftText = String(editorText || plainTextValueRef.current || "").trim();
+    const draftText = String(editorText || plainTextValueRef.current || "").replace(/\u00a0/g, " ").trim();
 
     return { draftBody, draftText };
   }, [bodyValueRef, editorRef, plainTextValueRef]);
@@ -41,13 +52,10 @@ export default function useComposerDraft({
       if (typeof window === "undefined" || !currentUser?.id || submitting || imageProcessing) return false;
 
       const { draftBody, draftText } = getCurrentDraftValues();
-      const hasDraftContent = Boolean(
-        draftText || draftBody.replace(/<p><\/p>|<p><br><\/p>|<br\s*\/?/gi, "").trim()
-      );
 
-      if (!hasDraftContent) {
+      if (!hasMeaningfulDraft(draftBody, draftText)) {
         setDraftSaved(false);
-        if (!silent) setDraftStatus("");
+        if (!silent) setDraftStatus("Write something before saving a draft.");
         return false;
       }
 
@@ -56,7 +64,7 @@ export default function useComposerDraft({
           COMPOSER_DRAFT_KEY,
           JSON.stringify({
             userId: currentUser.id,
-            body: draftBody || draftText,
+            body: draftBody,
             plainText: draftText,
             category: categoryValueRef.current || "General Q&A",
             anonymous: Boolean(anonymousValueRef.current),
@@ -65,7 +73,7 @@ export default function useComposerDraft({
           })
         );
         setDraftSaved(true);
-        if (!silent) setDraftStatus("Autosaved in this device.");
+        setDraftStatus(silent ? "Autosaved in this device" : "Draft saved in this device");
         return true;
       } catch {
         setDraftSaved(false);
@@ -96,6 +104,8 @@ export default function useComposerDraft({
     const savedCategory = savedDraft.category || "General Q&A";
     const savedAnonymous = Boolean(savedDraft.anonymous);
 
+    if (!hasMeaningfulDraft(savedBody, savedPlainText)) return;
+
     setBody(savedBody);
     setPlainText(savedPlainText);
     setCategory(savedCategory);
@@ -108,11 +118,11 @@ export default function useComposerDraft({
     categoryValueRef.current = savedCategory;
     anonymousValueRef.current = savedAnonymous;
 
-    if (editorRef.current) {
-      editorRef.current.innerHTML = savedBody;
-    }
+    window.requestAnimationFrame?.(() => {
+      if (editorRef.current) editorRef.current.innerHTML = savedBody;
+    });
 
-    setDraftStatus("Draft restored. Continue editing or publish when ready.");
+    setDraftStatus("Draft restored from this device");
   }, [
     anonymousValueRef,
     bodyValueRef,
@@ -129,27 +139,17 @@ export default function useComposerDraft({
   ]);
 
   useEffect(() => {
-    if (!open || typeof window === "undefined" || !currentUser?.id || submitting || imageProcessing) {
-      return undefined;
-    }
+    if (!open || typeof window === "undefined" || !currentUser?.id || submitting || imageProcessing) return undefined;
 
     const autoSaveTimer = window.setTimeout(() => {
-      persistDraft();
+      persistDraft({ silent: true });
     }, AUTO_SAVE_DELAY_MS);
 
     return () => {
       window.clearTimeout(autoSaveTimer);
       persistDraft({ silent: true });
     };
-  }, [
-    open,
-    currentUser?.id,
-    submitting,
-    imageProcessing,
-    structured,
-    draftVersion,
-    persistDraft,
-  ]);
+  }, [open, currentUser?.id, submitting, imageProcessing, structured, draftVersion, persistDraft]);
 
   useEffect(() => {
     if (!open || typeof window === "undefined") return undefined;
@@ -171,17 +171,7 @@ export default function useComposerDraft({
     };
   }, [open, persistDraft]);
 
-  const saveDraft = () => {
-    const saved = persistDraft();
-    if (!saved) {
-      setDraftSaved(false);
-      setDraftStatus("Write something before saving a draft.");
-      return false;
-    }
-
-    setDraftStatus("Draft saved. Reopen this composer to continue later.");
-    return true;
-  };
+  const saveDraft = () => persistDraft({ silent: false });
 
   const clearDraftState = () => {
     setDraftSaved(false);
