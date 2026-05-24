@@ -1,34 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
-
-const FORMAT_BOUNDARY = "\u200B";
-
-function getSelectionElement(editor) {
-  if (typeof window === "undefined") return null;
-
-  const selection = window.getSelection?.();
-  const anchorNode = selection?.anchorNode;
-  if (!editor || !anchorNode || !editor.contains(anchorNode)) return null;
-
-  return anchorNode.nodeType === Node.TEXT_NODE ? anchorNode.parentElement : anchorNode;
-}
-
-function selectionInsideTag(editor, tagName) {
-  return Boolean(getSelectionElement(editor)?.closest?.(tagName));
-}
-
-function queryCommandIsActive(command) {
-  if (typeof document === "undefined" || typeof document.queryCommandState !== "function") {
-    return false;
-  }
-
-  try {
-    return Boolean(document.queryCommandState(command));
-  } catch {
-    return false;
-  }
-}
+import { useCallback, useState } from "react";
 
 export function hasStructuredContent(editor) {
   return Boolean(editor?.querySelector?.("blockquote, ul, ol, li"));
@@ -43,46 +15,9 @@ export function safeRequestAnimationFrame(callback) {
   window.requestAnimationFrame(callback);
 }
 
-function createEmptyParagraph() {
-  const paragraph = document.createElement("p");
-  paragraph.innerHTML = "<br>";
-  return paragraph;
-}
-
-function isElementContentEmpty(element) {
-  if (!element) return false;
-  return !element.textContent?.replaceAll(FORMAT_BOUNDARY, "").replace(/\u00a0/g, " ").trim();
-}
-
-function isEmptyEditableBlock(element) {
-  if (!element) return false;
-
-  const tagName = element.tagName?.toLowerCase();
-  if (!["p", "div"].includes(tagName)) return false;
-
-  return isElementContentEmpty(element);
-}
-
-function getCurrentQuote(editor) {
-  const startElement = getSelectionElement(editor);
-  const quote = startElement?.closest?.("blockquote");
-  return quote && editor?.contains(quote) ? quote : null;
-}
-
-function getCurrentListItem(editor) {
-  const startElement = getSelectionElement(editor);
-  const listItem = startElement?.closest?.("li");
-  return listItem && editor?.contains(listItem) ? listItem : null;
-}
-
-export function ensureQuoteExitSpace(editor) {
-  if (!editor || typeof document === "undefined") return;
-
-  Array.from(editor.querySelectorAll("blockquote")).forEach((quote) => {
-    if (!quote.nextElementSibling) {
-      quote.parentNode?.insertBefore(createEmptyParagraph(), quote.nextSibling);
-    }
-  });
+export function ensureQuoteExitSpace() {
+  // Intentionally empty.
+  // Formatting is now controlled only by the user's toolbar selections.
 }
 
 export function placeCaretInElement(element) {
@@ -104,6 +39,56 @@ export function placeCursorAtEnd(element) {
   placeCaretInElement(element);
 }
 
+function normalizeCommandState(command, active) {
+  if (typeof document === "undefined" || typeof document.queryCommandState !== "function") {
+    return;
+  }
+
+  try {
+    const current = Boolean(document.queryCommandState(command));
+    if (current !== active) {
+      document.execCommand(command, false, null);
+    }
+  } catch {
+    // Older browser editing APIs are inconsistent. Keep composer usable.
+  }
+}
+
+function normalizeBlockState(activeFormats) {
+  if (typeof document === "undefined") return;
+
+  try {
+    const inBulletList = Boolean(document.queryCommandState?.("insertUnorderedList"));
+    const inNumberList = Boolean(document.queryCommandState?.("insertOrderedList"));
+
+    if (activeFormats?.bullet && !inBulletList) {
+      document.execCommand("insertUnorderedList", false, null);
+    } else if (!activeFormats?.bullet && inBulletList) {
+      document.execCommand("insertUnorderedList", false, null);
+    }
+
+    if (activeFormats?.number && !inNumberList) {
+      document.execCommand("insertOrderedList", false, null);
+    } else if (!activeFormats?.number && inNumberList) {
+      document.execCommand("insertOrderedList", false, null);
+    }
+
+    if (activeFormats?.quote) {
+      document.execCommand("formatBlock", false, "blockquote");
+    } else {
+      document.execCommand("formatBlock", false, "p");
+    }
+  } catch {
+    // Keep typing available even if browser blocks the command.
+  }
+}
+
+function applyActiveTypingState(activeFormats) {
+  normalizeCommandState("bold", Boolean(activeFormats?.bold));
+  normalizeCommandState("italic", Boolean(activeFormats?.italic));
+  normalizeBlockState(activeFormats);
+}
+
 export default function useComposerFormatting({
   editorRef,
   submittingValueRef,
@@ -111,103 +96,57 @@ export default function useComposerFormatting({
   setStructured,
   syncEditorState,
 }) {
-  const [activeFormats, setActiveFormats] = useState({});
-  const lastQuoteEnterAtRef = useRef(0);
+  const [activeFormats, setActiveFormats] = useState({
+    bold: false,
+    italic: false,
+    bullet: false,
+    number: false,
+    quote: false,
+  });
+
+  const setControlledFormats = useCallback(
+    (nextFormats) => {
+      const normalized = {
+        bold: Boolean(nextFormats?.bold),
+        italic: Boolean(nextFormats?.italic),
+        bullet: Boolean(nextFormats?.bullet),
+        number: Boolean(nextFormats?.number),
+        quote: Boolean(nextFormats?.quote),
+      };
+
+      if (activeFormatsRef) activeFormatsRef.current = normalized;
+      setActiveFormats(normalized);
+      return normalized;
+    },
+    [activeFormatsRef]
+  );
 
   const clearBlockFormats = useCallback(() => {
-    setActiveFormats((current) => ({ ...current, bullet: false, number: false, quote: false }));
-  }, []);
+    const nextFormats = {
+      ...(activeFormatsRef?.current || activeFormats),
+      bullet: false,
+      number: false,
+      quote: false,
+    };
+
+    setControlledFormats(nextFormats);
+    return nextFormats;
+  }, [activeFormats, activeFormatsRef, setControlledFormats]);
 
   const syncFormatState = useCallback(() => {
     const editor = editorRef.current;
-    ensureQuoteExitSpace(editor);
     setStructured(hasStructuredContent(editor));
 
-    if (!editor || typeof document === "undefined") return;
-
-    const nextFormats = {
-      bold: queryCommandIsActive("bold") || selectionInsideTag(editor, "strong,b"),
-      italic: queryCommandIsActive("italic") || selectionInsideTag(editor, "em,i"),
-      bullet: queryCommandIsActive("insertUnorderedList") || selectionInsideTag(editor, "ul"),
-      number: queryCommandIsActive("insertOrderedList") || selectionInsideTag(editor, "ol"),
-      quote: selectionInsideTag(editor, "blockquote"),
-    };
-
-    if (activeFormatsRef) activeFormatsRef.current = nextFormats;
-    setActiveFormats(nextFormats);
+    if (activeFormatsRef) {
+      setActiveFormats({
+        bold: Boolean(activeFormatsRef.current?.bold),
+        italic: Boolean(activeFormatsRef.current?.italic),
+        bullet: Boolean(activeFormatsRef.current?.bullet),
+        number: Boolean(activeFormatsRef.current?.number),
+        quote: Boolean(activeFormatsRef.current?.quote),
+      });
+    }
   }, [activeFormatsRef, editorRef, setStructured]);
-
-  const exitEmptyQuote = useCallback(
-    (quote) => {
-      const editor = editorRef.current;
-      if (!editor || !quote) return false;
-
-      const paragraph = createEmptyParagraph();
-      const nextElement = quote.nextElementSibling;
-
-      quote.parentNode?.insertBefore(paragraph, quote);
-      quote.remove();
-
-      if (isEmptyEditableBlock(nextElement)) {
-        nextElement.remove();
-      }
-
-      editor.focus({ preventScroll: true });
-      placeCaretInElement(paragraph);
-      clearBlockFormats();
-      safeRequestAnimationFrame(syncEditorState);
-      return true;
-    },
-    [clearBlockFormats, editorRef, syncEditorState]
-  );
-
-  const exitEmptyListItem = useCallback(
-    (listItem) => {
-      const editor = editorRef.current;
-      const list = listItem?.closest?.("ul,ol");
-      if (!editor || !listItem || !list) return false;
-
-      const paragraph = createEmptyParagraph();
-      const listHasOneItem = list.querySelectorAll(":scope > li").length <= 1;
-
-      if (listHasOneItem) {
-        list.parentNode?.insertBefore(paragraph, list);
-        list.remove();
-      } else {
-        list.parentNode?.insertBefore(paragraph, list.nextSibling);
-        listItem.remove();
-      }
-
-      editor.focus({ preventScroll: true });
-      placeCaretInElement(paragraph);
-      clearBlockFormats();
-      safeRequestAnimationFrame(syncEditorState);
-      return true;
-    },
-    [clearBlockFormats, editorRef, syncEditorState]
-  );
-
-  const exitEmptyStructureIfNeeded = useCallback(
-    (event) => {
-      const editor = editorRef.current;
-      if (!editor) return false;
-
-      const quote = getCurrentQuote(editor);
-      if (quote && isElementContentEmpty(quote)) {
-        event.preventDefault();
-        return exitEmptyQuote(quote);
-      }
-
-      const listItem = getCurrentListItem(editor);
-      if (listItem && isElementContentEmpty(listItem)) {
-        event.preventDefault();
-        return exitEmptyListItem(listItem);
-      }
-
-      return false;
-    },
-    [editorRef, exitEmptyListItem, exitEmptyQuote]
-  );
 
   const applyFormatting = useCallback(
     (action) => {
@@ -217,125 +156,94 @@ export default function useComposerFormatting({
 
       editor.focus({ preventScroll: true });
 
-      try {
-        if (action.command === "formatBlock") {
-          const isQuoteActive =
-            Boolean(activeFormatsRef?.current?.quote) || selectionInsideTag(editor, "blockquote");
-          document.execCommand("formatBlock", false, isQuoteActive ? "p" : "blockquote");
-          safeRequestAnimationFrame(() => ensureQuoteExitSpace(editor));
-        } else {
-          document.execCommand(action.command, false, null);
+      const current = activeFormatsRef?.current || activeFormats;
+      const nextFormats = { ...current };
+
+      if (action.command === "bold") {
+        nextFormats.bold = !Boolean(current.bold);
+      } else if (action.command === "italic") {
+        nextFormats.italic = !Boolean(current.italic);
+      } else if (action.command === "insertUnorderedList") {
+        nextFormats.bullet = !Boolean(current.bullet);
+        if (nextFormats.bullet) {
+          nextFormats.number = false;
+          nextFormats.quote = false;
         }
-      } catch {
-        // Keep the composer usable even if a browser blocks an older execCommand call.
+      } else if (action.command === "insertOrderedList") {
+        nextFormats.number = !Boolean(current.number);
+        if (nextFormats.number) {
+          nextFormats.bullet = false;
+          nextFormats.quote = false;
+        }
+      } else if (action.command === "formatBlock") {
+        nextFormats.quote = !Boolean(current.quote);
+        if (nextFormats.quote) {
+          nextFormats.bullet = false;
+          nextFormats.number = false;
+        }
       }
 
+      const controlled = setControlledFormats(nextFormats);
+      applyActiveTypingState(controlled);
       safeRequestAnimationFrame(syncEditorState);
     },
-    [activeFormatsRef, editorRef, submittingValueRef, syncEditorState]
-  );
-
-  const insertQuoteLineBreak = useCallback(
-    (event) => {
-      const editor = editorRef.current;
-      if (!editor || !selectionInsideTag(editor, "blockquote")) return false;
-
-      event?.preventDefault?.();
-
-      const now =
-        typeof performance !== "undefined" && typeof performance.now === "function"
-          ? performance.now()
-          : Date.now();
-
-      // Prevent duplicate Enter handling from beforeinput + keydown firing together.
-      if (now - lastQuoteEnterAtRef.current < 180) return true;
-      lastQuoteEnterAtRef.current = now;
-
-      try {
-        document.execCommand("insertLineBreak", false, null);
-      } catch {
-        document.execCommand("insertHTML", false, "<br>");
-      }
-      setActiveFormats((current) => ({ ...current, quote: true }));
-      safeRequestAnimationFrame(syncEditorState);
-      return true;
-    },
-    [editorRef, syncEditorState]
+    [activeFormats, activeFormatsRef, editorRef, setControlledFormats, submittingValueRef, syncEditorState]
   );
 
   const handleEditorBeforeInput = useCallback(
-    (event) => {
+    () => {
       if (submittingValueRef.current) return;
+      const editor = editorRef.current;
+      if (!editor) return;
 
-      if (event.nativeEvent?.inputType === "deleteContentBackward") {
-        exitEmptyStructureIfNeeded(event);
-        return;
-      }
-
-      if (event.nativeEvent?.inputType === "insertParagraph") {
-        insertQuoteLineBreak(event);
-      }
+      editor.focus({ preventScroll: true });
+      applyActiveTypingState(activeFormatsRef?.current || activeFormats);
     },
-    [exitEmptyStructureIfNeeded, insertQuoteLineBreak, submittingValueRef]
+    [activeFormats, activeFormatsRef, editorRef, submittingValueRef]
   );
 
   const handleEditorKeyDown = useCallback(
     (event) => {
-      if (event.key === "Backspace" && exitEmptyStructureIfNeeded(event)) return;
-      if (event.key === "Enter") insertQuoteLineBreak(event);
-    },
-    [exitEmptyStructureIfNeeded, insertQuoteLineBreak]
-  );
+      if (submittingValueRef.current) return;
 
-  const handleEditorPointerDown = useCallback(
-    (event) => {
       const editor = editorRef.current;
-      if (!editor || submittingValueRef.current) return;
+      if (!editor) return;
 
-      const clickedElement = event.target instanceof Element ? event.target : null;
-      const clickedInsideQuote = clickedElement?.closest?.("blockquote");
-      if (clickedInsideQuote && editor.contains(clickedInsideQuote)) return;
+      if (event.key === "Enter") {
+        const current = activeFormatsRef?.current || activeFormats;
 
-      const clickedEditableBlock = clickedElement?.closest?.("p,div");
-      if (
-        clickedEditableBlock &&
-        editor.contains(clickedEditableBlock) &&
-        isEmptyEditableBlock(clickedEditableBlock) &&
-        clickedEditableBlock.previousElementSibling?.tagName?.toLowerCase() === "blockquote"
-      ) {
-        clearBlockFormats();
-        return;
+        // Enter should not automatically trap the user in quote/list mode.
+        // Inline formats remain only when the user keeps those toolbar buttons active.
+        const nextFormats = {
+          ...current,
+          bullet: false,
+          number: false,
+          quote: false,
+        };
+
+        if (current.bullet || current.number || current.quote) {
+          setControlledFormats(nextFormats);
+          safeRequestAnimationFrame(() => {
+            editor.focus({ preventScroll: true });
+            applyActiveTypingState(nextFormats);
+            syncEditorState();
+          });
+        }
       }
-
-      const quoteToExit = Array.from(editor.querySelectorAll("blockquote")).find((quote) => {
-        const quoteRect = quote.getBoundingClientRect();
-        const editorRect = editor.getBoundingClientRect();
-        return (
-          event.clientY >= quoteRect.bottom &&
-          event.clientY <= Math.max(quoteRect.bottom + 80, editorRect.bottom) &&
-          event.clientX >= editorRect.left - 18 &&
-          event.clientX <= editorRect.right + 18
-        );
-      });
-
-      if (!quoteToExit) return;
-
-      ensureQuoteExitSpace(editor);
-      const exitBlock = quoteToExit.nextElementSibling;
-      if (!isEmptyEditableBlock(exitBlock)) return;
-
-      event.preventDefault();
-      editor.focus({ preventScroll: true });
-      placeCaretInElement(exitBlock);
-      clearBlockFormats();
-      safeRequestAnimationFrame(syncEditorState);
     },
-    [clearBlockFormats, editorRef, submittingValueRef, syncEditorState]
+    [activeFormats, activeFormatsRef, editorRef, setControlledFormats, submittingValueRef, syncEditorState]
   );
+
+  const handleEditorPointerDown = useCallback(() => {
+    if (submittingValueRef.current) return;
+    safeRequestAnimationFrame(() => {
+      applyActiveTypingState(activeFormatsRef?.current || activeFormats);
+    });
+  }, [activeFormats, activeFormatsRef, submittingValueRef]);
 
   return {
     activeFormats,
-    setActiveFormats,
+    setActiveFormats: setControlledFormats,
     clearBlockFormats,
     syncFormatState,
     applyFormatting,
