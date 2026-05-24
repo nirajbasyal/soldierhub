@@ -9,12 +9,12 @@ export default function useComposerDraft({
   submitting,
   imageProcessing,
   structured,
+  draftVersion = 0,
   editorRef,
   bodyValueRef,
   plainTextValueRef,
   categoryValueRef,
   anonymousValueRef,
-  ensureQuoteExitSpace,
   setBody,
   setPlainText,
   setCategory,
@@ -25,15 +25,31 @@ export default function useComposerDraft({
   const [draftSaved, setDraftSaved] = useState(false);
   const hasLoadedDraftRef = useRef(false);
 
+  const getCurrentDraftValues = useCallback(() => {
+    const editor = editorRef.current;
+    const editorHtml = editor?.innerHTML ? sanitizeComposerHtml(editor.innerHTML) : "";
+    const editorText = editor?.innerText ? String(editor.innerText || "").replace(/\u00a0/g, " ").trim() : "";
+
+    const draftBody = sanitizeComposerHtml(editorHtml || bodyValueRef.current || "");
+    const draftText = String(editorText || plainTextValueRef.current || "").trim();
+
+    return { draftBody, draftText };
+  }, [bodyValueRef, editorRef, plainTextValueRef]);
+
   const persistDraft = useCallback(
     ({ silent = false } = {}) => {
       if (typeof window === "undefined" || !currentUser?.id || submitting || imageProcessing) return false;
 
-      const draftBody = sanitizeComposerHtml(bodyValueRef.current);
-      const draftText = String(plainTextValueRef.current || "").trim();
-      const hasDraftContent = Boolean(draftText || draftBody.replace(/<p><\/p>|<p><br><\/p>|<br\s*\/?/gi, "").trim());
+      const { draftBody, draftText } = getCurrentDraftValues();
+      const hasDraftContent = Boolean(
+        draftText || draftBody.replace(/<p><\/p>|<p><br><\/p>|<br\s*\/?/gi, "").trim()
+      );
 
-      if (!hasDraftContent) return false;
+      if (!hasDraftContent) {
+        setDraftSaved(false);
+        if (!silent) setDraftStatus("");
+        return false;
+      }
 
       try {
         window.localStorage.setItem(
@@ -59,11 +75,10 @@ export default function useComposerDraft({
     },
     [
       anonymousValueRef,
-      bodyValueRef,
       categoryValueRef,
       currentUser?.id,
+      getCurrentDraftValues,
       imageProcessing,
-      plainTextValueRef,
       structured,
       submitting,
     ]
@@ -81,21 +96,22 @@ export default function useComposerDraft({
     const savedCategory = savedDraft.category || "General Q&A";
     const savedAnonymous = Boolean(savedDraft.anonymous);
 
-    if (editorRef.current) {
-      editorRef.current.innerHTML = savedBody;
-      ensureQuoteExitSpace(editorRef.current);
-    }
-
     setBody(savedBody);
     setPlainText(savedPlainText);
     setCategory(savedCategory);
     setAnonymous(savedAnonymous);
     setStructured(Boolean(savedDraft.structured));
     setDraftSaved(true);
+
     bodyValueRef.current = savedBody;
     plainTextValueRef.current = savedPlainText;
     categoryValueRef.current = savedCategory;
     anonymousValueRef.current = savedAnonymous;
+
+    if (editorRef.current) {
+      editorRef.current.innerHTML = savedBody;
+    }
+
     setDraftStatus("Draft restored. Continue editing or publish when ready.");
   }, [
     anonymousValueRef,
@@ -103,7 +119,6 @@ export default function useComposerDraft({
     categoryValueRef,
     currentUser?.id,
     editorRef,
-    ensureQuoteExitSpace,
     open,
     plainTextValueRef,
     setAnonymous,
@@ -132,11 +147,8 @@ export default function useComposerDraft({
     submitting,
     imageProcessing,
     structured,
+    draftVersion,
     persistDraft,
-    bodyValueRef.current,
-    plainTextValueRef.current,
-    categoryValueRef.current,
-    anonymousValueRef.current,
   ]);
 
   useEffect(() => {
