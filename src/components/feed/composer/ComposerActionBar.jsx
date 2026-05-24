@@ -1,6 +1,6 @@
 "use client";
 
-import { ImagePlus, Loader2, Send } from "lucide-react";
+import { ImagePlus, Info, Loader2, Send } from "lucide-react";
 import { T } from "@/lib/theme";
 import Button from "@/components/ui/Button";
 import ComposerDraftStatus from "./ComposerDraftStatus";
@@ -8,6 +8,8 @@ import ComposerDraftStatus from "./ComposerDraftStatus";
 export default function ComposerActionBar({
   pageMode = false,
   anonymous,
+  showAnonymousNotice = false,
+  anonymousNotice,
   onToggleAnonymous,
   selectedImage,
   imageProcessing,
@@ -30,6 +32,16 @@ export default function ComposerActionBar({
         boxShadow: pageMode ? "0 14px 30px rgba(11,28,44,0.08)" : "none",
       }}
     >
+      {showAnonymousNotice && anonymous ? (
+        <div
+          className="mb-2 flex items-start gap-2 rounded-2xl border px-3 py-2.5 text-xs font-medium transition-opacity duration-300"
+          style={{ backgroundColor: "#F4F7FA", borderColor: T.borderSoft, color: T.textSubtle }}
+        >
+          <Info size={14} className="mt-0.5 shrink-0" style={{ color: T.slate }} />
+          <span>{anonymousNotice}</span>
+        </div>
+      ) : null}
+
       <div className="grid grid-cols-[minmax(108px,1fr)_46px_minmax(96px,0.82fr)] items-center gap-2 md:flex md:items-center md:justify-between md:gap-3">
         <button
           type="button"
