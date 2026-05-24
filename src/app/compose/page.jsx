@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AlertTriangle, ArrowLeft, Bold, Italic, List, ListOrdered, Quote } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Bold, Italic, List, ListOrdered } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { T } from "@/lib/theme";
 import AppShell from "@/components/layout/AppShell";
@@ -18,7 +18,6 @@ const EXPANDED_FORMAT_ACTIONS = [
   { key: "italic", label: "Italic", icon: Italic, command: "italic" },
   { key: "bullet", label: "Bullets", icon: List, command: "insertUnorderedList" },
   { key: "number", label: "Numbered", icon: ListOrdered, command: "insertOrderedList" },
-  { key: "quote", label: "Quote", icon: Quote, command: "formatBlock" },
 ];
 
 function isPhoneWidth() {
@@ -83,32 +82,6 @@ function selectionInsideTag(editor, selector) {
   return Boolean(getSelectionElement(editor)?.closest?.(selector));
 }
 
-function getCurrentQuote(editor) {
-  const quote = getSelectionElement(editor)?.closest?.("blockquote");
-  return quote && editor?.contains(quote) ? quote : null;
-}
-
-function unwrapCurrentQuote(editor) {
-  const quote = getCurrentQuote(editor);
-  if (!editor || !quote) return false;
-
-  const normalBlock = document.createElement("div");
-  normalBlock.className = "min-h-[1.65em] whitespace-pre-wrap";
-
-  while (quote.firstChild) {
-    normalBlock.appendChild(quote.firstChild);
-  }
-
-  if (!normalBlock.childNodes.length || !normalBlock.textContent?.trim()) {
-    normalBlock.innerHTML = "<br>";
-  }
-
-  quote.replaceWith(normalBlock);
-  placeCursorAtEnd(normalBlock);
-  dispatchComposerInput(editor);
-  return true;
-}
-
 function queryCommandIsActive(command) {
   if (typeof document === "undefined" || typeof document.queryCommandState !== "function") return false;
 
@@ -139,7 +112,6 @@ export default function ComposePage() {
       italic: queryCommandIsActive("italic") || selectionInsideTag(editor, "em,i"),
       bullet: queryCommandIsActive("insertUnorderedList") || selectionInsideTag(editor, "ul"),
       number: queryCommandIsActive("insertOrderedList") || selectionInsideTag(editor, "ol"),
-      quote: selectionInsideTag(editor, "blockquote"),
     });
   }, []);
 
@@ -198,16 +170,15 @@ export default function ComposePage() {
     editor.focus({ preventScroll: true });
 
     try {
-      if (action.key === "quote") {
-        const quoteWasActive = Boolean(getCurrentQuote(editor));
-        if (quoteWasActive) {
-          unwrapCurrentQuote(editor);
-        } else {
-          document.execCommand("formatBlock", false, "blockquote");
-        }
-      } else {
-        document.execCommand(action.command, false, null);
+      if (action.command === "insertUnorderedList" && queryCommandIsActive("insertOrderedList")) {
+        document.execCommand("insertOrderedList", false, null);
       }
+
+      if (action.command === "insertOrderedList" && queryCommandIsActive("insertUnorderedList")) {
+        document.execCommand("insertUnorderedList", false, null);
+      }
+
+      document.execCommand(action.command, false, null);
     } catch {
       // Keep typing available if a browser blocks an older execCommand call.
     }
@@ -357,7 +328,7 @@ export default function ComposePage() {
               className="sticky top-[58px] z-20 shrink-0 border-b px-3 py-2"
               style={{ backgroundColor: "rgba(248,250,253,0.98)", borderColor: T.borderSoft }}
             >
-              <div className="grid grid-cols-5 items-center gap-2">
+              <div className="grid grid-cols-4 items-center gap-2">
                 {EXPANDED_FORMAT_ACTIONS.map((action) => {
                   const Icon = action.icon;
                   const isActive = Boolean(expandedActiveFormats[action.key]);
@@ -411,7 +382,6 @@ export default function ComposePage() {
                 aria-multiline="true"
                 onInput={() => {
                   setLongEditorText(getEditorText(expandedEditorRef.current));
-                  syncExpandedFormatState();
                 }}
                 onKeyUp={syncExpandedFormatState}
                 onMouseUp={syncExpandedFormatState}
@@ -431,7 +401,7 @@ export default function ComposePage() {
                     syncExpandedFormatState();
                   });
                 }}
-                className="min-h-full w-full bg-transparent pr-10 text-[18px] leading-8 outline-none [&_blockquote]:my-3 [&_blockquote]:rounded-[18px] [&_blockquote]:border-0 [&_blockquote]:bg-[#DDE8F3] [&_blockquote]:px-5 [&_blockquote]:py-3 [&_blockquote]:font-normal [&_blockquote]:text-[#102033] [&_div]:min-h-[1.65em] [&_div]:whitespace-pre-wrap [&_em]:italic [&_li]:pl-1 [&_ol]:ml-5 [&_ol]:list-decimal [&_ol]:space-y-1 [&_p]:min-h-[1.65em] [&_p]:whitespace-pre-wrap [&_strong]:font-extrabold [&_ul]:ml-5 [&_ul]:list-disc [&_ul]:space-y-1"
+                className="min-h-full w-full bg-transparent pr-10 text-[18px] leading-8 outline-none [&_div]:min-h-[1.65em] [&_div]:whitespace-pre-wrap [&_em]:italic [&_li]:pl-1 [&_ol]:ml-5 [&_ol]:list-decimal [&_ol]:space-y-1 [&_p]:min-h-[1.65em] [&_p]:whitespace-pre-wrap [&_strong]:font-extrabold [&_ul]:ml-5 [&_ul]:list-disc [&_ul]:space-y-1"
                 style={{ color: T.text, whiteSpace: "pre-wrap", overflowWrap: "anywhere", paddingBottom: "28px" }}
               />
             </div>
