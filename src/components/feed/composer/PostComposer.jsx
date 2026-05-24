@@ -14,11 +14,6 @@ import ComposerEditor from "./ComposerEditor";
 import ComposerImagePicker from "./ComposerImagePicker";
 import ComposerToolbar from "./ComposerToolbar";
 import useComposerDraft from "./useComposerDraft";
-import useComposerFormatting, {
-  ensureQuoteExitSpace,
-  hasStructuredContent,
-  placeCursorAtEnd,
-} from "./useComposerFormatting";
 import useComposerImage from "./useComposerImage";
 import {
   COMPOSER_DRAFT_KEY,
@@ -54,7 +49,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   const [submitting, setSubmitting] = useState(false);
   const [isPhoneScreen, setIsPhoneScreen] = useState(false);
   const [structured, setStructured] = useState(false);
-  const [clearedDraft, setClearedDraft] = useState(null);
+  const [activeFormats, setActiveFormats] = useState({});
 
   const editorRef = useRef(null);
   const bodyValueRef = useRef(body);
@@ -62,7 +57,6 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   const categoryValueRef = useRef(category);
   const anonymousValueRef = useRef(anonymous);
   const submittingValueRef = useRef(submitting);
-  const activeFormatsRef = useRef({});
   const didInitialPageModePassRef = useRef(false);
   const anonymousNoticeTimeoutRef = useRef(null);
 
@@ -71,24 +65,30 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     [plainText]
   );
 
+  const syncFormatState = () => {
+    setActiveFormats(editorRef.current?.getActiveFormats?.() || {});
+  };
+
   const focusComposerField = () => {
     safeRequestAnimationFrame(() => {
-      editorRef.current?.focus({ preventScroll: true });
+      if (pageMode && isPhoneScreen) {
+        editorRef.current?.openLongEditor?.();
+        return;
+      }
+
+      editorRef.current?.focus?.({ preventScroll: true });
       syncFormatState();
     });
   };
 
   const syncEditorState = () => {
     const editor = editorRef.current;
-    ensureQuoteExitSpace(editor);
-
     const cleanHtml = sanitizeComposerHtml(editor?.innerHTML || "");
     const cleanText = getPlainEditorText(editor);
 
     setBody(cleanHtml);
     setPlainText(cleanText);
-    setStructured(hasStructuredContent(editor));
-    setClearedDraft(null);
+    setStructured(Boolean(editor?.hasStructuredContent?.()));
     setDraftSaved(false);
     setDraftStatus("");
     bodyValueRef.current = cleanHtml;
@@ -104,7 +104,6 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     setBody(cleanHtml);
     setPlainText(cleanText);
     setStructured(Boolean(nextStructured));
-    setClearedDraft(null);
     setDraftSaved(false);
     setDraftStatus("");
     bodyValueRef.current = cleanHtml;
@@ -112,24 +111,14 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     setError("");
   };
 
-  const {
-    activeFormats,
-    setActiveFormats,
-    syncFormatState,
-    applyFormatting,
-    handleEditorBeforeInput,
-    handleEditorKeyDown,
-    handleEditorPointerDown,
-  } = useComposerFormatting({
-    editorRef,
-    submittingValueRef,
-    activeFormatsRef,
-    setStructured,
-    syncEditorState,
-  });
-
   const handleFormatChange = (nextFormats) => {
     setActiveFormats(nextFormats || {});
+  };
+
+  const applyFormatting = (action) => {
+    if (submittingValueRef.current || !action?.command) return;
+    editorRef.current?.runCommand?.(action.command);
+    safeRequestAnimationFrame(syncFormatState);
   };
 
   const {
@@ -169,7 +158,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     plainTextValueRef,
     categoryValueRef,
     anonymousValueRef,
-    ensureQuoteExitSpace,
+    ensureQuoteExitSpace: () => {},
     setBody,
     setPlainText,
     setCategory,
@@ -245,59 +234,22 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
       return;
     }
 
-    safeRequestAnimationFrame(() => {
-      editorRef.current?.focus({ preventScroll: true });
+    if (pageMode && isPhoneScreen) {
       syncFormatState();
-    });
-  }, [open, pageMode, syncFormatState]);
-
-  useEffect(() => {
-    const editor = editorRef.current;
-    if (!editor?.style) return undefined;
-
-    const resizeEditor = () => {
-      const viewportHeight =
-        typeof window !== "undefined" ? window.visualViewport?.height || window.innerHeight : 760;
-      const minHeight = pageMode ? (isPhoneScreen ? 180 : 150) : isPhoneScreen ? 170 : 126;
-
-      editor.style.minHeight = `${minHeight}px`;
-
-      if (pageMode && isPhoneScreen) {
-        editor.style.maxHeight = "none";
-        editor.style.overflowY = "visible";
-        return;
-      }
-
-      const maxHeight = pageMode
-        ? Math.max(230, Math.min(isPhoneScreen ? 390 : 320, Math.round(viewportHeight * 0.38)))
-        : isPhoneScreen
-          ? 330
-          : 220;
-
-      editor.style.maxHeight = `${maxHeight}px`;
-      editor.style.overflowY = "hidden";
-    };
-
-    resizeEditor();
-
-    if (typeof window !== "undefined") {
-      window.addEventListener("resize", resizeEditor);
-      window.visualViewport?.addEventListener("resize", resizeEditor);
+      return;
     }
 
-    return () => {
-      if (typeof window !== "undefined") {
-        window.removeEventListener("resize", resizeEditor);
-        window.visualViewport?.removeEventListener("resize", resizeEditor);
-      }
-    };
-  }, [body, pageMode, isPhoneScreen, selectedImage]);
+    safeRequestAnimationFrame(() => {
+      editorRef.current?.focus?.({ preventScroll: true });
+      syncFormatState();
+    });
+  }, [open, pageMode, isPhoneScreen]);
 
   const selectCategory = (nextCategory) => {
     if (submittingValueRef.current) return;
     setCategory(nextCategory);
     categoryValueRef.current = nextCategory;
-    focusComposerField();
+    if (!isPhoneScreen) focusComposerField();
   };
 
   const handleImageChange = async (event) => {
@@ -350,46 +302,9 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     setBody("");
     setPlainText("");
     setActiveFormats({});
-    activeFormatsRef.current = {};
     setStructured(false);
     bodyValueRef.current = "";
     plainTextValueRef.current = "";
-  };
-
-  const clearTextWithUndo = () => {
-    if (submittingValueRef.current || !plainTextValueRef.current.trim()) return;
-
-    setClearedDraft({
-      body: bodyValueRef.current,
-      plainText: plainTextValueRef.current,
-      structured,
-    });
-    clearEditor();
-    setDraftSaved(false);
-    setDraftStatus("Text cleared. Tap undo to restore it.");
-    focusComposerField();
-  };
-
-  const restoreClearedText = () => {
-    if (!clearedDraft || submittingValueRef.current) return;
-
-    if (editorRef.current) {
-      editorRef.current.innerHTML = clearedDraft.body;
-      ensureQuoteExitSpace(editorRef.current);
-    }
-
-    setBody(clearedDraft.body);
-    setPlainText(clearedDraft.plainText);
-    setStructured(clearedDraft.structured);
-    bodyValueRef.current = clearedDraft.body;
-    plainTextValueRef.current = clearedDraft.plainText;
-    setClearedDraft(null);
-    setDraftStatus("Text restored.");
-
-    safeRequestAnimationFrame(() => {
-      placeCursorAtEnd(editorRef.current);
-      syncFormatState();
-    });
   };
 
   const resetComposer = () => {
@@ -398,7 +313,6 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     setAnonymous(false);
     hideTemporaryAnonymousNotice();
     setError("");
-    setClearedDraft(null);
     clearDraftState();
     setOpen(startOpen);
   };
@@ -622,20 +536,10 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
         selectedImage={selectedImage}
         imageProcessing={imageProcessing}
         submitting={submitting}
-        clearedDraft={clearedDraft}
         pageMode={pageMode}
-        onClearText={clearTextWithUndo}
-        onRestoreText={restoreClearedText}
         onRemoveImage={removeSelectedImage}
         onChange={handleEditorChange}
         onFormatChange={handleFormatChange}
-        onFocus={() => safeRequestAnimationFrame(syncFormatState)}
-        onPointerDown={handleEditorPointerDown}
-        onInput={syncEditorState}
-        onBeforeInput={handleEditorBeforeInput}
-        onKeyDown={handleEditorKeyDown}
-        onKeyUp={syncFormatState}
-        onMouseUp={syncFormatState}
       />
 
       {imageNotice ? (
