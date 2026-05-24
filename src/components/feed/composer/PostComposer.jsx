@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Info, Pencil, Plus, X } from "lucide-react";
+import { AlertTriangle, Lock, Pencil, Plus, X } from "lucide-react";
 import { T } from "@/lib/theme";
 import { moderateAsync } from "@/lib/moderation-client";
 import { useApp } from "@/store/AppContext";
@@ -30,7 +30,10 @@ import {
 } from "./composerUtils";
 
 const SAFETY_MESSAGE =
-  "This content may violate SoldierHub community safety rules. Please revise it and try again.";
+  "This content may violate Soldier Hub community safety rules. Please revise it and try again.";
+
+const ANONYMOUS_NOTICE =
+  "Anonymous mode hides your public name. Avoid names, unit details, phone numbers, or sensitive information.";
 
 const PUBLISH_SCROLL_KEY = "soldierhub_scroll_to_latest_post";
 const COMPOSE_SUBMIT_EVENT = "soldierhub-compose-submit";
@@ -568,11 +571,12 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
         />
 
         <div className="min-w-0 flex-1">
-          <div className="truncate text-[16px] font-extrabold" style={{ color: T.text }}>
-            {composerDisplayName}
+          <div className="flex min-w-0 items-center gap-1.5 text-[16px] font-extrabold" style={{ color: T.text }}>
+            <span className="truncate">{composerDisplayName}</span>
+            {anonymous ? <Lock size={15} strokeWidth={2.8} className="shrink-0" style={{ color: T.textSubtle }} aria-label="Anonymous posting enabled" /> : null}
           </div>
           <div className="truncate text-sm font-medium" style={{ color: T.textSubtle }}>
-            Posting on SoldierHub
+            Posting on Soldier Hub
           </div>
         </div>
 
@@ -653,20 +657,12 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
         </div>
       )}
 
-      {showAnonymousNotice && anonymous ? (
-        <div
-          className="mb-2 mt-2 flex items-start gap-2 rounded-2xl border px-3 py-2.5 text-xs font-medium transition-opacity duration-300"
-          style={{ backgroundColor: "#F4F7FA", borderColor: T.borderSoft, color: T.textSubtle }}
-        >
-          <Info size={14} className="mt-0.5 shrink-0" style={{ color: T.slate }} />
-          <span>Anonymous mode hides your public name. Avoid names, unit details, phone numbers, or sensitive information.</span>
-        </div>
-      ) : null}
-
       <div className="mt-2 md:mt-3">
         <ComposerActionBar
           pageMode={pageMode}
           anonymous={anonymous}
+          showAnonymousNotice={showAnonymousNotice}
+          anonymousNotice={ANONYMOUS_NOTICE}
           onToggleAnonymous={toggleAnonymous}
           selectedImage={selectedImage}
           imageProcessing={imageProcessing}
