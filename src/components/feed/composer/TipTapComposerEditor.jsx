@@ -8,9 +8,6 @@ import { Loader2, Undo2, X } from "lucide-react";
 import { T } from "@/lib/theme";
 import { EDITOR_CLASSNAME, FORMAT_ACTIONS, sanitizeComposerHtml } from "./composerUtils";
 
-const LONG_EDITOR_TRIGGER_CHARS = 260;
-const LONG_EDITOR_TRIGGER_ROWS = 7;
-
 function getViewportSnapshot() {
   if (typeof window === "undefined") return { height: 720, top: 0 };
   const viewport = window.visualViewport;
@@ -18,18 +15,6 @@ function getViewportSnapshot() {
     height: Math.max(320, Math.floor(viewport?.height || window.innerHeight || 0)),
     top: Math.max(0, Math.floor(viewport?.offsetTop || 0)),
   };
-}
-
-function getEstimatedRows(text = "") {
-  return String(text || "")
-    .split(/\n/)
-    .reduce((total, line) => total + Math.max(1, Math.ceil(line.length / 34)), 0);
-}
-
-function shouldUseLongEditor(text = "") {
-  const cleanText = String(text || "").trim();
-  if (!cleanText) return false;
-  return cleanText.length >= LONG_EDITOR_TRIGGER_CHARS || getEstimatedRows(cleanText) >= LONG_EDITOR_TRIGGER_ROWS;
 }
 
 export default function TipTapComposerEditor({
@@ -54,7 +39,6 @@ export default function TipTapComposerEditor({
   const [viewport, setViewport] = useState({ height: null, top: 0 });
   const [activeFormats, setActiveFormats] = useState({});
   const suppressLongEditorUntilRef = useRef(0);
-  const useMobileFullEditor = pageMode && phoneScreen;
 
   const extensions = useMemo(
     () => [
@@ -115,7 +99,6 @@ export default function TipTapComposerEditor({
       const text = tiptap.getText("\n").replace(/\u00a0/g, " ").trim();
       onChange?.({ html, text, structured: hasStructuredContent(tiptap) });
       syncFormats(tiptap);
-      maybeOpenLongEditor(text);
     },
     onSelectionUpdate({ editor: tiptap }) {
       syncFormats(tiptap);
@@ -125,12 +108,9 @@ export default function TipTapComposerEditor({
     },
   });
 
-  const maybeOpenLongEditor = (incomingText) => {
-    if (useMobileFullEditor) return;
+  const maybeOpenLongEditor = () => {
     if (!pageMode || !phoneScreen || longEditorOpen || submitting) return;
     if (Date.now() < suppressLongEditorUntilRef.current) return;
-    const text = incomingText ?? editor?.getText("\n") ?? plainText;
-    if (!shouldUseLongEditor(text)) return;
 
     setViewport(getViewportSnapshot());
     setLongEditorOpen(true);
@@ -154,11 +134,6 @@ export default function TipTapComposerEditor({
   }, [editor, submitting]);
 
   useEffect(() => {
-    if (!useMobileFullEditor || !editor || submitting) return;
-    window.requestAnimationFrame?.(() => editor.chain().focus("end").run());
-  }, [editor, useMobileFullEditor, submitting]);
-
-  useEffect(() => {
     if (typeof window === "undefined") return undefined;
 
     const query = window.matchMedia("(max-width: 640px)");
@@ -173,6 +148,21 @@ export default function TipTapComposerEditor({
     query.addListener(updatePhoneScreen);
     return () => query.removeListener(updatePhoneScreen);
   }, []);
+
+  useEffect(() => {
+    if (!pageMode || !phoneScreen || !editor || longEditorOpen || submitting) return;
+    if (Date.now() < suppressLongEditorUntilRef.current) return;
+
+    const raf = window.requestAnimationFrame?.(() => {
+      setViewport(getViewportSnapshot());
+      setLongEditorOpen(true);
+      editor.chain().focus("end").run();
+    });
+
+    return () => {
+      if (raf) window.cancelAnimationFrame?.(raf);
+    };
+  }, [editor, longEditorOpen, pageMode, phoneScreen, submitting]);
 
   useEffect(() => {
     if (!longEditorOpen) return undefined;
@@ -259,77 +249,6 @@ export default function TipTapComposerEditor({
   }, [body, editor]);
 
   const editorContent = <EditorContent editor={editor} />;
-
-  if (useMobileFullEditor) {
-    return (
-      <div className="soldierhub-mobile-compose-editor relative flex min-h-[46dvh] flex-1 flex-col overflow-hidden" style={{ backgroundColor: "#F8FAFD" }}>
-        {showTextClearControl ? (
-          <button type="button" onClick={clearedDraft ? onRestoreText : onClearText} disabled={submitting} className="sh-tap absolute right-3 top-3 z-20 inline-flex h-8 w-8 items-center justify-center rounded-full border shadow-sm transition active:scale-[0.96] disabled:opacity-50" style={{ backgroundColor: "rgba(255,255,255,0.96)", borderColor: T.border, color: T.navy }} aria-label={clearedDraft ? "Undo cleared text" : "Clear text"} title={clearedDraft ? "Undo" : "Clear text"}>
-            {clearedDraft ? <Undo2 size={16} strokeWidth={2.7} /> : <X size={16} strokeWidth={2.9} />}
-          </button>
-        ) : null}
-
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: "touch", scrollPaddingBottom: "130px" }} onClick={() => editor?.commands.focus()}>
-          {editorContent}
-        </div>
-
-        {imageProcessing && !selectedImage ? (
-          <div className="mx-3 mb-3 flex items-center gap-3 rounded-[20px] border px-3.5 py-3" style={{ backgroundColor: "#F4F8FD", borderColor: T.borderSoft }}>
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: "rgba(63,95,125,0.12)", color: T.navy }}>
-              <Loader2 size={17} className="animate-spin" />
-            </span>
-            <div className="min-w-0">
-              <div className="text-sm font-extrabold" style={{ color: T.text }}>Preparing your photo</div>
-              <div className="text-xs font-medium" style={{ color: T.textSubtle }}>Please wait before publishing.</div>
-            </div>
-          </div>
-        ) : null}
-
-        {selectedImage ? (
-          <div className="mx-3 mb-3 overflow-hidden rounded-[22px] border" style={{ backgroundColor: "#EEF3F8", borderColor: T.borderSoft }}>
-            <div className="relative flex justify-center bg-[#EEF3F8]">
-              <img src={selectedImage.previewUrl} alt="Selected post preview" className="block max-h-[42vh] w-full object-cover" style={{ aspectRatio: selectedImageAspectRatio }} />
-              <button type="button" onClick={onRemoveImage} disabled={submitting || imageProcessing} className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full border shadow-sm transition active:scale-[0.98] disabled:opacity-50" style={{ backgroundColor: "rgba(255,255,255,0.94)", borderColor: T.border, color: T.navy }} aria-label="Remove selected photo" title="Remove photo">
-                <X size={16} strokeWidth={2.8} />
-              </button>
-            </div>
-          </div>
-        ) : null}
-
-        <style jsx global>{`
-          .soldierhub-mobile-compose-editor,
-          .soldierhub-mobile-compose-editor > div,
-          .soldierhub-mobile-compose-editor .ProseMirror {
-            background: #F8FAFD !important;
-            border: 0 !important;
-            border-radius: 0 !important;
-            box-shadow: none !important;
-            outline: 0 !important;
-          }
-
-          .soldierhub-mobile-compose-editor .ProseMirror {
-            min-height: 46dvh;
-            width: 100%;
-            margin: 0 !important;
-            padding: 18px 18px 110px !important;
-            color: ${T.text};
-            white-space: pre-wrap;
-            overflow-wrap: anywhere;
-            font-size: 18px;
-            line-height: 2rem;
-          }
-
-          .soldierhub-mobile-compose-editor .ProseMirror p.is-editor-empty:first-child::before {
-            content: attr(data-placeholder);
-            float: left;
-            color: #a8abb2;
-            pointer-events: none;
-            height: 0;
-          }
-        `}</style>
-      </div>
-    );
-  }
 
   if (longEditorOpen) {
     return (
