@@ -115,7 +115,10 @@ export default function useComposerFormatting({
       const editor = editorRef.current;
       if (!editor) return;
 
-      editor.focus?.({ preventScroll: true });
+      // Do not call focus before running the command. Focusing first can collapse
+      // the selected text range on mobile/desktop, which makes partial-word
+      // formatting feel broken. The TipTap adapter focuses inside runCommand
+      // while preserving the current selection.
       editor.runCommand?.(action.command);
 
       safeRequestAnimationFrame(() => {
