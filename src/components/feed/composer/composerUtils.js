@@ -34,6 +34,15 @@ const ALLOWED_EDITOR_TAGS = new Set([
   "UL",
 ]);
 
+const PARAGRAPH_LIKE_TAGS = new Set([
+  "H1",
+  "H2",
+  "H3",
+  "H4",
+  "H5",
+  "H6",
+]);
+
 export function getAnonymousDisplayName(seed) {
   const source = String(seed || "anonymous");
   let total = 0;
@@ -43,6 +52,23 @@ export function getAnonymousDisplayName(seed) {
   }
 
   return `Anonymous${String(total % 10000).padStart(4, "0")}`;
+}
+
+function styleIncludesBold(styleText = "") {
+  const style = String(styleText).toLowerCase();
+  if (style.includes("font-weight:bold") || style.includes("font-weight: bold")) return true;
+
+  const weightMatch = style.match(/font-weight\s*:\s*(\d+)/i);
+  return weightMatch ? Number(weightMatch[1]) >= 600 : false;
+}
+
+function styleIncludesItalic(styleText = "") {
+  const style = String(styleText).toLowerCase();
+  return style.includes("font-style:italic") || style.includes("font-style: italic");
+}
+
+function appendChildren(sourceNode, targetNode, cleanNode) {
+  Array.from(sourceNode.childNodes).forEach((child) => cleanNode(child, targetNode));
 }
 
 export function sanitizeComposerHtml(html = "") {
@@ -67,17 +93,65 @@ export function sanitizeComposerHtml(html = "") {
     if (node.nodeType !== Node.ELEMENT_NODE) return;
 
     const tagName = node.tagName?.toUpperCase();
+    const rawStyle = node.getAttribute?.("style") || "";
+    const shouldForceBold = styleIncludesBold(rawStyle);
+    const shouldForceItalic = styleIncludesItalic(rawStyle);
 
+    // Google Docs, Word, Gmail, Apple Notes, and many mobile apps often paste
+    // formatting as spans with inline styles. Convert only safe style signals
+    // into clean SoldierHub markup; discard fonts, colors, sizes, classes, etc.
     if (!ALLOWED_EDITOR_TAGS.has(tagName)) {
-      Array.from(node.childNodes).forEach((child) => cleanNode(child, parent));
+      if (PARAGRAPH_LIKE_TAGS.has(tagName)) {
+        const paragraph = outputDoc.createElement("p");
+        appendChildren(node, paragraph, cleanNode);
+        parent.appendChild(paragraph);
+        return;
+      }
+
+      if (shouldForceBold || shouldForceItalic) {
+        let wrapper = null;
+        let currentParent = parent;
+
+        if (shouldForceBold) {
+          wrapper = outputDoc.createElement("strong");
+          currentParent.appendChild(wrapper);
+          currentParent = wrapper;
+        }
+
+        if (shouldForceItalic) {
+          const em = outputDoc.createElement("em");
+          currentParent.appendChild(em);
+          currentParent = em;
+        }
+
+        appendChildren(node, currentParent, cleanNode);
+        return;
+      }
+
+      appendChildren(node, parent, cleanNode);
       return;
     }
 
     const normalizedTag =
       tagName === "B" ? "strong" : tagName === "I" ? "em" : tagName.toLowerCase();
     const nextElement = outputDoc.createElement(normalizedTag);
-    Array.from(node.childNodes).forEach((child) => cleanNode(child, nextElement));
-    parent.appendChild(nextElement);
+    appendChildren(node, nextElement, cleanNode);
+
+    let finalElement = nextElement;
+
+    if (shouldForceBold && normalizedTag !== "strong") {
+      const strong = outputDoc.createElement("strong");
+      strong.appendChild(finalElement);
+      finalElement = strong;
+    }
+
+    if (shouldForceItalic && normalizedTag !== "em") {
+      const em = outputDoc.createElement("em");
+      em.appendChild(finalElement);
+      finalElement = em;
+    }
+
+    parent.appendChild(finalElement);
   };
 
   Array.from(sourceRoot?.childNodes || []).forEach((child) => cleanNode(child, outputRoot));
