@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CloudSun, Clock3, MapPin, Shirt } from "lucide-react";
+import { ChevronDown, CloudSun, Clock3, MapPin, Shirt } from "lucide-react";
 import { T } from "@/lib/theme";
 
 const WEATHER_CACHE_KEY = "soldierhub_fort_bliss_weather_v21";
@@ -139,6 +139,7 @@ export default function MobileWeatherStrip() {
   const [now, setNow] = useState(null);
   const [weather, setWeather] = useState(null);
   const [status, setStatus] = useState("loading");
+  const [ptOpen, setPtOpen] = useState(false);
 
   useEffect(() => {
     const updateTime = () => setNow(new Date());
@@ -221,124 +222,124 @@ export default function MobileWeatherStrip() {
   const recommendations = Array.isArray(ptUniform.recommendations) ? recommendationsFromGuidance(ptUniform.recommendations) : [];
 
   return (
-    <div
-      className="rounded-[24px] border p-4 shadow-sm"
+    <section
+      className="rounded-[16px] border px-3 py-2.5 shadow-sm"
       style={{
-        backgroundColor: "rgba(255,255,255,0.96)",
+        backgroundColor: "rgba(255,255,255,0.97)",
         borderColor: "rgba(198,214,233,0.9)",
-        boxShadow: "0 12px 28px rgba(11,28,44,0.055)",
+        boxShadow: "0 8px 18px rgba(11,28,44,0.045)",
       }}
+      aria-label="Fort Bliss weather and PT uniform"
     >
-      <div className="mb-3 h-1 overflow-hidden rounded-full bg-[#DDE8F3]">
-        <div className="h-full w-[36%] rounded-full bg-[#B31942]" />
-      </div>
-
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-2.5">
         <div
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border"
+          className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border"
           style={{ backgroundColor: "#EEF5FD", borderColor: "#C9D9EE" }}
         >
-          <CloudSun size={19} style={{ color: T.blue }} strokeWidth={2.25} />
+          <CloudSun size={17} style={{ color: T.blue }} strokeWidth={2.35} />
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-lg font-extrabold leading-none tracking-[-0.03em]" style={{ color: T.navy }}>
+          <div className="flex min-w-0 items-center gap-1.5">
+            <h2 className="truncate text-[15px] font-extrabold leading-5 tracking-[-0.025em]" style={{ color: T.navy }}>
               Fort Bliss
-            </span>
-            <span className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-bold" style={{ backgroundColor: "#F4F7FB", color: T.textSubtle }}>
-              <MapPin size={12} /> El Paso, TX
+            </h2>
+            <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-bold" style={{ color: T.textSubtle }}>
+              <MapPin size={11} /> El Paso, TX
             </span>
           </div>
 
-          <div className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs" style={{ color: T.text }}>
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[12px] leading-4" style={{ color: T.text }}>
             <span className="inline-flex items-center gap-1 font-bold tabular-nums">
-              <Clock3 size={12} /> {time}
+              <Clock3 size={11} /> {time}
             </span>
             <span style={{ color: T.textSubtle }}>•</span>
             <span className="font-extrabold">{tempText}</span>
             {conditionText ? (
               <>
                 <span style={{ color: T.textSubtle }}>•</span>
-                <span className="font-medium">{conditionText}</span>
+                <span className="max-w-[9rem] truncate font-semibold">{conditionText}</span>
               </>
             ) : null}
           </div>
 
-          <div className="mt-1 text-[11px] leading-5" style={{ color: T.textMuted }}>
-            {date} · {checkedLabel}
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10.5px] leading-4" style={{ color: T.textMuted }}>
+            <span>{date}</span>
+            <span>·</span>
+            <span>{checkedLabel}</span>
+            <span>·</span>
+            <a
+              href="https://www.weather.gov/epz/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-bold underline underline-offset-2"
+              style={{ color: T.blue }}
+            >
+              NWS
+            </a>
           </div>
         </div>
       </div>
 
-      <div className="mt-3 text-[11px] leading-5" style={{ color: T.textMuted }}>
-        Powered by{" "}
-        <a
-          href="https://www.weather.gov/epz/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="font-bold underline underline-offset-2"
-          style={{ color: T.blue }}
-        >
-          National Weather Service
-        </a>
-      </div>
-
-      <div
-        className="mt-4 rounded-[22px] border p-3"
+      <button
+        type="button"
+        onClick={() => setPtOpen((value) => !value)}
+        className="mt-2 flex w-full items-center justify-between gap-2 rounded-[13px] border px-2.5 py-2 text-left transition active:scale-[0.99]"
         style={{
-          backgroundColor: "#F7FAFE",
-          borderColor: "rgba(198,214,233,0.9)",
+          backgroundColor: ptOpen ? "#F7FAFE" : "#FAFCFF",
+          borderColor: "rgba(210,224,240,0.95)",
         }}
+        aria-expanded={ptOpen}
       >
-        <div className="flex items-start gap-3">
-          <div
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border bg-white"
+        <span className="flex min-w-0 items-center gap-2">
+          <span
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border bg-white"
             style={{ borderColor: "#D4E1F1" }}
           >
-            <Shirt size={17} style={{ color: T.navy }} strokeWidth={2.35} />
-          </div>
-
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center justify-between gap-2">
-              <div className="text-[10px] font-extrabold uppercase tracking-[0.14em]" style={{ color: T.blue }}>
-                Current PT Uniform
-              </div>
-              <span className="rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-[0.08em]" style={{ backgroundColor: "rgba(179,25,66,0.09)", color: "#B31942" }}>
-                Now
-              </span>
-            </div>
-
-            <div className="mt-1 text-[22px] font-extrabold leading-tight tracking-[-0.04em]" style={{ color: T.navy }}>
+            <Shirt size={15} style={{ color: T.navy }} strokeWidth={2.35} />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-[10px] font-extrabold uppercase tracking-[0.12em]" style={{ color: T.blue }}>
+              PT Uniform
+            </span>
+            <span className="block truncate text-[13px] font-extrabold leading-4" style={{ color: T.navy }}>
               {ptUniform.title}
-            </div>
-            <div className="mt-0.5 text-sm font-semibold leading-snug" style={{ color: T.text }}>
-              {ptUniform.detail}
-            </div>
-          </div>
-        </div>
+            </span>
+          </span>
+        </span>
 
-        {recommendations.length > 0 ? (
-          <div className="mt-3 rounded-2xl border bg-white px-3 py-2.5" style={{ borderColor: "#DCE7F4" }}>
-            <div className="text-[10px] font-extrabold uppercase tracking-[0.14em]" style={{ color: T.textSubtle }}>
-              Note
-            </div>
-            <div className="mt-1 text-sm leading-snug" style={{ color: T.text }}>
-              <span className="font-bold" style={{ color: T.navy }}>
+        <ChevronDown
+          size={17}
+          className="shrink-0 transition-transform duration-200"
+          style={{ color: T.textSubtle, transform: ptOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+          strokeWidth={2.5}
+        />
+      </button>
+
+      {ptOpen ? (
+        <div
+          className="mt-2 rounded-[13px] border px-3 py-2 text-sm leading-snug"
+          style={{ backgroundColor: "#F7FAFE", borderColor: "rgba(210,224,240,0.95)", color: T.text }}
+        >
+          <div className="font-semibold">{ptUniform.detail}</div>
+
+          {recommendations.length > 0 ? (
+            <div className="mt-2 rounded-xl border bg-white px-2.5 py-2 text-[12px] leading-snug" style={{ borderColor: "#DCE7F4" }}>
+              <span className="font-extrabold" style={{ color: T.navy }}>
                 {recommendations[0].label}:
               </span>{" "}
               {recommendations[0].title}
             </div>
-          </div>
-        ) : null}
-      </div>
+          ) : null}
 
-      {status === "error" && !weather ? (
-        <div className="mt-2 text-xs" style={{ color: T.textSubtle }}>
-          Weather could not load right now. Time is still shown.
+          {status === "error" && !weather ? (
+            <div className="mt-2 text-xs" style={{ color: T.textSubtle }}>
+              Weather could not load right now. Time is still shown.
+            </div>
+          ) : null}
         </div>
       ) : null}
-    </div>
+    </section>
   );
 }
 
