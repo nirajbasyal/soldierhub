@@ -59,12 +59,6 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   const anonymousNoticeTimeoutRef = useRef(null);
 
   const canPublish = useMemo(() => plainText.trim().length > 0, [plainText]);
-  const canPublishWithImage = useMemo(() => plainText.trim().length > 0 || Boolean(selectedImageRefForMemoFallback()), [plainText]);
-
-  function selectedImageRefForMemoFallback() {
-    return selectedImageRef?.current || null;
-  }
-
   const syncFormatState = () => setActiveFormats(editorRef.current?.getActiveFormats?.() || {});
 
   const focusComposerField = () => {
