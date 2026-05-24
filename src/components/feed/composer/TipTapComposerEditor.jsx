@@ -90,6 +90,21 @@ export default function TipTapComposerEditor({
     });
   };
 
+  const shouldOpenWritingModeFromEvent = (event) => {
+    if (!pageMode || !phoneScreen || submitting) return false;
+    const target = event?.target;
+    if (!(target instanceof Element)) return false;
+    return Boolean(target.closest(".soldierhub-normal-editor .ProseMirror"));
+  };
+
+  const handleNormalEditorPointerDown = (event) => {
+    if (shouldOpenWritingModeFromEvent(event)) openWritingMode();
+  };
+
+  const handleNormalEditorClick = (event) => {
+    if (shouldOpenWritingModeFromEvent(event)) openWritingMode();
+  };
+
   const closeWritingMode = () => {
     suppressWritingModeUntilRef.current = Date.now() + 450;
     setWritingModeOpen(false);
@@ -306,7 +321,7 @@ export default function TipTapComposerEditor({
   }
 
   return (
-    <div className="soldierhub-normal-editor relative overflow-hidden px-1 py-2 md:px-1.5 md:py-2.5" style={{ backgroundColor: "transparent" }} onPointerDownCapture={() => { if (pageMode && phoneScreen) openWritingMode(); }} onClick={() => { if (pageMode && phoneScreen) openWritingMode(); }}>
+    <div className="soldierhub-normal-editor relative overflow-hidden px-1 py-2 md:px-1.5 md:py-2.5" style={{ backgroundColor: "transparent" }} onPointerDownCapture={handleNormalEditorPointerDown} onClick={handleNormalEditorClick}>
       {editorContent}
 
       {imageProcessing && !selectedImage ? (
