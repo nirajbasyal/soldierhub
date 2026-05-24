@@ -49,6 +49,7 @@ export default function TipTapComposerEditor({
   const closeTimerRef = useRef(null);
   const focusTimerRef = useRef(null);
   const lastSelectionRef = useRef(null);
+  const manualInlineFormatsRef = useRef({ bold: false, italic: false });
 
   const extensions = useMemo(
     () => [
@@ -74,8 +75,27 @@ export default function TipTapComposerEditor({
     lastSelectionRef.current = { from: selection.from, to: selection.to };
   };
 
+  const applyManualStoredMarks = (tiptap) => {
+    if (!tiptap || !tiptap.state || !tiptap.view) return;
+    const marks = [];
+    const { bold, italic } = manualInlineFormatsRef.current || {};
+    if (bold && tiptap.state.schema.marks.bold) marks.push(tiptap.state.schema.marks.bold.create());
+    if (italic && tiptap.state.schema.marks.italic) marks.push(tiptap.state.schema.marks.italic.create());
+    tiptap.view.dispatch(tiptap.state.tr.setStoredMarks(marks));
+  };
+
+  const getDisplayFormats = (tiptap) => {
+    const manual = manualInlineFormatsRef.current || {};
+    return {
+      bold: Boolean(manual.bold),
+      italic: Boolean(manual.italic),
+      bullet: Boolean(tiptap?.isActive("bulletList")),
+      number: Boolean(tiptap?.isActive("orderedList")),
+    };
+  };
+
   const syncFormats = (tiptap) => {
-    const nextFormats = getActiveFormats(tiptap);
+    const nextFormats = getDisplayFormats(tiptap);
     setActiveFormats((currentFormats) => {
       const unchanged =
         currentFormats.bold === nextFormats.bold &&
@@ -108,6 +128,7 @@ export default function TipTapComposerEditor({
       focusTimerRef.current = window.setTimeout(() => {
         editorInstanceRef.current?.chain().focus("end", { scrollIntoView: false }).run();
         rememberSelection(editorInstanceRef.current);
+        applyManualStoredMarks(editorInstanceRef.current);
         syncFormats(editorInstanceRef.current);
         focusTimerRef.current = null;
       }, 90);
@@ -179,6 +200,7 @@ export default function TipTapComposerEditor({
 
         window.requestAnimationFrame?.(() => {
           rememberSelection(tiptap);
+          applyManualStoredMarks(tiptap);
           syncContent(tiptap);
           syncFormats(tiptap);
         });
@@ -200,6 +222,7 @@ export default function TipTapComposerEditor({
     },
     onUpdate({ editor: tiptap }) {
       rememberSelection(tiptap);
+      applyManualStoredMarks(tiptap);
       syncContent(tiptap);
     },
     onSelectionUpdate({ editor: tiptap }) {
@@ -208,6 +231,7 @@ export default function TipTapComposerEditor({
     },
     onFocus({ editor: tiptap }) {
       rememberSelection(tiptap);
+      applyManualStoredMarks(tiptap);
       syncFormats(tiptap);
     },
     onBlur({ editor: tiptap }) {
@@ -313,10 +337,10 @@ export default function TipTapComposerEditor({
       style: {},
       querySelector: (selector) => editor?.view?.dom?.querySelector?.(selector) || null,
       hasStructuredContent: () => hasStructuredContent(editor),
-      getActiveFormats: () => getActiveFormats(editor),
+      getActiveFormats: () => getDisplayFormats(editor),
       getHTML: () => (editor ? sanitizeComposerHtml(editor.getHTML()) : ""),
       getText: () => editor?.getText("\n") || "",
-      runCommand: (command) => runCommand(editor, syncFormats, command, lastSelectionRef.current),
+      runCommand: (command) => runCommand(editor, syncFormats, command, lastSelectionRef.current, manualInlineFormatsRef, applyManualStoredMarks),
       blur: () => editor?.commands.blur(),
     }),
     [editor, openWritingMode]
@@ -332,7 +356,7 @@ export default function TipTapComposerEditor({
   const handleFormatPointerDown = (event, command) => {
     event.preventDefault();
     event.stopPropagation();
-    runCommand(editor, syncFormats, command, lastSelectionRef.current);
+    runCommand(editor, syncFormats, command, lastSelectionRef.current, manualInlineFormatsRef, applyManualStoredMarks);
   };
 
   const handleFormatClick = (event) => {
@@ -344,7 +368,7 @@ export default function TipTapComposerEditor({
     if (event.key !== "Enter" && event.key !== " ") return;
     event.preventDefault();
     event.stopPropagation();
-    runCommand(editor, syncFormats, command, lastSelectionRef.current);
+    runCommand(editor, syncFormats, command, lastSelectionRef.current, manualInlineFormatsRef, applyManualStoredMarks);
   };
 
   const editorContent = <EditorContent editor={editor} />;
@@ -458,7 +482,7 @@ export default function TipTapComposerEditor({
   );
 }
 
-function runCommand(editor, syncFormats, command, savedSelection) {
+function runCommand(editor, syncFormats, command, savedSelection, manualInlineFormatsRef, applyManualStoredMarks) {
   if (!editor) return;
 
   const docSize = editor.state.doc.content.size;
@@ -468,21 +492,30 @@ function runCommand(editor, syncFormats, command, savedSelection) {
   editor.commands.focus(undefined, { scrollIntoView: false });
   editor.commands.setTextSelection({ from, to });
 
-  if (command === "bold") editor.commands.toggleBold();
-  if (command === "italic") editor.commands.toggleItalic();
+  if (command === "bold") {
+    const nextBold = !Boolean(manualInlineFormatsRef.current.bold);
+    manualInlineFormatsRef.current = { ...manualInlineFormatsRef.current, bold: nextBold };
+    if (from !== to) {
+      if (nextBold) editor.commands.setBold();
+      else editor.commands.unsetBold();
+    }
+    applyManualStoredMarks?.(editor);
+  }
+
+  if (command === "italic") {
+    const nextItalic = !Boolean(manualInlineFormatsRef.current.italic);
+    manualInlineFormatsRef.current = { ...manualInlineFormatsRef.current, italic: nextItalic };
+    if (from !== to) {
+      if (nextItalic) editor.commands.setItalic();
+      else editor.commands.unsetItalic();
+    }
+    applyManualStoredMarks?.(editor);
+  }
+
   if (command === "insertUnorderedList") editor.commands.toggleBulletList();
   if (command === "insertOrderedList") editor.commands.toggleOrderedList();
 
   window.requestAnimationFrame?.(() => syncFormats?.(editor));
-}
-
-function getActiveFormats(editor) {
-  return {
-    bold: Boolean(editor?.isActive("bold")),
-    italic: Boolean(editor?.isActive("italic")),
-    bullet: Boolean(editor?.isActive("bulletList")),
-    number: Boolean(editor?.isActive("orderedList")),
-  };
 }
 
 function hasStructuredContent(editor) {
