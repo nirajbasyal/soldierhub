@@ -285,64 +285,70 @@ export default function MobileWeatherStrip() {
         </div>
       </div>
 
-      <button
-        type="button"
-        onClick={() => setPtOpen((value) => !value)}
-        className="mt-2 flex w-full items-center justify-between gap-2 rounded-[13px] border px-2.5 py-2 text-left transition active:scale-[0.99]"
+      <div
+        className="mt-2 overflow-hidden rounded-[13px] border transition-colors"
         style={{
           backgroundColor: ptOpen ? "#F7FAFE" : "#FAFCFF",
           borderColor: "rgba(210,224,240,0.95)",
         }}
-        aria-expanded={ptOpen}
       >
-        <span className="flex min-w-0 items-center gap-2">
-          <span
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border bg-white"
-            style={{ borderColor: "#D4E1F1" }}
-          >
-            <Shirt size={15} style={{ color: T.navy }} strokeWidth={2.35} />
-          </span>
-          <span className="min-w-0">
-            <span className="block text-[10px] font-extrabold uppercase tracking-[0.12em]" style={{ color: T.blue }}>
-              PT Uniform
-            </span>
-            <span className="block truncate text-[13px] font-extrabold leading-4" style={{ color: T.navy }}>
-              {ptUniform.title}
-            </span>
-          </span>
-        </span>
-
-        <ChevronDown
-          size={17}
-          className="shrink-0 transition-transform duration-200"
-          style={{ color: T.textSubtle, transform: ptOpen ? "rotate(180deg)" : "rotate(0deg)" }}
-          strokeWidth={2.5}
-        />
-      </button>
-
-      {ptOpen ? (
-        <div
-          className="mt-2 rounded-[13px] border px-3 py-2 text-sm leading-snug"
-          style={{ backgroundColor: "#F7FAFE", borderColor: "rgba(210,224,240,0.95)", color: T.text }}
+        <button
+          type="button"
+          onClick={() => setPtOpen((value) => !value)}
+          className="flex w-full items-center justify-between gap-2 px-2.5 py-2 text-left transition active:scale-[0.99]"
+          aria-expanded={ptOpen}
         >
-          <div className="font-semibold">{ptUniform.detail}</div>
+          <span className="flex min-w-0 items-center gap-2">
+            <span
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border bg-white"
+              style={{ borderColor: "#D4E1F1" }}
+            >
+              <Shirt size={15} style={{ color: T.navy }} strokeWidth={2.35} />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-[10px] font-extrabold uppercase tracking-[0.12em]" style={{ color: T.blue }}>
+                PT Uniform
+              </span>
+              <span className="block truncate text-[13px] font-extrabold leading-4" style={{ color: T.navy }}>
+                {ptUniform.title}
+              </span>
+            </span>
+          </span>
 
-          {recommendations.length > 0 ? (
-            <div className="mt-2 rounded-xl border bg-white px-2.5 py-2 text-[12px] leading-snug" style={{ borderColor: "#DCE7F4" }}>
-              <span className="font-extrabold" style={{ color: T.navy }}>
-                {recommendations[0].label}:
-              </span>{" "}
-              {recommendations[0].title}
-            </div>
-          ) : null}
+          <ChevronDown
+            size={17}
+            className="shrink-0 transition-transform duration-200"
+            style={{ color: T.textSubtle, transform: ptOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+            strokeWidth={2.5}
+          />
+        </button>
 
-          {status === "error" && !weather ? (
-            <div className="mt-2 text-xs" style={{ color: T.textSubtle }}>
-              Weather could not load right now. Time is still shown.
+        {ptOpen ? (
+          <div
+            className="border-t px-3 pb-3 pt-2 text-[13px] leading-snug"
+            style={{ borderColor: "rgba(210,224,240,0.95)", color: T.text }}
+          >
+            <div className="font-semibold" style={{ color: T.navy }}>
+              {ptUniform.detail}
             </div>
-          ) : null}
-        </div>
-      ) : null}
+
+            {recommendations.length > 0 ? (
+              <div className="mt-2 rounded-xl border bg-white px-2.5 py-2 text-[12px] leading-snug" style={{ borderColor: "#DCE7F4" }}>
+                <span className="font-extrabold" style={{ color: T.navy }}>
+                  {recommendations[0].type === "colder" ? "If colder" : "If warmer"}:
+                </span>{" "}
+                {recommendations[0].label} — {recommendations[0].title}
+              </div>
+            ) : null}
+
+            {status === "error" && !weather ? (
+              <div className="mt-2 text-xs" style={{ color: T.textSubtle }}>
+                Weather could not load right now. Time is still shown.
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
     </section>
   );
 }
