@@ -34,6 +34,7 @@ export default function TipTapComposerEditor({
   const [viewport, setViewport] = useState({ height: null, top: 0 });
   const [activeFormats, setActiveFormats] = useState({});
   const suppressLongEditorUntilRef = useRef(0);
+  const editorInstanceRef = useRef(null);
 
   const extensions = useMemo(
     () => [
@@ -59,13 +60,17 @@ export default function TipTapComposerEditor({
     onFormatChange?.(nextFormats);
   };
 
-  const maybeOpenLongEditor = () => {
+  const openLongEditor = () => {
     if (!pageMode || !phoneScreen || longEditorOpen || submitting) return;
     if (Date.now() < suppressLongEditorUntilRef.current) return;
 
     setViewport(getViewportSnapshot());
     setLongEditorOpen(true);
-    window.requestAnimationFrame?.(() => editor?.chain().focus("end").run());
+
+    window.requestAnimationFrame?.(() => {
+      editorInstanceRef.current?.chain().focus("end", { scrollIntoView: false }).run();
+      syncFormats(editorInstanceRef.current);
+    });
   };
 
   const editor = useEditor({
@@ -87,15 +92,16 @@ export default function TipTapComposerEditor({
         return String(text || "");
       },
       handleFocus: () => {
-        maybeOpenLongEditor();
+        openLongEditor();
         return false;
       },
       handleClick: () => {
-        maybeOpenLongEditor();
+        openLongEditor();
         return false;
       },
     },
     onCreate({ editor: tiptap }) {
+      editorInstanceRef.current = tiptap;
       syncFormats(tiptap);
     },
     onUpdate({ editor: tiptap }) {
@@ -112,8 +118,12 @@ export default function TipTapComposerEditor({
     },
   });
 
+  useEffect(() => {
+    editorInstanceRef.current = editor;
+  }, [editor]);
+
   const closeLongEditor = () => {
-    suppressLongEditorUntilRef.current = Date.now() + 900;
+    suppressLongEditorUntilRef.current = Date.now() + 700;
     setLongEditorOpen(false);
     editor?.commands.blur();
   };
@@ -190,7 +200,8 @@ export default function TipTapComposerEditor({
     editorRef,
     () => ({
       focus: () => editor?.commands.focus(),
-      focusEnd: () => editor?.chain().focus("end").run(),
+      focusEnd: () => editor?.chain().focus("end", { scrollIntoView: false }).run(),
+      openLongEditor,
       get innerHTML() {
         return editor ? sanitizeComposerHtml(editor.getHTML()) : "";
       },
@@ -212,13 +223,13 @@ export default function TipTapComposerEditor({
       hasStructuredContent: () => hasStructuredContent(editor),
       getActiveFormats: () => getActiveFormats(editor),
       clearList: () => {
-        if (editor?.isActive("bulletList")) editor.chain().focus().toggleBulletList().run();
-        if (editor?.isActive("orderedList")) editor.chain().focus().toggleOrderedList().run();
+        if (editor?.isActive("bulletList")) editor.chain().focus(null, { scrollIntoView: false }).toggleBulletList().run();
+        if (editor?.isActive("orderedList")) editor.chain().focus(null, { scrollIntoView: false }).toggleOrderedList().run();
       },
       runCommand: (command) => runCommand(editor, command),
       blur: () => editor?.commands.blur(),
     }),
-    [editor]
+    [editor, openLongEditor]
   );
 
   useEffect(() => {
@@ -278,7 +289,7 @@ export default function TipTapComposerEditor({
         <div
           className="soldierhub-long-editor min-h-0 flex-1 overflow-y-auto overscroll-contain"
           style={{ backgroundColor: "#F8FAFD", WebkitOverflowScrolling: "touch", scrollPaddingBottom: "96px" }}
-          onClick={() => editor?.commands.focus()}
+          onClick={() => editor?.chain().focus("end", { scrollIntoView: false }).run()}
         >
           {editorContent}
         </div>
@@ -328,7 +339,16 @@ export default function TipTapComposerEditor({
   }
 
   return (
-    <div className="soldierhub-normal-editor relative overflow-hidden px-1 py-2 md:px-1.5 md:py-2.5" style={{ backgroundColor: "transparent" }}>
+    <div
+      className="soldierhub-normal-editor relative overflow-hidden px-1 py-2 md:px-1.5 md:py-2.5"
+      style={{ backgroundColor: "transparent" }}
+      onPointerDownCapture={() => {
+        if (pageMode && phoneScreen) openLongEditor();
+      }}
+      onClick={() => {
+        if (pageMode && phoneScreen) openLongEditor();
+      }}
+    >
       {editorContent}
 
       {imageProcessing && !selectedImage ? (
