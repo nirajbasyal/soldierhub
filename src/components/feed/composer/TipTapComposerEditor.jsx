@@ -11,11 +11,6 @@ import { EDITOR_CLASSNAME, FORMAT_ACTIONS, sanitizeComposerHtml } from "./compos
 const LONG_EDITOR_TRIGGER_CHARS = 260;
 const LONG_EDITOR_TRIGGER_ROWS = 7;
 
-function isPhoneWidth() {
-  if (typeof window === "undefined") return false;
-  return window.matchMedia?.("(max-width: 640px)")?.matches ?? window.innerWidth <= 640;
-}
-
 function getViewportSnapshot() {
   if (typeof window === "undefined") return { height: 720, top: 0 };
   const viewport = window.visualViewport;
@@ -270,7 +265,7 @@ export default function TipTapComposerEditor({
         {!longEditorOpen ? editorContent : null}
 
         {longEditorOpen ? (
-          <div className="min-h-[170px] rounded-[20px] border px-4 py-5 text-[15px] font-semibold" style={{ backgroundColor: "#FFFFFF", borderColor: T.borderSoft, color: T.textSubtle }}>
+          <div className="min-h-[170px] px-1 py-5 text-[15px] font-semibold" style={{ color: T.textSubtle }}>
             Continue writing in the expanded editor.
           </div>
         ) : null}
@@ -301,7 +296,18 @@ export default function TipTapComposerEditor({
         <style jsx global>{`
           .ProseMirror { color: ${T.text}; border: none; box-shadow: none; outline: none; white-space: pre-wrap; overflow-wrap: anywhere; }
           .ProseMirror p.is-editor-empty:first-child::before { content: attr(data-placeholder); float: left; color: #a8abb2; pointer-events: none; height: 0; }
-          .soldierhub-long-editor .ProseMirror { min-height: 100%; padding-bottom: 48px; padding-right: 1.75rem; font-size: 18px; line-height: 2rem; }
+          .soldierhub-long-editor .ProseMirror {
+            min-height: 100%;
+            width: 100%;
+            padding: 18px 18px calc(env(safe-area-inset-bottom) + 96px);
+            border-radius: 0 !important;
+            background: transparent !important;
+            font-size: 18px;
+            line-height: 2rem;
+          }
+          .soldierhub-long-editor .ProseMirror:focus {
+            outline: none;
+          }
         `}</style>
       </div>
 
@@ -349,7 +355,15 @@ export default function TipTapComposerEditor({
             </div>
           </div>
 
-          <div className="soldierhub-long-editor relative min-h-0 flex-1 overflow-y-auto overscroll-contain px-3.5 py-3" style={{ backgroundColor: "#F8FAFD", WebkitOverflowScrolling: "touch", paddingBottom: "calc(env(safe-area-inset-bottom) + 44px)", scrollPaddingBottom: "44px" }}>
+          <div
+            className="soldierhub-long-editor relative min-h-0 flex-1 overflow-y-auto overscroll-contain"
+            style={{
+              backgroundColor: "#F8FAFD",
+              WebkitOverflowScrolling: "touch",
+              scrollPaddingBottom: "96px",
+            }}
+            onClick={() => editor?.chain().focus().run()}
+          >
             {editorContent}
           </div>
         </div>
