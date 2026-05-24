@@ -4,7 +4,7 @@ import { useEffect, useImperativeHandle, useMemo, useRef, useState } from "react
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
-import { Loader2, Undo2, X } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 import { T } from "@/lib/theme";
 import { EDITOR_CLASSNAME, FORMAT_ACTIONS, sanitizeComposerHtml } from "./composerUtils";
 
@@ -20,20 +20,15 @@ function getViewportSnapshot() {
 export default function TipTapComposerEditor({
   editorRef,
   body,
-  plainText,
   selectedImage,
   imageProcessing,
   submitting,
-  clearedDraft,
   pageMode = false,
-  onClearText,
-  onRestoreText,
   onRemoveImage,
   onChange,
   onFormatChange,
 }) {
   const selectedImageAspectRatio = selectedImage?.width && selectedImage?.height ? `${selectedImage.width} / ${selectedImage.height}` : "16 / 10";
-  const showTextClearControl = Boolean(plainText?.trim()) || Boolean(clearedDraft);
   const [longEditorOpen, setLongEditorOpen] = useState(false);
   const [phoneScreen, setPhoneScreen] = useState(false);
   const [viewport, setViewport] = useState({ height: null, top: 0 });
@@ -334,12 +329,6 @@ export default function TipTapComposerEditor({
 
   return (
     <div className="soldierhub-normal-editor relative overflow-hidden px-1 py-2 md:px-1.5 md:py-2.5" style={{ backgroundColor: "transparent" }}>
-      {showTextClearControl ? (
-        <button type="button" onClick={clearedDraft ? onRestoreText : onClearText} disabled={submitting} className="sh-tap absolute right-0 top-1 z-20 inline-flex h-8 w-8 items-center justify-center rounded-full border shadow-sm transition active:scale-[0.96] disabled:opacity-50" style={{ backgroundColor: "rgba(255,255,255,0.96)", borderColor: T.border, color: T.navy }} aria-label={clearedDraft ? "Undo cleared text" : "Clear text"} title={clearedDraft ? "Undo" : "Clear text"}>
-          {clearedDraft ? <Undo2 size={16} strokeWidth={2.7} /> : <X size={16} strokeWidth={2.9} />}
-        </button>
-      ) : null}
-
       {editorContent}
 
       {imageProcessing && !selectedImage ? (
