@@ -267,12 +267,15 @@ export default function MobileWeatherStrip() {
             <span>{date}</span>
             <span>·</span>
             <span>{checkedLabel}</span>
-            <span>·</span>
+          </div>
+
+          <div className="mt-0.5 text-[10px] font-bold leading-4 tracking-[0.01em]" style={{ color: T.textMuted }}>
+            Powered by{" "}
             <a
               href="https://www.weather.gov/epz/"
               target="_blank"
               rel="noopener noreferrer"
-              className="max-w-[8.75rem] truncate whitespace-nowrap text-[9.5px] font-extrabold uppercase tracking-[0.08em] underline underline-offset-2"
+              className="font-extrabold underline underline-offset-2"
               style={{ color: T.blue }}
               aria-label="Open National Weather Service forecast"
             >
