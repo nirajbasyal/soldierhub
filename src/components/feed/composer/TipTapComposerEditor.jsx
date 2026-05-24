@@ -9,6 +9,7 @@ import { T } from "@/lib/theme";
 import { EDITOR_CLASSNAME, FORMAT_ACTIONS, sanitizeComposerHtml } from "./composerUtils";
 
 const COMPOSER_PLACEHOLDER = "Ask, share, or help the Fort Bliss community.";
+const MOBILE_TOOLBAR_HEIGHT = 117;
 
 function isEmptyEditorHtml(html = "") {
   return !String(html || "")
@@ -421,7 +422,6 @@ export default function TipTapComposerEditor({
           height: viewport.height ? `${viewport.height}px` : "100dvh",
           top: `${viewport.top || 0}px`,
           opacity: writingModeVisible ? 1 : 0,
-          transform: "translate3d(0,0,0)",
           transition: "opacity 120ms ease-out",
           willChange: "opacity",
         }}
@@ -429,7 +429,21 @@ export default function TipTapComposerEditor({
         aria-modal="true"
         aria-label="Expanded post text editor"
       >
-        <div className="absolute left-0 right-0 top-0 z-30 shadow-[0_12px_24px_rgba(15,23,42,0.05)]" style={{ backgroundColor: "rgba(248,250,253,0.98)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)" }}>
+        <div
+          className="soldierhub-writing-toolbar"
+          style={{
+            position: "fixed",
+            left: 0,
+            right: 0,
+            top: `${viewport.top || 0}px`,
+            zIndex: 9999,
+            height: `${MOBILE_TOOLBAR_HEIGHT}px`,
+            backgroundColor: "rgba(248,250,253,0.98)",
+            backdropFilter: "blur(14px)",
+            WebkitBackdropFilter: "blur(14px)",
+            boxShadow: "0 12px 24px rgba(15,23,42,0.05)",
+          }}
+        >
           <div className="flex h-[58px] items-center justify-between border-b px-4" style={{ borderColor: T.borderSoft }}>
             <div className="w-16" />
             <div className="text-[21px] font-extrabold tracking-[-0.03em]" style={{ color: T.text }}>Add Text</div>
@@ -473,11 +487,22 @@ export default function TipTapComposerEditor({
           </div>
         </div>
 
-        <div className="soldierhub-writing-editor absolute bottom-0 left-0 right-0 top-[117px] overflow-y-auto overscroll-contain" style={{ backgroundColor: "#F8FAFD", WebkitOverflowScrolling: "touch", scrollPaddingBottom: "96px" }} onClick={() => editor?.chain().focus("end", { scrollIntoView: false }).run()}>
+        <div
+          className="soldierhub-writing-editor fixed left-0 right-0 overflow-y-auto overscroll-contain"
+          style={{
+            top: `${(viewport.top || 0) + MOBILE_TOOLBAR_HEIGHT}px`,
+            height: viewport.height ? `${Math.max(240, viewport.height - MOBILE_TOOLBAR_HEIGHT)}px` : `calc(100dvh - ${MOBILE_TOOLBAR_HEIGHT}px)`,
+            backgroundColor: "#F8FAFD",
+            WebkitOverflowScrolling: "touch",
+            scrollPaddingBottom: "96px",
+          }}
+          onClick={() => editor?.chain().focus("end", { scrollIntoView: false }).run()}
+        >
           {editorContent}
         </div>
 
         <style jsx global>{`
+          .soldierhub-writing-toolbar { display: block !important; visibility: visible !important; opacity: 1 !important; pointer-events: auto !important; }
           .soldierhub-writing-editor,
           .soldierhub-writing-editor > div { min-height: 100%; width: 100%; display: flex; flex: 1 1 auto; background: #F8FAFD !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; outline: 0 !important; }
           .soldierhub-writing-editor .ProseMirror { flex: 1 1 auto; min-height: 100%; width: 100%; margin: 0 !important; padding: 20px 18px calc(env(safe-area-inset-bottom) + 110px) !important; color: ${T.text}; background: #F8FAFD !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; outline: 0 !important; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 18px; line-height: 2rem; transition: opacity 140ms ease-out 30ms; opacity: ${writingModeVisible ? 1 : 0}; transform: none; }
