@@ -270,12 +270,12 @@ export default function MobileWeatherStrip() {
           </div>
 
           <div className="mt-0.5 text-[10px] font-bold leading-4 tracking-[0.01em]" style={{ color: T.textMuted }}>
-            Powered by{" "}
+            Powered by:{" "}
             <a
               href="https://www.weather.gov/epz/"
               target="_blank"
               rel="noopener noreferrer"
-              className="font-extrabold underline underline-offset-2"
+              className="font-extrabold no-underline"
               style={{ color: T.blue }}
               aria-label="Open National Weather Service forecast"
             >
