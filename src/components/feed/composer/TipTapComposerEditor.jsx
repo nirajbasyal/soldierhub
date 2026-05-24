@@ -8,9 +8,9 @@ import { Loader2, X } from "lucide-react";
 import { T } from "@/lib/theme";
 import { EDITOR_CLASSNAME, FORMAT_ACTIONS, sanitizeComposerHtml } from "./composerUtils";
 
-const COMPOSER_PLACEHOLDER = "Ask, share, or help the Fort Bliss community.";
+const PLACEHOLDER = "Ask, share, or help the Fort Bliss community.";
 
-function isEmptyEditorHtml(html = "") {
+function isEmptyHtml(html = "") {
   return !String(html || "")
     .replace(/<p><\/p>|<p><br><\/p>|<br\s*\/?/gi, "")
     .replace(/<[^>]*>/g, "")
@@ -32,7 +32,6 @@ function hasStructuredContent(editor) {
 export default function TipTapComposerEditor({
   editorRef,
   body,
-  plainText,
   selectedImage,
   imageProcessing,
   submitting,
@@ -45,11 +44,11 @@ export default function TipTapComposerEditor({
   const [writingModeOpen, setWritingModeOpen] = useState(false);
   const [phoneScreen, setPhoneScreen] = useState(false);
   const [activeFormats, setActiveFormats] = useState({ bold: false, italic: false, bullet: false, number: false });
-  const manualInlineFormatsRef = useRef({ bold: false, italic: false });
-  const savedSelectionRef = useRef(null);
   const editorScrollRef = useRef(null);
+  const savedSelectionRef = useRef(null);
   const suppressOpenUntilRef = useRef(0);
   const phoneScreenRef = useRef(false);
+  const manualInlineFormatsRef = useRef({ bold: false, italic: false });
 
   const extensions = useMemo(
     () => [
@@ -62,7 +61,7 @@ export default function TipTapComposerEditor({
         strike: false,
       }),
       Placeholder.configure({
-        placeholder: COMPOSER_PLACEHOLDER,
+        placeholder: PLACEHOLDER,
         emptyEditorClass: "is-editor-empty",
       }),
     ],
@@ -73,10 +72,16 @@ export default function TipTapComposerEditor({
     (tiptap) => {
       const html = sanitizeComposerHtml(tiptap?.getHTML?.() || "");
       const text = tiptap?.getText?.("\n")?.replace(/\u00a0/g, " ").trim() || "";
-      onChange?.({ html: isEmptyEditorHtml(html) ? "" : html, text, structured: hasStructuredContent(tiptap) });
+      onChange?.({ html: isEmptyHtml(html) ? "" : html, text, structured: hasStructuredContent(tiptap) });
     },
     [onChange]
   );
+
+  const rememberSelection = useCallback((tiptap) => {
+    const selection = tiptap?.state?.selection;
+    if (!selection) return;
+    savedSelectionRef.current = { from: selection.from, to: selection.to };
+  }, []);
 
   const getDisplayFormats = useCallback((tiptap) => {
     return {
@@ -89,23 +94,17 @@ export default function TipTapComposerEditor({
 
   const syncFormats = useCallback(
     (tiptap) => {
-      const nextFormats = getDisplayFormats(tiptap);
+      const next = getDisplayFormats(tiptap);
       setActiveFormats((current) => {
-        const same = current.bold === nextFormats.bold && current.italic === nextFormats.italic && current.bullet === nextFormats.bullet && current.number === nextFormats.number;
-        return same ? current : nextFormats;
+        const same = current.bold === next.bold && current.italic === next.italic && current.bullet === next.bullet && current.number === next.number;
+        return same ? current : next;
       });
-      onFormatChange?.(nextFormats);
+      onFormatChange?.(next);
     },
     [getDisplayFormats, onFormatChange]
   );
 
-  const rememberSelection = useCallback((tiptap) => {
-    const selection = tiptap?.state?.selection;
-    if (!selection) return;
-    savedSelectionRef.current = { from: selection.from, to: selection.to };
-  }, []);
-
-  const applyManualStoredMarks = useCallback((tiptap) => {
+  const applyStoredMarks = useCallback((tiptap) => {
     if (!tiptap?.state || !tiptap?.view) return;
 
     const marks = [];
@@ -129,11 +128,11 @@ export default function TipTapComposerEditor({
         const position = tiptap.state.selection?.to ?? tiptap.state.doc.content.size;
         const cursor = tiptap.view.coordsAtPos(position);
         const box = scrollBox.getBoundingClientRect();
-        const safeBottom = box.bottom - 120;
+        const safeBottom = box.bottom - 130;
         const safeTop = box.top + 24;
 
-        if (cursor.bottom > safeBottom) scrollBox.scrollTop += cursor.bottom - safeBottom + 84;
-        if (cursor.top < safeTop) scrollBox.scrollTop -= safeTop - cursor.top + 24;
+        if (cursor.bottom > safeBottom) scrollBox.scrollTop += cursor.bottom - safeBottom + 92;
+        if (cursor.top < safeTop) scrollBox.scrollTop -= safeTop - cursor.top + 28;
       } catch {
         scrollBox.scrollTop = scrollBox.scrollHeight;
       }
@@ -167,32 +166,6 @@ export default function TipTapComposerEditor({
           return false;
         },
       },
-      handlePaste(view, event) {
-        const html = event?.clipboardData?.getData("text/html") || "";
-        if (!html) return false;
-
-        const cleanHtml = sanitizeComposerHtml(html);
-        if (!cleanHtml) return false;
-
-        event.preventDefault();
-        const tiptap = editor;
-        if (!tiptap) return true;
-
-        const { from, to } = tiptap.state.selection;
-        tiptap.commands.insertContentAt({ from, to }, cleanHtml, {
-          parseOptions: { preserveWhitespace: "full" },
-          updateSelection: true,
-        });
-
-        window.requestAnimationFrame?.(() => {
-          rememberSelection(tiptap);
-          emitContent(tiptap);
-          applyManualStoredMarks(tiptap);
-          syncFormats(tiptap);
-          keepCursorVisible(tiptap, true);
-        });
-        return true;
-      },
     },
     onCreate({ editor: tiptap }) {
       rememberSelection(tiptap);
@@ -200,8 +173,9 @@ export default function TipTapComposerEditor({
     },
     onUpdate({ editor: tiptap }) {
       rememberSelection(tiptap);
-      applyManualStoredMarks(tiptap);
+      applyStoredMarks(tiptap);
       emitContent(tiptap);
+      syncFormats(tiptap);
       keepCursorVisible(tiptap);
     },
     onSelectionUpdate({ editor: tiptap }) {
@@ -211,7 +185,7 @@ export default function TipTapComposerEditor({
     },
     onFocus({ editor: tiptap }) {
       rememberSelection(tiptap);
-      applyManualStoredMarks(tiptap);
+      applyStoredMarks(tiptap);
       syncFormats(tiptap);
       keepCursorVisible(tiptap, true);
     },
@@ -227,15 +201,15 @@ export default function TipTapComposerEditor({
     setWritingModeOpen(true);
     window.setTimeout(() => {
       editor?.chain().focus("end", { scrollIntoView: false }).run();
-      applyManualStoredMarks(editor);
+      applyStoredMarks(editor);
       rememberSelection(editor);
       syncFormats(editor);
       keepCursorVisible(editor, true);
-    }, 80);
-  }, [applyManualStoredMarks, editor, keepCursorVisible, pageMode, rememberSelection, submitting, syncFormats]);
+    }, 100);
+  }, [applyStoredMarks, editor, keepCursorVisible, pageMode, rememberSelection, submitting, syncFormats]);
 
   const closeWritingMode = useCallback(() => {
-    suppressOpenUntilRef.current = Date.now() + 450;
+    suppressOpenUntilRef.current = Date.now() + 500;
     emitContent(editor);
     editor?.commands.blur();
     setWritingModeOpen(false);
@@ -256,14 +230,14 @@ export default function TipTapComposerEditor({
         const nextBold = !manualInlineFormatsRef.current.bold;
         manualInlineFormatsRef.current = { ...manualInlineFormatsRef.current, bold: nextBold };
         if (from !== to) nextBold ? editor.commands.setBold() : editor.commands.unsetBold();
-        applyManualStoredMarks(editor);
+        applyStoredMarks(editor);
       }
 
       if (command === "italic") {
         const nextItalic = !manualInlineFormatsRef.current.italic;
         manualInlineFormatsRef.current = { ...manualInlineFormatsRef.current, italic: nextItalic };
         if (from !== to) nextItalic ? editor.commands.setItalic() : editor.commands.unsetItalic();
-        applyManualStoredMarks(editor);
+        applyStoredMarks(editor);
       }
 
       if (command === "insertUnorderedList") editor.commands.toggleBulletList();
@@ -273,7 +247,7 @@ export default function TipTapComposerEditor({
       syncFormats(editor);
       keepCursorVisible(editor);
     },
-    [applyManualStoredMarks, editor, keepCursorVisible, rememberSelection, submitting, syncFormats]
+    [applyStoredMarks, editor, keepCursorVisible, rememberSelection, submitting, syncFormats]
   );
 
   useEffect(() => {
@@ -305,13 +279,19 @@ export default function TipTapComposerEditor({
     const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
     const previousBodyOverflow = document.body.style.overflow;
     const previousHtmlOverflow = document.documentElement.style.overflow;
+    const previousBodyPosition = document.body.style.position;
+    const previousBodyWidth = document.body.style.width;
 
     document.documentElement.style.overflow = "hidden";
     document.body.style.overflow = "hidden";
+    document.body.style.position = "fixed";
+    document.body.style.width = "100%";
 
     return () => {
       document.documentElement.style.overflow = previousHtmlOverflow;
       document.body.style.overflow = previousBodyOverflow;
+      document.body.style.position = previousBodyPosition;
+      document.body.style.width = previousBodyWidth;
       window.scrollTo(0, scrollY);
     };
   }, [writingModeOpen]);
@@ -319,7 +299,7 @@ export default function TipTapComposerEditor({
   useEffect(() => {
     if (!writingModeOpen) return undefined;
 
-    const update = () => window.setTimeout(() => keepCursorVisible(editor, true), 60);
+    const update = () => window.setTimeout(() => keepCursorVisible(editor, true), 80);
     window.visualViewport?.addEventListener("resize", update);
     window.visualViewport?.addEventListener("scroll", update);
     window.addEventListener("resize", update);
@@ -378,9 +358,9 @@ export default function TipTapComposerEditor({
 
   if (writingModeOpen) {
     return (
-      <div className="fixed inset-0 z-[9999] flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden overscroll-none bg-[#F8FAFD] md:hidden" role="dialog" aria-modal="true" aria-label="Expanded post text editor">
-        <div className="shrink-0 border-b bg-[#F8FAFD]/95 shadow-[0_10px_24px_rgba(15,23,42,0.05)] backdrop-blur-xl" style={{ borderColor: T.borderSoft }}>
-          <div className="flex h-[58px] items-center justify-between px-4">
+      <div className="fixed inset-0 z-[2147483000] h-[100dvh] max-h-[100dvh] overflow-hidden overscroll-none bg-[#F8FAFD] md:hidden" role="dialog" aria-modal="true" aria-label="Expanded post text editor">
+        <div className="fixed left-0 right-0 top-0 z-[2147483647] border-b bg-[#F8FAFD]/98 shadow-[0_12px_28px_rgba(15,23,42,0.08)] backdrop-blur-xl" style={{ borderColor: T.borderSoft, paddingTop: "env(safe-area-inset-top)" }}>
+          <div className="flex h-[56px] items-center justify-between px-4">
             <div className="w-16" />
             <div className="text-[21px] font-extrabold tracking-[-0.03em]" style={{ color: T.text }}>Add Text</div>
             <button type="button" onClick={closeWritingMode} className="sh-tap w-16 rounded-full px-2 py-2 text-right text-[17px] font-bold transition active:scale-[0.98]" style={{ color: T.navy }}>
@@ -422,8 +402,8 @@ export default function TipTapComposerEditor({
 
         <div
           ref={editorScrollRef}
-          className="soldierhub-writing-editor min-h-0 flex-1 overflow-y-auto overscroll-contain bg-[#F8FAFD]"
-          style={{ WebkitOverflowScrolling: "touch", scrollPaddingTop: "18px", scrollPaddingBottom: "34vh" }}
+          className="soldierhub-writing-editor fixed bottom-0 left-0 right-0 overflow-y-auto overscroll-contain bg-[#F8FAFD]"
+          style={{ top: "calc(env(safe-area-inset-top) + 113px)", WebkitOverflowScrolling: "touch", scrollPaddingTop: "18px", scrollPaddingBottom: "34vh" }}
           onClick={() => {
             editor?.chain().focus("end", { scrollIntoView: false }).run();
             keepCursorVisible(editor, true);
@@ -446,6 +426,9 @@ export default function TipTapComposerEditor({
     <div
       className="soldierhub-normal-editor relative overflow-visible px-1 py-2 md:px-1.5 md:py-2.5"
       style={{ backgroundColor: "transparent" }}
+      onFocusCapture={() => {
+        if (pageMode && phoneScreen && !submitting) openWritingMode();
+      }}
       onPointerDownCapture={(event) => {
         if (!pageMode || !phoneScreen || submitting) return;
         const target = event.target;
