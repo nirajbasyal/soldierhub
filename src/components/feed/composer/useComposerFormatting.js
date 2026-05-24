@@ -38,52 +38,67 @@ export function placeCursorAtEnd(element) {
   placeCaretInElement(element);
 }
 
-function normalizeCommandState(command, active) {
-  if (typeof document === "undefined" || typeof document.queryCommandState !== "function") {
+function runEditorCommand(command, value = null) {
+  if (typeof document === "undefined" || typeof document.execCommand !== "function") return false;
+
+  try {
+    return document.execCommand(command, false, value);
+  } catch {
+    return false;
+  }
+}
+
+function readCommandState(command) {
+  if (typeof document === "undefined" || typeof document.queryCommandState !== "function") return false;
+
+  try {
+    return Boolean(document.queryCommandState(command));
+  } catch {
+    return false;
+  }
+}
+
+function forceCommandState(command, shouldBeActive) {
+  const isActive = readCommandState(command);
+  if (isActive === shouldBeActive) return;
+  runEditorCommand(command);
+}
+
+function forceExclusiveListState(activeFormats) {
+  const wantsBullet = Boolean(activeFormats?.bullet);
+  const wantsNumber = Boolean(activeFormats?.number);
+  const isBullet = readCommandState("insertUnorderedList");
+  const isNumber = readCommandState("insertOrderedList");
+
+  if (wantsBullet) {
+    if (isNumber) runEditorCommand("insertOrderedList");
+    if (!readCommandState("insertUnorderedList")) runEditorCommand("insertUnorderedList");
     return;
   }
 
-  try {
-    const current = Boolean(document.queryCommandState(command));
-    if (current !== active) {
-      document.execCommand(command, false, null);
-    }
-  } catch {
-    // Older browser editing APIs are inconsistent. Keep composer usable.
+  if (wantsNumber) {
+    if (isBullet) runEditorCommand("insertUnorderedList");
+    if (!readCommandState("insertOrderedList")) runEditorCommand("insertOrderedList");
+    return;
   }
+
+  if (isBullet) runEditorCommand("insertUnorderedList");
+  if (isNumber) runEditorCommand("insertOrderedList");
 }
 
-function normalizeBlockState(activeFormats) {
-  if (typeof document === "undefined") return;
-
-  try {
-    const inBulletList = Boolean(document.queryCommandState?.("insertUnorderedList"));
-    const inNumberList = Boolean(document.queryCommandState?.("insertOrderedList"));
-
-    if (activeFormats?.bullet && !inBulletList) {
-      document.execCommand("insertUnorderedList", false, null);
-    } else if (!activeFormats?.bullet && inBulletList) {
-      document.execCommand("insertUnorderedList", false, null);
-    }
-
-    if (activeFormats?.number && !inNumberList) {
-      document.execCommand("insertOrderedList", false, null);
-    } else if (!activeFormats?.number && inNumberList) {
-      document.execCommand("insertOrderedList", false, null);
-    }
-
-    if (!activeFormats?.bullet && !activeFormats?.number) {
-      document.execCommand("formatBlock", false, "p");
-    }
-  } catch {
-    // Keep typing available even if browser blocks the command.
-  }
+function applyControlledTypingState(activeFormats) {
+  forceCommandState("bold", Boolean(activeFormats?.bold));
+  forceCommandState("italic", Boolean(activeFormats?.italic));
+  forceExclusiveListState(activeFormats);
 }
 
-function applyActiveTypingState(activeFormats) {
-  normalizeCommandState("bold", Boolean(activeFormats?.bold));
-  normalizeCommandState("italic", Boolean(activeFormats?.italic));
-  normalizeBlockState(activeFormats);
+function normalizeFormats(nextFormats) {
+  return {
+    bold: Boolean(nextFormats?.bold),
+    italic: Boolean(nextFormats?.italic),
+    bullet: Boolean(nextFormats?.bullet),
+    number: Boolean(nextFormats?.number),
+  };
 }
 
 export default function useComposerFormatting({
@@ -102,13 +117,7 @@ export default function useComposerFormatting({
 
   const setControlledFormats = useCallback(
     (nextFormats) => {
-      const normalized = {
-        bold: Boolean(nextFormats?.bold),
-        italic: Boolean(nextFormats?.italic),
-        bullet: Boolean(nextFormats?.bullet),
-        number: Boolean(nextFormats?.number),
-      };
-
+      const normalized = normalizeFormats(nextFormats);
       if (activeFormatsRef) activeFormatsRef.current = normalized;
       setActiveFormats(normalized);
       return normalized;
@@ -131,46 +140,40 @@ export default function useComposerFormatting({
     const editor = editorRef.current;
     setStructured(hasStructuredContent(editor));
 
-    if (activeFormatsRef) {
-      setActiveFormats({
-        bold: Boolean(activeFormatsRef.current?.bold),
-        italic: Boolean(activeFormatsRef.current?.italic),
-        bullet: Boolean(activeFormatsRef.current?.bullet),
-        number: Boolean(activeFormatsRef.current?.number),
-      });
-    }
-  }, [activeFormatsRef, editorRef, setStructured]);
+    const controlled = normalizeFormats(activeFormatsRef?.current || activeFormats);
+    setActiveFormats(controlled);
+  }, [activeFormats, activeFormatsRef, editorRef, setStructured]);
 
   const applyFormatting = useCallback(
     (action) => {
       if (submittingValueRef.current) return;
       const editor = editorRef.current;
-      if (!editor || typeof document === "undefined") return;
+      if (!editor) return;
 
       editor.focus({ preventScroll: true });
 
-      const current = activeFormatsRef?.current || activeFormats;
+      const current = normalizeFormats(activeFormatsRef?.current || activeFormats);
       const nextFormats = { ...current };
 
       if (action.command === "bold") {
-        nextFormats.bold = !Boolean(current.bold);
+        nextFormats.bold = !current.bold;
       } else if (action.command === "italic") {
-        nextFormats.italic = !Boolean(current.italic);
+        nextFormats.italic = !current.italic;
       } else if (action.command === "insertUnorderedList") {
-        nextFormats.bullet = !Boolean(current.bullet);
-        if (nextFormats.bullet) {
-          nextFormats.number = false;
-        }
+        nextFormats.bullet = !current.bullet;
+        if (nextFormats.bullet) nextFormats.number = false;
       } else if (action.command === "insertOrderedList") {
-        nextFormats.number = !Boolean(current.number);
-        if (nextFormats.number) {
-          nextFormats.bullet = false;
-        }
+        nextFormats.number = !current.number;
+        if (nextFormats.number) nextFormats.bullet = false;
       }
 
       const controlled = setControlledFormats(nextFormats);
-      applyActiveTypingState(controlled);
-      safeRequestAnimationFrame(syncEditorState);
+      applyControlledTypingState(controlled);
+
+      safeRequestAnimationFrame(() => {
+        applyControlledTypingState(controlled);
+        syncEditorState();
+      });
     },
     [activeFormats, activeFormatsRef, editorRef, setControlledFormats, submittingValueRef, syncEditorState]
   );
@@ -182,7 +185,7 @@ export default function useComposerFormatting({
       if (!editor) return;
 
       editor.focus({ preventScroll: true });
-      applyActiveTypingState(activeFormatsRef?.current || activeFormats);
+      applyControlledTypingState(activeFormatsRef?.current || activeFormats);
     },
     [activeFormats, activeFormatsRef, editorRef, submittingValueRef]
   );
@@ -192,29 +195,43 @@ export default function useComposerFormatting({
       if (submittingValueRef.current) return;
 
       const editor = editorRef.current;
-      if (!editor || event.key !== "Enter") return;
+      if (!editor) return;
 
-      const current = activeFormatsRef?.current || activeFormats;
+      const current = normalizeFormats(activeFormatsRef?.current || activeFormats);
 
-      // Lists keep browser-native Enter behavior. Inline formats stay controlled
-      // only by the toolbar state selected by the user.
-      if (current.bullet || current.number) {
-        safeRequestAnimationFrame(() => {
-          editor.focus({ preventScroll: true });
-          applyActiveTypingState(current);
-          syncEditorState();
-        });
+      if ((event.ctrlKey || event.metaKey) && !event.altKey) {
+        const key = event.key.toLowerCase();
+
+        if (key === "b") {
+          event.preventDefault();
+          applyFormatting({ command: "bold" });
+          return;
+        }
+
+        if (key === "i") {
+          event.preventDefault();
+          applyFormatting({ command: "italic" });
+          return;
+        }
       }
+
+      if (event.key !== "Enter") return;
+
+      // Keep Enter predictable. Browser creates the next line/list item, then we
+      // re-apply only the toolbar state the user selected. Nothing is auto-enabled.
+      safeRequestAnimationFrame(() => {
+        editor.focus({ preventScroll: true });
+        applyControlledTypingState(current);
+        syncEditorState();
+      });
     },
-    [activeFormats, activeFormatsRef, editorRef, submittingValueRef, syncEditorState]
+    [activeFormats, activeFormatsRef, applyFormatting, editorRef, submittingValueRef, syncEditorState]
   );
 
   const handleEditorPointerDown = useCallback(() => {
     if (submittingValueRef.current) return;
-    safeRequestAnimationFrame(() => {
-      applyActiveTypingState(activeFormatsRef?.current || activeFormats);
-    });
-  }, [activeFormats, activeFormatsRef, submittingValueRef]);
+    safeRequestAnimationFrame(syncFormatState);
+  }, [submittingValueRef, syncFormatState]);
 
   return {
     activeFormats,
