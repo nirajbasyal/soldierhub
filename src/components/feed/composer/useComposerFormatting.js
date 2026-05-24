@@ -3,7 +3,7 @@
 import { useCallback, useState } from "react";
 
 export function hasStructuredContent(editor) {
-  return Boolean(editor?.querySelector?.("blockquote, ul, ol, li"));
+  return Boolean(editor?.querySelector?.("ul, ol, li"));
 }
 
 export function safeRequestAnimationFrame(callback) {
@@ -16,8 +16,7 @@ export function safeRequestAnimationFrame(callback) {
 }
 
 export function ensureQuoteExitSpace() {
-  // Intentionally empty.
-  // Formatting is now controlled only by the user's toolbar selections.
+  // Legacy no-op retained for existing composer imports.
 }
 
 export function placeCaretInElement(element) {
@@ -73,9 +72,7 @@ function normalizeBlockState(activeFormats) {
       document.execCommand("insertOrderedList", false, null);
     }
 
-    if (activeFormats?.quote) {
-      document.execCommand("formatBlock", false, "blockquote");
-    } else {
+    if (!activeFormats?.bullet && !activeFormats?.number) {
       document.execCommand("formatBlock", false, "p");
     }
   } catch {
@@ -101,7 +98,6 @@ export default function useComposerFormatting({
     italic: false,
     bullet: false,
     number: false,
-    quote: false,
   });
 
   const setControlledFormats = useCallback(
@@ -111,7 +107,6 @@ export default function useComposerFormatting({
         italic: Boolean(nextFormats?.italic),
         bullet: Boolean(nextFormats?.bullet),
         number: Boolean(nextFormats?.number),
-        quote: Boolean(nextFormats?.quote),
       };
 
       if (activeFormatsRef) activeFormatsRef.current = normalized;
@@ -126,7 +121,6 @@ export default function useComposerFormatting({
       ...(activeFormatsRef?.current || activeFormats),
       bullet: false,
       number: false,
-      quote: false,
     };
 
     setControlledFormats(nextFormats);
@@ -143,7 +137,6 @@ export default function useComposerFormatting({
         italic: Boolean(activeFormatsRef.current?.italic),
         bullet: Boolean(activeFormatsRef.current?.bullet),
         number: Boolean(activeFormatsRef.current?.number),
-        quote: Boolean(activeFormatsRef.current?.quote),
       });
     }
   }, [activeFormatsRef, editorRef, setStructured]);
@@ -167,19 +160,11 @@ export default function useComposerFormatting({
         nextFormats.bullet = !Boolean(current.bullet);
         if (nextFormats.bullet) {
           nextFormats.number = false;
-          nextFormats.quote = false;
         }
       } else if (action.command === "insertOrderedList") {
         nextFormats.number = !Boolean(current.number);
         if (nextFormats.number) {
           nextFormats.bullet = false;
-          nextFormats.quote = false;
-        }
-      } else if (action.command === "formatBlock") {
-        nextFormats.quote = !Boolean(current.quote);
-        if (nextFormats.quote) {
-          nextFormats.bullet = false;
-          nextFormats.number = false;
         }
       }
 
@@ -207,31 +192,21 @@ export default function useComposerFormatting({
       if (submittingValueRef.current) return;
 
       const editor = editorRef.current;
-      if (!editor) return;
+      if (!editor || event.key !== "Enter") return;
 
-      if (event.key === "Enter") {
-        const current = activeFormatsRef?.current || activeFormats;
+      const current = activeFormatsRef?.current || activeFormats;
 
-        // Enter should not automatically trap the user in quote/list mode.
-        // Inline formats remain only when the user keeps those toolbar buttons active.
-        const nextFormats = {
-          ...current,
-          bullet: false,
-          number: false,
-          quote: false,
-        };
-
-        if (current.bullet || current.number || current.quote) {
-          setControlledFormats(nextFormats);
-          safeRequestAnimationFrame(() => {
-            editor.focus({ preventScroll: true });
-            applyActiveTypingState(nextFormats);
-            syncEditorState();
-          });
-        }
+      // Lists keep browser-native Enter behavior. Inline formats stay controlled
+      // only by the toolbar state selected by the user.
+      if (current.bullet || current.number) {
+        safeRequestAnimationFrame(() => {
+          editor.focus({ preventScroll: true });
+          applyActiveTypingState(current);
+          syncEditorState();
+        });
       }
     },
-    [activeFormats, activeFormatsRef, editorRef, setControlledFormats, submittingValueRef, syncEditorState]
+    [activeFormats, activeFormatsRef, editorRef, submittingValueRef, syncEditorState]
   );
 
   const handleEditorPointerDown = useCallback(() => {
