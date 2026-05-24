@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Pencil, Plus, X } from "lucide-react";
+import { AlertTriangle, Info, Pencil, Plus, X } from "lucide-react";
 import { T } from "@/lib/theme";
 import { moderateAsync } from "@/lib/moderation-client";
 import { useApp } from "@/store/AppContext";
@@ -592,10 +592,6 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
         onMouseUp={syncFormatState}
       />
 
-      <p className="mt-2 text-[11px] font-medium leading-5" style={{ color: T.textSubtle }}>
-        Ask a question, share local tips, or help someone new to Fort Bliss.
-      </p>
-
       {imageNotice ? (
         <div
           className="mt-2 rounded-2xl border px-3 py-2 text-[11px] font-semibold"
@@ -615,27 +611,29 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
         </div>
       )}
 
-      <ComposerActionBar
-        pageMode={pageMode}
-        anonymous={anonymous}
-        onToggleAnonymous={toggleAnonymous}
-        selectedImage={selectedImage}
-        imageProcessing={imageProcessing}
-        onOpenImagePicker={openImagePicker}
-        canPublish={canPublishWithImage || canPublish}
-        submitting={submitting}
-        onSubmit={submit}
-        draftSaved={draftSaved}
-        draftStatus={draftStatus}
-        onSaveDraft={handleSaveDraft}
-      />
+      <div className="mt-2 md:mt-3">
+        <ComposerActionBar
+          pageMode={pageMode}
+          anonymous={anonymous}
+          onToggleAnonymous={toggleAnonymous}
+          selectedImage={selectedImage}
+          imageProcessing={imageProcessing}
+          onOpenImagePicker={openImagePicker}
+          canPublish={canPublishWithImage || canPublish}
+          submitting={submitting}
+          onSubmit={submit}
+          draftSaved={draftSaved}
+          draftStatus={draftStatus}
+          onSaveDraft={handleSaveDraft}
+        />
+      </div>
 
       {anonymous && (
         <div
           className="mt-2 flex items-start gap-2 rounded-2xl border px-3 py-2.5 text-xs font-medium"
-          style={{ backgroundColor: T.redBg, borderColor: "rgba(179, 25, 66, 0.18)", color: T.red }}
+          style={{ backgroundColor: "#F4F7FA", borderColor: T.borderSoft, color: T.textSubtle }}
         >
-          <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+          <Info size={14} className="mt-0.5 shrink-0" style={{ color: T.slate }} />
           <span>Anonymous mode hides your public name. Avoid names, unit details, phone numbers, or sensitive information.</span>
         </div>
       )}
