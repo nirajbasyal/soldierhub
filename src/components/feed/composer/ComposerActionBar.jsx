@@ -22,6 +22,7 @@ export default function ComposerActionBar({
   onSaveDraft,
 }) {
   const actionBarClassName = `${pageMode ? "sticky bottom-2 z-40 md:static" : ""} mt-3 rounded-[24px] border px-2.5 py-2 md:rounded-[20px] md:px-3 md:py-2.5`;
+  const noticeVisible = Boolean(showAnonymousNotice && anonymous);
 
   return (
     <div
@@ -32,15 +33,25 @@ export default function ComposerActionBar({
         boxShadow: pageMode ? "0 14px 30px rgba(11,28,44,0.08)" : "none",
       }}
     >
-      {showAnonymousNotice && anonymous ? (
+      <div
+        aria-hidden={!noticeVisible}
+        className="overflow-hidden transition-[max-height,opacity,transform,margin] duration-300 ease-out"
+        style={{
+          maxHeight: noticeVisible ? 96 : 0,
+          opacity: noticeVisible ? 1 : 0,
+          transform: noticeVisible ? "translateY(0) scale(1)" : "translateY(8px) scale(0.985)",
+          marginBottom: noticeVisible ? 8 : 0,
+          pointerEvents: noticeVisible ? "auto" : "none",
+        }}
+      >
         <div
-          className="mb-2 flex items-start gap-2 rounded-2xl border px-3 py-2.5 text-xs font-medium transition-opacity duration-300"
+          className="flex items-start gap-2 rounded-2xl border px-3 py-2.5 text-xs font-medium"
           style={{ backgroundColor: "#F4F7FA", borderColor: T.borderSoft, color: T.textSubtle }}
         >
           <Info size={14} className="mt-0.5 shrink-0" style={{ color: T.slate }} />
           <span>{anonymousNotice}</span>
         </div>
-      ) : null}
+      </div>
 
       <div className="grid grid-cols-[minmax(108px,1fr)_46px_minmax(96px,0.82fr)] items-center gap-2 md:flex md:items-center md:justify-between md:gap-3">
         <button
