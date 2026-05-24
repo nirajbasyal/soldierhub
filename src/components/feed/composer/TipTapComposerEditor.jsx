@@ -64,6 +64,15 @@ export default function TipTapComposerEditor({
     onFormatChange?.(nextFormats);
   };
 
+  const maybeOpenLongEditor = () => {
+    if (!pageMode || !phoneScreen || longEditorOpen || submitting) return;
+    if (Date.now() < suppressLongEditorUntilRef.current) return;
+
+    setViewport(getViewportSnapshot());
+    setLongEditorOpen(true);
+    window.requestAnimationFrame?.(() => editor?.chain().focus("end").run());
+  };
+
   const editor = useEditor({
     extensions,
     content: body || "",
@@ -108,15 +117,6 @@ export default function TipTapComposerEditor({
     },
   });
 
-  const maybeOpenLongEditor = () => {
-    if (!pageMode || !phoneScreen || longEditorOpen || submitting) return;
-    if (Date.now() < suppressLongEditorUntilRef.current) return;
-
-    setViewport(getViewportSnapshot());
-    setLongEditorOpen(true);
-    window.requestAnimationFrame?.(() => editor?.chain().focus("end").run());
-  };
-
   const closeLongEditor = () => {
     suppressLongEditorUntilRef.current = Date.now() + 900;
     setLongEditorOpen(false);
@@ -148,21 +148,6 @@ export default function TipTapComposerEditor({
     query.addListener(updatePhoneScreen);
     return () => query.removeListener(updatePhoneScreen);
   }, []);
-
-  useEffect(() => {
-    if (!pageMode || !phoneScreen || !editor || longEditorOpen || submitting) return;
-    if (Date.now() < suppressLongEditorUntilRef.current) return;
-
-    const raf = window.requestAnimationFrame?.(() => {
-      setViewport(getViewportSnapshot());
-      setLongEditorOpen(true);
-      editor.chain().focus("end").run();
-    });
-
-    return () => {
-      if (raf) window.cancelAnimationFrame?.(raf);
-    };
-  }, [editor, longEditorOpen, pageMode, phoneScreen, submitting]);
 
   useEffect(() => {
     if (!longEditorOpen) return undefined;
