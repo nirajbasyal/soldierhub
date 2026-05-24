@@ -577,6 +577,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
         imageProcessing={imageProcessing}
         submitting={submitting}
         clearedDraft={clearedDraft}
+        pageMode={pageMode}
         onClearText={clearTextWithUndo}
         onRestoreText={restoreClearedText}
         onRemoveImage={removeSelectedImage}
