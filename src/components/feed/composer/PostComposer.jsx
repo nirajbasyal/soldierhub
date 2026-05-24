@@ -35,6 +35,7 @@ const SAFETY_MESSAGE =
 const PUBLISH_SCROLL_KEY = "soldierhub_scroll_to_latest_post";
 const COMPOSE_SUBMIT_EVENT = "soldierhub-compose-submit";
 const COMPOSE_STATE_EVENT = "soldierhub-compose-state";
+const ANONYMOUS_NOTICE_MS = 4600;
 
 export default function PostComposer({ startOpen = false, pageMode = false }) {
   const router = useRouter();
@@ -45,6 +46,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   const [body, setBody] = useState("");
   const [plainText, setPlainText] = useState("");
   const [anonymous, setAnonymous] = useState(false);
+  const [showAnonymousNotice, setShowAnonymousNotice] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [isPhoneScreen, setIsPhoneScreen] = useState(false);
@@ -59,6 +61,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   const submittingValueRef = useRef(submitting);
   const activeFormatsRef = useRef({});
   const didInitialPageModePassRef = useRef(false);
+  const anonymousNoticeTimeoutRef = useRef(null);
 
   const canPublish = useMemo(
     () => plainText.trim().length > 0,
@@ -197,6 +200,14 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   }, [submitting]);
 
   useEffect(() => {
+    return () => {
+      if (anonymousNoticeTimeoutRef.current) {
+        window.clearTimeout(anonymousNoticeTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     if (typeof window === "undefined") return undefined;
 
     const phoneQuery = window.matchMedia("(max-width: 520px)");
@@ -293,11 +304,41 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     }
   };
 
+  const showTemporaryAnonymousNotice = () => {
+    setShowAnonymousNotice(true);
+
+    if (anonymousNoticeTimeoutRef.current) {
+      window.clearTimeout(anonymousNoticeTimeoutRef.current);
+    }
+
+    anonymousNoticeTimeoutRef.current = window.setTimeout(() => {
+      setShowAnonymousNotice(false);
+      anonymousNoticeTimeoutRef.current = null;
+    }, ANONYMOUS_NOTICE_MS);
+  };
+
+  const hideTemporaryAnonymousNotice = () => {
+    if (anonymousNoticeTimeoutRef.current) {
+      window.clearTimeout(anonymousNoticeTimeoutRef.current);
+      anonymousNoticeTimeoutRef.current = null;
+    }
+
+    setShowAnonymousNotice(false);
+  };
+
   const toggleAnonymous = () => {
     if (submittingValueRef.current) return;
     setAnonymous((value) => {
-      anonymousValueRef.current = !value;
-      return !value;
+      const nextValue = !value;
+      anonymousValueRef.current = nextValue;
+
+      if (nextValue) {
+        showTemporaryAnonymousNotice();
+      } else {
+        hideTemporaryAnonymousNotice();
+      }
+
+      return nextValue;
     });
   };
 
@@ -352,6 +393,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     clearEditor();
     clearSelectedImage();
     setAnonymous(false);
+    hideTemporaryAnonymousNotice();
     setError("");
     setClearedDraft(null);
     clearDraftState();
@@ -611,6 +653,16 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
         </div>
       )}
 
+      {showAnonymousNotice && anonymous ? (
+        <div
+          className="mb-2 mt-2 flex items-start gap-2 rounded-2xl border px-3 py-2.5 text-xs font-medium transition-opacity duration-300"
+          style={{ backgroundColor: "#F4F7FA", borderColor: T.borderSoft, color: T.textSubtle }}
+        >
+          <Info size={14} className="mt-0.5 shrink-0" style={{ color: T.slate }} />
+          <span>Anonymous mode hides your public name. Avoid names, unit details, phone numbers, or sensitive information.</span>
+        </div>
+      ) : null}
+
       <div className="mt-2 md:mt-3">
         <ComposerActionBar
           pageMode={pageMode}
@@ -627,16 +679,6 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
           onSaveDraft={handleSaveDraft}
         />
       </div>
-
-      {anonymous && (
-        <div
-          className="mt-2 flex items-start gap-2 rounded-2xl border px-3 py-2.5 text-xs font-medium"
-          style={{ backgroundColor: "#F4F7FA", borderColor: T.borderSoft, color: T.textSubtle }}
-        >
-          <Info size={14} className="mt-0.5 shrink-0" style={{ color: T.slate }} />
-          <span>Anonymous mode hides your public name. Avoid names, unit details, phone numbers, or sensitive information.</span>
-        </div>
-      )}
     </div>
   );
 }
