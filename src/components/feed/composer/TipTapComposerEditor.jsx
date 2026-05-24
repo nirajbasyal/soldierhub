@@ -253,122 +253,141 @@ export default function TipTapComposerEditor({
 
   const editorContent = <EditorContent editor={editor} />;
 
-  return (
-    <>
-      <div className="relative overflow-hidden rounded-[24px] border px-3.5 py-3 md:px-4 md:py-3.5" style={{ backgroundColor: "#F8FAFD", borderColor: T.borderSoft }}>
-        {showTextClearControl ? (
-          <button type="button" onClick={clearedDraft ? onRestoreText : onClearText} disabled={submitting} className="sh-tap absolute right-3 top-3 z-20 inline-flex h-8 w-8 items-center justify-center rounded-full border shadow-sm transition active:scale-[0.96] disabled:opacity-50" style={{ backgroundColor: "rgba(255,255,255,0.96)", borderColor: T.border, color: T.navy }} aria-label={clearedDraft ? "Undo cleared text" : "Clear text"} title={clearedDraft ? "Undo" : "Clear text"}>
-            {clearedDraft ? <Undo2 size={16} strokeWidth={2.7} /> : <X size={16} strokeWidth={2.9} />}
+  if (longEditorOpen) {
+    return (
+      <div
+        className="fixed left-0 right-0 z-[140] flex max-h-[100dvh] flex-col overflow-hidden overscroll-contain md:hidden"
+        style={{
+          backgroundColor: "#F8FAFD",
+          height: viewport.height ? `${viewport.height}px` : "100dvh",
+          top: `${viewport.top || 0}px`,
+        }}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Expanded post text editor"
+      >
+        <div className="relative z-10 flex h-[58px] shrink-0 items-center justify-between border-b px-4" style={{ backgroundColor: "rgba(248,250,253,0.98)", borderColor: T.borderSoft }}>
+          <div className="w-16" />
+          <div className="text-[21px] font-extrabold tracking-[-0.03em]" style={{ color: T.text }}>Add text</div>
+          <button type="button" onClick={closeLongEditor} className="sh-tap w-16 rounded-full px-2 py-2 text-right text-[17px] font-bold active:scale-[0.98]" style={{ color: T.navy }}>
+            Done
           </button>
-        ) : null}
+        </div>
 
-        {!longEditorOpen ? editorContent : null}
-
-        {longEditorOpen ? (
-          <div className="min-h-[170px] px-1 py-5 text-[15px] font-semibold" style={{ color: T.textSubtle }}>
-            Continue writing in the expanded editor.
+        <div className="z-20 shrink-0 border-b px-3 py-2" style={{ backgroundColor: "rgba(248,250,253,0.98)", borderColor: T.borderSoft }}>
+          <div className="grid grid-cols-4 items-center gap-2">
+            {FORMAT_ACTIONS.map((action) => {
+              const Icon = action.icon;
+              const isActive = Boolean(activeFormats[action.key]);
+              return (
+                <button
+                  key={action.key}
+                  type="button"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => applyMobileFormatting(action.command)}
+                  className="sh-tap flex h-10 w-full items-center justify-center rounded-full border shadow-sm transition active:scale-[0.97]"
+                  style={{ backgroundColor: isActive ? T.navy : "#FFFFFF", borderColor: isActive ? T.navy : T.border, color: isActive ? "#FFFFFF" : T.navy }}
+                  aria-label={action.label}
+                  aria-pressed={isActive}
+                  title={action.label}
+                >
+                  <Icon size={18} strokeWidth={2.65} />
+                </button>
+              );
+            })}
           </div>
-        ) : null}
+        </div>
 
-        {imageProcessing && !selectedImage ? (
-          <div className="mt-3 flex items-center gap-3 rounded-[20px] border px-3.5 py-3" style={{ backgroundColor: "#F4F8FD", borderColor: T.borderSoft }}>
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: "rgba(63,95,125,0.12)", color: T.navy }}>
-              <Loader2 size={17} className="animate-spin" />
-            </span>
-            <div className="min-w-0">
-              <div className="text-sm font-extrabold" style={{ color: T.text }}>Preparing your photo</div>
-              <div className="text-xs font-medium" style={{ color: T.textSubtle }}>Please wait before publishing.</div>
-            </div>
-          </div>
-        ) : null}
-
-        {selectedImage ? (
-          <div className="mt-3 overflow-hidden rounded-[22px] border" style={{ backgroundColor: "#EEF3F8", borderColor: T.borderSoft }}>
-            <div className="relative flex justify-center bg-[#EEF3F8]">
-              <img src={selectedImage.previewUrl} alt="Selected post preview" className="block max-h-[62vh] w-full object-cover md:max-h-[340px]" style={{ aspectRatio: selectedImageAspectRatio }} />
-              <button type="button" onClick={onRemoveImage} disabled={submitting || imageProcessing} className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full border shadow-sm transition active:scale-[0.98] disabled:opacity-50" style={{ backgroundColor: "rgba(255,255,255,0.94)", borderColor: T.border, color: T.navy }} aria-label="Remove selected photo" title="Remove photo">
-                <X size={16} strokeWidth={2.8} />
-              </button>
-            </div>
-          </div>
-        ) : null}
+        <div
+          className="soldierhub-long-editor min-h-0 flex-1 overflow-y-auto overscroll-contain"
+          style={{ backgroundColor: "#F8FAFD", WebkitOverflowScrolling: "touch", scrollPaddingBottom: "96px" }}
+          onClick={() => editor?.chain().focus().run()}
+        >
+          {editorContent}
+        </div>
 
         <style jsx global>{`
-          .ProseMirror { color: ${T.text}; border: none; box-shadow: none; outline: none; white-space: pre-wrap; overflow-wrap: anywhere; }
-          .ProseMirror p.is-editor-empty:first-child::before { content: attr(data-placeholder); float: left; color: #a8abb2; pointer-events: none; height: 0; }
-          .soldierhub-long-editor .ProseMirror {
+          .soldierhub-long-editor,
+          .soldierhub-long-editor > div {
             min-height: 100%;
             width: 100%;
-            padding: 18px 18px calc(env(safe-area-inset-bottom) + 96px);
+            display: flex;
+            flex: 1 1 auto;
+            background: #F8FAFD !important;
+            border: 0 !important;
             border-radius: 0 !important;
-            background: transparent !important;
+            box-shadow: none !important;
+            outline: 0 !important;
+          }
+
+          .soldierhub-long-editor .ProseMirror {
+            flex: 1 1 auto;
+            min-height: 100%;
+            width: 100%;
+            margin: 0 !important;
+            padding: 18px 18px calc(env(safe-area-inset-bottom) + 110px) !important;
+            color: ${T.text};
+            background: #F8FAFD !important;
+            border: 0 !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            outline: 0 !important;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
             font-size: 18px;
             line-height: 2rem;
           }
-          .soldierhub-long-editor .ProseMirror:focus {
-            outline: none;
+
+          .soldierhub-long-editor .ProseMirror p.is-editor-empty:first-child::before {
+            content: attr(data-placeholder);
+            float: left;
+            color: #a8abb2;
+            pointer-events: none;
+            height: 0;
           }
         `}</style>
       </div>
+    );
+  }
 
-      {longEditorOpen ? (
-        <div
-          className="fixed left-0 right-0 z-[140] flex max-h-[100dvh] flex-col overflow-hidden overscroll-contain md:hidden"
-          style={{
-            backgroundColor: "#F8FAFD",
-            height: viewport.height ? `${viewport.height}px` : "100dvh",
-            top: `${viewport.top || 0}px`,
-          }}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Expanded post text editor"
-        >
-          <div className="relative z-10 flex h-[58px] shrink-0 items-center justify-between border-b px-4" style={{ backgroundColor: "rgba(248,250,253,0.98)", borderColor: T.borderSoft }}>
-            <div className="w-16" />
-            <div className="text-[21px] font-extrabold tracking-[-0.03em]" style={{ color: T.text }}>Add text</div>
-            <button type="button" onClick={closeLongEditor} className="sh-tap w-16 rounded-full px-2 py-2 text-right text-[17px] font-bold active:scale-[0.98]" style={{ color: T.navy }}>
-              Done
-            </button>
-          </div>
+  return (
+    <div className="relative overflow-hidden rounded-[24px] border px-3.5 py-3 md:px-4 md:py-3.5" style={{ backgroundColor: "#F8FAFD", borderColor: T.borderSoft }}>
+      {showTextClearControl ? (
+        <button type="button" onClick={clearedDraft ? onRestoreText : onClearText} disabled={submitting} className="sh-tap absolute right-3 top-3 z-20 inline-flex h-8 w-8 items-center justify-center rounded-full border shadow-sm transition active:scale-[0.96] disabled:opacity-50" style={{ backgroundColor: "rgba(255,255,255,0.96)", borderColor: T.border, color: T.navy }} aria-label={clearedDraft ? "Undo cleared text" : "Clear text"} title={clearedDraft ? "Undo" : "Clear text"}>
+          {clearedDraft ? <Undo2 size={16} strokeWidth={2.7} /> : <X size={16} strokeWidth={2.9} />}
+        </button>
+      ) : null}
 
-          <div className="sticky top-[58px] z-20 shrink-0 border-b px-3 py-2" style={{ backgroundColor: "rgba(248,250,253,0.98)", borderColor: T.borderSoft }}>
-            <div className="grid grid-cols-4 items-center gap-2">
-              {FORMAT_ACTIONS.map((action) => {
-                const Icon = action.icon;
-                const isActive = Boolean(activeFormats[action.key]);
-                return (
-                  <button
-                    key={action.key}
-                    type="button"
-                    onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => applyMobileFormatting(action.command)}
-                    className="sh-tap flex h-10 w-full items-center justify-center rounded-full border shadow-sm transition active:scale-[0.97]"
-                    style={{ backgroundColor: isActive ? T.navy : "#FFFFFF", borderColor: isActive ? T.navy : T.border, color: isActive ? "#FFFFFF" : T.navy }}
-                    aria-label={action.label}
-                    aria-pressed={isActive}
-                    title={action.label}
-                  >
-                    <Icon size={18} strokeWidth={2.65} />
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+      {editorContent}
 
-          <div
-            className="soldierhub-long-editor relative min-h-0 flex-1 overflow-y-auto overscroll-contain"
-            style={{
-              backgroundColor: "#F8FAFD",
-              WebkitOverflowScrolling: "touch",
-              scrollPaddingBottom: "96px",
-            }}
-            onClick={() => editor?.chain().focus().run()}
-          >
-            {editorContent}
+      {imageProcessing && !selectedImage ? (
+        <div className="mt-3 flex items-center gap-3 rounded-[20px] border px-3.5 py-3" style={{ backgroundColor: "#F4F8FD", borderColor: T.borderSoft }}>
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: "rgba(63,95,125,0.12)", color: T.navy }}>
+            <Loader2 size={17} className="animate-spin" />
+          </span>
+          <div className="min-w-0">
+            <div className="text-sm font-extrabold" style={{ color: T.text }}>Preparing your photo</div>
+            <div className="text-xs font-medium" style={{ color: T.textSubtle }}>Please wait before publishing.</div>
           </div>
         </div>
       ) : null}
-    </>
+
+      {selectedImage ? (
+        <div className="mt-3 overflow-hidden rounded-[22px] border" style={{ backgroundColor: "#EEF3F8", borderColor: T.borderSoft }}>
+          <div className="relative flex justify-center bg-[#EEF3F8]">
+            <img src={selectedImage.previewUrl} alt="Selected post preview" className="block max-h-[62vh] w-full object-cover md:max-h-[340px]" style={{ aspectRatio: selectedImageAspectRatio }} />
+            <button type="button" onClick={onRemoveImage} disabled={submitting || imageProcessing} className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full border shadow-sm transition active:scale-[0.98] disabled:opacity-50" style={{ backgroundColor: "rgba(255,255,255,0.94)", borderColor: T.border, color: T.navy }} aria-label="Remove selected photo" title="Remove photo">
+              <X size={16} strokeWidth={2.8} />
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      <style jsx global>{`
+        .ProseMirror { color: ${T.text}; border: none; box-shadow: none; outline: none; white-space: pre-wrap; overflow-wrap: anywhere; }
+        .ProseMirror p.is-editor-empty:first-child::before { content: attr(data-placeholder); float: left; color: #a8abb2; pointer-events: none; height: 0; }
+      `}</style>
+    </div>
   );
 }
 
