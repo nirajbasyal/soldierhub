@@ -54,6 +54,7 @@ export default function TipTapComposerEditor({
   const [viewport, setViewport] = useState({ height: null, top: 0 });
   const [activeFormats, setActiveFormats] = useState({});
   const suppressLongEditorUntilRef = useRef(0);
+  const useMobileFullEditor = pageMode && phoneScreen;
 
   const extensions = useMemo(
     () => [
@@ -66,7 +67,7 @@ export default function TipTapComposerEditor({
         strike: false,
       }),
       Placeholder.configure({
-        placeholder: "Ask a question, share an update, or help the SoldierHub community...",
+        placeholder: "Ask a question, share an update, or help the Soldier Hub community...",
         emptyEditorClass: "is-editor-empty",
       }),
     ],
@@ -88,7 +89,7 @@ export default function TipTapComposerEditor({
       attributes: {
         class: `${EDITOR_CLASSNAME} min-h-[170px] focus:outline-none`,
         role: "textbox",
-        "aria-label": "Write your SoldierHub post",
+        "aria-label": "Write your Soldier Hub post",
         "aria-multiline": "true",
       },
       transformPastedHTML(html) {
@@ -125,6 +126,7 @@ export default function TipTapComposerEditor({
   });
 
   const maybeOpenLongEditor = (incomingText) => {
+    if (useMobileFullEditor) return;
     if (!pageMode || !phoneScreen || longEditorOpen || submitting) return;
     if (Date.now() < suppressLongEditorUntilRef.current) return;
     const text = incomingText ?? editor?.getText("\n") ?? plainText;
@@ -150,6 +152,11 @@ export default function TipTapComposerEditor({
   useEffect(() => {
     editor?.setEditable(!submitting);
   }, [editor, submitting]);
+
+  useEffect(() => {
+    if (!useMobileFullEditor || !editor || submitting) return;
+    window.requestAnimationFrame?.(() => editor.chain().focus("end").run());
+  }, [editor, useMobileFullEditor, submitting]);
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
@@ -252,6 +259,77 @@ export default function TipTapComposerEditor({
   }, [body, editor]);
 
   const editorContent = <EditorContent editor={editor} />;
+
+  if (useMobileFullEditor) {
+    return (
+      <div className="soldierhub-mobile-compose-editor relative flex min-h-[46dvh] flex-1 flex-col overflow-hidden" style={{ backgroundColor: "#F8FAFD" }}>
+        {showTextClearControl ? (
+          <button type="button" onClick={clearedDraft ? onRestoreText : onClearText} disabled={submitting} className="sh-tap absolute right-3 top-3 z-20 inline-flex h-8 w-8 items-center justify-center rounded-full border shadow-sm transition active:scale-[0.96] disabled:opacity-50" style={{ backgroundColor: "rgba(255,255,255,0.96)", borderColor: T.border, color: T.navy }} aria-label={clearedDraft ? "Undo cleared text" : "Clear text"} title={clearedDraft ? "Undo" : "Clear text"}>
+            {clearedDraft ? <Undo2 size={16} strokeWidth={2.7} /> : <X size={16} strokeWidth={2.9} />}
+          </button>
+        ) : null}
+
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: "touch", scrollPaddingBottom: "130px" }} onClick={() => editor?.commands.focus()}>
+          {editorContent}
+        </div>
+
+        {imageProcessing && !selectedImage ? (
+          <div className="mx-3 mb-3 flex items-center gap-3 rounded-[20px] border px-3.5 py-3" style={{ backgroundColor: "#F4F8FD", borderColor: T.borderSoft }}>
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: "rgba(63,95,125,0.12)", color: T.navy }}>
+              <Loader2 size={17} className="animate-spin" />
+            </span>
+            <div className="min-w-0">
+              <div className="text-sm font-extrabold" style={{ color: T.text }}>Preparing your photo</div>
+              <div className="text-xs font-medium" style={{ color: T.textSubtle }}>Please wait before publishing.</div>
+            </div>
+          </div>
+        ) : null}
+
+        {selectedImage ? (
+          <div className="mx-3 mb-3 overflow-hidden rounded-[22px] border" style={{ backgroundColor: "#EEF3F8", borderColor: T.borderSoft }}>
+            <div className="relative flex justify-center bg-[#EEF3F8]">
+              <img src={selectedImage.previewUrl} alt="Selected post preview" className="block max-h-[42vh] w-full object-cover" style={{ aspectRatio: selectedImageAspectRatio }} />
+              <button type="button" onClick={onRemoveImage} disabled={submitting || imageProcessing} className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full border shadow-sm transition active:scale-[0.98] disabled:opacity-50" style={{ backgroundColor: "rgba(255,255,255,0.94)", borderColor: T.border, color: T.navy }} aria-label="Remove selected photo" title="Remove photo">
+                <X size={16} strokeWidth={2.8} />
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        <style jsx global>{`
+          .soldierhub-mobile-compose-editor,
+          .soldierhub-mobile-compose-editor > div,
+          .soldierhub-mobile-compose-editor .ProseMirror {
+            background: #F8FAFD !important;
+            border: 0 !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            outline: 0 !important;
+          }
+
+          .soldierhub-mobile-compose-editor .ProseMirror {
+            min-height: 46dvh;
+            width: 100%;
+            margin: 0 !important;
+            padding: 18px 18px 110px !important;
+            color: ${T.text};
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            font-size: 18px;
+            line-height: 2rem;
+          }
+
+          .soldierhub-mobile-compose-editor .ProseMirror p.is-editor-empty:first-child::before {
+            content: attr(data-placeholder);
+            float: left;
+            color: #a8abb2;
+            pointer-events: none;
+            height: 0;
+          }
+        `}</style>
+      </div>
+    );
+  }
 
   if (longEditorOpen) {
     return (
