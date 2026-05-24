@@ -1,36 +1,25 @@
 "use client";
 
-import { Save } from "lucide-react";
+import { Check } from "lucide-react";
 import { T } from "@/lib/theme";
 
 export default function ComposerDraftStatus({ draftSaved, draftStatus, onSaveDraft, submitting = false, imageProcessing = false }) {
+  const statusText = draftSaved || draftStatus ? "Autosaved in this device" : "Autosaves in this device";
+
   return (
-    <div
-      className="mt-2 flex items-center justify-between gap-2 rounded-[18px] border px-3 py-2"
-      style={{
-        backgroundColor: draftSaved ? "rgba(63, 95, 125, 0.08)" : "#FFFFFF",
-        borderColor: draftSaved ? "rgba(63,95,125,0.24)" : T.border,
-      }}
-    >
+    <div className="mt-1.5 flex items-center justify-end">
       <button
         type="button"
         onClick={onSaveDraft}
         disabled={submitting || imageProcessing}
-        className="sh-tap inline-flex shrink-0 items-center gap-2 rounded-full px-1 py-1 text-[12px] font-black disabled:opacity-50"
-        style={{ color: draftSaved ? T.navy : T.text }}
+        className="sh-tap inline-flex items-center gap-1.5 rounded-full px-1.5 py-1 text-[10px] font-bold leading-none transition active:scale-[0.98] disabled:opacity-50"
+        style={{ color: T.textSubtle }}
+        title="Save draft on this device"
+        aria-label="Save draft on this device"
       >
-        <span
-          className="inline-flex h-7 w-7 items-center justify-center rounded-full"
-          style={{ backgroundColor: draftSaved ? "rgba(63,95,125,0.16)" : "rgba(213,226,242,0.72)" }}
-        >
-          <Save size={14} strokeWidth={2.5} />
-        </span>
-        {draftSaved ? "Draft saved" : "Save draft"}
+        <Check size={11} strokeWidth={3} style={{ color: T.slate }} />
+        <span>{statusText}</span>
       </button>
-
-      <span className="min-w-0 flex-1 text-right text-[10.5px] font-semibold leading-snug" style={{ color: T.textSubtle }}>
-        {draftStatus || "Auto-restores when you reopen compose."}
-      </span>
     </div>
   );
 }
