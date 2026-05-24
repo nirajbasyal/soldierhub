@@ -39,12 +39,14 @@ export default function TipTapComposerEditor({
   onFormatChange,
 }) {
   const selectedImageAspectRatio = selectedImage?.width && selectedImage?.height ? `${selectedImage.width} / ${selectedImage.height}` : "16 / 10";
-  const [writingModeOpen, setWritingModeOpen] = useState(false);
+  const [writingModeMounted, setWritingModeMounted] = useState(false);
+  const [writingModeVisible, setWritingModeVisible] = useState(false);
   const [phoneScreen, setPhoneScreen] = useState(false);
   const [viewport, setViewport] = useState({ height: null, top: 0 });
   const [activeFormats, setActiveFormats] = useState({});
   const suppressWritingModeUntilRef = useRef(0);
   const editorInstanceRef = useRef(null);
+  const closeTimerRef = useRef(null);
 
   const extensions = useMemo(
     () => [
@@ -78,15 +80,19 @@ export default function TipTapComposerEditor({
   };
 
   const openWritingMode = () => {
-    if (!pageMode || !phoneScreen || writingModeOpen || submitting) return;
+    if (!pageMode || !phoneScreen || writingModeMounted || submitting) return;
     if (Date.now() < suppressWritingModeUntilRef.current) return;
 
+    if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
     setViewport(getViewportSnapshot());
-    setWritingModeOpen(true);
+    setWritingModeMounted(true);
 
     window.requestAnimationFrame?.(() => {
-      editorInstanceRef.current?.chain().focus("end", { scrollIntoView: false }).run();
-      syncFormats(editorInstanceRef.current);
+      setWritingModeVisible(true);
+      window.requestAnimationFrame?.(() => {
+        editorInstanceRef.current?.chain().focus("end", { scrollIntoView: false }).run();
+        syncFormats(editorInstanceRef.current);
+      });
     });
   };
 
@@ -106,10 +112,15 @@ export default function TipTapComposerEditor({
   };
 
   const closeWritingMode = () => {
-    suppressWritingModeUntilRef.current = Date.now() + 450;
-    setWritingModeOpen(false);
+    suppressWritingModeUntilRef.current = Date.now() + 520;
     syncContent(editorInstanceRef.current);
     editorInstanceRef.current?.commands.blur();
+    setWritingModeVisible(false);
+    if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
+    closeTimerRef.current = window.setTimeout(() => {
+      setWritingModeMounted(false);
+      closeTimerRef.current = null;
+    }, 220);
   };
 
   const editor = useEditor({
@@ -158,6 +169,10 @@ export default function TipTapComposerEditor({
     editorInstanceRef.current = editor;
   }, [editor]);
 
+  useEffect(() => () => {
+    if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
+  }, []);
+
   useEffect(() => {
     editor?.setEditable(!submitting);
   }, [editor, submitting]);
@@ -179,7 +194,7 @@ export default function TipTapComposerEditor({
   }, []);
 
   useEffect(() => {
-    if (!writingModeOpen) return undefined;
+    if (!writingModeMounted) return undefined;
 
     const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
     const previousBodyOverflow = document.body.style.overflow;
@@ -202,10 +217,10 @@ export default function TipTapComposerEditor({
       document.body.style.width = previousBodyWidth;
       window.scrollTo(0, scrollY);
     };
-  }, [writingModeOpen]);
+  }, [writingModeMounted]);
 
   useEffect(() => {
-    if (!writingModeOpen) return undefined;
+    if (!writingModeMounted) return undefined;
 
     const updateViewport = () => setViewport(getViewportSnapshot());
     updateViewport();
@@ -218,7 +233,7 @@ export default function TipTapComposerEditor({
       window.visualViewport?.removeEventListener("scroll", updateViewport);
       window.removeEventListener("resize", updateViewport);
     };
-  }, [writingModeOpen]);
+  }, [writingModeMounted]);
 
   useImperativeHandle(
     editorRef,
@@ -266,11 +281,19 @@ export default function TipTapComposerEditor({
   const applyMobileFormatting = (command) => runCommand(editor, command, syncFormats);
   const editorContent = <EditorContent editor={editor} />;
 
-  if (writingModeOpen) {
+  if (writingModeMounted) {
     return (
       <div
         className="fixed left-0 right-0 z-[140] flex max-h-[100dvh] flex-col overflow-hidden overscroll-contain md:hidden"
-        style={{ backgroundColor: "#F8FAFD", height: viewport.height ? `${viewport.height}px` : "100dvh", top: `${viewport.top || 0}px` }}
+        style={{
+          backgroundColor: "#F8FAFD",
+          height: viewport.height ? `${viewport.height}px` : "100dvh",
+          top: `${viewport.top || 0}px`,
+          opacity: writingModeVisible ? 1 : 0,
+          transform: writingModeVisible ? "translateY(0) scale(1)" : "translateY(18px) scale(0.985)",
+          transition: "opacity 220ms ease, transform 220ms cubic-bezier(0.22, 1, 0.36, 1)",
+          willChange: "opacity, transform",
+        }}
         role="dialog"
         aria-modal="true"
         aria-label="Expanded post text editor"
@@ -278,12 +301,21 @@ export default function TipTapComposerEditor({
         <div className="relative z-10 flex h-[58px] shrink-0 items-center justify-between border-b px-4" style={{ backgroundColor: "rgba(248,250,253,0.98)", borderColor: T.borderSoft }}>
           <div className="w-16" />
           <div className="text-[21px] font-extrabold tracking-[-0.03em]" style={{ color: T.text }}>Add Text</div>
-          <button type="button" onClick={closeWritingMode} className="sh-tap w-16 rounded-full px-2 py-2 text-right text-[17px] font-bold active:scale-[0.98]" style={{ color: T.navy }}>
+          <button type="button" onClick={closeWritingMode} className="sh-tap w-16 rounded-full px-2 py-2 text-right text-[17px] font-bold transition active:scale-[0.98]" style={{ color: T.navy }}>
             Done
           </button>
         </div>
 
-        <div className="z-20 shrink-0 border-b px-3 py-2" style={{ backgroundColor: "rgba(248,250,253,0.98)", borderColor: T.borderSoft }}>
+        <div
+          className="z-20 shrink-0 border-b px-3 py-2"
+          style={{
+            backgroundColor: "rgba(248,250,253,0.98)",
+            borderColor: T.borderSoft,
+            opacity: writingModeVisible ? 1 : 0,
+            transform: writingModeVisible ? "translateY(0)" : "translateY(-6px)",
+            transition: "opacity 260ms ease 70ms, transform 260ms ease 70ms",
+          }}
+        >
           <div className="grid grid-cols-4 items-center gap-2">
             {FORMAT_ACTIONS.map((action) => {
               const Icon = action.icon;
@@ -313,7 +345,7 @@ export default function TipTapComposerEditor({
         <style jsx global>{`
           .soldierhub-writing-editor,
           .soldierhub-writing-editor > div { min-height: 100%; width: 100%; display: flex; flex: 1 1 auto; background: #F8FAFD !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; outline: 0 !important; }
-          .soldierhub-writing-editor .ProseMirror { flex: 1 1 auto; min-height: 100%; width: 100%; margin: 0 !important; padding: 20px 18px calc(env(safe-area-inset-bottom) + 110px) !important; color: ${T.text}; background: #F8FAFD !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; outline: 0 !important; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 18px; line-height: 2rem; }
+          .soldierhub-writing-editor .ProseMirror { flex: 1 1 auto; min-height: 100%; width: 100%; margin: 0 !important; padding: 20px 18px calc(env(safe-area-inset-bottom) + 110px) !important; color: ${T.text}; background: #F8FAFD !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; outline: 0 !important; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 18px; line-height: 2rem; transition: opacity 260ms ease 80ms, transform 260ms ease 80ms; opacity: ${writingModeVisible ? 1 : 0}; transform: ${writingModeVisible ? "translateY(0)" : "translateY(10px)"}; }
           .soldierhub-writing-editor .ProseMirror p.is-editor-empty:first-child::before { content: attr(data-placeholder); float: left; color: #a8abb2; pointer-events: none; height: 0; }
         `}</style>
       </div>
