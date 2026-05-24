@@ -20,6 +20,7 @@ const ALLOWED_RICH_TEXT_TAGS = new Set([
 
 const URL_PATTERN = /((?:https?:\/\/|www\.)[^\s<>"']+)/gi;
 const TRAILING_URL_PUNCTUATION = /[.,!?;:)\]}]+$/;
+const EMPTY_BLOCK_TAGS = new Set(["DIV", "P", "BLOCKQUOTE", "LI"]);
 
 function looksLikeHtml(text = "") {
   return /<\/?(a|p|div|strong|em|ul|ol|li|blockquote|br)\b/i.test(String(text));
@@ -65,6 +66,46 @@ function getCompactLinkLabel(rawUrl = "") {
     return hasMore ? `${host}/...` : host;
   } catch {
     return String(rawUrl || "");
+  }
+}
+
+function isEmptyRichTextNode(node) {
+  if (!node) return true;
+
+  if (node.nodeType === Node.TEXT_NODE) {
+    return !(node.textContent || "").replace(/\u200B/g, "").replace(/\u00a0/g, " ").trim();
+  }
+
+  if (node.nodeType !== Node.ELEMENT_NODE) return true;
+
+  const tagName = node.tagName?.toUpperCase();
+
+  if (tagName === "BR") return true;
+  if (tagName === "IMG" || tagName === "VIDEO" || tagName === "IFRAME") return false;
+
+  return !(node.textContent || "").replace(/\u200B/g, "").replace(/\u00a0/g, " ").trim();
+}
+
+function trimEmptyTrailingBlocks(root) {
+  if (!root) return;
+
+  let changed = true;
+
+  while (changed) {
+    changed = false;
+
+    while (root.lastChild && isEmptyRichTextNode(root.lastChild)) {
+      root.removeChild(root.lastChild);
+      changed = true;
+    }
+
+    const lastElement = root.lastElementChild;
+    const tagName = lastElement?.tagName?.toUpperCase();
+
+    if (lastElement && EMPTY_BLOCK_TAGS.has(tagName) && isEmptyRichTextNode(lastElement)) {
+      lastElement.remove();
+      changed = true;
+    }
   }
 }
 
@@ -161,6 +202,7 @@ function sanitizeRichTextHtml(html = "") {
   };
 
   Array.from(sourceRoot?.childNodes || []).forEach((child) => cleanNode(child, outputRoot));
+  trimEmptyTrailingBlocks(outputRoot);
 
   return outputRoot.innerHTML.trim();
 }
