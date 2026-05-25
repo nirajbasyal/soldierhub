@@ -8,7 +8,7 @@ import {
 } from "@/lib/rateLimit/clientActionLimiter";
 import { getPostId, getProfileStatus } from "../utils/appHelpers";
 
-const FEED_CACHE_KEY = "soldierhub_feed_cache_v3";
+const FEED_CACHE_KEY = "soldierhub_feed_cache_v4";
 const COMMENT_CACHE_PREFIX = "soldierhub_comment_cache_v3:";
 const COMMENT_CACHE_MAX_AGE_MS = 1000 * 60 * 5;
 
@@ -435,8 +435,8 @@ export function usePostActions({
 
     if (SUPA) {
       const { error } = has
-        ? await PostsDB.removeUpvote(postId, currentUser.id)
-        : await PostsDB.addUpvote(postId, currentUser.id);
+        ? await PostsDB.removeUpvote(postId)
+        : await PostsDB.addUpvote(postId);
 
       if (error) {
         setMyUpvotes((s) => {
