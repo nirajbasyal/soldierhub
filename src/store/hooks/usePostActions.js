@@ -411,12 +411,21 @@ export function usePostActions({
   };
 
   const upvotePost = async (postId) => {
-    if (!postId) return;
-    if (!requireAuth()) return;
+    if (!postId) {
+      return { ok: false, error: "Post was not identified." };
+    }
 
-    if (pendingUpvotePostIdsRef.current.has(postId)) return;
+    if (!requireAuth()) {
+      return { ok: false, error: "You must be verified to upvote." };
+    }
 
-    if (stopIfLimited({ action: "upvote", currentUser, pushToast })) return;
+    if (pendingUpvotePostIdsRef.current.has(postId)) {
+      return { ok: false, pending: true, error: "Upvote is already updating." };
+    }
+
+    if (stopIfLimited({ action: "upvote", currentUser, pushToast })) {
+      return { ok: false, error: "Please slow down before upvoting again." };
+    }
 
     pendingUpvotePostIdsRef.current.add(postId);
 
@@ -463,14 +472,17 @@ export function usePostActions({
           });
           setMyPosts((arr) => updatePostInList(arr, postId, rollbackDelta));
           pushToast(error.message, "error");
+          return { ok: false, error: error.message };
         }
+
+        return { ok: true, postId, user_upvoted: !has, delta };
       } finally {
         pendingUpvotePostIdsRef.current.delete(postId);
       }
-      return;
     }
 
     pendingUpvotePostIdsRef.current.delete(postId);
+    return { ok: true, postId, user_upvoted: !has, delta };
   };
 
   const reportPost = async (postId) => {
