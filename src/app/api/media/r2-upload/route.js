@@ -105,7 +105,7 @@ async function readUploadForm(request) {
 }
 
 export async function POST(request) {
-  const ipRateLimit = checkRateLimit(request, {
+  const ipRateLimit = await checkRateLimit(request, {
     keyPrefix: "media:r2-upload:ip",
     limit: 45,
     windowMs: 60 * 1000,
@@ -142,7 +142,7 @@ export async function POST(request) {
     );
   }
 
-  const userRateLimit = checkRateLimit(request, {
+  const userRateLimit = await checkRateLimit(request, {
     keyPrefix: `media:r2-upload:user:${user.id}`,
     limit: 25,
     windowMs: 10 * 60 * 1000,
