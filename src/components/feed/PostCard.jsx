@@ -350,6 +350,7 @@ function CommentRow({ comment, post, currentUser, isAdmin = false, menuOpen = fa
     comment?.is_anonymous_author === true ||
       comment?.anonymous === true ||
       comment?.comment_anonymous === true ||
+      (post?.anonymous && isTemporaryCommentId(commentId)) ||
       (post?.anonymous && commentAuthorId && postAuthorId && commentAuthorId === postAuthorId) ||
       (post?.anonymous && comment?.viewer_is_author === true && !commentAuthorId)
   );
@@ -469,9 +470,10 @@ export default function PostCard({ post, openRepliesDefault = false }) {
       (currentUser?.id && postId && Array.isArray(myPosts) && myPosts.some((myPost) => getPostId(myPost) === postId))
   );
   const adminModeratingOtherPost = Boolean(isAdmin && !ownsPost);
-  const replyName = post?.anonymous && ownsPost ? anonymousName : currentUser?.full_name || "Member";
-  const replyColor = post?.anonymous && ownsPost ? "#5C6470" : currentUser?.avatar_color || colorFromString(replyName);
-  const replyAvatarUrl = post?.anonymous && ownsPost ? null : currentUser?.avatar_url || null;
+  const maskReplyIdentity = Boolean(post?.anonymous);
+  const replyName = maskReplyIdentity ? anonymousName : currentUser?.full_name || "Member";
+  const replyColor = maskReplyIdentity ? "#5C6470" : currentUser?.avatar_color || colorFromString(replyName);
+  const replyAvatarUrl = maskReplyIdentity ? null : currentUser?.avatar_url || null;
   const bodyText = post?.body || post?.content || post?.text || "";
   const postImage = getPostImage(post);
 
@@ -660,7 +662,8 @@ export default function PostCard({ post, openRepliesDefault = false }) {
       }
 
       const result = await commentOnPost?.(postId, cleaned, {
-        isAnonymousAuthor: Boolean(post?.anonymous && ownsPost),
+        isAnonymousAuthor: Boolean(post?.anonymous),
+        maskOptimisticIdentity: Boolean(post?.anonymous),
         anonymousName,
         anonymousColor: "#5C6470",
       });
@@ -808,7 +811,7 @@ export default function PostCard({ post, openRepliesDefault = false }) {
             </div>
 
             <div className="mt-3 flex items-start gap-2.5">
-              <AuthorAvatarName userId={currentUser?.id} fallbackName={replyName} name={replyName} color={replyColor} src={replyAvatarUrl} size={32} anonymous={post?.anonymous && ownsPost}>
+              <AuthorAvatarName userId={maskReplyIdentity ? null : currentUser?.id} fallbackName={replyName} name={replyName} color={replyColor} src={replyAvatarUrl} size={32} anonymous={maskReplyIdentity}>
                 <Avatar name={replyName} color={replyColor} src={replyAvatarUrl} size={32} />
               </AuthorAvatarName>
               <div className="min-w-0 flex-1">
