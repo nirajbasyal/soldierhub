@@ -34,7 +34,7 @@ function cleanText(value) {
 }
 
 export async function POST(request) {
-  const ipRateLimit = checkRateLimit(request, {
+  const ipRateLimit = await checkRateLimit(request, {
     keyPrefix: "posts-report-ip",
     limit: 30,
     windowMs: 60 * 1000,
@@ -72,7 +72,7 @@ export async function POST(request) {
     );
   }
 
-  const userRateLimit = checkRateLimit(request, {
+  const userRateLimit = await checkRateLimit(request, {
     keyPrefix: `posts-report-user-${user.id}`,
     limit: 15,
     windowMs: 10 * 60 * 1000,

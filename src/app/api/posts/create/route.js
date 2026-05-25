@@ -88,7 +88,7 @@ function normalizeCreatedPost(row = {}) {
 }
 
 export async function POST(request) {
-  const ipRateLimit = checkRateLimit(request, {
+  const ipRateLimit = await checkRateLimit(request, {
     keyPrefix: "posts:create:ip",
     limit: 20,
     windowMs: 60 * 1000,
@@ -123,7 +123,7 @@ export async function POST(request) {
     );
   }
 
-  const userRateLimit = checkRateLimit(request, {
+  const userRateLimit = await checkRateLimit(request, {
     keyPrefix: `posts:create:user:${user.id}`,
     limit: 8,
     windowMs: 10 * 60 * 1000,

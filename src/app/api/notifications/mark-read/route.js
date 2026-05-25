@@ -32,7 +32,7 @@ function noStoreHeaders(rateLimitHeaders = {}) {
 }
 
 export async function POST(request) {
-  const ipRateLimit = checkRateLimit(request, {
+  const ipRateLimit = await checkRateLimit(request, {
     keyPrefix: "notifications-mark-read-ip",
     limit: 60,
     windowMs: 60 * 1000,
@@ -67,7 +67,7 @@ export async function POST(request) {
     );
   }
 
-  const userRateLimit = checkRateLimit(request, {
+  const userRateLimit = await checkRateLimit(request, {
     keyPrefix: `notifications-mark-read-user-${user.id}`,
     limit: 80,
     windowMs: 10 * 60 * 1000,

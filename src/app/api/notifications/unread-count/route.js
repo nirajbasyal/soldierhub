@@ -35,7 +35,7 @@ function responseHeaders(rateLimitHeaders) {
 }
 
 export async function GET(request) {
-  const ipRateLimit = checkRateLimit(request, {
+  const ipRateLimit = await checkRateLimit(request, {
     keyPrefix: "notifications-unread-count-ip",
     limit: 180,
     windowMs: 60 * 1000,
@@ -73,7 +73,7 @@ export async function GET(request) {
     );
   }
 
-  const userRateLimit = checkRateLimit(request, {
+  const userRateLimit = await checkRateLimit(request, {
     keyPrefix: `notifications-unread-count-user-${user.id}`,
     limit: 180,
     windowMs: 10 * 60 * 1000,

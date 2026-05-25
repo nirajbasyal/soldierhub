@@ -86,7 +86,7 @@ async function runAdminAction({ supabase, action, profileId, email }) {
 }
 
 export async function POST(request) {
-  const ipRateLimit = checkRateLimit(request, {
+  const ipRateLimit = await checkRateLimit(request, {
     keyPrefix: "admin-profiles-action-ip",
     limit: 60,
     windowMs: 60 * 1000,
@@ -124,7 +124,7 @@ export async function POST(request) {
     );
   }
 
-  const userRateLimit = checkRateLimit(request, {
+  const userRateLimit = await checkRateLimit(request, {
     keyPrefix: `admin-profiles-action-user-${user.id}`,
     limit: 80,
     windowMs: 10 * 60 * 1000,

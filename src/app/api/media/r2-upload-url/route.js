@@ -79,7 +79,7 @@ function createObjectKey({ purpose, userId, contentType }) {
 }
 
 export async function POST(request) {
-  const ipRateLimit = checkRateLimit(request, {
+  const ipRateLimit = await checkRateLimit(request, {
     keyPrefix: "media:r2-upload-url:ip",
     limit: 60,
     windowMs: 60 * 1000,
@@ -116,7 +116,7 @@ export async function POST(request) {
     );
   }
 
-  const userRateLimit = checkRateLimit(request, {
+  const userRateLimit = await checkRateLimit(request, {
     keyPrefix: `media:r2-upload-url:user:${user.id}`,
     limit: 30,
     windowMs: 10 * 60 * 1000,
