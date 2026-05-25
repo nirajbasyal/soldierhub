@@ -441,6 +441,7 @@ export default function PostCard({ post, openRepliesDefault = false }) {
   const [comment, setComment] = useState("");
   const [commentError, setCommentError] = useState("");
   const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const [upvoteSubmitting, setUpvoteSubmitting] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [editingOpen, setEditingOpen] = useState(false);
   const [deletingOpen, setDeletingOpen] = useState(false);
@@ -460,8 +461,12 @@ export default function PostCard({ post, openRepliesDefault = false }) {
   const commentsLoaded = Boolean(postId && Object.prototype.hasOwnProperty.call(postComments || {}, postId));
   const storedCommentCount = post?.comment_count ?? post?.reply_count ?? 0;
   const commentCount = commentsLoaded ? comments.length : storedCommentCount;
-  const upvoteCount = post?.upvote_count ?? 0;
-  const userUpvoted = Boolean(currentUser && postId && myUpvotes?.has?.(postId));
+  const storedUpvoteCount = Number(post?.upvote_count ?? 0) || 0;
+  const userUpvotedFromStore = Boolean(currentUser && postId && myUpvotes?.has?.(postId));
+  const [optimisticUpvoteCount, setOptimisticUpvoteCount] = useState(storedUpvoteCount);
+  const [optimisticUserUpvoted, setOptimisticUserUpvoted] = useState(userUpvotedFromStore);
+  const upvoteCount = optimisticUpvoteCount;
+  const userUpvoted = optimisticUserUpvoted;
   const userReported = Boolean(postId && myReports?.has?.(postId));
   const isReported = post?.status === "reported";
   const ownsPost = Boolean(
@@ -483,10 +488,19 @@ export default function PostCard({ post, openRepliesDefault = false }) {
     setCommentError("");
     setCommentsLoading(false);
     setCommentSubmitting(false);
+    setUpvoteSubmitting(false);
     setCommentMenuOpenId(null);
     setCommentToDelete(null);
     setActiveImage(null);
   }, [postId, openRepliesDefault]);
+
+  useEffect(() => {
+    setOptimisticUpvoteCount(storedUpvoteCount);
+  }, [postId, storedUpvoteCount]);
+
+  useEffect(() => {
+    setOptimisticUserUpvoted(userUpvotedFromStore);
+  }, [postId, userUpvotedFromStore]);
 
   useEffect(() => {
     if (!openRepliesDefault || !postId || commentsLoaded) return undefined;
@@ -546,9 +560,31 @@ export default function PostCard({ post, openRepliesDefault = false }) {
   };
 
   const handleUpvote = async () => {
+    if (upvoteSubmitting) return;
     if (!requireAuth()) return;
     if (!ensurePostId()) return;
-    await upvotePost?.(postId);
+
+    const wasUpvoted = optimisticUserUpvoted;
+    const delta = wasUpvoted ? -1 : 1;
+
+    setUpvoteSubmitting(true);
+    setOptimisticUserUpvoted(!wasUpvoted);
+    setOptimisticUpvoteCount((count) => Math.max((Number(count) || 0) + delta, 0));
+
+    try {
+      const result = await upvotePost?.(postId);
+
+      if (result?.ok === false) {
+        setOptimisticUserUpvoted(wasUpvoted);
+        setOptimisticUpvoteCount((count) => Math.max((Number(count) || 0) - delta, 0));
+      }
+    } catch {
+      setOptimisticUserUpvoted(wasUpvoted);
+      setOptimisticUpvoteCount((count) => Math.max((Number(count) || 0) - delta, 0));
+      pushToast?.("Could not update upvote. Please try again.", "error");
+    } finally {
+      setUpvoteSubmitting(false);
+    }
   };
 
   const handleShare = async () => {
@@ -768,7 +804,7 @@ export default function PostCard({ post, openRepliesDefault = false }) {
         </div>
 
         <div className="mx-4 md:mx-5 border-t flex items-center justify-between gap-1 py-1.5" style={{ borderColor: T.borderSoft || T.border }}>
-          <ActionButton icon={ArrowBigUp} label="Upvote" count={upvoteCount} active={userUpvoted} fillWhenActive onClick={handleUpvote} />
+          <ActionButton icon={ArrowBigUp} label="Upvote" count={upvoteCount} active={userUpvoted} fillWhenActive onClick={handleUpvote} disabled={upvoteSubmitting} />
           <ActionButton icon={MessageCircle} label="Replies" count={commentCount} active={showComments} fillWhenActive onClick={handleToggleComments} />
           <ActionButton icon={Share2} label="Share" onClick={handleShare} />
         </div>
