@@ -484,6 +484,25 @@ export async function removeUpvote(postId) {
   );
 }
 
+export async function toggleUpvote(postId) {
+  const supabase = createClient();
+  if (!supabase) return { data: null, error: null };
+
+  const resolvedPostId = resolvePostId(postId);
+  const { accessToken, error } = await getAccessTokenForApi(
+    supabase,
+    "Please log in again before voting."
+  );
+  if (error || !accessToken) return { data: null, error };
+
+  return postJsonToApi(
+    "/api/posts/upvote",
+    accessToken,
+    { post_id: resolvedPostId, action: "toggle" },
+    "Could not update vote."
+  );
+}
+
 export async function listMyReportedPostIds(userId, postIds = []) {
   const supabase = createClient();
   if (!supabase || !userId) return { data: [], error: null };
