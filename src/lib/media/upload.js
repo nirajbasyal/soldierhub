@@ -124,12 +124,7 @@ async function uploadThroughSoldierHubServer(image, purpose, accessToken) {
   };
 }
 
-export async function uploadCompressedImageToR2(image, { purpose = "post" } = {}) {
-  if (!image?.file) return null;
-
-  const accessToken = await getAccessToken();
-  if (!accessToken) throw new Error("Please log in again before uploading an image.");
-
+async function uploadSingleImage(image, purpose, accessToken) {
   const signResult = await fetchSignedUploadUrl(image, purpose, accessToken);
   const directUpload = await putFileToR2(signResult.uploadUrl, image.file);
 
@@ -144,4 +139,30 @@ export async function uploadCompressedImageToR2(image, { purpose = "post" } = {}
   }
 
   return uploadThroughSoldierHubServer(image, purpose, accessToken);
+}
+
+export async function uploadCompressedImageToR2(image, { purpose = "post" } = {}) {
+  if (!image?.file) return null;
+
+  const accessToken = await getAccessToken();
+  if (!accessToken) throw new Error("Please log in again before uploading an image.");
+
+  const fullImage = await uploadSingleImage(image, purpose, accessToken);
+
+  if (purpose !== "post" || !image.thumbnail?.file) return fullImage;
+
+  try {
+    const thumbnail = await uploadSingleImage(image.thumbnail, "post-thumbnail", accessToken);
+    return {
+      ...fullImage,
+      thumbnail_url: thumbnail.url,
+      thumbnail_key: thumbnail.key,
+      thumbnail_width: thumbnail.width,
+      thumbnail_height: thumbnail.height,
+      thumbnail_size: thumbnail.size,
+    };
+  } catch (error) {
+    console.warn("Post thumbnail upload failed; using full image fallback.", error);
+    return fullImage;
+  }
 }
