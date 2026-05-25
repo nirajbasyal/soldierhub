@@ -77,7 +77,7 @@ function attachAuthorProfileToComment(comment, profile, userId) {
 }
 
 export async function POST(request) {
-  const ipRateLimit = checkRateLimit(request, {
+  const ipRateLimit = await checkRateLimit(request, {
     keyPrefix: "comments:create:ip",
     limit: 30,
     windowMs: 60 * 1000,
@@ -112,7 +112,7 @@ export async function POST(request) {
     );
   }
 
-  const userRateLimit = checkRateLimit(request, {
+  const userRateLimit = await checkRateLimit(request, {
     keyPrefix: `comments:create:user:${user.id}`,
     limit: 25,
     windowMs: 10 * 60 * 1000,
