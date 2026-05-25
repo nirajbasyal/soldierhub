@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { uid } from "@/lib/helpers";
 import * as PostsDB from "@/lib/db/posts";
 import * as CommentsDB from "@/lib/db/comments";
@@ -8,7 +8,7 @@ import {
 } from "@/lib/rateLimit/clientActionLimiter";
 import { getPostId, getProfileStatus } from "../utils/appHelpers";
 
-const FEED_CACHE_KEY = "soldierhub_feed_cache_v3";
+const FEED_CACHE_KEY = "soldierhub_feed_cache_v4";
 const COMMENT_CACHE_PREFIX = "soldierhub_comment_cache_v3:";
 const COMMENT_CACHE_MAX_AGE_MS = 1000 * 60 * 5;
 
@@ -323,6 +323,13 @@ export function usePostActions({
   reloadPosts,
   reloadMyPosts,
 }) {
+  const myUpvotesRef = useRef(myUpvotes instanceof Set ? myUpvotes : new Set(myUpvotes || []));
+  const pendingUpvotePostIdsRef = useRef(new Set());
+
+  useEffect(() => {
+    myUpvotesRef.current = myUpvotes instanceof Set ? myUpvotes : new Set(myUpvotes || []);
+  }, [myUpvotes]);
+
   const createPost = async ({ id, title, body, category, anonymous, image = null }) => {
     if (!requireAuth()) return { ok: false, error: "You must be verified to post." };
 
@@ -404,11 +411,18 @@ export function usePostActions({
   };
 
   const upvotePost = async (postId) => {
+    if (!postId) return;
     if (!requireAuth()) return;
+
+    if (pendingUpvotePostIdsRef.current.has(postId)) return;
 
     if (stopIfLimited({ action: "upvote", currentUser, pushToast })) return;
 
-    const has = myUpvotes.has(postId);
+    pendingUpvotePostIdsRef.current.add(postId);
+
+    const previousUpvotes =
+      myUpvotesRef.current instanceof Set ? new Set(myUpvotesRef.current) : new Set();
+    const has = previousUpvotes.has(postId);
     const delta = has ? -1 : 1;
 
     const applyDelta = (post) => ({
@@ -421,11 +435,11 @@ export function usePostActions({
       upvote_count: Math.max((post.upvote_count || 0) - delta, 0),
     });
 
-    setMyUpvotes((s) => {
-      const n = new Set(s);
-      has ? n.delete(postId) : n.add(postId);
-      return n;
-    });
+    const nextUpvotes = new Set(previousUpvotes);
+    has ? nextUpvotes.delete(postId) : nextUpvotes.add(postId);
+    myUpvotesRef.current = nextUpvotes;
+    setMyUpvotes(nextUpvotes);
+
     setPosts((arr) => {
       const next = updatePostInList(arr, postId, applyDelta);
       writeCachedFeedPosts(next);
@@ -434,25 +448,29 @@ export function usePostActions({
     setMyPosts((arr) => updatePostInList(arr, postId, applyDelta));
 
     if (SUPA) {
-      const { error } = has
-        ? await PostsDB.removeUpvote(postId, currentUser.id)
-        : await PostsDB.addUpvote(postId, currentUser.id);
+      try {
+        const { error } = has
+          ? await PostsDB.removeUpvote(postId)
+          : await PostsDB.addUpvote(postId);
 
-      if (error) {
-        setMyUpvotes((s) => {
-          const n = new Set(s);
-          has ? n.add(postId) : n.delete(postId);
-          return n;
-        });
-        setPosts((arr) => {
-          const next = updatePostInList(arr, postId, rollbackDelta);
-          writeCachedFeedPosts(next);
-          return next;
-        });
-        setMyPosts((arr) => updatePostInList(arr, postId, rollbackDelta));
-        pushToast(error.message, "error");
+        if (error) {
+          myUpvotesRef.current = previousUpvotes;
+          setMyUpvotes(previousUpvotes);
+          setPosts((arr) => {
+            const next = updatePostInList(arr, postId, rollbackDelta);
+            writeCachedFeedPosts(next);
+            return next;
+          });
+          setMyPosts((arr) => updatePostInList(arr, postId, rollbackDelta));
+          pushToast(error.message, "error");
+        }
+      } finally {
+        pendingUpvotePostIdsRef.current.delete(postId);
       }
+      return;
     }
+
+    pendingUpvotePostIdsRef.current.delete(postId);
   };
 
   const reportPost = async (postId) => {
@@ -766,8 +784,10 @@ export function usePostActions({
     setMyUpvotes((set) => {
       const next = new Set(set);
       next.delete(postId);
+      myUpvotesRef.current = next;
       return next;
     });
+    pendingUpvotePostIdsRef.current.delete(postId);
     setMyReports((set) => {
       const next = new Set(set);
       next.delete(postId);

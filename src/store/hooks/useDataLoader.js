@@ -1,14 +1,14 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import * as Auth from "@/lib/supabase/auth";
 import * as ProfilesDB from "@/lib/db/profiles";
 import * as PostsDB from "@/lib/db/posts";
 import * as NotificationsDB from "@/lib/db/notifications";
 import { subscribeToMyNotifications } from "@/lib/db/realtime";
-import { getProfileStatus, sanitizePosts } from "../utils/appHelpers";
+import { getPostId, getProfileStatus, sanitizePosts } from "../utils/appHelpers";
 
 const FEED_PAGE_SIZE = 30;
 const NOTIFICATION_PAGE_SIZE = 30;
-const FEED_CACHE_KEY = "soldierhub_feed_cache_v2";
+const FEED_CACHE_KEY = "soldierhub_feed_cache_v4";
 const FEED_CACHE_MAX_AGE_MS = 1000 * 60 * 5;
 const PROFILE_CACHE_KEY = "soldierhub_current_profile_v1";
 const PROFILE_CACHE_MAX_AGE_MS = 1000 * 60 * 30;
@@ -37,6 +37,30 @@ function mergeUniqueItems(existingItems = [], nextItems = []) {
     seen.add(id);
     return true;
   });
+}
+
+function getUniquePostIds(posts = []) {
+  return [...new Set((posts || []).map(getPostId).filter(Boolean))];
+}
+
+function getPostIdsFromKey(postIdsKey = "") {
+  return postIdsKey.split(",").map((id) => id.trim()).filter(Boolean);
+}
+
+function mergeViewerPostIds(currentSet = new Set(), visiblePostIds = [], matchedPostIds = []) {
+  const visibleIds = new Set(visiblePostIds || []);
+  const matchedIds = new Set(matchedPostIds || []);
+  const next = new Set(currentSet);
+
+  visibleIds.forEach((postId) => {
+    if (matchedIds.has(postId)) {
+      next.add(postId);
+    } else {
+      next.delete(postId);
+    }
+  });
+
+  return next;
 }
 
 function readFeedCache() {
@@ -214,6 +238,7 @@ function prependRealtimeNotification(currentNotifications = [], notification) {
 export function useDataLoader({
   SUPA,
   currentUser,
+  posts,
   setCurrentUser,
   setAuthLoading,
   setPostsLoading,
@@ -236,6 +261,12 @@ export function useDataLoader({
   setHasNewFeedItems,
   sendToPendingReview,
 }) {
+  const visibleFeedPostIds = useMemo(() => getUniquePostIds(posts), [posts]);
+  const visibleFeedPostIdsKey = useMemo(
+    () => visibleFeedPostIds.join(","),
+    [visibleFeedPostIds]
+  );
+
   const refreshUnreadCount = useCallback(
     async (userId, { skipCache = true } = {}) => {
       if (!SUPA || !userId) {
@@ -252,6 +283,31 @@ export function useDataLoader({
       }
     },
     [SUPA, setUnreadCount]
+  );
+
+  const refreshViewerStateForPosts = useCallback(
+    async (postIds = []) => {
+      if (!SUPA || !currentUser?.id) return;
+      if (getProfileStatus(currentUser) !== "verified") return;
+
+      const safePostIds = [...new Set((postIds || []).filter(Boolean))];
+      if (safePostIds.length === 0) return;
+
+      const { data, error } = await PostsDB.listMyFeedViewerState(
+        currentUser.id,
+        safePostIds
+      );
+
+      if (error) return;
+
+      setMyUpvotes((currentSet) =>
+        mergeViewerPostIds(currentSet, safePostIds, data?.upvotedPostIds || [])
+      );
+      setMyReports((currentSet) =>
+        mergeViewerPostIds(currentSet, safePostIds, data?.reportedPostIds || [])
+      );
+    },
+    [SUPA, currentUser, setMyReports, setMyUpvotes]
   );
 
   const reloadPosts = useCallback(
@@ -280,12 +336,14 @@ export function useDataLoader({
         setHasMorePosts(cleanPosts.length === FEED_PAGE_SIZE);
         setHasNewFeedItems(false);
         writeFeedCache(cleanPosts);
+        refreshViewerStateForPosts(getUniquePostIds(cleanPosts));
       } finally {
         if (!silent) setPostsLoading(false);
       }
     },
     [
       SUPA,
+      refreshViewerStateForPosts,
       setHasMorePosts,
       setHasNewFeedItems,
       setPosts,
@@ -329,12 +387,13 @@ export function useDataLoader({
         return mergedPosts;
       });
 
+      refreshViewerStateForPosts(getUniquePostIds(cleanPosts));
       setHasMorePosts(cleanPosts.length === FEED_PAGE_SIZE);
       return { ok: true };
     } finally {
       setLoadingMorePosts(false);
     }
-  }, [SUPA, setHasMorePosts, setLoadingMorePosts, setPosts, setPostsCursor]);
+  }, [SUPA, refreshViewerStateForPosts, setHasMorePosts, setLoadingMorePosts, setPosts, setPostsCursor]);
 
   const loadMoreNotifications = useCallback(async () => {
     if (!SUPA || !currentUser?.id) return { ok: false };
@@ -601,16 +660,10 @@ export function useDataLoader({
     })();
 
     (async () => {
-      const [{ data: ups }, { data: reps }, { data: mine }] = await Promise.all([
-        PostsDB.listMyUpvotedPostIds(currentUser.id),
-        PostsDB.listMyReportedPostIds(currentUser.id),
-        PostsDB.listMyPosts(currentUser.id),
-      ]);
+      const { data: mine } = await PostsDB.listMyPosts(currentUser.id);
 
       if (cancelled) return;
 
-      setMyUpvotes(new Set(ups || []));
-      setMyReports(new Set(reps || []));
       setMyPosts(sanitizePosts(mine || [], currentUser.id));
     })();
 
@@ -629,6 +682,19 @@ export function useDataLoader({
     setNotificationsCursor,
     setNotificationsLoading,
     setUnreadCount,
+  ]);
+
+  useEffect(() => {
+    if (!SUPA || !currentUser?.id) return;
+    if (getProfileStatus(currentUser) !== "verified") return;
+    if (!visibleFeedPostIdsKey) return;
+
+    refreshViewerStateForPosts(getPostIdsFromKey(visibleFeedPostIdsKey));
+  }, [
+    SUPA,
+    currentUser,
+    refreshViewerStateForPosts,
+    visibleFeedPostIdsKey,
   ]);
 
   useEffect(() => {

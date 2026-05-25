@@ -159,6 +159,7 @@ export function AppProvider({ children }) {
   } = useDataLoader({
     SUPA,
     currentUser,
+    posts,
     setCurrentUser,
     setAuthLoading,
     setPostsLoading,
