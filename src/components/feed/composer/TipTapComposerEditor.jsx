@@ -136,6 +136,20 @@ export default function TipTapComposerEditor({
     });
   }, []);
 
+  const focusEditorAtEnd = useCallback(
+    (tiptap, forceScroll = true) => {
+      if (!tiptap) return;
+      const endPosition = Math.max(0, tiptap.state?.doc?.content?.size ?? 0);
+      tiptap.commands.focus(undefined, { scrollIntoView: false });
+      tiptap.commands.setTextSelection(endPosition);
+      applyStoredMarks(tiptap);
+      rememberSelection(tiptap);
+      syncFormats(tiptap);
+      keepCursorVisible(tiptap, forceScroll);
+    },
+    [applyStoredMarks, keepCursorVisible, rememberSelection, syncFormats]
+  );
+
   const editor = useEditor({
     extensions,
     content: body || "",
@@ -196,14 +210,10 @@ export default function TipTapComposerEditor({
     if (Date.now() < suppressOpenUntilRef.current) return;
 
     setWritingModeOpen(true);
-    window.setTimeout(() => {
-      editor?.chain().focus("end", { scrollIntoView: false }).run();
-      applyStoredMarks(editor);
-      rememberSelection(editor);
-      syncFormats(editor);
-      keepCursorVisible(editor, true);
-    }, 120);
-  }, [applyStoredMarks, editor, keepCursorVisible, pageMode, rememberSelection, submitting, syncFormats]);
+    window.setTimeout(() => focusEditorAtEnd(editor, true), 80);
+    window.setTimeout(() => focusEditorAtEnd(editor, true), 220);
+    window.setTimeout(() => focusEditorAtEnd(editor, true), 420);
+  }, [editor, focusEditorAtEnd, pageMode, submitting]);
 
   const closeWritingMode = useCallback(() => {
     suppressOpenUntilRef.current = Date.now() + 500;
@@ -296,7 +306,7 @@ export default function TipTapComposerEditor({
     editorRef,
     () => ({
       focus: () => editor?.commands.focus(undefined, { scrollIntoView: false }),
-      focusEnd: () => editor?.chain().focus("end", { scrollIntoView: false }).run(),
+      focusEnd: () => focusEditorAtEnd(editor, true),
       openLongEditor: openWritingMode,
       get innerHTML() {
         return editor ? sanitizeComposerHtml(editor.getHTML()) : "";
@@ -325,7 +335,7 @@ export default function TipTapComposerEditor({
       runCommand: runFormatCommand,
       blur: () => editor?.commands.blur(),
     }),
-    [editor, emitContent, getDisplayFormats, openWritingMode, runFormatCommand]
+    [editor, emitContent, focusEditorAtEnd, getDisplayFormats, openWritingMode, runFormatCommand]
   );
 
   const editorContent = <EditorContent editor={editor} />;
