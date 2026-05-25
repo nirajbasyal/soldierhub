@@ -83,6 +83,10 @@ function hasFeedCursor(cursorCreatedAt, cursorId) {
   return Boolean(cursorCreatedAt || cursorId);
 }
 
+function uniquePostIds(postIds = []) {
+  return [...new Set((postIds || []).filter(Boolean))];
+}
+
 async function fetchProfilesByIds(supabase, authorIds = []) {
   const safeIds = [...new Set((authorIds || []).filter(Boolean))];
   if (!supabase || safeIds.length === 0) return [];
@@ -382,15 +386,57 @@ export async function restoreReportedPost(postId) {
   return { data, error };
 }
 
+export async function listMyFeedViewerState(userId, postIds = []) {
+  const supabase = createClient();
+  const safePostIds = uniquePostIds(postIds);
+
+  if (!supabase || !userId || safePostIds.length === 0) {
+    return { data: { upvotedPostIds: [], reportedPostIds: [] }, error: null };
+  }
+
+  const rpcResult = await supabase.rpc("get_my_feed_viewer_state", {
+    p_post_ids: safePostIds,
+  });
+
+  if (!rpcResult.error) {
+    const row = Array.isArray(rpcResult.data) ? rpcResult.data[0] : rpcResult.data;
+    return {
+      data: {
+        upvotedPostIds: row?.upvoted_post_ids || [],
+        reportedPostIds: row?.reported_post_ids || [],
+      },
+      error: null,
+    };
+  }
+
+  console.error("Feed viewer state RPC failed; using safe fallback:", rpcResult.error);
+
+  const [{ data: upvotedPostIds, error: upvoteError }, { data: reportedPostIds, error: reportError }] =
+    await Promise.all([
+      listMyUpvotedPostIds(userId, safePostIds),
+      listMyReportedPostIds(userId, safePostIds),
+    ]);
+
+  return {
+    data: {
+      upvotedPostIds: upvotedPostIds || [],
+      reportedPostIds: reportedPostIds || [],
+    },
+    error: upvoteError || reportError || null,
+  };
+}
+
 export async function listMyUpvotedPostIds(userId, postIds = []) {
   const supabase = createClient();
   if (!supabase || !userId) return { data: [], error: null };
 
-  const safePostIds = Array.isArray(postIds) ? postIds.filter(Boolean) : [];
+  const safePostIds = uniquePostIds(postIds);
   let query = supabase.from("upvotes").select("post_id").eq("user_id", userId);
 
   if (safePostIds.length > 0) {
     query = query.in("post_id", safePostIds);
+  } else {
+    query = query.limit(250);
   }
 
   const { data, error } = await query;
@@ -440,14 +486,20 @@ export async function removeUpvote(postId) {
   return { error: result.error };
 }
 
-export async function listMyReportedPostIds(userId) {
+export async function listMyReportedPostIds(userId, postIds = []) {
   const supabase = createClient();
-  if (!supabase) return { data: [], error: null };
+  if (!supabase || !userId) return { data: [], error: null };
 
-  const { data, error } = await supabase
-    .from("reports")
-    .select("post_id")
-    .eq("user_id", userId);
+  const safePostIds = uniquePostIds(postIds);
+  let query = supabase.from("reports").select("post_id").eq("user_id", userId);
+
+  if (safePostIds.length > 0) {
+    query = query.in("post_id", safePostIds);
+  } else {
+    query = query.limit(250);
+  }
+
+  const { data, error } = await query;
 
   if (error) console.error("List my reports failed:", error);
 
