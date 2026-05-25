@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowBigUp,
   Download,
@@ -450,6 +450,9 @@ export default function PostCard({ post, openRepliesDefault = false }) {
   const [commentToDelete, setCommentToDelete] = useState(null);
   const [deletingComment, setDeletingComment] = useState(false);
   const [activeImage, setActiveImage] = useState(null);
+  const upvotePendingRef = useRef(false);
+  const lastLocalUpvoteMutationRef = useRef(0);
+  const lastUpvotePostIdRef = useRef(postId);
 
   const category = CATEGORIES.find((c) => c.key === post?.category) || CATEGORIES[0];
   const authorId = getAuthorId(post);
@@ -492,15 +495,25 @@ export default function PostCard({ post, openRepliesDefault = false }) {
     setCommentMenuOpenId(null);
     setCommentToDelete(null);
     setActiveImage(null);
+    upvotePendingRef.current = false;
+    lastLocalUpvoteMutationRef.current = 0;
+    lastUpvotePostIdRef.current = postId;
   }, [postId, openRepliesDefault]);
 
   useEffect(() => {
-    setOptimisticUpvoteCount(storedUpvoteCount);
-  }, [postId, storedUpvoteCount]);
+    if (lastUpvotePostIdRef.current !== postId) {
+      lastUpvotePostIdRef.current = postId;
+      setOptimisticUpvoteCount(storedUpvoteCount);
+      setOptimisticUserUpvoted(userUpvotedFromStore);
+      return;
+    }
 
-  useEffect(() => {
+    if (upvotePendingRef.current) return;
+    if (Date.now() - lastLocalUpvoteMutationRef.current < 3000) return;
+
+    setOptimisticUpvoteCount(storedUpvoteCount);
     setOptimisticUserUpvoted(userUpvotedFromStore);
-  }, [postId, userUpvotedFromStore]);
+  }, [postId, storedUpvoteCount, userUpvotedFromStore]);
 
   useEffect(() => {
     if (!openRepliesDefault || !postId || commentsLoaded) return undefined;
@@ -560,15 +573,18 @@ export default function PostCard({ post, openRepliesDefault = false }) {
   };
 
   const handleUpvote = async () => {
-    if (upvoteSubmitting) return;
+    if (upvotePendingRef.current || upvoteSubmitting) return;
     if (!requireAuth()) return;
     if (!ensurePostId()) return;
 
     const wasUpvoted = optimisticUserUpvoted;
+    const nextUserUpvoted = !wasUpvoted;
     const delta = wasUpvoted ? -1 : 1;
 
+    upvotePendingRef.current = true;
+    lastLocalUpvoteMutationRef.current = Date.now();
     setUpvoteSubmitting(true);
-    setOptimisticUserUpvoted(!wasUpvoted);
+    setOptimisticUserUpvoted(nextUserUpvoted);
     setOptimisticUpvoteCount((count) => Math.max((Number(count) || 0) + delta, 0));
 
     try {
@@ -577,12 +593,24 @@ export default function PostCard({ post, openRepliesDefault = false }) {
       if (result?.ok === false) {
         setOptimisticUserUpvoted(wasUpvoted);
         setOptimisticUpvoteCount((count) => Math.max((Number(count) || 0) - delta, 0));
+        return;
+      }
+
+      const authoritativeUserUpvoted =
+        typeof result?.user_upvoted === "boolean" ? result.user_upvoted : nextUserUpvoted;
+      const authoritativeCount = Number(result?.upvote_count);
+
+      setOptimisticUserUpvoted(authoritativeUserUpvoted);
+      if (Number.isFinite(authoritativeCount)) {
+        setOptimisticUpvoteCount(Math.max(authoritativeCount, 0));
       }
     } catch {
       setOptimisticUserUpvoted(wasUpvoted);
       setOptimisticUpvoteCount((count) => Math.max((Number(count) || 0) - delta, 0));
       pushToast?.("Could not update upvote. Please try again.", "error");
     } finally {
+      upvotePendingRef.current = false;
+      lastLocalUpvoteMutationRef.current = Date.now();
       setUpvoteSubmitting(false);
     }
   };
