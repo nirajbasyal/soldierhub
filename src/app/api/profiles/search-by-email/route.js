@@ -44,7 +44,7 @@ function safeProfilePayload(profile = {}) {
 }
 
 export async function POST(request) {
-  const ipRateLimit = checkRateLimit(request, {
+  const ipRateLimit = await checkRateLimit(request, {
     keyPrefix: "profile-email-search-ip",
     limit: 30,
     windowMs: 60 * 1000,
@@ -82,7 +82,7 @@ export async function POST(request) {
     );
   }
 
-  const userRateLimit = checkRateLimit(request, {
+  const userRateLimit = await checkRateLimit(request, {
     keyPrefix: `profile-email-search-user-${user.id}`,
     limit: 40,
     windowMs: 10 * 60 * 1000,
