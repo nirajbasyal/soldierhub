@@ -88,23 +88,23 @@ function uniquePostIds(postIds = []) {
 }
 
 async function fetchProfilesByIds(supabase, authorIds = []) {
-  const safeIds = [...new Set((authorIds || []).filter(Boolean))];
+  const safeIds = [...new Set((authorIds || []).filter(Boolean))].slice(0, 100);
   if (!supabase || safeIds.length === 0) return [];
 
+  const rpcResult = await supabase.rpc("get_public_profiles_for_ids", {
+    p_user_ids: safeIds,
+  });
+
+  if (!rpcResult.error) return rpcResult.data || [];
+
   const fullResult = await supabase
-    .from("profiles")
+    .from("public_profiles")
     .select("id, full_name, avatar_color, avatar_url")
     .in("id", safeIds);
 
   if (!fullResult.error) return fullResult.data || [];
 
-  const fallbackResult = await supabase
-    .from("profiles")
-    .select("id, full_name, avatar_color")
-    .in("id", safeIds);
-
-  if (fallbackResult.error) return [];
-  return fallbackResult.data || [];
+  return [];
 }
 
 async function attachProfilesToPosts(supabase, rows = []) {
