@@ -31,7 +31,9 @@ function hasStructuredContent(editor) {
 }
 
 function isTextEditorTarget(target) {
-  return target instanceof Element && Boolean(target.closest(".soldierhub-normal-editor .ProseMirror"));
+  if (!(target instanceof Element)) return false;
+  if (target.closest("[data-composer-media='true']")) return false;
+  return Boolean(target.closest(".soldierhub-normal-editor .ProseMirror"));
 }
 
 export default function TipTapComposerEditor({
@@ -149,6 +151,21 @@ export default function TipTapComposerEditor({
       keepCursorVisible(tiptap, placeNearKeyboard);
     },
     [applyStoredMarks, keepCursorVisible, rememberSelection, syncFormats]
+  );
+
+  const suppressMobileEditorOpen = useCallback(() => {
+    suppressOpenUntilRef.current = Date.now() + 700;
+  }, []);
+
+  const handleRemoveImage = useCallback(
+    (event) => {
+      event?.preventDefault?.();
+      event?.stopPropagation?.();
+      suppressMobileEditorOpen();
+      editor?.commands.blur();
+      onRemoveImage?.();
+    },
+    [editor, onRemoveImage, suppressMobileEditorOpen]
   );
 
   const editor = useEditor({
@@ -378,7 +395,7 @@ export default function TipTapComposerEditor({
       {editorContent}
 
       {imageProcessing && !selectedImage ? (
-        <div className="mt-3 flex items-center gap-3 rounded-[20px] border px-3.5 py-3" style={{ backgroundColor: "#F4F8FD", borderColor: T.borderSoft }}>
+        <div data-composer-media="true" className="mt-3 flex items-center gap-3 rounded-[20px] border px-3.5 py-3" style={{ backgroundColor: "#F4F8FD", borderColor: T.borderSoft }}>
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: "rgba(63,95,125,0.12)", color: T.navy }}>
             <Loader2 size={17} className="animate-spin" />
           </span>
@@ -390,10 +407,31 @@ export default function TipTapComposerEditor({
       ) : null}
 
       {selectedImage ? (
-        <div className="mt-3 overflow-hidden rounded-[22px] border" style={{ backgroundColor: "#EEF3F8", borderColor: T.borderSoft }}>
+        <div
+          data-composer-media="true"
+          className="mt-3 overflow-hidden rounded-[22px] border"
+          style={{ backgroundColor: "#EEF3F8", borderColor: T.borderSoft }}
+          onPointerDownCapture={(event) => {
+            event.stopPropagation();
+            suppressMobileEditorOpen();
+          }}
+          onClick={(event) => event.stopPropagation()}
+        >
           <div className="relative flex justify-center bg-[#EEF3F8]">
             <img src={selectedImage.previewUrl} alt="Selected post preview" className="block max-h-[62vh] w-full object-cover md:max-h-[340px]" style={{ aspectRatio: selectedImageAspectRatio }} />
-            <button type="button" onClick={onRemoveImage} disabled={submitting || imageProcessing} className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full border shadow-sm transition active:scale-[0.98] disabled:opacity-50" style={{ backgroundColor: "rgba(255,255,255,0.94)", borderColor: T.border, color: T.navy }} aria-label="Remove selected photo" title="Remove photo">
+            <button
+              type="button"
+              onPointerDown={(event) => {
+                event.stopPropagation();
+                suppressMobileEditorOpen();
+              }}
+              onClick={handleRemoveImage}
+              disabled={submitting || imageProcessing}
+              className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full border shadow-sm transition active:scale-[0.98] disabled:opacity-50"
+              style={{ backgroundColor: "rgba(255,255,255,0.94)", borderColor: T.border, color: T.navy }}
+              aria-label="Remove selected photo"
+              title="Remove photo"
+            >
               <X size={16} strokeWidth={2.8} />
             </button>
           </div>
