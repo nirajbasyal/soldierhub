@@ -43,6 +43,10 @@ function getUniquePostIds(posts = []) {
   return [...new Set((posts || []).map(getPostId).filter(Boolean))];
 }
 
+function getPostIdsFromKey(postIdsKey = "") {
+  return postIdsKey.split(",").map((id) => id.trim()).filter(Boolean);
+}
+
 function mergeViewerPostIds(currentSet = new Set(), visiblePostIds = [], matchedPostIds = []) {
   const visibleIds = new Set(visiblePostIds || []);
   const matchedIds = new Set(matchedPostIds || []);
@@ -685,12 +689,11 @@ export function useDataLoader({
     if (getProfileStatus(currentUser) !== "verified") return;
     if (!visibleFeedPostIdsKey) return;
 
-    refreshViewerStateForPosts(visibleFeedPostIds);
+    refreshViewerStateForPosts(getPostIdsFromKey(visibleFeedPostIdsKey));
   }, [
     SUPA,
     currentUser,
     refreshViewerStateForPosts,
-    visibleFeedPostIds,
     visibleFeedPostIdsKey,
   ]);
 
