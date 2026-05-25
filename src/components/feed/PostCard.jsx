@@ -350,7 +350,7 @@ function CommentRow({ comment, post, currentUser, isAdmin = false, menuOpen = fa
     comment?.is_anonymous_author === true ||
       comment?.anonymous === true ||
       comment?.comment_anonymous === true ||
-      (post?.anonymous && isTemporaryCommentId(commentId)) ||
+      comment?.mask_optimistic_identity === true ||
       (post?.anonymous && commentAuthorId && postAuthorId && commentAuthorId === postAuthorId) ||
       (post?.anonymous && comment?.viewer_is_author === true && !commentAuthorId)
   );
@@ -470,10 +470,10 @@ export default function PostCard({ post, openRepliesDefault = false }) {
       (currentUser?.id && postId && Array.isArray(myPosts) && myPosts.some((myPost) => getPostId(myPost) === postId))
   );
   const adminModeratingOtherPost = Boolean(isAdmin && !ownsPost);
-  const maskReplyIdentity = Boolean(post?.anonymous);
-  const replyName = maskReplyIdentity ? anonymousName : currentUser?.full_name || "Member";
-  const replyColor = maskReplyIdentity ? "#5C6470" : currentUser?.avatar_color || colorFromString(replyName);
-  const replyAvatarUrl = maskReplyIdentity ? null : currentUser?.avatar_url || null;
+  const shouldMaskViewerReply = Boolean(post?.anonymous && ownsPost);
+  const replyName = shouldMaskViewerReply ? anonymousName : currentUser?.full_name || "Member";
+  const replyColor = shouldMaskViewerReply ? "#5C6470" : currentUser?.avatar_color || colorFromString(replyName);
+  const replyAvatarUrl = shouldMaskViewerReply ? null : currentUser?.avatar_url || null;
   const bodyText = post?.body || post?.content || post?.text || "";
   const postImage = getPostImage(post);
 
@@ -662,8 +662,8 @@ export default function PostCard({ post, openRepliesDefault = false }) {
       }
 
       const result = await commentOnPost?.(postId, cleaned, {
-        isAnonymousAuthor: Boolean(post?.anonymous),
-        maskOptimisticIdentity: Boolean(post?.anonymous),
+        isAnonymousAuthor: shouldMaskViewerReply,
+        maskOptimisticIdentity: shouldMaskViewerReply,
         anonymousName,
         anonymousColor: "#5C6470",
       });
@@ -811,7 +811,7 @@ export default function PostCard({ post, openRepliesDefault = false }) {
             </div>
 
             <div className="mt-3 flex items-start gap-2.5">
-              <AuthorAvatarName userId={maskReplyIdentity ? null : currentUser?.id} fallbackName={replyName} name={replyName} color={replyColor} src={replyAvatarUrl} size={32} anonymous={maskReplyIdentity}>
+              <AuthorAvatarName userId={shouldMaskViewerReply ? null : currentUser?.id} fallbackName={replyName} name={replyName} color={replyColor} src={replyAvatarUrl} size={32} anonymous={shouldMaskViewerReply}>
                 <Avatar name={replyName} color={replyColor} src={replyAvatarUrl} size={32} />
               </AuthorAvatarName>
               <div className="min-w-0 flex-1">
