@@ -156,6 +156,7 @@ export function AppProvider({ children }) {
     reloadPendingUsers,
     reloadVerifiedUsers,
     reloadBlockedUsers,
+    refreshViewerStateForPosts,
   } = useDataLoader({
     SUPA,
     currentUser,
@@ -350,6 +351,7 @@ export function AppProvider({ children }) {
       reloadPendingUsers,
       reloadVerifiedUsers,
       reloadBlockedUsers,
+      refreshViewerStateForPosts,
 
       // Auth actions
       handleSignup,
@@ -414,6 +416,7 @@ export function AppProvider({ children }) {
       reloadPendingUsers,
       reloadVerifiedUsers,
       reloadBlockedUsers,
+      refreshViewerStateForPosts,
       handleSignup,
       handleLogin,
       handleLogout,

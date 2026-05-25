@@ -79,32 +79,32 @@ function resolvePostId(input) {
   return input;
 }
 
-function hasFeedCursor(cursorCreatedAt, cursorId) {
-  return Boolean(cursorCreatedAt || cursorId);
-}
-
 function uniquePostIds(postIds = []) {
   return [...new Set((postIds || []).filter(Boolean))];
 }
 
+function hasFeedCursor(cursorCreatedAt, cursorId) {
+  return Boolean(cursorCreatedAt || cursorId);
+}
+
 async function fetchProfilesByIds(supabase, authorIds = []) {
-  const safeIds = [...new Set((authorIds || []).filter(Boolean))];
+  const safeIds = [...new Set((authorIds || []).filter(Boolean))].slice(0, 100);
   if (!supabase || safeIds.length === 0) return [];
 
+  const rpcResult = await supabase.rpc("get_public_profiles_for_ids", {
+    p_user_ids: safeIds,
+  });
+
+  if (!rpcResult.error) return rpcResult.data || [];
+
   const fullResult = await supabase
-    .from("profiles")
+    .from("public_profiles")
     .select("id, full_name, avatar_color, avatar_url")
     .in("id", safeIds);
 
   if (!fullResult.error) return fullResult.data || [];
 
-  const fallbackResult = await supabase
-    .from("profiles")
-    .select("id, full_name, avatar_color")
-    .in("id", safeIds);
-
-  if (fallbackResult.error) return [];
-  return fallbackResult.data || [];
+  return [];
 }
 
 async function attachProfilesToPosts(supabase, rows = []) {
@@ -467,23 +467,40 @@ export async function addUpvote(postId) {
 
 export async function removeUpvote(postId) {
   const supabase = createClient();
-  if (!supabase) return { error: null };
+  if (!supabase) return { data: null, error: null };
 
   const resolvedPostId = resolvePostId(postId);
   const { accessToken, error } = await getAccessTokenForApi(
     supabase,
     "Please log in again before voting."
   );
-  if (error || !accessToken) return { error };
+  if (error || !accessToken) return { data: null, error };
 
-  const result = await postJsonToApi(
+  return postJsonToApi(
     "/api/posts/upvote",
     accessToken,
     { post_id: resolvedPostId, action: "remove" },
     "Could not remove vote."
   );
+}
 
-  return { error: result.error };
+export async function toggleUpvote(postId) {
+  const supabase = createClient();
+  if (!supabase) return { data: null, error: null };
+
+  const resolvedPostId = resolvePostId(postId);
+  const { accessToken, error } = await getAccessTokenForApi(
+    supabase,
+    "Please log in again before voting."
+  );
+  if (error || !accessToken) return { data: null, error };
+
+  return postJsonToApi(
+    "/api/posts/upvote",
+    accessToken,
+    { post_id: resolvedPostId, action: "toggle" },
+    "Could not update vote."
+  );
 }
 
 export async function listMyReportedPostIds(userId, postIds = []) {

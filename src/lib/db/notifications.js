@@ -152,12 +152,17 @@ function normalizeNotificationRow(row = {}) {
       row.actor_name_cached || row.actor_name || row.author_name || row.profile_name || "Someone",
     actor_color_cached:
       row.actor_color_cached || row.actor_color || row.author_color || row.profile_color || "#314A66",
+    actor_avatar_url: row.actor_avatar_url || row.actor_profile?.avatar_url || null,
     post_title_cached:
       row.post_title_cached || row.post_preview_cached || row.post_body_cached || "",
+    post_preview_cached: row.post_preview_cached || row.post_title_cached || "",
     comment_body_cached: row.comment_body_cached || row.comment_body || "",
     type: row.type || row.notification_type || row.kind || "comment",
     read: Boolean(row.read),
     created_at: row.created_at || row.inserted_at || row.createdAt || new Date().toISOString(),
+    post: row.post || null,
+    comment: row.comment || null,
+    actor_profile: row.actor_profile || null,
   };
 }
 
@@ -215,8 +220,76 @@ async function loadProfilesForNotifications(supabase, actorIds = []) {
   return profileById;
 }
 
+function normalizeHydratedRpcRows(rows = []) {
+  return (rows || []).map((row) => {
+    const normalized = normalizeNotificationRow(row);
+    const post = row.post ? normalizePostRow(row.post) : null;
+    const comment = row.comment || null;
+    const actorProfile = row.actor_profile || null;
+
+    return {
+      ...normalized,
+      post,
+      comment,
+      actor_profile: actorProfile,
+      actor_user_id: normalized.actor_user_id || actorProfile?.id || null,
+      actor_id: normalized.actor_id || normalized.actor_user_id || actorProfile?.id || null,
+      actor_name_cached:
+        normalized.actor_name_cached || actorProfile?.full_name || "Someone",
+      actor_color_cached:
+        normalized.actor_color_cached || actorProfile?.avatar_color || "#314A66",
+      actor_avatar_url: normalized.actor_avatar_url || actorProfile?.avatar_url || null,
+      post_id: normalized.post_id || post?.id || comment?.post_id || null,
+      post_preview_cached:
+        normalized.post_preview_cached || post?.body || normalized.post_title_cached || "",
+      post_title_cached:
+        normalized.post_title_cached || normalized.post_preview_cached || post?.body || "",
+      comment_body_cached: normalized.comment_body_cached || comment?.body || "",
+    };
+  });
+}
+
+async function listHydratedNotificationsFromRpc(
+  supabase,
+  { limit = 30, cursorCreatedAt = null, cursorId = null, notificationIds = null } = {}
+) {
+  if (!supabase) return { data: [], error: null };
+
+  const safeNotificationIds = Array.isArray(notificationIds)
+    ? uniqueValues(notificationIds).slice(0, 50)
+    : null;
+
+  const { data, error } = await supabase.rpc("list_my_notifications_hydrated", {
+    p_limit: Math.max(1, Math.min(limit, 50)),
+    p_cursor_created_at: cursorCreatedAt || null,
+    p_cursor_id: cursorId || null,
+    p_notification_ids: safeNotificationIds,
+  });
+
+  if (error) return { data: [], error };
+
+  return { data: normalizeHydratedRpcRows(data || []), error: null };
+}
+
 export async function hydrateNotificationRows(rows = []) {
   const supabase = createClient();
+
+  if (!Array.isArray(rows) || rows.length === 0) return rows || [];
+
+  const notificationIds = uniqueValues(rows.map((row) => row?.id));
+
+  if (notificationIds.length > 0) {
+    const { data, error } = await listHydratedNotificationsFromRpc(supabase, {
+      limit: notificationIds.length,
+      notificationIds,
+    });
+
+    if (!error && data?.length) {
+      const hydratedById = new Map(data.map((row) => [row.id, row]));
+      return rows.map((row) => hydratedById.get(row.id) || normalizeNotificationRow(row));
+    }
+  }
+
   return hydrateNotifications(supabase, rows);
 }
 
@@ -282,6 +355,16 @@ export async function listMyNotifications(
 ) {
   const supabase = createClient();
   if (!supabase || !userId) return { data: [], error: null };
+
+  const rpcResult = await listHydratedNotificationsFromRpc(supabase, {
+    limit,
+    cursorCreatedAt,
+    cursorId,
+  });
+
+  if (!rpcResult.error) {
+    return { data: rpcResult.data || [], error: null };
+  }
 
   let query = supabase
     .from("notifications")

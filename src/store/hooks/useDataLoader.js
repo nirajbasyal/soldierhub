@@ -742,5 +742,6 @@ export function useDataLoader({
     reloadPendingUsers,
     reloadVerifiedUsers,
     reloadBlockedUsers,
+    refreshViewerStateForPosts,
   };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowBigUp,
   Download,
@@ -350,7 +350,7 @@ function CommentRow({ comment, post, currentUser, isAdmin = false, menuOpen = fa
     comment?.is_anonymous_author === true ||
       comment?.anonymous === true ||
       comment?.comment_anonymous === true ||
-      (post?.anonymous && isTemporaryCommentId(commentId)) ||
+      comment?.mask_optimistic_identity === true ||
       (post?.anonymous && commentAuthorId && postAuthorId && commentAuthorId === postAuthorId) ||
       (post?.anonymous && comment?.viewer_is_author === true && !commentAuthorId)
   );
@@ -441,6 +441,7 @@ export default function PostCard({ post, openRepliesDefault = false }) {
   const [comment, setComment] = useState("");
   const [commentError, setCommentError] = useState("");
   const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const [upvoteSubmitting, setUpvoteSubmitting] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [editingOpen, setEditingOpen] = useState(false);
   const [deletingOpen, setDeletingOpen] = useState(false);
@@ -449,6 +450,9 @@ export default function PostCard({ post, openRepliesDefault = false }) {
   const [commentToDelete, setCommentToDelete] = useState(null);
   const [deletingComment, setDeletingComment] = useState(false);
   const [activeImage, setActiveImage] = useState(null);
+  const upvotePendingRef = useRef(false);
+  const lastLocalUpvoteMutationRef = useRef(0);
+  const lastUpvotePostIdRef = useRef(postId);
 
   const category = CATEGORIES.find((c) => c.key === post?.category) || CATEGORIES[0];
   const authorId = getAuthorId(post);
@@ -460,8 +464,12 @@ export default function PostCard({ post, openRepliesDefault = false }) {
   const commentsLoaded = Boolean(postId && Object.prototype.hasOwnProperty.call(postComments || {}, postId));
   const storedCommentCount = post?.comment_count ?? post?.reply_count ?? 0;
   const commentCount = commentsLoaded ? comments.length : storedCommentCount;
-  const upvoteCount = post?.upvote_count ?? 0;
-  const userUpvoted = Boolean(currentUser && postId && myUpvotes?.has?.(postId));
+  const storedUpvoteCount = Number(post?.upvote_count ?? 0) || 0;
+  const userUpvotedFromStore = Boolean(currentUser && postId && myUpvotes?.has?.(postId));
+  const [optimisticUpvoteCount, setOptimisticUpvoteCount] = useState(storedUpvoteCount);
+  const [optimisticUserUpvoted, setOptimisticUserUpvoted] = useState(userUpvotedFromStore);
+  const upvoteCount = optimisticUpvoteCount;
+  const userUpvoted = optimisticUserUpvoted;
   const userReported = Boolean(postId && myReports?.has?.(postId));
   const isReported = post?.status === "reported";
   const ownsPost = Boolean(
@@ -470,10 +478,10 @@ export default function PostCard({ post, openRepliesDefault = false }) {
       (currentUser?.id && postId && Array.isArray(myPosts) && myPosts.some((myPost) => getPostId(myPost) === postId))
   );
   const adminModeratingOtherPost = Boolean(isAdmin && !ownsPost);
-  const maskReplyIdentity = Boolean(post?.anonymous);
-  const replyName = maskReplyIdentity ? anonymousName : currentUser?.full_name || "Member";
-  const replyColor = maskReplyIdentity ? "#5C6470" : currentUser?.avatar_color || colorFromString(replyName);
-  const replyAvatarUrl = maskReplyIdentity ? null : currentUser?.avatar_url || null;
+  const shouldMaskViewerReply = Boolean(post?.anonymous && ownsPost);
+  const replyName = shouldMaskViewerReply ? anonymousName : currentUser?.full_name || "Member";
+  const replyColor = shouldMaskViewerReply ? "#5C6470" : currentUser?.avatar_color || colorFromString(replyName);
+  const replyAvatarUrl = shouldMaskViewerReply ? null : currentUser?.avatar_url || null;
   const bodyText = post?.body || post?.content || post?.text || "";
   const postImage = getPostImage(post);
 
@@ -483,10 +491,29 @@ export default function PostCard({ post, openRepliesDefault = false }) {
     setCommentError("");
     setCommentsLoading(false);
     setCommentSubmitting(false);
+    setUpvoteSubmitting(false);
     setCommentMenuOpenId(null);
     setCommentToDelete(null);
     setActiveImage(null);
+    upvotePendingRef.current = false;
+    lastLocalUpvoteMutationRef.current = 0;
+    lastUpvotePostIdRef.current = postId;
   }, [postId, openRepliesDefault]);
+
+  useEffect(() => {
+    if (lastUpvotePostIdRef.current !== postId) {
+      lastUpvotePostIdRef.current = postId;
+      setOptimisticUpvoteCount(storedUpvoteCount);
+      setOptimisticUserUpvoted(userUpvotedFromStore);
+      return;
+    }
+
+    if (upvotePendingRef.current) return;
+    if (Date.now() - lastLocalUpvoteMutationRef.current < 3000) return;
+
+    setOptimisticUpvoteCount(storedUpvoteCount);
+    setOptimisticUserUpvoted(userUpvotedFromStore);
+  }, [postId, storedUpvoteCount, userUpvotedFromStore]);
 
   useEffect(() => {
     if (!openRepliesDefault || !postId || commentsLoaded) return undefined;
@@ -546,9 +573,46 @@ export default function PostCard({ post, openRepliesDefault = false }) {
   };
 
   const handleUpvote = async () => {
+    if (upvotePendingRef.current || upvoteSubmitting) return;
     if (!requireAuth()) return;
     if (!ensurePostId()) return;
-    await upvotePost?.(postId);
+
+    const wasUpvoted = optimisticUserUpvoted;
+    const nextUserUpvoted = !wasUpvoted;
+    const delta = wasUpvoted ? -1 : 1;
+
+    upvotePendingRef.current = true;
+    lastLocalUpvoteMutationRef.current = Date.now();
+    setUpvoteSubmitting(true);
+    setOptimisticUserUpvoted(nextUserUpvoted);
+    setOptimisticUpvoteCount((count) => Math.max((Number(count) || 0) + delta, 0));
+
+    try {
+      const result = await upvotePost?.(postId);
+
+      if (result?.ok === false) {
+        setOptimisticUserUpvoted(wasUpvoted);
+        setOptimisticUpvoteCount((count) => Math.max((Number(count) || 0) - delta, 0));
+        return;
+      }
+
+      const authoritativeUserUpvoted =
+        typeof result?.user_upvoted === "boolean" ? result.user_upvoted : nextUserUpvoted;
+      const authoritativeCount = Number(result?.upvote_count);
+
+      setOptimisticUserUpvoted(authoritativeUserUpvoted);
+      if (Number.isFinite(authoritativeCount)) {
+        setOptimisticUpvoteCount(Math.max(authoritativeCount, 0));
+      }
+    } catch {
+      setOptimisticUserUpvoted(wasUpvoted);
+      setOptimisticUpvoteCount((count) => Math.max((Number(count) || 0) - delta, 0));
+      pushToast?.("Could not update upvote. Please try again.", "error");
+    } finally {
+      upvotePendingRef.current = false;
+      lastLocalUpvoteMutationRef.current = Date.now();
+      setUpvoteSubmitting(false);
+    }
   };
 
   const handleShare = async () => {
@@ -662,8 +726,8 @@ export default function PostCard({ post, openRepliesDefault = false }) {
       }
 
       const result = await commentOnPost?.(postId, cleaned, {
-        isAnonymousAuthor: Boolean(post?.anonymous),
-        maskOptimisticIdentity: Boolean(post?.anonymous),
+        isAnonymousAuthor: shouldMaskViewerReply,
+        maskOptimisticIdentity: shouldMaskViewerReply,
         anonymousName,
         anonymousColor: "#5C6470",
       });
@@ -768,7 +832,7 @@ export default function PostCard({ post, openRepliesDefault = false }) {
         </div>
 
         <div className="mx-4 md:mx-5 border-t flex items-center justify-between gap-1 py-1.5" style={{ borderColor: T.borderSoft || T.border }}>
-          <ActionButton icon={ArrowBigUp} label="Upvote" count={upvoteCount} active={userUpvoted} fillWhenActive onClick={handleUpvote} />
+          <ActionButton icon={ArrowBigUp} label="Upvote" count={upvoteCount} active={userUpvoted} fillWhenActive onClick={handleUpvote} disabled={upvoteSubmitting} />
           <ActionButton icon={MessageCircle} label="Replies" count={commentCount} active={showComments} fillWhenActive onClick={handleToggleComments} />
           <ActionButton icon={Share2} label="Share" onClick={handleShare} />
         </div>
@@ -811,7 +875,7 @@ export default function PostCard({ post, openRepliesDefault = false }) {
             </div>
 
             <div className="mt-3 flex items-start gap-2.5">
-              <AuthorAvatarName userId={maskReplyIdentity ? null : currentUser?.id} fallbackName={replyName} name={replyName} color={replyColor} src={replyAvatarUrl} size={32} anonymous={maskReplyIdentity}>
+              <AuthorAvatarName userId={shouldMaskViewerReply ? null : currentUser?.id} fallbackName={replyName} name={replyName} color={replyColor} src={replyAvatarUrl} size={32} anonymous={shouldMaskViewerReply}>
                 <Avatar name={replyName} color={replyColor} src={replyAvatarUrl} size={32} />
               </AuthorAvatarName>
               <div className="min-w-0 flex-1">
