@@ -7,15 +7,19 @@
 -- What this migration does:
 --   1. Keeps existing access behavior.
 --   2. Adds explicit TO anon/authenticated roles to policies.
---   3. Wraps stable auth/helper functions with SELECT so Postgres can cache
---      the value per statement instead of evaluating it per row.
---   4. Re-confirms important indexes with IF NOT EXISTS using existing names.
+--   3. Wraps stable auth/helper functions with SELECT so Postgres can evaluate
+--      the value once per statement instead of repeatedly per row.
+--   4. Preserves grants used by the app.
 --
--- Safety:
+-- What this migration intentionally does NOT do:
 --   - No table drops.
 --   - No data deletion.
 --   - No column removal.
---   - Transactional: if anything fails, the migration rolls back.
+--   - No new indexes.
+--
+-- Index note:
+--   Indexes should be handled in a separate migration only after confirming a
+--   real missing-index warning from Supabase database advisors or query plans.
 -- ============================================================================
 
 begin;
@@ -24,56 +28,22 @@ set local lock_timeout = '5s';
 set local statement_timeout = '30s';
 
 -- --------------------------------------------------------------------------
--- Safe index confirmations
--- --------------------------------------------------------------------------
--- These use existing index names already present in the current schema snapshot.
--- If they already exist, these are no-ops. They help if production ever lags
--- behind the repo snapshot.
-
-create index if not exists comments_author_id_idx
-  on public.comments using btree (author_id);
-
-create index if not exists comments_post_created_id_idx
-  on public.comments using btree (post_id, created_at, id);
-
-create index if not exists posts_author_created_id_idx
-  on public.posts using btree (author_id, created_at desc, id desc);
-
-create index if not exists posts_feed_status_created_id_idx
-  on public.posts using btree (status, created_at desc, id desc);
-
-create index if not exists posts_category_status_created_id_idx
-  on public.posts using btree (category, status, created_at desc, id desc);
-
-create index if not exists reports_user_id_idx
-  on public.reports using btree (user_id);
-
-create index if not exists upvotes_user_id_idx
-  on public.upvotes using btree (user_id);
-
-create index if not exists notifications_recipient_read_idx
-  on public.notifications using btree (recipient_user_id, read);
-
-create index if not exists notifications_recipient_read_created_idx
-  on public.notifications using btree (recipient_user_id, read, created_at desc);
-
-create index if not exists profile_follows_follower_idx
-  on public.profile_follows using btree (follower_id, created_at desc);
-
-create index if not exists profile_follows_following_idx
-  on public.profile_follows using btree (following_id, created_at desc);
-
--- --------------------------------------------------------------------------
 -- profiles RLS
 -- --------------------------------------------------------------------------
 
 alter table public.profiles enable row level security;
 
+-- Clean up current and older policy names safely.
+drop policy if exists "profiles: anyone can read verified profiles" on public.profiles;
+drop policy if exists "profiles: authenticated users can read verified profiles" on public.profiles;
 drop policy if exists "profiles: admins can read all profiles" on public.profiles;
 drop policy if exists "profiles: users can read their own profile" on public.profiles;
 drop policy if exists "profiles: users can update their own profile" on public.profiles;
 drop policy if exists "profiles: admins can update any profile" on public.profiles;
 drop policy if exists "profiles: admins can delete any profile" on public.profiles;
+
+-- Profiles table is private. It contains email, role, and status.
+-- Public-facing profile data should use public.public_profiles or cached fields.
 
 create policy "profiles: admins can read all profiles"
   on public.profiles
@@ -94,9 +64,21 @@ create policy "profiles: users can update their own profile"
   using ((select auth.uid()) = id)
   with check (
     (select auth.uid()) = id
-    and role = (select current_profile.role from public.profiles current_profile where current_profile.id = (select auth.uid()))
-    and status = (select current_profile.status from public.profiles current_profile where current_profile.id = (select auth.uid()))
-    and email = (select current_profile.email from public.profiles current_profile where current_profile.id = (select auth.uid()))
+    and role = (
+      select current_profile.role
+      from public.profiles current_profile
+      where current_profile.id = (select auth.uid())
+    )
+    and status = (
+      select current_profile.status
+      from public.profiles current_profile
+      where current_profile.id = (select auth.uid())
+    )
+    and email = (
+      select current_profile.email
+      from public.profiles current_profile
+      where current_profile.id = (select auth.uid())
+    )
   );
 
 create policy "profiles: admins can update any profile"
@@ -117,6 +99,8 @@ create policy "profiles: admins can delete any profile"
 
 alter table public.posts enable row level security;
 
+-- Clean up current and older policy names safely.
+drop policy if exists "posts: anyone can read active posts" on public.posts;
 drop policy if exists "posts: admins can read all posts" on public.posts;
 drop policy if exists "posts: authors can read their own posts" on public.posts;
 drop policy if exists "posts: verified users can create posts" on public.posts;
@@ -124,6 +108,10 @@ drop policy if exists "posts: authors can update their own posts" on public.post
 drop policy if exists "posts: admins can update any post" on public.posts;
 drop policy if exists "posts: authors can delete their own posts" on public.posts;
 drop policy if exists "posts: admins can delete any post" on public.posts;
+
+-- No public SELECT policy on public.posts.
+-- Logged-out users should read public feed data through public.get_public_posts().
+-- This protects anonymous author_id from direct table queries.
 
 create policy "posts: admins can read all posts"
   on public.posts
@@ -146,6 +134,7 @@ create policy "posts: verified users can create posts"
     and (select public.is_verified())
   );
 
+-- Users can edit only allowed post fields.
 revoke update on public.posts from anon;
 revoke update on public.posts from authenticated;
 grant update (body, category, edited) on public.posts to authenticated;
@@ -297,6 +286,10 @@ alter table public.visitor_reports enable row level security;
 drop policy if exists "visitor_reports: admins can read" on public.visitor_reports;
 drop policy if exists "visitor_reports: admins can delete" on public.visitor_reports;
 
+-- No anon/authenticated direct insert/select/update access.
+-- Logged-out users report through public.create_visitor_report().
+-- Admin restore/delete uses public.restore_reported_post().
+
 create policy "visitor_reports: admins can read"
   on public.visitor_reports
   for select
@@ -396,9 +389,22 @@ create policy "Verified users can unfollow members"
 -- Preserve grants used by the app
 -- --------------------------------------------------------------------------
 
+-- View grants
 grant select on public.public_profiles to anon, authenticated;
 grant select on public.posts_with_meta to anon, authenticated;
 grant select on public.my_posts_with_meta to authenticated;
+grant select on public.profile_follow_counts to anon, authenticated;
+
+-- Table grants
 grant select, insert, delete on public.profile_follows to authenticated;
+
+-- Function grants from the current database policy source of truth.
+revoke all on function public.get_public_posts(int) from public;
+revoke all on function public.create_visitor_report(uuid, text, text) from public;
+revoke all on function public.restore_reported_post(uuid) from public;
+
+grant execute on function public.get_public_posts(int) to anon, authenticated;
+grant execute on function public.create_visitor_report(uuid, text, text) to anon, authenticated;
+grant execute on function public.restore_reported_post(uuid) to authenticated;
 
 commit;
