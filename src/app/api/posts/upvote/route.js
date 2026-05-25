@@ -71,7 +71,7 @@ async function createUpvoteNotification({ supabase, postId, actorUserId, actorNa
 }
 
 export async function POST(request) {
-  const ipRateLimit = checkRateLimit(request, {
+  const ipRateLimit = await checkRateLimit(request, {
     keyPrefix: "posts-upvote-ip",
     limit: 90,
     windowMs: 60 * 1000,
@@ -109,7 +109,7 @@ export async function POST(request) {
     );
   }
 
-  const userRateLimit = checkRateLimit(request, {
+  const userRateLimit = await checkRateLimit(request, {
     keyPrefix: `posts-upvote-user-${user.id}`,
     limit: 120,
     windowMs: 10 * 60 * 1000,
