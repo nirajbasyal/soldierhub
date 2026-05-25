@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, FileText, UserRound } from "lucide-react";
 import { T } from "@/lib/theme";
@@ -79,6 +79,23 @@ function normalizePostRow(row = {}) {
     upvote_count: row.upvote_count ?? row.upvotes_count ?? 0,
     comment_count: row.comment_count ?? row.comments_count ?? row.reply_count ?? 0,
   };
+}
+
+function mergeProfilePostWithFeedPost(profilePost = {}, feedPost = {}) {
+  if (!feedPost?.id) return profilePost;
+
+  return normalizePostRow({
+    ...profilePost,
+    ...feedPost,
+    author_name: feedPost.author_name || profilePost.author_name || profilePost.author_name_cached,
+    author_color: feedPost.author_color || profilePost.author_color || profilePost.author_color_cached,
+    author_avatar_url: feedPost.author_avatar_url || profilePost.author_avatar_url || profilePost.author_avatar_url_cached,
+    author_avatar_url_cached:
+      feedPost.author_avatar_url_cached ||
+      feedPost.author_avatar_url ||
+      profilePost.author_avatar_url_cached ||
+      profilePost.author_avatar_url,
+  });
 }
 
 function cleanFallbackName(value) {
@@ -304,9 +321,37 @@ export default function VisitorProfilePage() {
       .filter((post) => post.id);
   }, [activeProfileId, posts, resolvedProfileId, routeProfileId]);
 
+  const localPostsForProfileIdsKey = useMemo(
+    () => localPostsForProfile.map((post) => post?.id).filter(Boolean).join(","),
+    [localPostsForProfile]
+  );
+
+  const localPostsForProfileRef = useRef([]);
+
+  useEffect(() => {
+    localPostsForProfileRef.current = localPostsForProfile;
+  }, [localPostsForProfile]);
+
+  const displayUserPosts = useMemo(() => {
+    const feedPostsById = new Map(
+      localPostsForProfile.map((post) => [post.id, post])
+    );
+    const basePosts = userPosts.length > 0 ? userPosts : localPostsForProfile;
+
+    return basePosts
+      .map((post) => {
+        const postId = post?.id || post?.post_id;
+        const matchingFeedPost = postId ? feedPostsById.get(postId) : null;
+        return matchingFeedPost
+          ? mergeProfilePostWithFeedPost(post, matchingFeedPost)
+          : normalizePostRow(post);
+      })
+      .filter((post) => post.id);
+  }, [localPostsForProfile, userPosts]);
+
   const userPostIdsKey = useMemo(
-    () => userPosts.map((post) => post?.id).filter(Boolean).join(","),
-    [userPosts]
+    () => displayUserPosts.map((post) => post?.id).filter(Boolean).join(","),
+    [displayUserPosts]
   );
 
   useEffect(() => {
@@ -322,6 +367,7 @@ export default function VisitorProfilePage() {
     let cancelled = false;
 
     async function loadVisitorProfile() {
+      const localProfilePosts = localPostsForProfileRef.current || [];
       const startingProfileId = routeProfileId || getSafeProfileId(resolvedProfileId);
       const cacheKey = startingProfileId || routeProfileLookup;
       const cached = readVisitorProfileCache(cacheKey);
@@ -334,11 +380,11 @@ export default function VisitorProfilePage() {
         setUserPosts(cached.posts || []);
         setLoading(false);
         setRefreshingProfile(true);
-      } else if (localPostsForProfile.length > 0) {
-        const fallbackProfile = normalizeProfile(null, localPostsForProfile[0], fallbackName, startingProfileId);
+      } else if (localProfilePosts.length > 0) {
+        const fallbackProfile = normalizeProfile(null, localProfilePosts[0], fallbackName, startingProfileId);
         if (fallbackProfile.id) setResolvedProfileId(fallbackProfile.id);
         setProfile(fallbackProfile);
-        setUserPosts(localPostsForProfile);
+        setUserPosts(localProfilePosts);
         setLoading(false);
         setRefreshingProfile(true);
       } else if (startingProfileId) {
@@ -364,6 +410,7 @@ export default function VisitorProfilePage() {
         }
       }
 
+      const latestLocalProfilePosts = localPostsForProfileRef.current || [];
       const resolvedCache = resolvedLookup ? readVisitorProfileCache(resolvedLookup) : null;
       const resolvedCacheProfile = resolvedCache?.profile || null;
 
@@ -372,7 +419,7 @@ export default function VisitorProfilePage() {
       }
 
       let profileRow = previewProfile;
-      let postRows = resolvedLookup ? localPostsForProfile : [];
+      let postRows = resolvedLookup ? latestLocalProfilePosts : [];
 
       try {
         if (isLiveMode && resolvedLookup) {
@@ -384,16 +431,17 @@ export default function VisitorProfilePage() {
           profileRow = profileData || previewProfile || resolvedCacheProfile || null;
           postRows = Array.isArray(livePosts)
             ? livePosts.map(normalizePostRow).filter((post) => post.id)
-            : localPostsForProfile;
+            : latestLocalProfilePosts;
         }
       } catch {
         profileRow = previewProfile || resolvedCacheProfile || null;
-        postRows = resolvedLookup ? localPostsForProfile : [];
+        postRows = resolvedLookup ? latestLocalProfilePosts : [];
       }
 
       if (cancelled) return;
 
-      const fallbackPost = postRows[0] || localPostsForProfile[0] || null;
+      const newestLocalProfilePosts = localPostsForProfileRef.current || [];
+      const fallbackPost = postRows[0] || newestLocalProfilePosts[0] || null;
       const fallbackDisplayName =
         fallbackName ||
         profileRow?.full_name ||
@@ -427,7 +475,16 @@ export default function VisitorProfilePage() {
     return () => {
       cancelled = true;
     };
-  }, [authLoading, fallbackName, isLiveMode, isOwnProfile, localPostsForProfile, resolvedProfileId, routeProfileId, routeProfileLookup]);
+  }, [
+    authLoading,
+    fallbackName,
+    isLiveMode,
+    isOwnProfile,
+    localPostsForProfileIdsKey,
+    resolvedProfileId,
+    routeProfileId,
+    routeProfileLookup,
+  ]);
 
   const handleFollowToggle = async () => {
     if (!currentUser) {
@@ -478,7 +535,7 @@ export default function VisitorProfilePage() {
     loadFollowSummary({ silent: true, skipCache: true });
   };
 
-  const publicPostCount = userPosts.length;
+  const publicPostCount = displayUserPosts.length;
   const canUseFollowButton = Boolean(targetProfileId) && !isOwnProfile;
 
   return (
@@ -560,8 +617,8 @@ export default function VisitorProfilePage() {
                     <PostSkeleton />
                     <PostSkeleton />
                   </>
-                ) : userPosts.length > 0 ? (
-                  userPosts.map((post) => <PostCard key={post.id} post={post} />)
+                ) : displayUserPosts.length > 0 ? (
+                  displayUserPosts.map((post) => <PostCard key={post.id} post={post} />)
                 ) : (
                   <div
                     className="mx-3 rounded-3xl border p-8 text-center md:mx-0 md:p-10"
