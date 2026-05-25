@@ -111,41 +111,38 @@ export default function TipTapComposerEditor({
     tiptap.view.dispatch(tiptap.state.tr.setStoredMarks(marks));
   }, []);
 
-  const keepCursorVisible = useCallback((tiptap, forceEnd = false) => {
+  const keepCursorVisible = useCallback((tiptap, placeNearKeyboard = false) => {
     const scrollBox = document.querySelector(".soldierhub-mobile-text-shell");
     if (!scrollBox || !tiptap?.view) return;
 
     window.requestAnimationFrame?.(() => {
       try {
-        if (forceEnd) {
-          scrollBox.scrollTop = scrollBox.scrollHeight;
-          return;
-        }
-
         const position = tiptap.state.selection?.to ?? tiptap.state.doc.content.size;
         const cursor = tiptap.view.coordsAtPos(position);
         const box = scrollBox.getBoundingClientRect();
-        const safeTop = box.top + 128;
-        const safeBottom = box.bottom - 220;
+        const desiredBottomGap = placeNearKeyboard ? 56 : 74;
+        const desiredBottom = box.bottom - desiredBottomGap;
+        const safeTop = box.top + 24;
 
-        if (cursor.bottom > safeBottom) scrollBox.scrollTop += cursor.bottom - safeBottom + 120;
-        if (cursor.top < safeTop) scrollBox.scrollTop -= safeTop - cursor.top + 32;
+        if (cursor.bottom > desiredBottom) scrollBox.scrollTop += cursor.bottom - desiredBottom;
+        if (placeNearKeyboard && cursor.bottom < desiredBottom - 88) scrollBox.scrollTop -= desiredBottom - cursor.bottom - 88;
+        if (cursor.top < safeTop) scrollBox.scrollTop -= safeTop - cursor.top + 16;
       } catch {
-        scrollBox.scrollTop = scrollBox.scrollHeight;
+        scrollBox.scrollTop = Math.max(0, scrollBox.scrollHeight - scrollBox.clientHeight - 56);
       }
     });
   }, []);
 
   const focusEditorAtEnd = useCallback(
-    (tiptap, forceScroll = true) => {
+    (tiptap, placeNearKeyboard = true) => {
       if (!tiptap) return;
       const endPosition = Math.max(0, tiptap.state?.doc?.content?.size ?? 0);
-      tiptap.commands.focus(undefined, { scrollIntoView: false });
       tiptap.commands.setTextSelection(endPosition);
+      tiptap.commands.focus(undefined, { scrollIntoView: false });
       applyStoredMarks(tiptap);
       rememberSelection(tiptap);
       syncFormats(tiptap);
-      keepCursorVisible(tiptap, forceScroll);
+      keepCursorVisible(tiptap, placeNearKeyboard);
     },
     [applyStoredMarks, keepCursorVisible, rememberSelection, syncFormats]
   );
@@ -209,10 +206,15 @@ export default function TipTapComposerEditor({
     if (!pageMode || !phoneScreenRef.current || submitting) return;
     if (Date.now() < suppressOpenUntilRef.current) return;
 
+    if (editor) {
+      const endPosition = Math.max(0, editor.state?.doc?.content?.size ?? 0);
+      editor.commands.setTextSelection(endPosition);
+    }
+
     setWritingModeOpen(true);
-    window.setTimeout(() => focusEditorAtEnd(editor, true), 80);
-    window.setTimeout(() => focusEditorAtEnd(editor, true), 220);
-    window.setTimeout(() => focusEditorAtEnd(editor, true), 420);
+    window.setTimeout(() => focusEditorAtEnd(editor, true), 40);
+    window.setTimeout(() => focusEditorAtEnd(editor, true), 170);
+    window.setTimeout(() => focusEditorAtEnd(editor, true), 320);
   }, [editor, focusEditorAtEnd, pageMode, submitting]);
 
   const closeWritingMode = useCallback(() => {
