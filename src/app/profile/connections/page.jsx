@@ -64,11 +64,10 @@ function ConnectionsContent() {
   }, [authLoading, currentUser, router, setAuthModal]);
 
   const loadList = useCallback(
-    async (tab, { append = false, forceFresh = false } = {}) => {
+    async (tab, { append = false, forceFresh = false, offsetOverride = 0 } = {}) => {
       if (!currentUser?.id) return;
 
-      const currentItems = items[tab] || [];
-      const offset = append ? currentItems.length : 0;
+      const offset = append ? Math.max(0, Number(offsetOverride) || 0) : 0;
       const cachedItems = !append && !forceFresh ? Follows.getCachedFollowConnections?.(tab, currentUser.id) : null;
 
       setError("");
@@ -120,7 +119,7 @@ function ConnectionsContent() {
       setNextOffset((previous) => ({ ...previous, [tab]: Number(next) || offset + (data?.length || 0) }));
       setTotalCount((previous) => ({ ...previous, [tab]: total ?? previous[tab] }));
     },
-    [currentUser?.id, items]
+    [currentUser?.id]
   );
 
   useEffect(() => {
@@ -172,7 +171,11 @@ function ConnectionsContent() {
 
   const handleLoadMore = () => {
     if (loadingMore || !hasMore[activeTab]) return;
-    loadList(activeTab, { append: true, forceFresh: true });
+    loadList(activeTab, {
+      append: true,
+      forceFresh: true,
+      offsetOverride: nextOffset[activeTab] || items[activeTab]?.length || 0,
+    });
   };
 
   const tabClasses = (tab) =>
