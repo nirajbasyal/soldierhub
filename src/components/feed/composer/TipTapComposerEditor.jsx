@@ -30,6 +30,10 @@ function hasStructuredContent(editor) {
   return Boolean(editor?.isActive("bulletList") || editor?.isActive("orderedList") || editor?.getHTML?.().match(/<\/?(ul|ol|li|strong|em)\b/i));
 }
 
+function isTextEditorTarget(target) {
+  return target instanceof Element && Boolean(target.closest(".soldierhub-normal-editor .ProseMirror"));
+}
+
 export default function TipTapComposerEditor({
   editorRef,
   body,
@@ -356,21 +360,19 @@ export default function TipTapComposerEditor({
     <div
       className="soldierhub-normal-editor relative overflow-visible px-1 py-2 md:px-1.5 md:py-2.5"
       style={{ backgroundColor: "transparent" }}
-      onFocusCapture={() => {
-        if (pageMode && phoneScreen && !submitting) openWritingMode();
+      onFocusCapture={(event) => {
+        if (pageMode && phoneScreen && !submitting && isTextEditorTarget(event.target)) openWritingMode();
       }}
       onPointerDownCapture={(event) => {
         if (!pageMode || !phoneScreen || submitting) return;
-        const target = event.target;
-        if (target instanceof Element && target.closest(".soldierhub-normal-editor .ProseMirror")) {
+        if (isTextEditorTarget(event.target)) {
           event.preventDefault();
           openWritingMode();
         }
       }}
       onClick={(event) => {
         if (!pageMode || !phoneScreen || submitting) return;
-        const target = event.target;
-        if (target instanceof Element && target.closest(".soldierhub-normal-editor .ProseMirror")) openWritingMode();
+        if (isTextEditorTarget(event.target)) openWritingMode();
       }}
     >
       {editorContent}
