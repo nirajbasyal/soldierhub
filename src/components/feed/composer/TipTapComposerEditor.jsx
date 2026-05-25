@@ -48,6 +48,7 @@ export default function TipTapComposerEditor({
   onFormatChange,
 }) {
   const selectedImageAspectRatio = selectedImage?.width && selectedImage?.height ? `${selectedImage.width} / ${selectedImage.height}` : "16 / 10";
+  const [mounted, setMounted] = useState(false);
   const [writingModeOpen, setWritingModeOpen] = useState(false);
   const [phoneScreen, setPhoneScreen] = useState(false);
   const [activeFormats, setActiveFormats] = useState({ bold: false, italic: false, bullet: false, number: false });
@@ -158,7 +159,7 @@ export default function TipTapComposerEditor({
   const editor = useEditor({
     extensions,
     content: body || "",
-    editable: !submitting,
+    editable: mounted && !submitting,
     immediatelyRender: false,
     editorProps: {
       attributes: {
@@ -222,7 +223,7 @@ export default function TipTapComposerEditor({
   );
 
   const openWritingMode = useCallback(() => {
-    if (!pageMode || !phoneScreenRef.current || submitting) return;
+    if (!mounted || !pageMode || !phoneScreenRef.current || submitting) return;
     if (Date.now() < suppressOpenUntilRef.current) return;
 
     if (editor) {
@@ -231,7 +232,7 @@ export default function TipTapComposerEditor({
     }
 
     setWritingModeOpen(true);
-  }, [editor, pageMode, submitting]);
+  }, [editor, mounted, pageMode, submitting]);
 
   const closeWritingMode = useCallback(() => {
     suppressOpenUntilRef.current = Date.now() + 500;
@@ -276,8 +277,12 @@ export default function TipTapComposerEditor({
   );
 
   useEffect(() => {
-    editor?.setEditable(!submitting);
-  }, [editor, submitting]);
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    editor?.setEditable(mounted && !submitting);
+  }, [editor, mounted, submitting]);
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
@@ -312,11 +317,11 @@ export default function TipTapComposerEditor({
   }, [writingModeOpen]);
 
   useEffect(() => {
-    if (!editor || editor.isFocused || writingModeOpen) return;
+    if (!mounted || !editor || editor.isFocused || writingModeOpen) return;
     const currentHtml = sanitizeComposerHtml(editor.getHTML());
     const nextHtml = sanitizeComposerHtml(body || "");
     if (nextHtml !== currentHtml) editor.commands.setContent(nextHtml || "", false);
-  }, [body, editor, writingModeOpen]);
+  }, [body, editor, mounted, writingModeOpen]);
 
   useImperativeHandle(
     editorRef,
@@ -354,9 +359,9 @@ export default function TipTapComposerEditor({
     [editor, emitContent, focusEditorAtEnd, getDisplayFormats, openWritingMode, runFormatCommand]
   );
 
-  const editorContent = <EditorContent editor={editor} />;
+  const editorContent = mounted ? <EditorContent editor={editor} /> : <div className={`${EDITOR_CLASSNAME} ProseMirror`} aria-hidden="true" />;
 
-  if (writingModeOpen) {
+  if (mounted && writingModeOpen) {
     return (
       <MobileTextEditorOverlay
         editorContent={editorContent}
@@ -373,6 +378,7 @@ export default function TipTapComposerEditor({
     <div
       className="soldierhub-normal-editor relative overflow-visible px-1 py-2 md:px-1.5 md:py-2.5"
       style={{ backgroundColor: "transparent" }}
+      suppressHydrationWarning
       onFocusCapture={(event) => {
         if (pageMode && phoneScreen && !submitting && isTextEditorTarget(event.target)) openWritingMode();
       }}
