@@ -314,7 +314,7 @@ export default function HomePage() {
   return (
     <AppShell>
       <main className="mx-auto w-full max-w-[1080px] overflow-x-hidden px-1.5 pt-0 pb-24 sm:px-5 md:px-7 md:pt-6 md:pb-10 xl:px-8">
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_292px] lg:gap-5">
+        <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-[minmax(0,1fr)_292px] lg:gap-5">
           <div className="mx-auto flex w-full max-w-[620px] min-w-0 flex-col gap-3">
             <div className="block pt-1 lg:hidden">
               <MobileWeatherStrip />
@@ -417,11 +417,13 @@ export default function HomePage() {
             )}
           </div>
 
-          <aside className="sticky top-24 hidden self-start lg:flex flex-col gap-3">
-            <MobileWeatherStrip />
-            <BAHCard />
-            <GateHoursCard />
-            <SiteInfoCard />
+          <aside className="hidden self-start lg:block">
+            <div className="sticky top-[88px] flex flex-col gap-3">
+              <MobileWeatherStrip />
+              <BAHCard />
+              <GateHoursCard />
+              <SiteInfoCard />
+            </div>
           </aside>
         </div>
       </main>
