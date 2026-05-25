@@ -145,8 +145,15 @@ export default function ProfileHeader() {
   );
 
   useEffect(() => {
-    loadFollowSummary();
-  }, [loadFollowSummary]);
+    if (!currentUser?.id) return;
+
+    const cachedSummary = Follows.getCachedFollowSummary?.(currentUser.id, currentUser.id);
+    loadFollowSummary({ silent: Boolean(cachedSummary), skipCache: false });
+
+    if (cachedSummary) {
+      loadFollowSummary({ silent: true, skipCache: true });
+    }
+  }, [currentUser?.id, loadFollowSummary]);
 
   const visiblePosts = useMemo(() => {
     if (!currentUser?.id) return [];

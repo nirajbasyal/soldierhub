@@ -264,8 +264,15 @@ export default function VisitorProfilePage() {
   );
 
   useEffect(() => {
-    loadFollowSummary();
-  }, [loadFollowSummary]);
+    if (!targetProfileId || isOwnProfile) return;
+
+    const cachedSummary = Follows.getCachedFollowSummary?.(targetProfileId, currentUser?.id || null);
+    loadFollowSummary({ silent: Boolean(cachedSummary), skipCache: false });
+
+    if (cachedSummary) {
+      loadFollowSummary({ silent: true, skipCache: true });
+    }
+  }, [currentUser?.id, isOwnProfile, loadFollowSummary, targetProfileId]);
 
   const localPostsForProfile = useMemo(() => {
     const safeLookupId = routeProfileId || getSafeProfileId(resolvedProfileId) || activeProfileId;
