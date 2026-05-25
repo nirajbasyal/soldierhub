@@ -1,8 +1,10 @@
 import { createClient } from "./client";
 
-const FOLLOW_SUMMARY_CACHE_PREFIX = "soldierhub_follow_summary_v3:";
-const FOLLOW_CONNECTIONS_CACHE_PREFIX = "soldierhub_follow_connections_v3:";
+const FOLLOW_SUMMARY_CACHE_PREFIX = "soldierhub_follow_summary_v4:";
+const FOLLOW_CONNECTIONS_CACHE_PREFIX = "soldierhub_follow_connections_v4:";
 const FOLLOW_CACHE_MAX_AGE_MS = 1000 * 60 * 5;
+const DEFAULT_CONNECTION_LIMIT = 20;
+const MAX_CONNECTION_LIMIT = 100;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function isValidProfileId(value) {
@@ -33,6 +35,7 @@ function getFriendlyError(error, fallback = "Something went wrong. Please try ag
     lowerMessage.includes("function") ||
     lowerMessage.includes("profile_follows") ||
     lowerMessage.includes("profile_follow_counts") ||
+    lowerMessage.includes("get_profile_follow_summary") ||
     lowerMessage.includes("list_my_follow_connections")
   ) {
     return {
@@ -53,6 +56,17 @@ function getFriendlyError(error, fallback = "Something went wrong. Please try ag
   }
 
   return { ...error, message };
+}
+
+function shouldTryLegacyFollowListRpc(error) {
+  const message = String(error?.message || error?.details || error?.hint || "").toLowerCase();
+  return (
+    error?.code === "PGRST202" ||
+    message.includes("p_offset") ||
+    message.includes("schema cache") ||
+    message.includes("could not find the function") ||
+    message.includes("list_my_follow_connections")
+  );
 }
 
 function normalizeFollowCountRow(row = {}) {
@@ -91,8 +105,14 @@ function normalizeConnectionRow(row = {}) {
 
 function cleanLimit(limit) {
   const parsed = Number(limit);
-  if (!Number.isFinite(parsed) || parsed <= 0) return 100;
-  return Math.min(Math.floor(parsed), 100);
+  if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_CONNECTION_LIMIT;
+  return Math.min(Math.floor(parsed), MAX_CONNECTION_LIMIT);
+}
+
+function cleanOffset(offset) {
+  const parsed = Number(offset);
+  if (!Number.isFinite(parsed) || parsed <= 0) return 0;
+  return Math.floor(parsed);
 }
 
 function safeCacheKey(prefix, ...parts) {
@@ -292,6 +312,22 @@ export async function getFollowSummary(profileId, viewerId = null, options = {})
   }
 
   try {
+    const { data: rpcData, error: rpcError } = await supabase.rpc("get_profile_follow_summary", {
+      p_profile_id: profileId,
+    });
+
+    if (!rpcError) {
+      const row = Array.isArray(rpcData) ? rpcData[0] : rpcData;
+      const summary = normalizeFollowCountRow(row);
+      cacheFollowSummary(profileId, viewerId, summary);
+
+      return {
+        data: summary,
+        error: null,
+        cached: false,
+      };
+    }
+
     const [{ data: countRow, error: countError }, followingResult] = await Promise.all([
       supabase
         .from("profile_follow_counts")
@@ -312,7 +348,7 @@ export async function getFollowSummary(profileId, viewerId = null, options = {})
     if (countError) {
       return {
         data: { followersCount: 0, followingCount: 0, isFollowing: false },
-        error: getFriendlyError(countError, "Could not load follow counts."),
+        error: getFriendlyError(rpcError || countError, "Could not load follow counts."),
       };
     }
 
@@ -475,16 +511,32 @@ export async function unfollowUser(targetProfileId) {
   }
 }
 
-export async function listFollowConnections(type, profileId, { limit = 100, skipCache = false } = {}) {
+export async function listFollowConnections(
+  type,
+  profileId,
+  { limit = DEFAULT_CONNECTION_LIMIT, offset = 0, skipCache = false } = {}
+) {
   const normalizedType = type === "following" ? "following" : "followers";
 
   if (!isValidProfileId(profileId)) {
     return { data: [], error: { message: "Profile was not identified. Please refresh and try again." } };
   }
 
-  const cached = skipCache ? null : getCachedFollowConnections(normalizedType, profileId);
+  const safeLimit = cleanLimit(limit);
+  const safeOffset = cleanOffset(offset);
+  const cacheEligible = safeOffset === 0;
+
+  const cached = skipCache || !cacheEligible ? null : getCachedFollowConnections(normalizedType, profileId);
   if (cached) {
-    return { data: cached, error: null, cached: true };
+    const rows = cached.slice(0, safeLimit);
+    return {
+      data: rows,
+      error: null,
+      cached: true,
+      hasMore: cached.length > safeLimit,
+      nextOffset: rows.length,
+      totalCount: null,
+    };
   }
 
   const supabase = createClient();
@@ -499,18 +551,28 @@ export async function listFollowConnections(type, profileId, { limit = 100, skip
     return { data: [], error: { message: "You can only view your own followers and following list." } };
   }
 
-  const safeLimit = cleanLimit(limit);
+  const requestLimit = Math.min(safeLimit + 1, MAX_CONNECTION_LIMIT);
 
-  const { data, error } = await supabase.rpc("list_my_follow_connections", {
+  let result = await supabase.rpc("list_my_follow_connections", {
     p_list_type: normalizedType,
-    p_limit: safeLimit,
+    p_limit: requestLimit,
+    p_offset: safeOffset,
   });
 
-  if (error) {
-    return { data: [], error: getFriendlyError(error, "Could not load follow list.") };
+  if (result.error && shouldTryLegacyFollowListRpc(result.error) && safeOffset === 0) {
+    result = await supabase.rpc("list_my_follow_connections", {
+      p_list_type: normalizedType,
+      p_limit: requestLimit,
+    });
   }
 
-  const rows = (data || [])
+  if (result.error) {
+    return { data: [], error: getFriendlyError(result.error, "Could not load follow list.") };
+  }
+
+  const rawRows = Array.isArray(result.data) ? result.data : [];
+  const totalCount = Number(rawRows[0]?.total_count ?? rawRows[0]?.totalCount ?? NaN);
+  const normalizedRows = rawRows
     .map((row) =>
       normalizeConnectionRow({
         id: row.profile_id,
@@ -523,12 +585,22 @@ export async function listFollowConnections(type, profileId, { limit = 100, skip
       })
     )
     .filter(Boolean);
+  const rows = normalizedRows.slice(0, safeLimit);
+  const knownTotalCount = Number.isFinite(totalCount) ? Math.max(0, totalCount) : null;
+  const hasMore = knownTotalCount !== null
+    ? safeOffset + rows.length < knownTotalCount
+    : normalizedRows.length > safeLimit;
 
-  cacheFollowConnections(normalizedType, profileId, rows);
+  if (cacheEligible) {
+    cacheFollowConnections(normalizedType, profileId, rows);
+  }
 
   return {
     data: rows,
     error: null,
     cached: false,
+    hasMore,
+    nextOffset: safeOffset + rows.length,
+    totalCount: knownTotalCount,
   };
 }
