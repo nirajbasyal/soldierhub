@@ -212,10 +212,7 @@ export default function TipTapComposerEditor({
     }
 
     setWritingModeOpen(true);
-    window.setTimeout(() => focusEditorAtEnd(editor, true), 40);
-    window.setTimeout(() => focusEditorAtEnd(editor, true), 170);
-    window.setTimeout(() => focusEditorAtEnd(editor, true), 320);
-  }, [editor, focusEditorAtEnd, pageMode, submitting]);
+  }, [editor, pageMode, submitting]);
 
   const closeWritingMode = useCallback(() => {
     suppressOpenUntilRef.current = Date.now() + 500;
@@ -349,6 +346,7 @@ export default function TipTapComposerEditor({
         activeFormats={activeFormats}
         onDone={closeWritingMode}
         onFormat={runFormatCommand}
+        onOverlayReady={() => focusEditorAtEnd(editor, true)}
         onEditorAreaClick={() => keepCursorVisible(editor)}
       />
     );
