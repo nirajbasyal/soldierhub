@@ -16,17 +16,26 @@ export async function getPublicProfile(userId) {
   };
 }
 
-export async function listPublicPostsByAuthor(userId, { limit = 100 } = {}) {
+export async function listPublicPostsByAuthor(userId, { limit = 30 } = {}) {
   const supabase = createClient();
   if (!supabase || !userId) return { data: [], error: null };
 
-  const { data, error } = await supabase.rpc("get_public_posts", {
-    limit_count: limit,
+  const rpcResult = await supabase.rpc("list_public_posts_by_author", {
+    p_profile_id: userId,
+    p_limit: limit,
   });
 
-  if (error) return { data: [], error };
+  if (!rpcResult.error) {
+    return { data: rpcResult.data || [], error: null };
+  }
 
-  const posts = (data || []).filter(
+  const fallback = await supabase.rpc("get_public_posts", {
+    limit_count: Math.max(limit, 50),
+  });
+
+  if (fallback.error) return { data: [], error: rpcResult.error || fallback.error };
+
+  const posts = (fallback.data || []).filter(
     (post) => post.author_id === userId && post.anonymous !== true
   );
 
