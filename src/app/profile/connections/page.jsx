@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Loader2, Search, UserMinus, UsersRound } from "lucide-react";
 import { T } from "@/lib/theme";
@@ -10,8 +10,27 @@ import AppShell from "@/components/layout/AppShell";
 import Footer from "@/components/layout/Footer";
 import Avatar from "@/components/ui/Avatar";
 
+const PAGE_SIZE = 20;
+
 function getProfileFromItem(item) {
   return item?.profile || item?.profiles || item?.following_profile || item?.follower_profile || item || {};
+}
+
+function FollowListSkeleton() {
+  return (
+    <div className="space-y-2">
+      {[0, 1, 2, 3, 4].map((item) => (
+        <div key={item} className="flex items-center gap-3 rounded-3xl border border-[#E4EDF7] bg-white p-3">
+          <div className="h-[46px] w-[46px] shrink-0 animate-pulse rounded-full bg-[#DDE6EF]" />
+          <div className="min-w-0 flex-1">
+            <div className="h-4 w-40 max-w-full animate-pulse rounded-full bg-[#DDE6EF]" />
+            <div className="mt-2 h-3 w-24 max-w-full animate-pulse rounded-full bg-[#E8EEF5]" />
+          </div>
+          <div className="h-9 w-9 shrink-0 animate-pulse rounded-full bg-[#E8EEF5]" />
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function ConnectionsContent() {
@@ -23,6 +42,11 @@ function ConnectionsContent() {
   const [query, setQuery] = useState("");
   const [items, setItems] = useState({ followers: [], following: [] });
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState({ followers: false, following: false });
+  const [nextOffset, setNextOffset] = useState({ followers: 0, following: 0 });
+  const [totalCount, setTotalCount] = useState({ followers: null, following: null });
   const [error, setError] = useState("");
   const [unfollowingId, setUnfollowingId] = useState("");
 
@@ -39,25 +63,69 @@ function ConnectionsContent() {
     }
   }, [authLoading, currentUser, router, setAuthModal]);
 
-  useEffect(() => {
-    async function loadList() {
+  const loadList = useCallback(
+    async (tab, { append = false, forceFresh = false } = {}) => {
       if (!currentUser?.id) return;
-      setLoading(true);
+
+      const currentItems = items[tab] || [];
+      const offset = append ? currentItems.length : 0;
+      const cachedItems = !append && !forceFresh ? Follows.getCachedFollowConnections?.(tab, currentUser.id) : null;
+
       setError("");
-      const { data, error: listError } = await Follows.listFollowConnections(activeTab, currentUser.id, {
-        limit: 100,
-        skipCache: true,
-      });
+
+      if (append) {
+        setLoadingMore(true);
+      } else if (cachedItems?.length > 0) {
+        setItems((previous) => ({ ...previous, [tab]: cachedItems }));
+        setNextOffset((previous) => ({ ...previous, [tab]: cachedItems.length }));
+        setLoading(false);
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+        setRefreshing(false);
+      }
+
+      const { data, error: listError, hasMore: moreAvailable, nextOffset: next, totalCount: total } =
+        await Follows.listFollowConnections(tab, currentUser.id, {
+          limit: PAGE_SIZE,
+          offset,
+          skipCache: forceFresh || append || Boolean(cachedItems?.length),
+        });
+
       setLoading(false);
+      setRefreshing(false);
+      setLoadingMore(false);
+
       if (listError) {
         setError(listError.message || "Could not load this list.");
         return;
       }
-      setItems((previous) => ({ ...previous, [activeTab]: data || [] }));
-    }
 
-    loadList();
-  }, [activeTab, currentUser?.id]);
+      setItems((previous) => {
+        const previousItems = append ? previous[tab] || [] : [];
+        const seen = new Set(previousItems.map((item) => Follows.getConnectionProfileId?.(item)).filter(Boolean));
+        const merged = [
+          ...previousItems,
+          ...(data || []).filter((item) => {
+            const id = Follows.getConnectionProfileId?.(item);
+            if (!id || seen.has(id)) return false;
+            seen.add(id);
+            return true;
+          }),
+        ];
+        return { ...previous, [tab]: merged };
+      });
+
+      setHasMore((previous) => ({ ...previous, [tab]: Boolean(moreAvailable) }));
+      setNextOffset((previous) => ({ ...previous, [tab]: Number(next) || offset + (data?.length || 0) }));
+      setTotalCount((previous) => ({ ...previous, [tab]: total ?? previous[tab] }));
+    },
+    [currentUser?.id, items]
+  );
+
+  useEffect(() => {
+    loadList(activeTab);
+  }, [activeTab, loadList]);
 
   const visibleItems = useMemo(() => {
     const rawItems = items[activeTab] || [];
@@ -100,6 +168,11 @@ function ConnectionsContent() {
     }
 
     pushToast?.("Member unfollowed.", "success");
+  };
+
+  const handleLoadMore = () => {
+    if (loadingMore || !hasMore[activeTab]) return;
+    loadList(activeTab, { append: true, forceFresh: true });
   };
 
   const tabClasses = (tab) =>
@@ -148,15 +221,25 @@ function ConnectionsContent() {
                   className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-slate-800 outline-none placeholder:text-slate-400"
                 />
               </div>
+
+              <div className="mt-2 flex min-h-5 items-center justify-between gap-3 px-1 text-[11px] font-bold text-slate-500">
+                <span>
+                  {typeof totalCount[activeTab] === "number"
+                    ? `Showing ${items[activeTab]?.length || 0} of ${totalCount[activeTab]}`
+                    : `${items[activeTab]?.length || 0} loaded`}
+                </span>
+                {refreshing ? (
+                  <span className="inline-flex items-center gap-1 text-[#1E4E8C]">
+                    <Loader2 size={11} className="animate-spin" /> Refreshing
+                  </span>
+                ) : null}
+              </div>
             </div>
 
             <div className="min-h-[320px] p-3">
               {loading ? (
-                <div className="flex min-h-[260px] flex-col items-center justify-center text-center text-sm font-bold text-slate-500">
-                  <Loader2 className="mb-3 animate-spin" size={22} />
-                  Loading {activeTab}...
-                </div>
-              ) : error ? (
+                <FollowListSkeleton />
+              ) : error && visibleItems.length === 0 ? (
                 <div className="rounded-3xl border border-[#F3C7D1] bg-[#FDECF0]/80 p-4 text-sm font-bold text-[#B31942]">
                   {error}
                 </div>
@@ -174,6 +257,12 @@ function ConnectionsContent() {
                 </div>
               ) : (
                 <div className="space-y-2">
+                  {error ? (
+                    <div className="rounded-2xl border border-[#F3C7D1] bg-[#FDECF0]/80 p-3 text-xs font-bold text-[#B31942]">
+                      {error}
+                    </div>
+                  ) : null}
+
                   {visibleItems.map((item) => {
                     const profile = getProfileFromItem(item);
                     const isUnfollowing = unfollowingId === profile.id;
@@ -205,6 +294,18 @@ function ConnectionsContent() {
                       </div>
                     );
                   })}
+
+                  {!query && hasMore[activeTab] ? (
+                    <button
+                      type="button"
+                      onClick={handleLoadMore}
+                      disabled={loadingMore}
+                      className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[#D5E2F2] bg-[#F4F8FD] px-4 py-3 text-sm font-black text-[#0B1C2C] transition hover:bg-[#DCE8F7] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {loadingMore ? <Loader2 size={15} className="animate-spin" /> : null}
+                      {loadingMore ? "Loading more..." : "Load more"}
+                    </button>
+                  ) : null}
                 </div>
               )}
             </div>
