@@ -31,6 +31,47 @@ function cleanText(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function normalizeCount(value, fallback = 0) {
+  const next = Number(value);
+  return Number.isFinite(next) ? Math.max(0, next) : Math.max(0, Number(fallback) || 0);
+}
+
+async function getAuthoritativeUpvoteState({ supabase, postId, userId, fallbackUserUpvoted = false }) {
+  const [postMetaResult, ownVoteResult] = await Promise.all([
+    supabase
+      .from("posts_with_meta")
+      .select("id, upvote_count")
+      .eq("id", postId)
+      .maybeSingle(),
+    supabase
+      .from("upvotes")
+      .select("post_id")
+      .eq("post_id", postId)
+      .eq("user_id", userId)
+      .maybeSingle(),
+  ]);
+
+  if (postMetaResult.error) {
+    console.error("Read upvote count after toggle failed:", postMetaResult.error);
+  }
+
+  if (ownVoteResult.error) {
+    console.error("Read own upvote state after toggle failed:", ownVoteResult.error);
+  }
+
+  return {
+    upvote_count: normalizeCount(postMetaResult.data?.upvote_count, 0),
+    user_upvoted: ownVoteResult.error ? Boolean(fallbackUserUpvoted) : Boolean(ownVoteResult.data?.post_id),
+  };
+}
+
+function jsonWithRateLimit(body, status, headers) {
+  return NextResponse.json(body, {
+    status,
+    headers: { ...headers, "Cache-Control": "no-store" },
+  });
+}
+
 async function createUpvoteNotification({ supabase, postId, actorUserId, actorName }) {
   if (!postId || !actorUserId) return;
 
@@ -82,18 +123,20 @@ export async function POST(request) {
   const accessToken = getBearerToken(request);
 
   if (!accessToken) {
-    return NextResponse.json(
+    return jsonWithRateLimit(
       { error: "Please log in again before voting." },
-      { status: 401, headers: { ...ipRateLimit.headers, "Cache-Control": "no-store" } }
+      401,
+      ipRateLimit.headers
     );
   }
 
   const supabase = createAuthedSupabaseClient(accessToken);
 
   if (!supabase) {
-    return NextResponse.json(
+    return jsonWithRateLimit(
       { error: "Supabase is not configured." },
-      { status: 503, headers: { ...ipRateLimit.headers, "Cache-Control": "no-store" } }
+      503,
+      ipRateLimit.headers
     );
   }
 
@@ -103,9 +146,10 @@ export async function POST(request) {
   } = await supabase.auth.getUser(accessToken);
 
   if (userError || !user) {
-    return NextResponse.json(
+    return jsonWithRateLimit(
       { error: "Please log in again before voting." },
-      { status: 401, headers: { ...ipRateLimit.headers, "Cache-Control": "no-store" } }
+      401,
+      ipRateLimit.headers
     );
   }
 
@@ -121,27 +165,22 @@ export async function POST(request) {
   try {
     requestBody = await request.json();
   } catch {
-    return NextResponse.json(
-      { error: "Invalid vote request." },
-      { status: 400, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
-    );
+    return jsonWithRateLimit({ error: "Invalid vote request." }, 400, userRateLimit.headers);
   }
 
   const postId = cleanText(requestBody?.post_id || requestBody?.postId);
   const action = cleanText(requestBody?.action).toLowerCase();
 
   if (!postId) {
-    return NextResponse.json(
+    return jsonWithRateLimit(
       { error: "Post was not identified. Please refresh and try again." },
-      { status: 400, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
+      400,
+      userRateLimit.headers
     );
   }
 
   if (action !== "add" && action !== "remove") {
-    return NextResponse.json(
-      { error: "Invalid vote action." },
-      { status: 400, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
-    );
+    return jsonWithRateLimit({ error: "Invalid vote action." }, 400, userRateLimit.headers);
   }
 
   const { data: profile, error: profileError } = await supabase
@@ -151,16 +190,18 @@ export async function POST(request) {
     .maybeSingle();
 
   if (profileError) {
-    return NextResponse.json(
+    return jsonWithRateLimit(
       { error: "Could not verify your profile. Please try again." },
-      { status: 500, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
+      500,
+      userRateLimit.headers
     );
   }
 
   if (!profile || getProfileStatus(profile) !== "verified") {
-    return NextResponse.json(
+    return jsonWithRateLimit(
       { error: "Your profile must be verified before voting." },
-      { status: 403, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
+      403,
+      userRateLimit.headers
     );
   }
 
@@ -173,15 +214,28 @@ export async function POST(request) {
       .select("post_id, user_id");
 
     if (error) {
-      return NextResponse.json(
+      return jsonWithRateLimit(
         { error: error.message || "Could not remove vote." },
-        { status: 500, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
+        500,
+        userRateLimit.headers
       );
     }
 
-    return NextResponse.json(
-      { action: "remove", removed: Array.isArray(data) ? data.length > 0 : false },
-      { status: 200, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
+    const state = await getAuthoritativeUpvoteState({
+      supabase,
+      postId,
+      userId: user.id,
+      fallbackUserUpvoted: false,
+    });
+
+    return jsonWithRateLimit(
+      {
+        action: "remove",
+        removed: Array.isArray(data) ? data.length > 0 : false,
+        ...state,
+      },
+      200,
+      userRateLimit.headers
     );
   }
 
@@ -193,9 +247,17 @@ export async function POST(request) {
     .maybeSingle();
 
   if (existingVote) {
-    return NextResponse.json(
-      { action: "add", upvote: existingVote, already_upvoted: true },
-      { status: 200, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
+    const state = await getAuthoritativeUpvoteState({
+      supabase,
+      postId,
+      userId: user.id,
+      fallbackUserUpvoted: true,
+    });
+
+    return jsonWithRateLimit(
+      { action: "add", upvote: existingVote, already_upvoted: true, ...state },
+      200,
+      userRateLimit.headers
     );
   }
 
@@ -207,15 +269,24 @@ export async function POST(request) {
 
   if (error) {
     if (error.code === "23505") {
-      return NextResponse.json(
-        { action: "add", upvote: null, already_upvoted: true },
-        { status: 200, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
+      const state = await getAuthoritativeUpvoteState({
+        supabase,
+        postId,
+        userId: user.id,
+        fallbackUserUpvoted: true,
+      });
+
+      return jsonWithRateLimit(
+        { action: "add", upvote: null, already_upvoted: true, ...state },
+        200,
+        userRateLimit.headers
       );
     }
 
-    return NextResponse.json(
+    return jsonWithRateLimit(
       { error: error.message || "Could not add vote." },
-      { status: 500, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
+      500,
+      userRateLimit.headers
     );
   }
 
@@ -226,8 +297,16 @@ export async function POST(request) {
     actorName: profile.full_name || user.email || "Someone",
   });
 
-  return NextResponse.json(
-    { action: "add", upvote: data, already_upvoted: false },
-    { status: 201, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
+  const state = await getAuthoritativeUpvoteState({
+    supabase,
+    postId,
+    userId: user.id,
+    fallbackUserUpvoted: true,
+  });
+
+  return jsonWithRateLimit(
+    { action: "add", upvote: data, already_upvoted: false, ...state },
+    201,
+    userRateLimit.headers
   );
 }
