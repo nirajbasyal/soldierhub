@@ -108,7 +108,7 @@ export default function MobileTextEditorOverlay({ editorContent, activeFormats, 
 
       <div
         className="soldierhub-mobile-text-shell absolute bottom-0 left-0 right-0 overflow-y-auto overscroll-contain bg-[#F8FAFD]"
-        style={{ top: `calc(env(safe-area-inset-top) + ${TOOLBAR_HEIGHT}px)`, WebkitOverflowScrolling: "touch", scrollPaddingTop: "18px", scrollPaddingBottom: "180px" }}
+        style={{ top: `calc(env(safe-area-inset-top) + ${TOOLBAR_HEIGHT}px)`, WebkitOverflowScrolling: "touch", scrollPaddingTop: "18px", scrollPaddingBottom: "96px" }}
         onClick={onEditorAreaClick}
       >
         <div className="soldierhub-writing-editor min-h-full bg-[#F8FAFD]">{editorContent}</div>
@@ -138,7 +138,7 @@ export default function MobileTextEditorOverlay({ editorContent, activeFormats, 
           min-height: 100%;
           width: 100%;
           margin: 0 !important;
-          padding: 20px 18px calc(env(safe-area-inset-bottom) + 210px) !important;
+          padding: 20px 18px calc(env(safe-area-inset-bottom) + 104px) !important;
           color: ${T.text};
           background: #F8FAFD !important;
           border: 0 !important;
