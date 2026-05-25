@@ -79,12 +79,12 @@ function resolvePostId(input) {
   return input;
 }
 
-function hasFeedCursor(cursorCreatedAt, cursorId) {
-  return Boolean(cursorCreatedAt || cursorId);
-}
-
 function uniquePostIds(postIds = []) {
   return [...new Set((postIds || []).filter(Boolean))];
+}
+
+function hasFeedCursor(cursorCreatedAt, cursorId) {
+  return Boolean(cursorCreatedAt || cursorId);
 }
 
 async function fetchProfilesByIds(supabase, authorIds = []) {
@@ -467,23 +467,21 @@ export async function addUpvote(postId) {
 
 export async function removeUpvote(postId) {
   const supabase = createClient();
-  if (!supabase) return { error: null };
+  if (!supabase) return { data: null, error: null };
 
   const resolvedPostId = resolvePostId(postId);
   const { accessToken, error } = await getAccessTokenForApi(
     supabase,
     "Please log in again before voting."
   );
-  if (error || !accessToken) return { error };
+  if (error || !accessToken) return { data: null, error };
 
-  const result = await postJsonToApi(
+  return postJsonToApi(
     "/api/posts/upvote",
     accessToken,
     { post_id: resolvedPostId, action: "remove" },
     "Could not remove vote."
   );
-
-  return { error: result.error };
 }
 
 export async function listMyReportedPostIds(userId, postIds = []) {
