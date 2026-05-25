@@ -59,33 +59,36 @@ drop policy if exists "profiles: admins can delete any profile" on public.profil
 create policy "profiles: admins can read all profiles"
   on public.profiles
   for select
-  using (public.is_admin());
+  to authenticated
+  using ((select public.is_admin()));
 
 create policy "profiles: users can read their own profile"
   on public.profiles
   for select
-  using (auth.uid() = id);
+  to authenticated
+  using ((select auth.uid()) = id);
 
+-- Do not query public.profiles inside this policy.
+-- Querying the same table from its own RLS policy causes infinite recursion.
+-- Sensitive/admin-controlled fields are protected by public.protect_profile_sensitive_fields().
 create policy "profiles: users can update their own profile"
   on public.profiles
   for update
-  using (auth.uid() = id)
-  with check (
-    auth.uid() = id
-    and role = (select role from public.profiles where id = auth.uid())
-    and status = (select status from public.profiles where id = auth.uid())
-    and email = (select email from public.profiles where id = auth.uid())
-  );
+  to authenticated
+  using ((select auth.uid()) = id)
+  with check ((select auth.uid()) = id);
 
 create policy "profiles: admins can update any profile"
   on public.profiles
   for update
-  using (public.is_admin());
+  to authenticated
+  using ((select public.is_admin()));
 
 create policy "profiles: admins can delete any profile"
   on public.profiles
   for delete
-  using (public.is_admin());
+  to authenticated
+  using ((select public.is_admin()));
 
 -- ============================================================================
 -- posts
@@ -104,12 +107,14 @@ drop policy if exists "posts: admins can delete any post" on public.posts;
 create policy "posts: admins can read all posts"
   on public.posts
   for select
-  using (public.is_admin());
+  to authenticated
+  using ((select public.is_admin()));
 
 create policy "posts: authors can read their own posts"
   on public.posts
   for select
-  using (auth.uid() = author_id);
+  to authenticated
+  using ((select auth.uid()) = author_id);
 
 -- No public SELECT policy on public.posts.
 -- Logged-out users read public posts through public.get_public_posts().
@@ -118,9 +123,10 @@ create policy "posts: authors can read their own posts"
 create policy "posts: verified users can create posts"
   on public.posts
   for insert
+  to authenticated
   with check (
-    auth.uid() = author_id
-    and public.is_verified()
+    (select auth.uid()) = author_id
+    and (select public.is_verified())
   );
 
 -- Users can edit only their own posts.
@@ -133,29 +139,33 @@ grant update (body, category, edited) on public.posts to authenticated;
 create policy "posts: authors can update their own posts"
   on public.posts
   for update
+  to authenticated
   using (
-    auth.uid() = author_id
-    and public.is_verified()
+    (select auth.uid()) = author_id
+    and (select public.is_verified())
   )
   with check (
-    auth.uid() = author_id
-    and public.is_verified()
+    (select auth.uid()) = author_id
+    and (select public.is_verified())
   );
 
 create policy "posts: admins can update any post"
   on public.posts
   for update
-  using (public.is_admin());
+  to authenticated
+  using ((select public.is_admin()));
 
 create policy "posts: authors can delete their own posts"
   on public.posts
   for delete
-  using (auth.uid() = author_id);
+  to authenticated
+  using ((select auth.uid()) = author_id);
 
 create policy "posts: admins can delete any post"
   on public.posts
   for delete
-  using (public.is_admin());
+  to authenticated
+  using ((select public.is_admin()));
 
 -- ============================================================================
 -- comments
@@ -170,25 +180,29 @@ drop policy if exists "comments: admins can delete any" on public.comments;
 create policy "comments: anyone can read"
   on public.comments
   for select
+  to anon, authenticated
   using (true);
 
 create policy "comments: verified users can create"
   on public.comments
   for insert
+  to authenticated
   with check (
-    auth.uid() = author_id
-    and public.is_verified()
+    (select auth.uid()) = author_id
+    and (select public.is_verified())
   );
 
 create policy "comments: authors can delete their own"
   on public.comments
   for delete
-  using (auth.uid() = author_id);
+  to authenticated
+  using ((select auth.uid()) = author_id);
 
 create policy "comments: admins can delete any"
   on public.comments
   for delete
-  using (public.is_admin());
+  to authenticated
+  using ((select public.is_admin()));
 
 -- ============================================================================
 -- upvotes
@@ -202,20 +216,23 @@ drop policy if exists "upvotes: users can remove own vote" on public.upvotes;
 create policy "upvotes: anyone can read"
   on public.upvotes
   for select
+  to anon, authenticated
   using (true);
 
 create policy "upvotes: verified users can vote"
   on public.upvotes
   for insert
+  to authenticated
   with check (
-    auth.uid() = user_id
-    and public.is_verified()
+    (select auth.uid()) = user_id
+    and (select public.is_verified())
   );
 
 create policy "upvotes: users can remove own vote"
   on public.upvotes
   for delete
-  using (auth.uid() = user_id);
+  to authenticated
+  using ((select auth.uid()) = user_id);
 
 -- ============================================================================
 -- reports
@@ -230,25 +247,29 @@ drop policy if exists "reports: admins can clear reports" on public.reports;
 create policy "reports: admins can read"
   on public.reports
   for select
-  using (public.is_admin());
+  to authenticated
+  using ((select public.is_admin()));
 
 create policy "reports: users can see own reports"
   on public.reports
   for select
-  using (auth.uid() = user_id);
+  to authenticated
+  using ((select auth.uid()) = user_id);
 
 create policy "reports: verified users can report"
   on public.reports
   for insert
+  to authenticated
   with check (
-    auth.uid() = user_id
-    and public.is_verified()
+    (select auth.uid()) = user_id
+    and (select public.is_verified())
   );
 
 create policy "reports: admins can clear reports"
   on public.reports
   for delete
-  using (public.is_admin());
+  to authenticated
+  using ((select public.is_admin()));
 
 -- ============================================================================
 -- visitor_reports
@@ -265,12 +286,14 @@ drop policy if exists "visitor_reports: admins can delete" on public.visitor_rep
 create policy "visitor_reports: admins can read"
   on public.visitor_reports
   for select
-  using (public.is_admin());
+  to authenticated
+  using ((select public.is_admin()));
 
 create policy "visitor_reports: admins can delete"
   on public.visitor_reports
   for delete
-  using (public.is_admin());
+  to authenticated
+  using ((select public.is_admin()));
 
 revoke all on public.visitor_reports from anon, authenticated;
 
@@ -286,18 +309,21 @@ drop policy if exists "notifications: recipients can delete" on public.notificat
 create policy "notifications: recipients can read"
   on public.notifications
   for select
-  using (auth.uid() = recipient_user_id);
+  to authenticated
+  using ((select auth.uid()) = recipient_user_id);
 
 create policy "notifications: recipients can mark read"
   on public.notifications
   for update
-  using (auth.uid() = recipient_user_id)
-  with check (auth.uid() = recipient_user_id);
+  to authenticated
+  using ((select auth.uid()) = recipient_user_id)
+  with check ((select auth.uid()) = recipient_user_id);
 
 create policy "notifications: recipients can delete"
   on public.notifications
   for delete
-  using (auth.uid() = recipient_user_id);
+  to authenticated
+  using ((select auth.uid()) = recipient_user_id);
 
 -- ============================================================================
 -- VIEW GRANTS
