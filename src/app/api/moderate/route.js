@@ -15,7 +15,7 @@ function getNoStoreHeaders(rateLimitHeaders = {}) {
 }
 
 export async function POST(req) {
-  const rateLimit = checkRateLimit(req, {
+  const rateLimit = await checkRateLimit(req, {
     keyPrefix: "moderate:ip",
     limit: 30,
     windowMs: 60 * 1000,
