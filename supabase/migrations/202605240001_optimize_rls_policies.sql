@@ -399,11 +399,11 @@ grant select on public.profile_follow_counts to anon, authenticated;
 grant select, insert, delete on public.profile_follows to authenticated;
 
 -- Function grants from the current database policy source of truth.
-revoke all on function public.get_public_posts(int) from public;
+revoke all on function public.get_public_posts(integer, timestamp with time zone, uuid) from public;
 revoke all on function public.create_visitor_report(uuid, text, text) from public;
 revoke all on function public.restore_reported_post(uuid) from public;
 
-grant execute on function public.get_public_posts(int) to anon, authenticated;
+grant execute on function public.get_public_posts(integer, timestamp with time zone, uuid) to anon, authenticated;
 grant execute on function public.create_visitor_report(uuid, text, text) to anon, authenticated;
 grant execute on function public.restore_reported_post(uuid) to authenticated;
 
