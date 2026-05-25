@@ -15,8 +15,9 @@ function getViewportBox() {
   };
 }
 
-export default function MobileTextEditorOverlay({ editorContent, activeFormats, onDone, onFormat, onEditorAreaClick }) {
+export default function MobileTextEditorOverlay({ editorContent, activeFormats, onDone, onFormat, onEditorAreaClick, onOverlayReady }) {
   const [viewportBox, setViewportBox] = useState(() => getViewportBox());
+  const [editorVisible, setEditorVisible] = useState(false);
 
   const updateViewportBox = useCallback(() => {
     setViewportBox(getViewportBox());
@@ -24,10 +25,15 @@ export default function MobileTextEditorOverlay({ editorContent, activeFormats, 
 
   useEffect(() => {
     updateViewportBox();
+
+    const readyTimer = window.setTimeout(() => {
+      onOverlayReady?.();
+      window.setTimeout(() => setEditorVisible(true), 90);
+    }, 90);
+
     const delayedUpdate = () => {
       updateViewportBox();
-      window.setTimeout(updateViewportBox, 80);
-      window.setTimeout(updateViewportBox, 220);
+      window.setTimeout(updateViewportBox, 120);
     };
 
     window.visualViewport?.addEventListener("resize", delayedUpdate);
@@ -36,12 +42,13 @@ export default function MobileTextEditorOverlay({ editorContent, activeFormats, 
     window.addEventListener("orientationchange", delayedUpdate);
 
     return () => {
+      window.clearTimeout(readyTimer);
       window.visualViewport?.removeEventListener("resize", delayedUpdate);
       window.visualViewport?.removeEventListener("scroll", delayedUpdate);
       window.removeEventListener("resize", delayedUpdate);
       window.removeEventListener("orientationchange", delayedUpdate);
     };
-  }, [updateViewportBox]);
+  }, [onOverlayReady, updateViewportBox]);
 
   return (
     <div
@@ -111,13 +118,22 @@ export default function MobileTextEditorOverlay({ editorContent, activeFormats, 
         style={{ top: `calc(env(safe-area-inset-top) + ${TOOLBAR_HEIGHT}px)`, WebkitOverflowScrolling: "touch", scrollPaddingTop: "18px", scrollPaddingBottom: "96px" }}
         onClick={onEditorAreaClick}
       >
-        <div className="soldierhub-writing-editor min-h-full bg-[#F8FAFD]">{editorContent}</div>
+        <div
+          className="soldierhub-writing-editor min-h-full bg-[#F8FAFD] transition-opacity duration-150 ease-out"
+          style={{ opacity: editorVisible ? 1 : 0 }}
+        >
+          {editorContent}
+        </div>
       </div>
 
       <style jsx global>{`
         .soldierhub-mobile-text-shell,
         .soldierhub-mobile-text-shell * {
           -webkit-tap-highlight-color: transparent;
+        }
+
+        .soldierhub-mobile-text-shell {
+          overflow-anchor: none;
         }
 
         .soldierhub-writing-editor,
