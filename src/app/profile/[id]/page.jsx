@@ -209,6 +209,7 @@ export default function VisitorProfilePage() {
     posts = [],
     setAuthModal,
     pushToast,
+    refreshViewerStateForPosts,
   } = useApp();
   const routeProfileLookup = typeof params?.id === "string" ? decodeURIComponent(params.id).trim() : "";
   const routeProfileId = getSafeProfileId(routeProfileLookup);
@@ -302,6 +303,18 @@ export default function VisitorProfilePage() {
       .map(normalizePostRow)
       .filter((post) => post.id);
   }, [activeProfileId, posts, resolvedProfileId, routeProfileId]);
+
+  const userPostIdsKey = useMemo(
+    () => userPosts.map((post) => post?.id).filter(Boolean).join(","),
+    [userPosts]
+  );
+
+  useEffect(() => {
+    if (!currentUser?.id || !userPostIdsKey) return;
+
+    const postIds = userPostIdsKey.split(",").filter(Boolean);
+    refreshViewerStateForPosts?.(postIds);
+  }, [currentUser?.id, refreshViewerStateForPosts, userPostIdsKey]);
 
   useEffect(() => {
     if (authLoading || !routeProfileLookup || isOwnProfile) return;
