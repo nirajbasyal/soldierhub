@@ -109,11 +109,9 @@ export default function TipTapComposerEditor({
 
   const applyStoredMarks = useCallback((tiptap) => {
     if (!tiptap?.state || !tiptap?.view) return;
-
     const marks = [];
     if (manualInlineFormatsRef.current.bold && tiptap.state.schema.marks.bold) marks.push(tiptap.state.schema.marks.bold.create());
     if (manualInlineFormatsRef.current.italic && tiptap.state.schema.marks.italic) marks.push(tiptap.state.schema.marks.italic.create());
-
     tiptap.view.dispatch(tiptap.state.tr.setStoredMarks(marks));
   }, []);
 
@@ -156,17 +154,6 @@ export default function TipTapComposerEditor({
   const suppressMobileEditorOpen = useCallback(() => {
     suppressOpenUntilRef.current = Date.now() + 700;
   }, []);
-
-  const handleRemoveImage = useCallback(
-    (event) => {
-      event?.preventDefault?.();
-      event?.stopPropagation?.();
-      suppressMobileEditorOpen();
-      editor?.commands.blur();
-      onRemoveImage?.();
-    },
-    [editor, onRemoveImage, suppressMobileEditorOpen]
-  );
 
   const editor = useEditor({
     extensions,
@@ -222,6 +209,17 @@ export default function TipTapComposerEditor({
       rememberSelection(tiptap);
     },
   });
+
+  const handleRemoveImage = useCallback(
+    (event) => {
+      event?.preventDefault?.();
+      event?.stopPropagation?.();
+      suppressMobileEditorOpen();
+      editor?.commands.blur();
+      onRemoveImage?.();
+    },
+    [editor, onRemoveImage, suppressMobileEditorOpen]
+  );
 
   const openWritingMode = useCallback(() => {
     if (!pageMode || !phoneScreenRef.current || submitting) return;
@@ -283,14 +281,12 @@ export default function TipTapComposerEditor({
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
-
     const query = window.matchMedia("(max-width: 640px)");
     const updatePhoneScreen = () => {
       phoneScreenRef.current = query.matches;
       setPhoneScreen(query.matches);
     };
     updatePhoneScreen();
-
     query.addEventListener?.("change", updatePhoneScreen);
     return () => query.removeEventListener?.("change", updatePhoneScreen);
   }, []);
