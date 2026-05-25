@@ -6,8 +6,8 @@ import { ArrowLeft, FileText, UserRound } from "lucide-react";
 import { T } from "@/lib/theme";
 import { colorFromString } from "@/lib/helpers";
 import { useApp } from "@/store/AppContext";
-import { createClient } from "@/lib/supabase/client";
 import { findProfileByEmailForSearch } from "@/lib/db/profiles";
+import { getPublicProfile, listPublicPostsByAuthor } from "@/lib/db/visitorProfiles";
 import * as Follows from "@/lib/supabase/follows";
 import AppShell from "@/components/layout/AppShell";
 import Footer from "@/components/layout/Footer";
@@ -16,7 +16,7 @@ import PostCard from "@/components/feed/PostCard";
 import PostSkeleton from "@/components/ui/PostSkeleton";
 import VisitorProfileHero from "@/components/profile/VisitorProfileHero";
 
-const VISITOR_PROFILE_CACHE_PREFIX = "soldierhub_visitor_profile_v5:";
+const VISITOR_PROFILE_CACHE_PREFIX = "soldierhub_visitor_profile_v6:";
 const VISITOR_PROFILE_CACHE_MAX_AGE_MS = 1000 * 60 * 5;
 const EMAIL_LOOKUP_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -43,10 +43,27 @@ function isEmailLookup(value) {
   return EMAIL_LOOKUP_PATTERN.test(String(value || "").trim().toLowerCase());
 }
 
+function getPostAvatarUrl(row = {}, profile = null) {
+  if (row?.anonymous) return null;
+
+  return (
+    row.author_avatar_url ||
+    row.author_avatar_url_cached ||
+    row.profile_avatar_url ||
+    row.avatar_url ||
+    profile?.avatar_url ||
+    row.profile?.avatar_url ||
+    row.profiles?.avatar_url ||
+    row.author?.avatar_url ||
+    null
+  );
+}
+
 function normalizePostRow(row = {}) {
   const profile = row.profile || row.profiles || row.author || null;
   const postId = row.id || row.post_id || row.postId || row.post?.id || null;
   const authorId = getAuthorId(row) || profile?.id || null;
+  const authorAvatarUrl = getPostAvatarUrl(row, profile);
 
   return {
     ...row,
@@ -57,6 +74,8 @@ function normalizePostRow(row = {}) {
       row.author_name || row.author_name_cached || row.full_name || row.profile_full_name || profile?.full_name || "Member",
     author_color:
       row.author_color || row.author_color_cached || row.avatar_color || row.profile_avatar_color || profile?.avatar_color || "#314A66",
+    author_avatar_url: authorAvatarUrl,
+    author_avatar_url_cached: authorAvatarUrl,
     upvote_count: row.upvote_count ?? row.upvotes_count ?? 0,
     comment_count: row.comment_count ?? row.comments_count ?? row.reply_count ?? 0,
   };
@@ -85,7 +104,7 @@ function normalizeProfile(row = {}, fallbackPost = null, fallbackName = "", fall
       fallbackPost?.author_color ||
       fallbackPost?.author_color_cached ||
       colorFromString(name),
-    avatar_url: row?.avatar_url || null,
+    avatar_url: row?.avatar_url || fallbackPost?.author_avatar_url || fallbackPost?.author_avatar_url_cached || null,
     base: row?.base || "Fort Bliss",
     status: row?.status || row?.verification_status || "verified",
   };
@@ -344,29 +363,15 @@ export default function VisitorProfilePage() {
 
       try {
         if (isLiveMode && resolvedLookup) {
-          const supabase = createClient();
+          const [{ data: profileData }, { data: livePosts }] = await Promise.all([
+            getPublicProfile(resolvedLookup),
+            listPublicPostsByAuthor(resolvedLookup, { limit: 30 }),
+          ]);
 
-          if (supabase) {
-            const [{ data: profileData }, { data: livePosts }] = await Promise.all([
-              supabase
-                .from("profiles")
-                .select("id, full_name, bio, avatar_color, avatar_url, base, status, verification_status")
-                .eq("id", resolvedLookup)
-                .maybeSingle(),
-              supabase
-                .from("posts_with_meta")
-                .select("*")
-                .eq("author_id", resolvedLookup)
-                .eq("anonymous", false)
-                .order("created_at", { ascending: false })
-                .limit(30),
-            ]);
-
-            profileRow = profileData || previewProfile || resolvedCacheProfile || null;
-            postRows = Array.isArray(livePosts)
-              ? livePosts.map(normalizePostRow).filter((post) => post.id)
-              : localPostsForProfile;
-          }
+          profileRow = profileData || previewProfile || resolvedCacheProfile || null;
+          postRows = Array.isArray(livePosts)
+            ? livePosts.map(normalizePostRow).filter((post) => post.id)
+            : localPostsForProfile;
         }
       } catch {
         profileRow = previewProfile || resolvedCacheProfile || null;
