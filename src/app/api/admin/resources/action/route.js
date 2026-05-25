@@ -114,7 +114,7 @@ async function runResourceAction({ supabase, action, id, resource }) {
 }
 
 export async function POST(request) {
-  const ipRateLimit = checkRateLimit(request, {
+  const ipRateLimit = await checkRateLimit(request, {
     keyPrefix: "admin-resources-action-ip",
     limit: 80,
     windowMs: 60 * 1000,
@@ -152,7 +152,7 @@ export async function POST(request) {
     );
   }
 
-  const userRateLimit = checkRateLimit(request, {
+  const userRateLimit = await checkRateLimit(request, {
     keyPrefix: `admin-resources-action-user-${user.id}`,
     limit: 120,
     windowMs: 10 * 60 * 1000,
