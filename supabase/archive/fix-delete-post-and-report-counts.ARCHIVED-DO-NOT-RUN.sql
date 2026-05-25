@@ -1,3 +1,26 @@
+-- ============================================================================
+-- ARCHIVED SOLDIERHUB SQL FILE — DO NOT RUN WITHOUT REVIEW
+-- ============================================================================
+--
+-- Original file:
+--   supabase/fix-delete-post-and-report-counts.sql
+--
+-- Why this file was archived:
+--   This was a one-time emergency fix for post deletion and report counts.
+--   It recreates important functions/views and changes grants. Running it again
+--   later could overwrite newer database behavior.
+--
+-- Production rule:
+--   Do not paste this into Supabase SQL Editor unless you have reviewed the
+--   current live schema, current migrations, and current app expectations.
+--
+-- Current source of truth going forward:
+--   Prefer files under supabase/migrations/ for database changes.
+--
+-- Archived on:
+--   2026-05-24
+-- ============================================================================
+
 -- SoldierHub fix: post deletion + report count view permissions
 -- Run this in Supabase SQL Editor if you are not using migrations.
 
