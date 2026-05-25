@@ -26,6 +26,8 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import EditPostModal from "@/components/profile/EditPostModal";
 import ProfileIdentityLink from "@/components/ui/ProfileIdentityLink";
 
+const pendingReplyPostIds = new Set();
+
 function getPostId(post) {
   return post?.id || post?.postId || post?.post?.id || post?.post_id || null;
 }
@@ -129,26 +131,11 @@ function getDisplayAvatarUrl(item) {
 }
 
 function getPostCreatedAt(post) {
-  return (
-    post?.created_at ||
-    post?.createdAt ||
-    post?.inserted_at ||
-    post?.timestamp ||
-    post?.date ||
-    null
-  );
+  return post?.created_at || post?.createdAt || post?.inserted_at || post?.timestamp || post?.date || null;
 }
 
 function getPostUpdatedAt(post) {
-  return (
-    post?.updated_at ||
-    post?.updatedAt ||
-    post?.edited_at ||
-    post?.editedAt ||
-    post?.modified_at ||
-    post?.modifiedAt ||
-    null
-  );
+  return post?.updated_at || post?.updatedAt || post?.edited_at || post?.editedAt || post?.modified_at || post?.modifiedAt || null;
 }
 
 function isPostEdited(post) {
@@ -262,12 +249,7 @@ function PostImageLightbox({ image, onClose }) {
   if (!image?.url) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-[10000] bg-black/95 text-white"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Post image viewer"
-    >
+    <div className="fixed inset-0 z-[10000] bg-black/95 text-white" role="dialog" aria-modal="true" aria-label="Post image viewer">
       <div className="pointer-events-none fixed left-0 right-0 top-0 z-[10001] flex items-center justify-between gap-3 px-3 py-3 sm:px-5">
         <button
           type="button"
@@ -302,11 +284,7 @@ function PostImageLightbox({ image, onClose }) {
           <img
             src={image.url}
             alt="Full size post attachment"
-            className={
-              isLongImage
-                ? "mx-auto block w-full max-w-[720px] object-contain"
-                : "mx-auto block max-h-[calc(100dvh-110px)] max-w-full object-contain"
-            }
+            className={isLongImage ? "mx-auto block w-full max-w-[720px] object-contain" : "mx-auto block max-h-[calc(100dvh-110px)] max-w-full object-contain"}
             decoding="async"
           />
         </div>
@@ -315,28 +293,22 @@ function PostImageLightbox({ image, onClose }) {
   );
 }
 
-function ActionButton({ icon: Icon, label, count, active = false, onClick, fillWhenActive = false }) {
+function ActionButton({ icon: Icon, label, count, active = false, onClick, fillWhenActive = false, disabled = false }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="h-10 min-w-0 rounded-full px-3 text-xs md:text-sm font-bold inline-flex items-center justify-center gap-1.5 transition active:scale-[0.98] hover:bg-black/[0.04]"
+      disabled={disabled}
+      className="h-10 min-w-0 rounded-full px-3 text-xs md:text-sm font-bold inline-flex items-center justify-center gap-1.5 transition active:scale-[0.98] hover:bg-black/[0.04] disabled:pointer-events-none disabled:opacity-60"
       style={{
         color: active ? T.navy : T.textMuted,
         backgroundColor: active ? "rgba(11,28,44,0.07)" : "transparent",
       }}
     >
-      <Icon
-        size={18}
-        className="shrink-0"
-        strokeWidth={active ? 2.8 : 2.25}
-        fill={active && fillWhenActive ? "currentColor" : "none"}
-      />
+      <Icon size={18} className="shrink-0" strokeWidth={active ? 2.8 : 2.25} fill={active && fillWhenActive ? "currentColor" : "none"} />
       <span className="truncate">{label}</span>
       {typeof count === "number" && count > 0 ? (
-        <span className="text-[11px] font-extrabold leading-none">
-          {count > 99 ? "99+" : count}
-        </span>
+        <span className="text-[11px] font-extrabold leading-none">{count > 99 ? "99+" : count}</span>
       ) : null}
     </button>
   );
@@ -362,25 +334,13 @@ function AuthorAvatarName({ userId, fallbackName = "", name, color, src, size, a
   }
 
   return (
-    <ProfileIdentityLink
-      userId={userId}
-      fallbackName={fallbackName || name}
-      className="inline-flex cursor-pointer transition hover:opacity-80 focus:outline-none"
-    >
+    <ProfileIdentityLink userId={userId} fallbackName={fallbackName || name} className="inline-flex cursor-pointer transition hover:opacity-80 focus:outline-none">
       {children || <Avatar name={name} color={color} src={src} size={size} />}
     </ProfileIdentityLink>
   );
 }
 
-function CommentRow({
-  comment,
-  post,
-  currentUser,
-  isAdmin = false,
-  menuOpen = false,
-  onToggleMenu,
-  onDeleteRequest,
-}) {
+function CommentRow({ comment, post, currentUser, isAdmin = false, menuOpen = false, onToggleMenu, onDeleteRequest }) {
   const postId = getPostId(post);
   const postAuthorId = getAuthorId(post);
   const commentId = getCommentId(comment);
@@ -406,16 +366,11 @@ function CommentRow({
         <Avatar name={name} color={color} src={avatarUrl} size={30} />
       </AuthorAvatarName>
       <div className="min-w-0 flex-1">
-        <div
-          className="relative min-w-0 rounded-2xl px-3 py-2 pr-10"
-          style={{ backgroundColor: "rgba(244,248,253,0.95)" }}
-        >
+        <div className="relative min-w-0 rounded-2xl px-3 py-2 pr-10" style={{ backgroundColor: "rgba(244,248,253,0.95)" }}>
           <div className="flex min-w-0 items-center gap-1.5 text-xs font-bold" style={{ color: T.text }}>
             {anonymousAuthor ? <Lock size={11} className="shrink-0" /> : null}
             <AuthorAvatarName userId={anonymousAuthor ? null : commentAuthorId} fallbackName={name} name={name} color={color} src={avatarUrl} size={30} anonymous={anonymousAuthor}>
-              <span className={anonymousAuthor || !commentAuthorId ? "truncate" : "truncate cursor-pointer transition hover:opacity-80"}>
-                {name}
-              </span>
+              <span className={anonymousAuthor || !commentAuthorId ? "truncate" : "truncate cursor-pointer transition hover:opacity-80"}>{name}</span>
             </AuthorAvatarName>
             {isMine ? <span className="shrink-0" style={{ color: T.textSubtle }}>(you)</span> : null}
             {isReplyingComment ? <span className="shrink-0" style={{ color: T.textSubtle }}>Replying…</span> : null}
@@ -441,11 +396,7 @@ function CommentRow({
               </button>
 
               {menuOpen ? (
-                <div
-                  onClick={(event) => event.stopPropagation()}
-                  className="absolute right-0 top-8 z-30 w-44 overflow-hidden rounded-2xl border shadow-xl"
-                  style={{ backgroundColor: T.card, borderColor: T.border }}
-                >
+                <div onClick={(event) => event.stopPropagation()} className="absolute right-0 top-8 z-30 w-44 overflow-hidden rounded-2xl border shadow-xl" style={{ backgroundColor: T.card, borderColor: T.border }}>
                   <MenuButton icon={Trash2} danger onClick={() => onDeleteRequest?.(comment)}>
                     Delete comment
                   </MenuButton>
@@ -505,9 +456,7 @@ export default function PostCard({ post, openRepliesDefault = false }) {
   const displayColor = post?.anonymous ? "#5C6470" : getDisplayColor(post, displayName);
   const displayAvatarUrl = post?.anonymous ? null : getDisplayAvatarUrl(post);
   const comments = postId ? postComments?.[postId] || [] : [];
-  const commentsLoaded = Boolean(
-    postId && Object.prototype.hasOwnProperty.call(postComments || {}, postId)
-  );
+  const commentsLoaded = Boolean(postId && Object.prototype.hasOwnProperty.call(postComments || {}, postId));
   const storedCommentCount = post?.comment_count ?? post?.reply_count ?? 0;
   const commentCount = commentsLoaded ? comments.length : storedCommentCount;
   const upvoteCount = post?.upvote_count ?? 0;
@@ -517,10 +466,7 @@ export default function PostCard({ post, openRepliesDefault = false }) {
   const ownsPost = Boolean(
     (currentUser?.id && authorId && currentUser.id === authorId) ||
       post?.viewer_is_author === true ||
-      (currentUser?.id &&
-        postId &&
-        Array.isArray(myPosts) &&
-        myPosts.some((myPost) => getPostId(myPost) === postId))
+      (currentUser?.id && postId && Array.isArray(myPosts) && myPosts.some((myPost) => getPostId(myPost) === postId))
   );
   const adminModeratingOtherPost = Boolean(isAdmin && !ownsPost);
   const replyName = post?.anonymous && ownsPost ? anonymousName : currentUser?.full_name || "Member";
@@ -534,13 +480,14 @@ export default function PostCard({ post, openRepliesDefault = false }) {
     setComment("");
     setCommentError("");
     setCommentsLoading(false);
+    setCommentSubmitting(false);
     setCommentMenuOpenId(null);
     setCommentToDelete(null);
     setActiveImage(null);
   }, [postId, openRepliesDefault]);
 
   useEffect(() => {
-    if (!openRepliesDefault || !postId || commentsLoaded) return;
+    if (!openRepliesDefault || !postId || commentsLoaded) return undefined;
 
     let cancelled = false;
     setShowComments(true);
@@ -657,9 +604,7 @@ export default function PostCard({ post, openRepliesDefault = false }) {
     if (deleting || !ensurePostId()) return;
     setDeleting(true);
     try {
-      const result = adminModeratingOtherPost
-        ? await adminDeletePost?.(postId)
-        : await deleteMyPost?.(postId);
+      const result = adminModeratingOtherPost ? await adminDeletePost?.(postId) : await deleteMyPost?.(postId);
 
       if (result?.ok === false) return pushToast?.(result?.error || "Could not delete post.", "error");
       setDeletingOpen(false);
@@ -683,10 +628,7 @@ export default function PostCard({ post, openRepliesDefault = false }) {
     try {
       const result = await deleteCommentAction?.({ postId, commentId });
 
-      if (result?.ok === false) {
-        return pushToast?.(result?.error || "Could not delete comment.", "error");
-      }
-
+      if (result?.ok === false) return pushToast?.(result?.error || "Could not delete comment.", "error");
       setCommentToDelete(null);
     } finally {
       setDeletingComment(false);
@@ -694,25 +636,44 @@ export default function PostCard({ post, openRepliesDefault = false }) {
   };
 
   const submitComment = async () => {
-    if (commentSubmitting) return;
+    const pendingKey = postId || "unknown-post";
+
+    if (commentSubmitting || pendingReplyPostIds.has(pendingKey)) return;
     setCommentError("");
     if (!requireAuth()) return;
     if (!postId) return setCommentError("Post was not identified. Please refresh and try again.");
+
     const cleaned = comment.trim();
     if (!cleaned) return;
+
+    pendingReplyPostIds.add(pendingKey);
     setCommentSubmitting(true);
+    setShowComments(true);
+    setComment("");
+
     try {
       const mod = await moderateAsync(cleaned);
-      if (!mod.allowed) return setCommentError(mod.reason || "Comment could not be posted.");
+      if (!mod.allowed) {
+        setComment(cleaned);
+        setCommentError(mod.reason || "Comment could not be posted.");
+        return;
+      }
+
       const result = await commentOnPost?.(postId, cleaned, {
         isAnonymousAuthor: Boolean(post?.anonymous && ownsPost),
         anonymousName,
         anonymousColor: "#5C6470",
       });
-      if (result?.ok === false) return setCommentError(result.error || "Could not post comment.");
-      setComment("");
-      setShowComments(true);
+
+      if (result?.ok === false) {
+        setComment(cleaned);
+        setCommentError(result.error || "Could not post comment.");
+      }
+    } catch {
+      setComment(cleaned);
+      setCommentError("Could not post comment. Please try again.");
     } finally {
+      pendingReplyPostIds.delete(pendingKey);
       setCommentSubmitting(false);
     }
   };
@@ -721,10 +682,7 @@ export default function PostCard({ post, openRepliesDefault = false }) {
 
   return (
     <>
-      <article
-        className="group overflow-visible rounded-none border-x-0 border-t border-b-0 shadow-none transition-colors duration-200 md:border md:rounded-[24px] md:shadow-sm"
-        style={{ backgroundColor: T.card, borderColor: T.border }}
-      >
+      <article className="group overflow-visible rounded-none border-x-0 border-t border-b-0 shadow-none transition-colors duration-200 md:border md:rounded-[24px] md:shadow-sm" style={{ backgroundColor: T.card, borderColor: T.border }}>
         <div className="px-4 md:px-5 pt-4 pb-3">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-3 min-w-0 flex-1">
@@ -734,12 +692,7 @@ export default function PostCard({ post, openRepliesDefault = false }) {
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <AuthorAvatarName userId={authorId} fallbackName={displayName} name={displayName} color={displayColor} src={displayAvatarUrl} size={42} anonymous={post?.anonymous}>
-                    <span
-                      className={`font-bold text-sm md:text-[15px] truncate transition ${
-                        post?.anonymous || !authorId ? "" : "cursor-pointer hover:opacity-80"
-                      }`}
-                      style={{ color: T.text }}
-                    >
+                    <span className={`font-bold text-sm md:text-[15px] truncate transition ${post?.anonymous || !authorId ? "" : "cursor-pointer hover:opacity-80"}`} style={{ color: T.text }}>
                       {displayName}
                     </span>
                   </AuthorAvatarName>
@@ -749,35 +702,19 @@ export default function PostCard({ post, openRepliesDefault = false }) {
                   </span>
                   {editedPost ? (
                     <>
-                      <span className="text-[10px] leading-none" style={{ color: "rgba(102,112,133,0.45)" }}>
-                        •
-                      </span>
-                      <span
-                        className="text-[11px] font-semibold leading-none"
-                        style={{ color: "rgba(102,112,133,0.62)" }}
-                        title={postUpdatedAt ? `Edited ${new Date(postUpdatedAt).toLocaleString()}` : "Edited"}
-                      >
+                      <span className="text-[10px] leading-none" style={{ color: "rgba(102,112,133,0.45)" }}>•</span>
+                      <span className="text-[11px] font-semibold leading-none" style={{ color: "rgba(102,112,133,0.62)" }} title={postUpdatedAt ? `Edited ${new Date(postUpdatedAt).toLocaleString()}` : "Edited"}>
                         edited
                       </span>
                     </>
                   ) : null}
                 </div>
                 <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                  <span
-                    className="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-bold"
-                    style={{
-                      backgroundColor: "rgba(244,248,253,0.95)",
-                      borderColor: T.border,
-                      color: T.textMuted,
-                    }}
-                  >
+                  <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-bold" style={{ backgroundColor: "rgba(244,248,253,0.95)", borderColor: T.border, color: T.textMuted }}>
                     {category?.label || post?.category || "General"}
                   </span>
                   {isReported ? (
-                    <span
-                      className="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-bold"
-                      style={{ backgroundColor: T.goldBg, borderColor: "#F3D08A", color: T.gold }}
-                    >
+                    <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-bold" style={{ backgroundColor: T.goldBg, borderColor: "#F3D08A", color: T.gold }}>
                       Post under review
                     </span>
                   ) : null}
@@ -801,11 +738,7 @@ export default function PostCard({ post, openRepliesDefault = false }) {
               </button>
 
               {menuOpen ? (
-                <div
-                  onClick={(event) => event.stopPropagation()}
-                  className="absolute right-0 top-10 z-30 w-48 overflow-hidden rounded-2xl border shadow-xl"
-                  style={{ backgroundColor: T.card, borderColor: T.border }}
-                >
+                <div onClick={(event) => event.stopPropagation()} className="absolute right-0 top-10 z-30 w-48 overflow-hidden rounded-2xl border shadow-xl" style={{ backgroundColor: T.card, borderColor: T.border }}>
                   {ownsPost ? (
                     <>
                       <MenuButton icon={Edit3} onClick={handleEditClick}>Edit post</MenuButton>
@@ -813,12 +746,8 @@ export default function PostCard({ post, openRepliesDefault = false }) {
                     </>
                   ) : (
                     <>
-                      {isAdmin ? (
-                        <MenuButton icon={Trash2} danger onClick={handleDeleteClick}>Delete post</MenuButton>
-                      ) : null}
-                      <MenuButton icon={Flag} danger={userReported} onClick={handleReport}>
-                        {userReported ? "Reported" : "Report post"}
-                      </MenuButton>
+                      {isAdmin ? <MenuButton icon={Trash2} danger onClick={handleDeleteClick}>Delete post</MenuButton> : null}
+                      <MenuButton icon={Flag} danger={userReported} onClick={handleReport}>{userReported ? "Reported" : "Report post"}</MenuButton>
                     </>
                   )}
                 </div>
@@ -835,31 +764,10 @@ export default function PostCard({ post, openRepliesDefault = false }) {
           {postImage ? <PostImagePreview image={postImage} onOpen={setActiveImage} /> : null}
         </div>
 
-        <div
-          className="mx-4 md:mx-5 border-t flex items-center justify-between gap-1 py-1.5"
-          style={{ borderColor: T.borderSoft || T.border }}
-        >
-          <ActionButton
-            icon={ArrowBigUp}
-            label="Upvote"
-            count={upvoteCount}
-            active={userUpvoted}
-            fillWhenActive
-            onClick={handleUpvote}
-          />
-          <ActionButton
-            icon={MessageCircle}
-            label="Replies"
-            count={commentCount}
-            active={showComments}
-            fillWhenActive
-            onClick={handleToggleComments}
-          />
-          <ActionButton
-            icon={Share2}
-            label="Share"
-            onClick={handleShare}
-          />
+        <div className="mx-4 md:mx-5 border-t flex items-center justify-between gap-1 py-1.5" style={{ borderColor: T.borderSoft || T.border }}>
+          <ActionButton icon={ArrowBigUp} label="Upvote" count={upvoteCount} active={userUpvoted} fillWhenActive onClick={handleUpvote} />
+          <ActionButton icon={MessageCircle} label="Replies" count={commentCount} active={showComments} fillWhenActive onClick={handleToggleComments} />
+          <ActionButton icon={Share2} label="Share" onClick={handleShare} />
         </div>
 
         {showComments ? (
@@ -904,10 +812,7 @@ export default function PostCard({ post, openRepliesDefault = false }) {
                 <Avatar name={replyName} color={replyColor} src={replyAvatarUrl} size={32} />
               </AuthorAvatarName>
               <div className="min-w-0 flex-1">
-                <div
-                  className="flex items-center gap-2 rounded-2xl border px-3 py-2"
-                  style={{ borderColor: T.border, backgroundColor: "rgba(244,248,253,0.72)" }}
-                >
+                <div className="flex items-center gap-2 rounded-2xl border px-3 py-2" style={{ borderColor: T.border, backgroundColor: "rgba(244,248,253,0.72)" }}>
                   <input
                     value={comment}
                     onChange={(event) => {
@@ -920,8 +825,8 @@ export default function PostCard({ post, openRepliesDefault = false }) {
                         submitComment();
                       }
                     }}
-                    placeholder="Write a reply..."
-                    className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[#9AA4B2]"
+                    placeholder={commentSubmitting ? "Posting reply…" : "Write a reply..."}
+                    className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[#9AA4B2] disabled:cursor-not-allowed disabled:opacity-70"
                     style={{ color: T.text }}
                     disabled={commentSubmitting}
                   />
@@ -929,7 +834,7 @@ export default function PostCard({ post, openRepliesDefault = false }) {
                     type="button"
                     onClick={submitComment}
                     disabled={commentSubmitting || !comment.trim()}
-                    className="h-8 w-8 rounded-full flex items-center justify-center disabled:opacity-45"
+                    className="h-8 w-8 rounded-full flex items-center justify-center disabled:opacity-45 disabled:pointer-events-none"
                     style={{ backgroundColor: T.navy, color: "white" }}
                     aria-label="Send reply"
                   >
@@ -949,18 +854,12 @@ export default function PostCard({ post, openRepliesDefault = false }) {
 
       {activeImage ? <PostImageLightbox image={activeImage} onClose={() => setActiveImage(null)} /> : null}
 
-      {editingOpen ? (
-        <EditPostModal post={safePost} onClose={() => setEditingOpen(false)} onSave={handleEditSave} />
-      ) : null}
+      {editingOpen ? <EditPostModal post={safePost} onClose={() => setEditingOpen(false)} onSave={handleEditSave} /> : null}
 
       <ConfirmDialog
         open={deletingOpen}
         title="Delete this post?"
-        body={
-          adminModeratingOtherPost
-            ? "This will permanently delete another user's post and its comments from SoldierHub. This cannot be undone."
-            : "This will remove this post from SoldierHub."
-        }
+        body={adminModeratingOtherPost ? "This will permanently delete another user's post and its comments from SoldierHub. This cannot be undone." : "This will remove this post from SoldierHub."}
         confirmText={deleting ? "Deleting…" : "Delete post"}
         danger
         onConfirm={handleDeleteConfirm}
