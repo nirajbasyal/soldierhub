@@ -276,7 +276,7 @@ async function buildWeatherPayload() {
 }
 
 export async function GET(request) {
-  const rateLimit = checkRateLimit(request, {
+  const rateLimit = await checkRateLimit(request, {
     keyPrefix: "weather:fort-bliss",
     limit: 90,
     windowMs: 60 * 1000,
