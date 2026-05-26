@@ -1,14 +1,14 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Inbox, RefreshCw } from "lucide-react";
+import { Inbox, Pencil, RefreshCw } from "lucide-react";
 import { CATEGORIES } from "@/lib/constants";
 import { T } from "@/lib/theme";
 import { subscribeToPosts } from "@/lib/db/realtime";
 import { useApp } from "@/store/AppContext";
 import AppShell from "@/components/layout/AppShell";
 import FeedHero from "@/components/feed/FeedHero";
-import PostComposer from "@/components/feed/composer/PostComposer";
 import CategoryStrip from "@/components/feed/CategoryStrip";
 import PostCard from "@/components/feed/PostCard";
 import PostSkeleton from "@/components/ui/PostSkeleton";
@@ -17,6 +17,11 @@ import MobileWeatherStrip from "@/components/tools/MobileWeatherStrip";
 import BAHCard from "@/components/tools/BAHCard";
 import GateHoursCard from "@/components/tools/GateHoursCard";
 import SiteInfoCard from "@/components/tools/SiteInfoCard";
+
+const PostComposer = dynamic(() => import("@/components/feed/composer/PostComposer"), {
+  ssr: false,
+  loading: () => <ComposerLazyPlaceholder loading />,
+});
 
 const FEED_CACHE_KEY = "soldierhub_feed_cache_v2";
 const LEGACY_FEED_CACHE_KEYS = ["soldierhub_feed_cache_v1"];
@@ -102,6 +107,36 @@ function clearFeedCaches() {
   LEGACY_FEED_CACHE_KEYS.forEach((legacyKey) => window.localStorage.removeItem(legacyKey));
 }
 
+function ComposerLazyPlaceholder({ loading = false, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={loading}
+      className="group w-full rounded-[26px] border p-4 text-left shadow-sm transition hover:-translate-y-0.5 disabled:cursor-wait disabled:hover:translate-y-0"
+      style={{ backgroundColor: T.card, borderColor: T.border }}
+      aria-label={loading ? "Loading post composer" : "Open post composer"}
+    >
+      <div className="flex items-center gap-3">
+        <div
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border"
+          style={{ backgroundColor: "#F2F6FA", borderColor: T.borderSoft, color: T.navy }}
+        >
+          <Pencil size={18} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="text-[15px] font-extrabold tracking-[-0.01em]" style={{ color: T.text }}>
+            {loading ? "Loading composer…" : "What do you want to ask the Fort Bliss community?"}
+          </div>
+          <div className="mt-0.5 text-xs font-medium" style={{ color: T.muted }}>
+            {loading ? "Preparing the editor." : "Tap to write with formatting, image upload, and anonymous mode."}
+          </div>
+        </div>
+      </div>
+    </button>
+  );
+}
+
 export default function HomePage() {
   const {
     posts,
@@ -122,6 +157,7 @@ export default function HomePage() {
   const [renderLimit, setRenderLimit] = useState(INITIAL_RENDERED_POSTS);
   const [refreshingFeed, setRefreshingFeed] = useState(false);
   const [feedRealtimeActive, setFeedRealtimeActive] = useState(false);
+  const [showDesktopComposer, setShowDesktopComposer] = useState(false);
   const postListRef = useRef(null);
   const hasHandledPublishScrollRef = useRef(false);
 
@@ -325,7 +361,11 @@ export default function HomePage() {
             </div>
 
             <div className="hidden md:block">
-              <PostComposer />
+              {showDesktopComposer ? (
+                <PostComposer />
+              ) : (
+                <ComposerLazyPlaceholder onClick={() => setShowDesktopComposer(true)} />
+              )}
             </div>
 
             <div
