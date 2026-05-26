@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/client";
 
 const POST_SELECT =
-  "id, author_id, author_name_cached, author_color_cached, category, body, anonymous, status, edited, created_at, updated_at, image_url, image_key, image_width, image_height, image_size";
+  "id, author_id, author_name_cached, author_color_cached, category, body, anonymous, status, edited, created_at, updated_at, image_url, image_key, image_width, image_height, image_size, image_thumbnail_url, image_thumbnail_key, image_thumbnail_width, image_thumbnail_height, image_thumbnail_size";
 
 const RPC_MODE_FULL = "full";
 const RPC_MODE_LIMIT = "limit";
@@ -66,6 +66,11 @@ export function normalizePostRow(row = {}) {
     image_width: row.image_width || row.imageWidth || null,
     image_height: row.image_height || row.imageHeight || null,
     image_size: row.image_size || row.imageSize || null,
+    image_thumbnail_url: row.image_thumbnail_url || row.imageThumbnailUrl || row.thumbnail_url || null,
+    image_thumbnail_key: row.image_thumbnail_key || row.imageThumbnailKey || row.thumbnail_key || null,
+    image_thumbnail_width: row.image_thumbnail_width || row.imageThumbnailWidth || row.thumbnail_width || null,
+    image_thumbnail_height: row.image_thumbnail_height || row.imageThumbnailHeight || row.thumbnail_height || null,
+    image_thumbnail_size: row.image_thumbnail_size || row.imageThumbnailSize || row.thumbnail_size || null,
     upvote_count: row.upvote_count ?? row.upvotes_count ?? 0,
     comment_count: commentCount,
     reply_count: commentCount,
