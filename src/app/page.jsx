@@ -193,11 +193,14 @@ export default function HomePage() {
   } = useApp();
 
   const [cachedPosts, setCachedPosts] = useState(readCachedFeed);
+  const [displayedPosts, setDisplayedPosts] = useState(() => readCachedFeed());
   const [renderLimit, setRenderLimit] = useState(INITIAL_RENDERED_POSTS);
   const [refreshingFeed, setRefreshingFeed] = useState(false);
   const [showDesktopComposer, setShowDesktopComposer] = useState(false);
   const postListRef = useRef(null);
   const topFeedMarkerRef = useRef(null);
+  const displayedPostsRef = useRef(displayedPosts);
+  const manualFeedRefreshRef = useRef(false);
   const newPostCheckRunningRef = useRef(false);
   const hasHandledPublishScrollRef = useRef(false);
 
@@ -230,10 +233,59 @@ export default function HomePage() {
     }
   }, [posts, postsLoading]);
 
-  const feedPosts = useMemo(() => {
+  const incomingFeedPosts = useMemo(() => {
     const source = posts.length ? posts : cachedPosts;
     return source.filter(isValidFeedPost).map(normalizeFeedPostForCard);
   }, [posts, cachedPosts]);
+
+  useEffect(() => {
+    const currentDisplayedPosts = displayedPostsRef.current || [];
+
+    if (incomingFeedPosts.length === 0) {
+      if (!postsLoading) {
+        displayedPostsRef.current = [];
+        setDisplayedPosts([]);
+        topFeedMarkerRef.current = null;
+      }
+      return;
+    }
+
+    let shouldAcceptPublishedPost = false;
+
+    if (typeof window !== "undefined") {
+      try {
+        shouldAcceptPublishedPost = window.sessionStorage.getItem(PUBLISH_SCROLL_KEY) === "1";
+      } catch {
+        shouldAcceptPublishedPost = false;
+      }
+    }
+
+    const shouldAcceptFeedUpdate =
+      manualFeedRefreshRef.current || shouldAcceptPublishedPost || currentDisplayedPosts.length === 0;
+
+    if (shouldAcceptFeedUpdate) {
+      manualFeedRefreshRef.current = false;
+      displayedPostsRef.current = incomingFeedPosts;
+      setDisplayedPosts(incomingFeedPosts);
+      topFeedMarkerRef.current = buildPostMarker(incomingFeedPosts[0]);
+      setHasNewFeedItems(false);
+      return;
+    }
+
+    const nextTopMarker = buildPostMarker(incomingFeedPosts[0]);
+    const currentTopMarker = buildPostMarker(currentDisplayedPosts[0]);
+
+    if (isNewerPostMarker(nextTopMarker, currentTopMarker)) {
+      setHasNewFeedItems(true);
+      return;
+    }
+
+    displayedPostsRef.current = incomingFeedPosts;
+    setDisplayedPosts(incomingFeedPosts);
+    topFeedMarkerRef.current = nextTopMarker;
+  }, [incomingFeedPosts, postsLoading, setHasNewFeedItems]);
+
+  const feedPosts = displayedPosts;
 
   useEffect(() => {
     topFeedMarkerRef.current = buildPostMarker(feedPosts[0]);
@@ -398,12 +450,16 @@ export default function HomePage() {
   const showLoadMore = feedPosts.length > 0 && (hasMoreRenderedPosts || canLoadFromServer);
 
   const handleRefreshFeed = async () => {
+    manualFeedRefreshRef.current = true;
     setRefreshingFeed(true);
 
     try {
       await reloadPosts();
       setRenderLimit(INITIAL_RENDERED_POSTS);
     } finally {
+      window.setTimeout(() => {
+        manualFeedRefreshRef.current = false;
+      }, 2000);
       setRefreshingFeed(false);
     }
   };
