@@ -4,7 +4,8 @@ import { T } from "@/lib/theme";
 const BIO_CHARACTER_LIMIT = 95;
 
 export default function TextArea({ label, error, className = "", onChange, value, maxLength, ...props }) {
-  const isBioField = String(label || "").trim().toLowerCase() === "bio";
+  const labelText = String(label || "").trim().toLowerCase();
+  const isBioField = labelText === "bio" || labelText.startsWith("bio ") || labelText.startsWith("bio(");
   const effectiveMaxLength = isBioField && !maxLength ? BIO_CHARACTER_LIMIT : maxLength;
   const safeValue =
     typeof value === "string" && effectiveMaxLength
