@@ -1,8 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { compressPostImage, revokePreviewUrl } from "@/lib/media/imageCompression";
-import { uploadCompressedImageToR2 } from "@/lib/media/upload";
+
+function revokeLocalPreviewUrl(url) {
+  if (!url) return;
+
+  try {
+    URL.revokeObjectURL(url);
+  } catch {
+    // Best-effort cleanup only.
+  }
+}
 
 export default function useComposerImage({ submittingValueRef, setError, setOpen, focusComposerField }) {
   const imageInputRef = useRef(null);
@@ -17,12 +25,12 @@ export default function useComposerImage({ submittingValueRef, setError, setOpen
   }, [selectedImage]);
 
   useEffect(() => {
-    return () => revokePreviewUrl(selectedImageRef.current?.previewUrl);
+    return () => revokeLocalPreviewUrl(selectedImageRef.current?.previewUrl);
   }, []);
 
   const clearSelectedImage = () => {
     setSelectedImage((current) => {
-      revokePreviewUrl(current?.previewUrl);
+      revokeLocalPreviewUrl(current?.previewUrl);
       selectedImageRef.current = null;
       return null;
     });
@@ -56,9 +64,11 @@ export default function useComposerImage({ submittingValueRef, setError, setOpen
     setImageProcessing(true);
 
     try {
+      const { compressPostImage } = await import("@/lib/media/imageCompression");
       const compressed = await compressPostImage(file);
+
       setSelectedImage((current) => {
-        revokePreviewUrl(current?.previewUrl);
+        revokeLocalPreviewUrl(current?.previewUrl);
         selectedImageRef.current = compressed;
         return compressed;
       });
@@ -75,7 +85,9 @@ export default function useComposerImage({ submittingValueRef, setError, setOpen
   const uploadSelectedImage = async () => {
     const imageToUpload = selectedImageRef.current;
     if (!imageToUpload) return null;
+
     setImageStatus("Uploading photo…");
+    const { uploadCompressedImageToR2 } = await import("@/lib/media/upload");
     return uploadCompressedImageToR2(imageToUpload, { purpose: "post" });
   };
 
