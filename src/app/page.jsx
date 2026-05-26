@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Inbox, Pencil, RefreshCw } from "lucide-react";
 import { CATEGORIES } from "@/lib/constants";
 import { T } from "@/lib/theme";
-import { subscribeToPosts } from "@/lib/db/realtime";
+import * as PostsDB from "@/lib/db/posts";
 import { useApp } from "@/store/AppContext";
 import AppShell from "@/components/layout/AppShell";
 import FeedHero from "@/components/feed/FeedHero";
@@ -29,9 +29,15 @@ const FEED_CACHE_MAX_AGE_MS = 1000 * 60 * 5;
 const INITIAL_RENDERED_POSTS = 20;
 const RENDER_INCREMENT = 20;
 const PUBLISH_SCROLL_KEY = "soldierhub_scroll_to_latest_post";
+const NEW_POST_FIRST_CHECK_MS = 15_000;
+const NEW_POST_CHECK_INTERVAL_MS = 60_000;
 
 function getRealPostId(post) {
   return post?.post_id || post?.postId || post?.post?.id || post?.id || null;
+}
+
+function getPostCreatedAt(post) {
+  return post?.created_at || post?.createdAt || post?.post?.created_at || post?.post?.createdAt || null;
 }
 
 function getAuthorId(post) {
@@ -63,6 +69,14 @@ function normalizeFeedPostForCard(post) {
     id: postId,
     post_id: post?.post_id || postId,
   };
+}
+
+function buildPostMarker(post) {
+  const id = getRealPostId(post);
+  const createdAt = getPostCreatedAt(post);
+  if (!id || !createdAt) return null;
+
+  return { id, createdAt };
 }
 
 function readCachedFeedFromKey(cacheKey) {
@@ -105,6 +119,31 @@ function clearFeedCaches() {
 
   window.localStorage.removeItem(FEED_CACHE_KEY);
   LEGACY_FEED_CACHE_KEYS.forEach((legacyKey) => window.localStorage.removeItem(legacyKey));
+}
+
+function getLatestMarkerId(latestMarker) {
+  return latestMarker?.latest_post_id || latestMarker?.post_id || latestMarker?.postId || latestMarker?.id || null;
+}
+
+function getLatestMarkerCreatedAt(latestMarker) {
+  return latestMarker?.latest_created_at || latestMarker?.created_at || latestMarker?.createdAt || null;
+}
+
+function isNewerPostMarker(latestMarker, currentTopMarker) {
+  const latestPostId = getLatestMarkerId(latestMarker);
+  const latestCreatedAt = getLatestMarkerCreatedAt(latestMarker);
+
+  if (!latestPostId || !latestCreatedAt || !currentTopMarker?.id || !currentTopMarker?.createdAt) {
+    return false;
+  }
+
+  const latestTime = new Date(latestCreatedAt).getTime();
+  const currentTime = new Date(currentTopMarker.createdAt).getTime();
+
+  if (!Number.isFinite(latestTime) || !Number.isFinite(currentTime)) return false;
+  if (latestTime > currentTime) return true;
+
+  return latestTime === currentTime && latestPostId !== currentTopMarker.id;
 }
 
 function ComposerLazyPlaceholder({ loading = false, onClick }) {
@@ -154,52 +193,16 @@ export default function HomePage() {
   } = useApp();
 
   const [cachedPosts, setCachedPosts] = useState(readCachedFeed);
+  const [displayedPosts, setDisplayedPosts] = useState(() => readCachedFeed());
   const [renderLimit, setRenderLimit] = useState(INITIAL_RENDERED_POSTS);
   const [refreshingFeed, setRefreshingFeed] = useState(false);
-  const [feedRealtimeActive, setFeedRealtimeActive] = useState(false);
   const [showDesktopComposer, setShowDesktopComposer] = useState(false);
   const postListRef = useRef(null);
+  const topFeedMarkerRef = useRef(null);
+  const displayedPostsRef = useRef(displayedPosts);
+  const manualFeedRefreshRef = useRef(false);
+  const newPostCheckRunningRef = useRef(false);
   const hasHandledPublishScrollRef = useRef(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    let unsubscribe = null;
-
-    const stopFeedRealtime = () => {
-      if (unsubscribe) {
-        unsubscribe();
-        unsubscribe = null;
-      }
-      setFeedRealtimeActive(false);
-    };
-
-    const startFeedRealtime = () => {
-      if (document.hidden || unsubscribe) return;
-
-      unsubscribe = subscribeToPosts(() => {
-        setHasNewFeedItems(true);
-      });
-      setFeedRealtimeActive(true);
-    };
-
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        stopFeedRealtime();
-        return;
-      }
-
-      startFeedRealtime();
-    };
-
-    startFeedRealtime();
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      stopFeedRealtime();
-    };
-  }, [setHasNewFeedItems]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -230,10 +233,130 @@ export default function HomePage() {
     }
   }, [posts, postsLoading]);
 
-  const feedPosts = useMemo(() => {
+  const incomingFeedPosts = useMemo(() => {
     const source = posts.length ? posts : cachedPosts;
     return source.filter(isValidFeedPost).map(normalizeFeedPostForCard);
   }, [posts, cachedPosts]);
+
+  useEffect(() => {
+    const currentDisplayedPosts = displayedPostsRef.current || [];
+
+    if (incomingFeedPosts.length === 0) {
+      if (!postsLoading) {
+        displayedPostsRef.current = [];
+        setDisplayedPosts([]);
+        topFeedMarkerRef.current = null;
+      }
+      return;
+    }
+
+    let shouldAcceptPublishedPost = false;
+
+    if (typeof window !== "undefined") {
+      try {
+        shouldAcceptPublishedPost = window.sessionStorage.getItem(PUBLISH_SCROLL_KEY) === "1";
+      } catch {
+        shouldAcceptPublishedPost = false;
+      }
+    }
+
+    const shouldAcceptFeedUpdate =
+      manualFeedRefreshRef.current || shouldAcceptPublishedPost || currentDisplayedPosts.length === 0;
+
+    if (shouldAcceptFeedUpdate) {
+      manualFeedRefreshRef.current = false;
+      displayedPostsRef.current = incomingFeedPosts;
+      setDisplayedPosts(incomingFeedPosts);
+      topFeedMarkerRef.current = buildPostMarker(incomingFeedPosts[0]);
+      setHasNewFeedItems(false);
+      return;
+    }
+
+    const nextTopMarker = buildPostMarker(incomingFeedPosts[0]);
+    const currentTopMarker = buildPostMarker(currentDisplayedPosts[0]);
+
+    if (isNewerPostMarker(nextTopMarker, currentTopMarker)) {
+      setHasNewFeedItems(true);
+      return;
+    }
+
+    displayedPostsRef.current = incomingFeedPosts;
+    setDisplayedPosts(incomingFeedPosts);
+    topFeedMarkerRef.current = nextTopMarker;
+  }, [incomingFeedPosts, postsLoading, setHasNewFeedItems]);
+
+  const feedPosts = displayedPosts;
+
+  useEffect(() => {
+    topFeedMarkerRef.current = buildPostMarker(feedPosts[0]);
+  }, [feedPosts]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    let timer = null;
+    let cancelled = false;
+
+    const isPageVisible = () => !document.hidden;
+
+    function clearScheduledCheck() {
+      if (!timer) return;
+      window.clearTimeout(timer);
+      timer = null;
+    }
+
+    function scheduleNextCheck(delay = NEW_POST_CHECK_INTERVAL_MS) {
+      clearScheduledCheck();
+      if (cancelled || !isPageVisible()) return;
+      timer = window.setTimeout(checkForNewPosts, delay);
+    }
+
+    async function checkForNewPosts() {
+      if (cancelled || newPostCheckRunningRef.current || !isPageVisible()) return;
+
+      const currentTopMarker = topFeedMarkerRef.current;
+      if (!currentTopMarker?.id || !currentTopMarker?.createdAt) {
+        scheduleNextCheck(NEW_POST_FIRST_CHECK_MS);
+        return;
+      }
+
+      newPostCheckRunningRef.current = true;
+
+      try {
+        const { data, error } = await PostsDB.getLatestPublicPostMarker();
+        if (!cancelled && !error && isNewerPostMarker(data, currentTopMarker)) {
+          setHasNewFeedItems(true);
+        }
+      } catch (error) {
+        console.error("New post check failed:", error);
+      } finally {
+        newPostCheckRunningRef.current = false;
+        scheduleNextCheck();
+      }
+    }
+
+    const resumeChecking = () => {
+      if (!isPageVisible()) {
+        clearScheduledCheck();
+        return;
+      }
+
+      checkForNewPosts();
+    };
+
+    scheduleNextCheck(NEW_POST_FIRST_CHECK_MS);
+    document.addEventListener("visibilitychange", resumeChecking);
+    window.addEventListener("focus", resumeChecking);
+    window.addEventListener("pageshow", resumeChecking);
+
+    return () => {
+      cancelled = true;
+      clearScheduledCheck();
+      document.removeEventListener("visibilitychange", resumeChecking);
+      window.removeEventListener("focus", resumeChecking);
+      window.removeEventListener("pageshow", resumeChecking);
+    };
+  }, [setHasNewFeedItems]);
 
   const showInitialSkeleton = postsLoading && feedPosts.length === 0;
 
@@ -327,12 +450,16 @@ export default function HomePage() {
   const showLoadMore = feedPosts.length > 0 && (hasMoreRenderedPosts || canLoadFromServer);
 
   const handleRefreshFeed = async () => {
+    manualFeedRefreshRef.current = true;
     setRefreshingFeed(true);
 
     try {
       await reloadPosts();
       setRenderLimit(INITIAL_RENDERED_POSTS);
     } finally {
+      window.setTimeout(() => {
+        manualFeedRefreshRef.current = false;
+      }, 2000);
       setRefreshingFeed(false);
     }
   };
