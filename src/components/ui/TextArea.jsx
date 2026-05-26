@@ -1,7 +1,7 @@
 "use client";
 import { T } from "@/lib/theme";
 
-const BIO_CHARACTER_LIMIT = 150;
+const BIO_CHARACTER_LIMIT = 95;
 
 export default function TextArea({ label, error, className = "", onChange, value, maxLength, ...props }) {
   const isBioField = String(label || "").trim().toLowerCase() === "bio";
