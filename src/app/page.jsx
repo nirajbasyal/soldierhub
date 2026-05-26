@@ -23,8 +23,8 @@ const PostComposer = dynamic(() => import("@/components/feed/composer/PostCompos
   loading: () => <ComposerLazyPlaceholder loading />,
 });
 
-const FEED_CACHE_KEY = "soldierhub_feed_cache_v2";
-const LEGACY_FEED_CACHE_KEYS = ["soldierhub_feed_cache_v1"];
+const FEED_CACHE_KEY = "soldierhub_feed_cache_v4";
+const LEGACY_FEED_CACHE_KEYS = ["soldierhub_feed_cache_v2", "soldierhub_feed_cache_v1"];
 const FEED_CACHE_MAX_AGE_MS = 1000 * 60 * 5;
 const INITIAL_RENDERED_POSTS = 20;
 const RENDER_INCREMENT = 20;
