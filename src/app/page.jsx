@@ -29,10 +29,15 @@ const FEED_CACHE_MAX_AGE_MS = 1000 * 60 * 5;
 const INITIAL_RENDERED_POSTS = 20;
 const RENDER_INCREMENT = 20;
 const PUBLISH_SCROLL_KEY = "soldierhub_scroll_to_latest_post";
-const NEW_POST_CHECK_INTERVAL_MS = 75_000;
+const NEW_POST_FIRST_CHECK_MS = 15_000;
+const NEW_POST_CHECK_INTERVAL_MS = 60_000;
 
 function getRealPostId(post) {
   return post?.post_id || post?.postId || post?.post?.id || post?.id || null;
+}
+
+function getPostCreatedAt(post) {
+  return post?.created_at || post?.createdAt || post?.post?.created_at || post?.post?.createdAt || null;
 }
 
 function getAuthorId(post) {
@@ -64,6 +69,14 @@ function normalizeFeedPostForCard(post) {
     id: postId,
     post_id: post?.post_id || postId,
   };
+}
+
+function buildPostMarker(post) {
+  const id = getRealPostId(post);
+  const createdAt = getPostCreatedAt(post);
+  if (!id || !createdAt) return null;
+
+  return { id, createdAt };
 }
 
 function readCachedFeedFromKey(cacheKey) {
@@ -108,16 +121,29 @@ function clearFeedCaches() {
   LEGACY_FEED_CACHE_KEYS.forEach((legacyKey) => window.localStorage.removeItem(legacyKey));
 }
 
-function isNewerPostMarker(latestMarker, currentTopPost) {
-  if (!latestMarker?.latest_post_id || !latestMarker?.latest_created_at || !currentTopPost?.id) return false;
+function getLatestMarkerId(latestMarker) {
+  return latestMarker?.latest_post_id || latestMarker?.post_id || latestMarker?.postId || latestMarker?.id || null;
+}
 
-  const latestTime = new Date(latestMarker.latest_created_at).getTime();
-  const currentTime = new Date(currentTopPost.created_at || 0).getTime();
+function getLatestMarkerCreatedAt(latestMarker) {
+  return latestMarker?.latest_created_at || latestMarker?.created_at || latestMarker?.createdAt || null;
+}
+
+function isNewerPostMarker(latestMarker, currentTopMarker) {
+  const latestPostId = getLatestMarkerId(latestMarker);
+  const latestCreatedAt = getLatestMarkerCreatedAt(latestMarker);
+
+  if (!latestPostId || !latestCreatedAt || !currentTopMarker?.id || !currentTopMarker?.createdAt) {
+    return false;
+  }
+
+  const latestTime = new Date(latestCreatedAt).getTime();
+  const currentTime = new Date(currentTopMarker.createdAt).getTime();
 
   if (!Number.isFinite(latestTime) || !Number.isFinite(currentTime)) return false;
   if (latestTime > currentTime) return true;
 
-  return latestTime === currentTime && latestMarker.latest_post_id !== currentTopPost.id;
+  return latestTime === currentTime && latestPostId !== currentTopMarker.id;
 }
 
 function ComposerLazyPlaceholder({ loading = false, onClick }) {
@@ -171,7 +197,7 @@ export default function HomePage() {
   const [refreshingFeed, setRefreshingFeed] = useState(false);
   const [showDesktopComposer, setShowDesktopComposer] = useState(false);
   const postListRef = useRef(null);
-  const topFeedPostRef = useRef(null);
+  const topFeedMarkerRef = useRef(null);
   const newPostCheckRunningRef = useRef(false);
   const hasHandledPublishScrollRef = useRef(false);
 
@@ -210,7 +236,7 @@ export default function HomePage() {
   }, [posts, cachedPosts]);
 
   useEffect(() => {
-    topFeedPostRef.current = feedPosts[0] || null;
+    topFeedMarkerRef.current = buildPostMarker(feedPosts[0]);
   }, [feedPosts]);
 
   useEffect(() => {
@@ -219,7 +245,7 @@ export default function HomePage() {
     let timer = null;
     let cancelled = false;
 
-    const isPageVisible = () => document.visibilityState === "visible";
+    const isPageVisible = () => !document.hidden;
 
     function clearScheduledCheck() {
       if (!timer) return;
@@ -236,9 +262,9 @@ export default function HomePage() {
     async function checkForNewPosts() {
       if (cancelled || newPostCheckRunningRef.current || !isPageVisible()) return;
 
-      const currentTopPost = topFeedPostRef.current;
-      if (!currentTopPost?.id || !currentTopPost?.created_at) {
-        scheduleNextCheck();
+      const currentTopMarker = topFeedMarkerRef.current;
+      if (!currentTopMarker?.id || !currentTopMarker?.createdAt) {
+        scheduleNextCheck(NEW_POST_FIRST_CHECK_MS);
         return;
       }
 
@@ -246,7 +272,7 @@ export default function HomePage() {
 
       try {
         const { data, error } = await PostsDB.getLatestPublicPostMarker();
-        if (!cancelled && !error && isNewerPostMarker(data, currentTopPost)) {
+        if (!cancelled && !error && isNewerPostMarker(data, currentTopMarker)) {
           setHasNewFeedItems(true);
         }
       } catch (error) {
@@ -266,7 +292,7 @@ export default function HomePage() {
       checkForNewPosts();
     };
 
-    scheduleNextCheck();
+    scheduleNextCheck(NEW_POST_FIRST_CHECK_MS);
     document.addEventListener("visibilitychange", resumeChecking);
     window.addEventListener("focus", resumeChecking);
     window.addEventListener("pageshow", resumeChecking);
