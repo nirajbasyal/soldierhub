@@ -171,6 +171,8 @@ export default function HomePage() {
   const [refreshingFeed, setRefreshingFeed] = useState(false);
   const [showDesktopComposer, setShowDesktopComposer] = useState(false);
   const postListRef = useRef(null);
+  const topFeedPostRef = useRef(null);
+  const newPostCheckRunningRef = useRef(false);
   const hasHandledPublishScrollRef = useRef(false);
 
   useEffect(() => {
@@ -208,63 +210,75 @@ export default function HomePage() {
   }, [posts, cachedPosts]);
 
   useEffect(() => {
+    topFeedPostRef.current = feedPosts[0] || null;
+  }, [feedPosts]);
+
+  useEffect(() => {
     if (typeof window === "undefined") return;
-    if (feedPosts.length === 0) return;
 
     let timer = null;
     let cancelled = false;
-    let checking = false;
 
-    const getCurrentTopPost = () => feedPosts[0] || null;
+    const isPageVisible = () => document.visibilityState === "visible";
 
-    const checkForNewPosts = async () => {
-      if (cancelled || checking || document.hidden) return;
+    function clearScheduledCheck() {
+      if (!timer) return;
+      window.clearTimeout(timer);
+      timer = null;
+    }
 
-      const currentTopPost = getCurrentTopPost();
-      if (!currentTopPost?.id || !currentTopPost?.created_at) return;
+    function scheduleNextCheck(delay = NEW_POST_CHECK_INTERVAL_MS) {
+      clearScheduledCheck();
+      if (cancelled || !isPageVisible()) return;
+      timer = window.setTimeout(checkForNewPosts, delay);
+    }
 
-      checking = true;
+    async function checkForNewPosts() {
+      if (cancelled || newPostCheckRunningRef.current || !isPageVisible()) return;
+
+      const currentTopPost = topFeedPostRef.current;
+      if (!currentTopPost?.id || !currentTopPost?.created_at) {
+        scheduleNextCheck();
+        return;
+      }
+
+      newPostCheckRunningRef.current = true;
 
       try {
         const { data, error } = await PostsDB.getLatestPublicPostMarker();
-        if (!error && isNewerPostMarker(data, currentTopPost)) {
+        if (!cancelled && !error && isNewerPostMarker(data, currentTopPost)) {
           setHasNewFeedItems(true);
         }
+      } catch (error) {
+        console.error("New post check failed:", error);
       } finally {
-        checking = false;
+        newPostCheckRunningRef.current = false;
+        scheduleNextCheck();
       }
-    };
+    }
 
-    const stopChecking = () => {
-      if (!timer) return;
-      window.clearInterval(timer);
-      timer = null;
-    };
-
-    const startChecking = () => {
-      if (timer || document.hidden) return;
-      timer = window.setInterval(checkForNewPosts, NEW_POST_CHECK_INTERVAL_MS);
-    };
-
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        stopChecking();
+    const resumeChecking = () => {
+      if (!isPageVisible()) {
+        clearScheduledCheck();
         return;
       }
 
       checkForNewPosts();
-      startChecking();
     };
 
-    if (!document.hidden) startChecking();
-    document.addEventListener("visibilitychange", handleVisibilityChange);
+    scheduleNextCheck();
+    document.addEventListener("visibilitychange", resumeChecking);
+    window.addEventListener("focus", resumeChecking);
+    window.addEventListener("pageshow", resumeChecking);
 
     return () => {
       cancelled = true;
-      stopChecking();
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      clearScheduledCheck();
+      document.removeEventListener("visibilitychange", resumeChecking);
+      window.removeEventListener("focus", resumeChecking);
+      window.removeEventListener("pageshow", resumeChecking);
     };
-  }, [feedPosts, setHasNewFeedItems]);
+  }, [setHasNewFeedItems]);
 
   const showInitialSkeleton = postsLoading && feedPosts.length === 0;
 
