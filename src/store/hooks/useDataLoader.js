@@ -17,20 +17,12 @@ const NOTIFICATION_CACHE_MAX_AGE_MS = 1000 * 60 * 3;
 
 function getNextCursor(items = []) {
   const lastItem = items[items.length - 1];
-
-  if (!lastItem?.created_at || !lastItem?.id) {
-    return null;
-  }
-
-  return {
-    createdAt: lastItem.created_at,
-    id: lastItem.id,
-  };
+  if (!lastItem?.created_at || !lastItem?.id) return null;
+  return { createdAt: lastItem.created_at, id: lastItem.id };
 }
 
 function mergeUniqueItems(existingItems = [], nextItems = []) {
   const seen = new Set();
-
   return [...existingItems, ...nextItems].filter((item) => {
     const id = item?.id || item?.post_id;
     if (!id || seen.has(id)) return false;
@@ -51,33 +43,22 @@ function mergeViewerPostIds(currentSet = new Set(), visiblePostIds = [], matched
   const visibleIds = new Set(visiblePostIds || []);
   const matchedIds = new Set(matchedPostIds || []);
   const next = new Set(currentSet);
-
   visibleIds.forEach((postId) => {
-    if (matchedIds.has(postId)) {
-      next.add(postId);
-    } else {
-      next.delete(postId);
-    }
+    if (matchedIds.has(postId)) next.add(postId);
+    else next.delete(postId);
   });
-
   return next;
 }
 
 function readFeedCache() {
   if (typeof window === "undefined") return null;
-
   try {
     const raw = window.localStorage.getItem(FEED_CACHE_KEY);
     if (!raw) return null;
-
     const parsed = JSON.parse(raw);
     const posts = Array.isArray(parsed?.posts) ? parsed.posts : [];
     const savedAt = Number(parsed?.savedAt || 0);
-
-    if (!posts.length || !savedAt || Date.now() - savedAt > FEED_CACHE_MAX_AGE_MS) {
-      return null;
-    }
-
+    if (!posts.length || !savedAt || Date.now() - savedAt > FEED_CACHE_MAX_AGE_MS) return null;
     return posts;
   } catch {
     window.localStorage.removeItem(FEED_CACHE_KEY);
@@ -87,7 +68,6 @@ function readFeedCache() {
 
 function writeFeedCache(posts = []) {
   if (typeof window === "undefined") return;
-
   try {
     window.localStorage.setItem(
       FEED_CACHE_KEY,
@@ -104,24 +84,16 @@ function isSafeCachedProfile(profile) {
 
 function readProfileCache() {
   if (typeof window === "undefined") return null;
-
   try {
     const raw = window.localStorage.getItem(PROFILE_CACHE_KEY);
     if (!raw) return null;
-
     const parsed = JSON.parse(raw);
     const profile = parsed?.profile || null;
     const savedAt = Number(parsed?.savedAt || 0);
-
-    if (
-      !savedAt ||
-      Date.now() - savedAt > PROFILE_CACHE_MAX_AGE_MS ||
-      !isSafeCachedProfile(profile)
-    ) {
+    if (!savedAt || Date.now() - savedAt > PROFILE_CACHE_MAX_AGE_MS || !isSafeCachedProfile(profile)) {
       window.localStorage.removeItem(PROFILE_CACHE_KEY);
       return null;
     }
-
     return profile;
   } catch {
     window.localStorage.removeItem(PROFILE_CACHE_KEY);
@@ -131,17 +103,12 @@ function readProfileCache() {
 
 function writeProfileCache(profile) {
   if (typeof window === "undefined") return;
-
   try {
     if (!isSafeCachedProfile(profile)) {
       window.localStorage.removeItem(PROFILE_CACHE_KEY);
       return;
     }
-
-    window.localStorage.setItem(
-      PROFILE_CACHE_KEY,
-      JSON.stringify({ profile, savedAt: Date.now() })
-    );
+    window.localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify({ profile, savedAt: Date.now() }));
   } catch {
     // Profile cache is only used for faster first paint.
   }
@@ -162,24 +129,16 @@ function isSafeCachedNotification(notification) {
 
 function readNotificationCache(userId) {
   if (typeof window === "undefined" || !userId) return null;
-
   try {
     const raw = window.localStorage.getItem(getNotificationCacheKey(userId));
     if (!raw) return null;
-
     const parsed = JSON.parse(raw);
     const notifications = Array.isArray(parsed?.notifications) ? parsed.notifications : [];
     const savedAt = Number(parsed?.savedAt || 0);
-
-    if (
-      !notifications.length ||
-      !savedAt ||
-      Date.now() - savedAt > NOTIFICATION_CACHE_MAX_AGE_MS
-    ) {
+    if (!notifications.length || !savedAt || Date.now() - savedAt > NOTIFICATION_CACHE_MAX_AGE_MS) {
       window.localStorage.removeItem(getNotificationCacheKey(userId));
       return null;
     }
-
     return notifications.filter(isSafeCachedNotification).slice(0, NOTIFICATION_PAGE_SIZE);
   } catch {
     window.localStorage.removeItem(getNotificationCacheKey(userId));
@@ -189,17 +148,12 @@ function readNotificationCache(userId) {
 
 function writeNotificationCache(userId, notifications = []) {
   if (typeof window === "undefined" || !userId) return;
-
   try {
-    const safeNotifications = (notifications || [])
-      .filter(isSafeCachedNotification)
-      .slice(0, NOTIFICATION_PAGE_SIZE);
-
+    const safeNotifications = (notifications || []).filter(isSafeCachedNotification).slice(0, NOTIFICATION_PAGE_SIZE);
     if (!safeNotifications.length) {
       window.localStorage.removeItem(getNotificationCacheKey(userId));
       return;
     }
-
     window.localStorage.setItem(
       getNotificationCacheKey(userId),
       JSON.stringify({ notifications: safeNotifications, savedAt: Date.now() })
@@ -211,25 +165,19 @@ function writeNotificationCache(userId, notifications = []) {
 
 function clearNotificationCache(userId = null) {
   if (typeof window === "undefined") return;
-
   if (userId) {
     window.localStorage.removeItem(getNotificationCacheKey(userId));
     return;
   }
-
   Object.keys(window.localStorage).forEach((key) => {
-    if (key.startsWith(NOTIFICATION_CACHE_KEY_PREFIX)) {
-      window.localStorage.removeItem(key);
-    }
+    if (key.startsWith(NOTIFICATION_CACHE_KEY_PREFIX)) window.localStorage.removeItem(key);
   });
 }
 
 function prependRealtimeNotification(currentNotifications = [], notification) {
   if (!notification?.id) return currentNotifications;
-
   const alreadyExists = currentNotifications.some((item) => item.id === notification.id);
   if (alreadyExists) return currentNotifications;
-
   return [notification, ...currentNotifications].sort(
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
@@ -262,131 +210,83 @@ export function useDataLoader({
   sendToPendingReview,
 }) {
   const visibleFeedPostIds = useMemo(() => getUniquePostIds(posts), [posts]);
-  const visibleFeedPostIdsKey = useMemo(
-    () => visibleFeedPostIds.join(","),
-    [visibleFeedPostIds]
-  );
+  const visibleFeedPostIdsKey = useMemo(() => visibleFeedPostIds.join(","), [visibleFeedPostIds]);
 
-  const refreshUnreadCount = useCallback(
-    async (userId, { skipCache = true } = {}) => {
-      if (!SUPA || !userId) {
-        setUnreadCount(0);
-        return;
-      }
+  const refreshUnreadCount = useCallback(async (userId, { skipCache = true } = {}) => {
+    if (!SUPA || !userId) {
+      setUnreadCount(0);
+      return;
+    }
+    const { count, error } = await NotificationsDB.getUnreadCount(userId, { skipCache });
+    if (!error) setUnreadCount(Math.max(0, Number(count) || 0));
+  }, [SUPA, setUnreadCount]);
 
-      const { count, error } = await NotificationsDB.getUnreadCount(userId, {
-        skipCache,
-      });
+  const refreshViewerStateForPosts = useCallback(async (postIds = []) => {
+    if (!SUPA || !currentUser?.id) return;
+    if (getProfileStatus(currentUser) !== "verified") return;
+    const safePostIds = [...new Set((postIds || []).filter(Boolean))];
+    if (safePostIds.length === 0) return;
+    const { data, error } = await PostsDB.listMyFeedViewerState(currentUser.id, safePostIds);
+    if (error) return;
+    setMyUpvotes((currentSet) => mergeViewerPostIds(currentSet, safePostIds, data?.upvotedPostIds || []));
+    setMyReports((currentSet) => mergeViewerPostIds(currentSet, safePostIds, data?.reportedPostIds || []));
+  }, [SUPA, currentUser, setMyReports, setMyUpvotes]);
 
-      if (!error) {
-        setUnreadCount(Math.max(0, Number(count) || 0));
-      }
-    },
-    [SUPA, setUnreadCount]
-  );
-
-  const refreshViewerStateForPosts = useCallback(
-    async (postIds = []) => {
-      if (!SUPA || !currentUser?.id) return;
-      if (getProfileStatus(currentUser) !== "verified") return;
-
-      const safePostIds = [...new Set((postIds || []).filter(Boolean))];
-      if (safePostIds.length === 0) return;
-
-      const { data, error } = await PostsDB.listMyFeedViewerState(
-        currentUser.id,
-        safePostIds
-      );
-
-      if (error) return;
-
-      setMyUpvotes((currentSet) =>
-        mergeViewerPostIds(currentSet, safePostIds, data?.upvotedPostIds || [])
-      );
-      setMyReports((currentSet) =>
-        mergeViewerPostIds(currentSet, safePostIds, data?.reportedPostIds || [])
-      );
-    },
-    [SUPA, currentUser, setMyReports, setMyUpvotes]
-  );
-
-  const reloadPosts = useCallback(
-    async ({ silent = false } = {}) => {
-      if (!SUPA) return;
-
-      if (!silent) {
-        const cachedPosts = readFeedCache();
-        if (cachedPosts) {
-          const cleanCachedPosts = sanitizePosts(cachedPosts || []);
-          setPosts(cleanCachedPosts);
-          setPostsCursor(getNextCursor(cleanCachedPosts));
-          setHasMorePosts(cleanCachedPosts.length === FEED_PAGE_SIZE);
-          setHasNewFeedItems(false);
-          setPostsLoading(false);
-        } else {
-          setPostsLoading(true);
-        }
-      }
-
-      try {
-        const { data } = await PostsDB.listPosts({ limit: FEED_PAGE_SIZE });
-        const cleanPosts = sanitizePosts(data || []);
-        setPosts(cleanPosts);
-        setPostsCursor(getNextCursor(cleanPosts));
-        setHasMorePosts(cleanPosts.length === FEED_PAGE_SIZE);
+  const reloadPosts = useCallback(async ({ silent = false } = {}) => {
+    if (!SUPA) return;
+    if (!silent) {
+      const cachedPosts = readFeedCache();
+      if (cachedPosts) {
+        const cleanCachedPosts = sanitizePosts(cachedPosts || []);
+        setPosts(cleanCachedPosts);
+        setPostsCursor(getNextCursor(cleanCachedPosts));
+        setHasMorePosts(cleanCachedPosts.length === FEED_PAGE_SIZE);
         setHasNewFeedItems(false);
-        writeFeedCache(cleanPosts);
-        refreshViewerStateForPosts(getUniquePostIds(cleanPosts));
-      } finally {
-        if (!silent) setPostsLoading(false);
+        setPostsLoading(false);
+      } else {
+        setPostsLoading(true);
       }
-    },
-    [
-      SUPA,
-      refreshViewerStateForPosts,
-      setHasMorePosts,
-      setHasNewFeedItems,
-      setPosts,
-      setPostsCursor,
-      setPostsLoading,
-    ]
-  );
+    }
+    try {
+      const { data } = await PostsDB.listPosts({ limit: FEED_PAGE_SIZE });
+      const cleanPosts = sanitizePosts(data || []);
+      setPosts(cleanPosts);
+      setPostsCursor(getNextCursor(cleanPosts));
+      setHasMorePosts(cleanPosts.length === FEED_PAGE_SIZE);
+      setHasNewFeedItems(false);
+      writeFeedCache(cleanPosts);
+      refreshViewerStateForPosts(getUniquePostIds(cleanPosts));
+    } finally {
+      if (!silent) setPostsLoading(false);
+    }
+  }, [SUPA, refreshViewerStateForPosts, setHasMorePosts, setHasNewFeedItems, setPosts, setPostsCursor, setPostsLoading]);
 
   const loadMorePosts = useCallback(async () => {
     if (!SUPA) return { ok: false };
-
     let cursorForRequest = null;
-
     setPosts((currentPosts) => {
       cursorForRequest = getNextCursor(currentPosts);
       return currentPosts;
     });
-
     if (!cursorForRequest) {
       setHasMorePosts(false);
       return { ok: false };
     }
-
     setLoadingMorePosts(true);
-
     try {
       const { data, error } = await PostsDB.listPosts({
         limit: FEED_PAGE_SIZE,
         cursorCreatedAt: cursorForRequest.createdAt,
         cursorId: cursorForRequest.id,
       });
-
       if (error) return { ok: false, error: error.message };
-
       const cleanPosts = sanitizePosts(data || []);
-
       setPosts((currentPosts) => {
         const mergedPosts = mergeUniqueItems(currentPosts, cleanPosts);
         setPostsCursor(getNextCursor(mergedPosts));
         writeFeedCache(mergedPosts);
         return mergedPosts;
       });
-
       refreshViewerStateForPosts(getUniquePostIds(cleanPosts));
       setHasMorePosts(cleanPosts.length === FEED_PAGE_SIZE);
       return { ok: true };
@@ -395,57 +295,74 @@ export function useDataLoader({
     }
   }, [SUPA, refreshViewerStateForPosts, setHasMorePosts, setLoadingMorePosts, setPosts, setPostsCursor]);
 
+  const reloadNotifications = useCallback(async ({ silent = false } = {}) => {
+    if (!SUPA || !currentUser?.id) return { ok: false };
+    if (getProfileStatus(currentUser) !== "verified") return { ok: false };
+    const cachedNotifications = readNotificationCache(currentUser.id);
+    if (!silent && cachedNotifications) {
+      setNotifications(cachedNotifications);
+      setNotificationsCursor(getNextCursor(cachedNotifications));
+      setHasMoreNotifications(cachedNotifications.length === NOTIFICATION_PAGE_SIZE);
+      setNotificationsLoading(false);
+    } else if (!silent) {
+      setNotificationsLoading(true);
+    }
+    try {
+      const { data, error } = await NotificationsDB.listMyNotifications(currentUser.id, {
+        limit: NOTIFICATION_PAGE_SIZE,
+      });
+      if (error) {
+        if (!cachedNotifications) {
+          setNotifications([]);
+          setNotificationsCursor(null);
+          setHasMoreNotifications(false);
+        }
+        return { ok: false, error: error.message };
+      }
+      const safeNotifications = data || [];
+      setNotifications(safeNotifications);
+      setNotificationsCursor(getNextCursor(safeNotifications));
+      setHasMoreNotifications(safeNotifications.length === NOTIFICATION_PAGE_SIZE);
+      writeNotificationCache(currentUser.id, safeNotifications);
+      refreshUnreadCount(currentUser.id, { skipCache: true });
+      return { ok: true };
+    } finally {
+      if (!silent) setNotificationsLoading(false);
+    }
+  }, [SUPA, currentUser, refreshUnreadCount, setHasMoreNotifications, setNotifications, setNotificationsCursor, setNotificationsLoading]);
+
   const loadMoreNotifications = useCallback(async () => {
     if (!SUPA || !currentUser?.id) return { ok: false };
-
     let cursorForRequest = null;
-
     setNotifications((currentNotifications) => {
       cursorForRequest = getNextCursor(currentNotifications);
       return currentNotifications;
     });
-
     if (!cursorForRequest) {
       setHasMoreNotifications(false);
       return { ok: false };
     }
-
     setLoadingMoreNotifications(true);
-
     try {
       const { data, error } = await NotificationsDB.listMyNotifications(currentUser.id, {
         limit: NOTIFICATION_PAGE_SIZE,
         cursorCreatedAt: cursorForRequest.createdAt,
         cursorId: cursorForRequest.id,
       });
-
       if (error) return { ok: false, error: error.message };
-
       const nextNotifications = data || [];
-
       setNotifications((currentNotifications) => {
-        const mergedNotifications = mergeUniqueItems(
-          currentNotifications,
-          nextNotifications
-        );
+        const mergedNotifications = mergeUniqueItems(currentNotifications, nextNotifications);
         setNotificationsCursor(getNextCursor(mergedNotifications));
         writeNotificationCache(currentUser.id, mergedNotifications);
         return mergedNotifications;
       });
-
       setHasMoreNotifications(nextNotifications.length === NOTIFICATION_PAGE_SIZE);
       return { ok: true };
     } finally {
       setLoadingMoreNotifications(false);
     }
-  }, [
-    SUPA,
-    currentUser?.id,
-    setHasMoreNotifications,
-    setLoadingMoreNotifications,
-    setNotifications,
-    setNotificationsCursor,
-  ]);
+  }, [SUPA, currentUser?.id, setHasMoreNotifications, setLoadingMoreNotifications, setNotifications, setNotificationsCursor]);
 
   const reloadMyPosts = useCallback(async () => {
     if (!SUPA || !currentUser) return;
@@ -472,25 +389,25 @@ export function useDataLoader({
     setBlockedUsers(data || []);
   }, [SUPA, setBlockedUsers]);
 
+  const reloadAdminData = useCallback(async () => {
+    if (!SUPA || currentUser?.role !== "admin") return;
+    await Promise.all([reloadPendingUsers(), reloadVerifiedUsers(), reloadBlockedUsers()]);
+  }, [SUPA, currentUser?.role, reloadBlockedUsers, reloadPendingUsers, reloadVerifiedUsers]);
+
   useEffect(() => {
     if (!SUPA) return;
-
     let cancelled = false;
     let unsubscribe;
-
     const cachedProfile = readProfileCache();
     if (cachedProfile) {
       setCurrentUser(cachedProfile);
       setAuthLoading(false);
       refreshUnreadCount(cachedProfile.id, { skipCache: true });
     }
-
     (async () => {
       const { profile } = await Auth.getCurrentUser();
       if (cancelled) return;
-
       const status = getProfileStatus(profile);
-
       if (status === "rejected" || status === "revoked") {
         clearProfileCache();
         clearNotificationCache(profile?.id);
@@ -507,24 +424,16 @@ export function useDataLoader({
         });
         return;
       }
-
-      if (profile) {
-        writeProfileCache(profile);
-      } else {
-        clearProfileCache();
-      }
-
+      if (profile) writeProfileCache(profile);
+      else clearProfileCache();
       setCurrentUser(profile || null);
       setAuthLoading(false);
-
-      if (profile && status === "verified") {
-        refreshUnreadCount(profile.id, { skipCache: true });
-      } else {
+      if (profile && status === "verified") refreshUnreadCount(profile.id, { skipCache: true });
+      else {
         setUnreadCount(0);
         setNotificationsLoading(false);
       }
     })();
-
     unsubscribe = Auth.onAuthChange(async (user) => {
       if (!user) {
         clearProfileCache();
@@ -539,11 +448,8 @@ export function useDataLoader({
         setNotificationsLoading(false);
         return;
       }
-
-      setNotificationsLoading(true);
       const { data: profile } = await ProfilesDB.getProfile(user.id);
       const status = getProfileStatus(profile);
-
       if (status === "rejected" || status === "revoked") {
         clearProfileCache();
         clearNotificationCache(user.id);
@@ -564,41 +470,20 @@ export function useDataLoader({
         });
         return;
       }
-
-      if (profile) {
-        writeProfileCache(profile);
-      } else {
-        clearProfileCache();
-      }
-
+      if (profile) writeProfileCache(profile);
+      else clearProfileCache();
       setCurrentUser(profile || null);
-
-      if (profile && status === "verified") {
-        refreshUnreadCount(profile.id, { skipCache: true });
-      } else {
+      if (profile && status === "verified") refreshUnreadCount(profile.id, { skipCache: true });
+      else {
         setUnreadCount(0);
         setNotificationsLoading(false);
       }
     });
-
     return () => {
       cancelled = true;
       if (unsubscribe) unsubscribe();
     };
-  }, [
-    SUPA,
-    refreshUnreadCount,
-    sendToPendingReview,
-    setAuthLoading,
-    setCurrentUser,
-    setHasMoreNotifications,
-    setMyReports,
-    setMyUpvotes,
-    setNotifications,
-    setNotificationsCursor,
-    setNotificationsLoading,
-    setUnreadCount,
-  ]);
+  }, [SUPA, refreshUnreadCount, sendToPendingReview, setAuthLoading, setCurrentUser, setHasMoreNotifications, setMyReports, setMyUpvotes, setNotifications, setNotificationsCursor, setNotificationsLoading, setUnreadCount]);
 
   useEffect(() => {
     if (SUPA) reloadPosts();
@@ -606,9 +491,7 @@ export function useDataLoader({
 
   useEffect(() => {
     if (!SUPA || !currentUser) return;
-
     const status = getProfileStatus(currentUser);
-
     if (status !== "verified") {
       clearNotificationCache(currentUser?.id);
       setMyUpvotes(new Set());
@@ -621,127 +504,48 @@ export function useDataLoader({
       setMyPosts([]);
       return;
     }
-
-    let cancelled = false;
-    const cachedNotifications = readNotificationCache(currentUser.id);
-
-    if (cachedNotifications) {
-      setNotifications(cachedNotifications);
-      setNotificationsCursor(getNextCursor(cachedNotifications));
-      setHasMoreNotifications(cachedNotifications.length === NOTIFICATION_PAGE_SIZE);
-      setNotificationsLoading(false);
-    } else {
-      setNotificationsLoading(true);
-    }
-
+    setNotificationsLoading(false);
     refreshUnreadCount(currentUser.id, { skipCache: true });
-
-    (async () => {
-      const { data: notifs, error } = await NotificationsDB.listMyNotifications(currentUser.id, {
-        limit: NOTIFICATION_PAGE_SIZE,
-      });
-
-      if (cancelled) return;
-
-      if (!error) {
-        const safeNotifications = notifs || [];
-        setNotifications(safeNotifications);
-        setNotificationsCursor(getNextCursor(safeNotifications));
-        setHasMoreNotifications(safeNotifications.length === NOTIFICATION_PAGE_SIZE);
-        writeNotificationCache(currentUser.id, safeNotifications);
-      } else if (!cachedNotifications) {
-        setNotifications([]);
-        setNotificationsCursor(null);
-        setHasMoreNotifications(false);
-      }
-
-      setNotificationsLoading(false);
-      refreshUnreadCount(currentUser.id, { skipCache: true });
-    })();
-
-    (async () => {
-      const { data: mine } = await PostsDB.listMyPosts(currentUser.id);
-
-      if (cancelled) return;
-
-      setMyPosts(sanitizePosts(mine || [], currentUser.id));
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    SUPA,
-    currentUser,
-    refreshUnreadCount,
-    setHasMoreNotifications,
-    setMyPosts,
-    setMyReports,
-    setMyUpvotes,
-    setNotifications,
-    setNotificationsCursor,
-    setNotificationsLoading,
-    setUnreadCount,
-  ]);
+  }, [SUPA, currentUser, refreshUnreadCount, setHasMoreNotifications, setMyPosts, setMyReports, setMyUpvotes, setNotifications, setNotificationsCursor, setNotificationsLoading, setUnreadCount]);
 
   useEffect(() => {
     if (!SUPA || !currentUser?.id) return;
     if (getProfileStatus(currentUser) !== "verified") return;
     if (!visibleFeedPostIdsKey) return;
-
     refreshViewerStateForPosts(getPostIdsFromKey(visibleFeedPostIdsKey));
-  }, [
-    SUPA,
-    currentUser,
-    refreshViewerStateForPosts,
-    visibleFeedPostIdsKey,
-  ]);
+  }, [SUPA, currentUser, refreshViewerStateForPosts, visibleFeedPostIdsKey]);
 
   useEffect(() => {
     if (!SUPA || !currentUser) return;
     if (getProfileStatus(currentUser) !== "verified") return;
-
     const unsubscribe = subscribeToMyNotifications(currentUser.id, (notification) => {
       if (notification && notification.read === false) {
         setUnreadCount((currentCount) => Math.max(0, Number(currentCount) || 0) + 1);
       } else {
         refreshUnreadCount(currentUser.id, { skipCache: true });
       }
-
       NotificationsDB.hydrateNotificationRows([notification]).then((hydrated) => {
         const safeNotification = hydrated?.[0] || notification;
         setNotifications((currentNotifications) => {
-          const mergedNotifications = prependRealtimeNotification(
-            currentNotifications,
-            safeNotification
-          );
+          const mergedNotifications = prependRealtimeNotification(currentNotifications, safeNotification);
           writeNotificationCache(currentUser.id, mergedNotifications);
           return mergedNotifications;
         });
       });
     });
-
-    return () => {
-      unsubscribe();
-    };
+    return () => unsubscribe();
   }, [SUPA, currentUser, refreshUnreadCount, setNotifications, setUnreadCount]);
-
-  useEffect(() => {
-    if (SUPA && currentUser?.role === "admin") {
-      reloadPendingUsers();
-      reloadVerifiedUsers();
-      reloadBlockedUsers();
-    }
-  }, [SUPA, currentUser, reloadPendingUsers, reloadVerifiedUsers, reloadBlockedUsers]);
 
   return {
     reloadPosts,
     loadMorePosts,
+    reloadNotifications,
     loadMoreNotifications,
     reloadMyPosts,
     reloadPendingUsers,
     reloadVerifiedUsers,
     reloadBlockedUsers,
+    reloadAdminData,
     refreshViewerStateForPosts,
   };
 }
