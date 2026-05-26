@@ -214,6 +214,18 @@ export async function listPosts({ limit = 30, cursorCreatedAt = null, cursorId =
   return listPostsFromRpc(supabase, { limit, cursorCreatedAt, cursorId });
 }
 
+export async function getLatestPublicPostMarker() {
+  const supabase = createClient();
+  if (!supabase) return { data: null, error: null };
+
+  const { data, error } = await supabase.rpc("get_latest_public_post_marker");
+  const row = Array.isArray(data) ? data[0] : data;
+
+  if (error) console.error("Latest public post marker failed:", error);
+
+  return { data: row || null, error };
+}
+
 async function listMyPostsFromView(supabase, userId, limit) {
   const result = await supabase
     .from("my_posts_with_meta")
