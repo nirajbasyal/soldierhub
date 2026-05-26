@@ -165,14 +165,19 @@ function getPostUrl(postId) {
 }
 
 function getPostImage(post) {
-  const url = post?.image_url || post?.imageUrl || post?.media_url || post?.mediaUrl || null;
-  if (!url) return null;
+  const fullUrl = post?.image_full_url || post?.imageFullUrl || post?.image_url || post?.imageUrl || post?.media_url || post?.mediaUrl || null;
+  const previewUrl = post?.image_thumbnail_url || post?.imageThumbnailUrl || post?.thumbnail_url || post?.thumbnailUrl || post?.image_url || post?.imageUrl || post?.media_url || post?.mediaUrl || null;
+  if (!previewUrl && !fullUrl) return null;
 
   return {
-    url,
-    width: Number(post?.image_width || post?.imageWidth || 0) || null,
-    height: Number(post?.image_height || post?.imageHeight || 0) || null,
-    size: Number(post?.image_size || post?.imageSize || 0) || null,
+    url: previewUrl || fullUrl,
+    fullUrl: fullUrl || previewUrl,
+    width: Number(post?.image_thumbnail_width || post?.imageThumbnailWidth || post?.thumbnail_width || post?.image_width || post?.imageWidth || 0) || null,
+    height: Number(post?.image_thumbnail_height || post?.imageThumbnailHeight || post?.thumbnail_height || post?.image_height || post?.imageHeight || 0) || null,
+    size: Number(post?.image_thumbnail_size || post?.imageThumbnailSize || post?.thumbnail_size || post?.image_size || post?.imageSize || 0) || null,
+    fullWidth: Number(post?.image_full_width || post?.imageFullWidth || post?.image_width || post?.imageWidth || 0) || null,
+    fullHeight: Number(post?.image_full_height || post?.imageFullHeight || post?.image_height || post?.imageHeight || 0) || null,
+    fullSize: Number(post?.image_full_size || post?.imageFullSize || post?.image_size || post?.imageSize || 0) || null,
   };
 }
 
@@ -225,12 +230,19 @@ function PostImagePreview({ image, onOpen }) {
 }
 
 function PostImageLightbox({ image, onClose }) {
-  const ratio = getImageRatio(image);
+  const displayUrl = image?.fullUrl || image?.url;
+  const fullImage = {
+    ...image,
+    width: image?.fullWidth || image?.width,
+    height: image?.fullHeight || image?.height,
+    size: image?.fullSize || image?.size,
+  };
+  const ratio = getImageRatio(fullImage);
   const isLongImage = ratio ? ratio < 0.7 : false;
-  const fileName = getDownloadFileName(image?.url);
+  const fileName = getDownloadFileName(displayUrl);
 
   useEffect(() => {
-    if (!image?.url || typeof window === "undefined") return undefined;
+    if (!displayUrl || typeof window === "undefined") return undefined;
 
     const originalOverflow = document.body.style.overflow;
     const handleKeyDown = (event) => {
@@ -244,9 +256,9 @@ function PostImageLightbox({ image, onClose }) {
       document.body.style.overflow = originalOverflow;
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [image?.url, onClose]);
+  }, [displayUrl, onClose]);
 
-  if (!image?.url) return null;
+  if (!displayUrl) return null;
 
   return (
     <div className="fixed inset-0 z-[10000] bg-black/95 text-white" role="dialog" aria-modal="true" aria-label="Post image viewer">
@@ -261,7 +273,7 @@ function PostImageLightbox({ image, onClose }) {
         </button>
 
         <a
-          href={image.url}
+          href={displayUrl}
           download={fileName}
           target="_blank"
           rel="noopener noreferrer"
@@ -282,7 +294,7 @@ function PostImageLightbox({ image, onClose }) {
       >
         <div className={isLongImage ? "min-h-full" : "flex min-h-full items-center justify-center"}>
           <img
-            src={image.url}
+            src={displayUrl}
             alt="Full size post attachment"
             className={isLongImage ? "mx-auto block w-full max-w-[720px] object-contain" : "mx-auto block max-h-[calc(100dvh-110px)] max-w-full object-contain"}
             decoding="async"
