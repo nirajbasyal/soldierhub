@@ -303,7 +303,7 @@ async function getAccessTokenForApi(supabase, fallbackMessage) {
     return { accessToken: null, error: sessionError || { message: fallbackMessage } };
   }
 
-  return { accessToken, error: null };
+  return { accessToken: session.access_token, error: null };
 }
 
 async function postJsonToApi(path, accessToken, payload, fallbackMessage) {
@@ -426,3 +426,160 @@ export async function restoreReportedPost(postId) {
 export async function listMyFeedViewerState(userId, postIds = []) {
   const supabase = createClient();
   const safePostIds = uniquePostIds(postIds);
+
+  if (!supabase || !userId || safePostIds.length === 0) {
+    return { data: { upvotedPostIds: [], reportedPostIds: [] }, error: null };
+  }
+
+  const rpcResult = await supabase.rpc("get_my_feed_viewer_state", {
+    p_post_ids: safePostIds,
+  });
+
+  if (!rpcResult.error) {
+    const row = Array.isArray(rpcResult.data) ? rpcResult.data[0] : rpcResult.data;
+    return {
+      data: {
+        upvotedPostIds: row?.upvoted_post_ids || [],
+        reportedPostIds: row?.reported_post_ids || [],
+      },
+      error: null,
+    };
+  }
+
+  console.error("Feed viewer state RPC failed; using safe fallback:", rpcResult.error);
+
+  const [{ data: upvotedPostIds, error: upvoteError }, { data: reportedPostIds, error: reportError }] =
+    await Promise.all([
+      listMyUpvotedPostIds(userId, safePostIds),
+      listMyReportedPostIds(userId, safePostIds),
+    ]);
+
+  return {
+    data: {
+      upvotedPostIds: upvotedPostIds || [],
+      reportedPostIds: reportedPostIds || [],
+    },
+    error: upvoteError || reportError || null,
+  };
+}
+
+export async function listMyUpvotedPostIds(userId, postIds = []) {
+  const supabase = createClient();
+  if (!supabase || !userId) return { data: [], error: null };
+
+  const safePostIds = uniquePostIds(postIds);
+  let query = supabase.from("upvotes").select("post_id").eq("user_id", userId);
+
+  if (safePostIds.length > 0) {
+    query = query.in("post_id", safePostIds);
+  } else {
+    query = query.limit(250);
+  }
+
+  const { data, error } = await query;
+
+  if (error) console.error("List my upvotes failed:", error);
+
+  return { data: (data || []).map((r) => r.post_id), error };
+}
+
+export async function addUpvote(postId) {
+  const supabase = createClient();
+  if (!supabase) return { data: null, error: null };
+
+  const resolvedPostId = resolvePostId(postId);
+  const { accessToken, error } = await getAccessTokenForApi(
+    supabase,
+    "Please log in again before voting."
+  );
+  if (error || !accessToken) return { data: null, error };
+
+  return postJsonToApi(
+    "/api/posts/upvote",
+    accessToken,
+    { post_id: resolvedPostId, action: "add" },
+    "Could not add vote."
+  );
+}
+
+export async function removeUpvote(postId) {
+  const supabase = createClient();
+  if (!supabase) return { data: null, error: null };
+
+  const resolvedPostId = resolvePostId(postId);
+  const { accessToken, error } = await getAccessTokenForApi(
+    supabase,
+    "Please log in again before voting."
+  );
+  if (error || !accessToken) return { data: null, error };
+
+  return postJsonToApi(
+    "/api/posts/upvote",
+    accessToken,
+    { post_id: resolvedPostId, action: "remove" },
+    "Could not remove vote."
+  );
+}
+
+export async function toggleUpvote(postId) {
+  const supabase = createClient();
+  if (!supabase) return { data: null, error: null };
+
+  const resolvedPostId = resolvePostId(postId);
+  const { accessToken, error } = await getAccessTokenForApi(
+    supabase,
+    "Please log in again before voting."
+  );
+  if (error || !accessToken) return { data: null, error };
+
+  return postJsonToApi(
+    "/api/posts/upvote",
+    accessToken,
+    { post_id: resolvedPostId, action: "toggle" },
+    "Could not update vote."
+  );
+}
+
+export async function listMyReportedPostIds(userId, postIds = []) {
+  const supabase = createClient();
+  if (!supabase || !userId) return { data: [], error: null };
+
+  const safePostIds = uniquePostIds(postIds);
+  let query = supabase.from("reports").select("post_id").eq("user_id", userId);
+
+  if (safePostIds.length > 0) {
+    query = query.in("post_id", safePostIds);
+  } else {
+    query = query.limit(250);
+  }
+
+  const { data, error } = await query;
+
+  if (error) console.error("List my reports failed:", error);
+
+  return { data: (data || []).map((r) => r.post_id), error };
+}
+
+export async function reportPost(postId, userId, reason = "") {
+  const supabase = createClient();
+  if (!supabase) return { data: null, error: null };
+
+  const resolvedPostId = resolvePostId(postId);
+
+  if (!userId) {
+    return { data: null, error: { message: "Please log in before reporting a post." } };
+  }
+
+  const { accessToken, error } = await getAccessTokenForApi(
+    supabase,
+    "Please log in again before reporting a post."
+  );
+  if (error || !accessToken) return { data: null, error };
+
+  return postJsonToApi(
+    "/api/posts/report",
+    accessToken,
+    { post_id: resolvedPostId, reason },
+    "Could not report post."
+  );
+}
