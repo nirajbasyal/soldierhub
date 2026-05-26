@@ -7,10 +7,11 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const POST_SELECT =
-  "id, author_id, author_name_cached, author_color_cached, category, body, anonymous, status, edited, created_at, updated_at, image_url, image_key, image_width, image_height, image_size";
+  "id, author_id, author_name_cached, author_color_cached, category, body, anonymous, status, edited, created_at, updated_at, image_url, image_key, image_width, image_height, image_size, image_thumbnail_url, image_thumbnail_key, image_thumbnail_width, image_thumbnail_height, image_thumbnail_size";
 
 const MAX_BODY_LENGTH = 5000;
 const MAX_POST_IMAGE_BYTES = 1250 * 1024;
+const MAX_POST_THUMBNAIL_BYTES = 400 * 1024;
 
 function getBearerToken(request) {
   const header = request.headers.get("authorization") || "";
@@ -45,6 +46,31 @@ function safeNumber(value) {
   return Math.round(numberValue);
 }
 
+function cleanThumbnailMetadata(value = {}) {
+  if (!value || typeof value !== "object") return {};
+
+  const thumbnailUrl = cleanText(value.url || value.image_thumbnail_url);
+  const thumbnailKey = cleanText(value.key || value.image_thumbnail_key);
+  const thumbnailSize = safeNumber(value.size || value.image_thumbnail_size);
+  const thumbnailWidth = safeNumber(value.width || value.image_thumbnail_width);
+  const thumbnailHeight = safeNumber(value.height || value.image_thumbnail_height);
+
+  if (!thumbnailUrl && !thumbnailKey) return {};
+  if (!thumbnailUrl || !thumbnailKey) throw new Error("Invalid post image thumbnail.");
+
+  if (thumbnailSize && thumbnailSize > MAX_POST_THUMBNAIL_BYTES) {
+    throw new Error("Post image thumbnail must be under 400 KB.");
+  }
+
+  return {
+    image_thumbnail_url: thumbnailUrl,
+    image_thumbnail_key: thumbnailKey,
+    image_thumbnail_width: thumbnailWidth,
+    image_thumbnail_height: thumbnailHeight,
+    image_thumbnail_size: thumbnailSize,
+  };
+}
+
 function cleanImageMetadata(value = {}) {
   if (!value || typeof value !== "object") return null;
 
@@ -53,6 +79,7 @@ function cleanImageMetadata(value = {}) {
   const imageSize = safeNumber(value.size || value.image_size);
   const imageWidth = safeNumber(value.width || value.image_width);
   const imageHeight = safeNumber(value.height || value.image_height);
+  const thumbnail = cleanThumbnailMetadata(value.thumbnail || value.image_thumbnail || value);
 
   if (!imageUrl || !imageKey) return null;
   if (imageSize && imageSize > MAX_POST_IMAGE_BYTES) {
@@ -65,6 +92,7 @@ function cleanImageMetadata(value = {}) {
     image_width: imageWidth,
     image_height: imageHeight,
     image_size: imageSize,
+    ...thumbnail,
   };
 }
 
