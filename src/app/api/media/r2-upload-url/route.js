@@ -7,7 +7,7 @@ import { checkRateLimit, rateLimitResponse } from "@/lib/server/rateLimit";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const MAX_POST_IMAGE_BYTES = 2 * 1024 * 1024;
+const MAX_POST_IMAGE_BYTES = 1250 * 1024;
 const MAX_AVATAR_IMAGE_BYTES = 700 * 1024;
 const ALLOWED_CONTENT_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 

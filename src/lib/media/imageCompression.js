@@ -10,12 +10,22 @@ const DEFAULT_AVATAR_OPTIONS = {
 };
 
 const DEFAULT_POST_OPTIONS = {
-  maxWidth: 1600,
-  maxHeight: 1600,
-  quality: 0.82,
-  minQuality: 0.58,
-  maxBytes: 2 * 1024 * 1024,
+  maxWidth: 1400,
+  maxHeight: 1400,
+  quality: 0.8,
+  minQuality: 0.56,
+  maxBytes: 1200 * 1024,
   type: "image/webp",
+};
+
+const DEFAULT_POST_THUMBNAIL_OPTIONS = {
+  maxWidth: 720,
+  maxHeight: 720,
+  quality: 0.74,
+  minQuality: 0.52,
+  maxBytes: 320 * 1024,
+  type: "image/webp",
+  preview: false,
 };
 
 const MAX_SOURCE_IMAGE_BYTES = 12 * 1024 * 1024;
@@ -71,23 +81,24 @@ async function canvasToBlob(canvas, type, quality) {
   });
 }
 
-async function renderCompressedFile({ canvas, file, type, quality }) {
+async function renderCompressedFile({ canvas, file, type, quality, suffix = "" }) {
   const blob = await canvasToBlob(canvas, type, quality);
   const baseName = file.name.replace(/\.[^.]+$/, "") || "image";
+  const safeSuffix = suffix ? `-${suffix}` : "";
 
-  return new File([blob], `${baseName}.webp`, {
+  return new File([blob], `${baseName}${safeSuffix}.webp`, {
     type,
     lastModified: Date.now(),
   });
 }
 
-async function compressWithinBudget({ canvas, file, type, quality, minQuality, maxBytes }) {
+async function compressWithinBudget({ canvas, file, type, quality, minQuality, maxBytes, suffix = "" }) {
   let workingQuality = quality;
-  let compressedFile = await renderCompressedFile({ canvas, file, type, quality: workingQuality });
+  let compressedFile = await renderCompressedFile({ canvas, file, type, quality: workingQuality, suffix });
 
   while (compressedFile.size > maxBytes && workingQuality > minQuality) {
     workingQuality = Math.max(minQuality, Number((workingQuality - 0.08).toFixed(2)));
-    compressedFile = await renderCompressedFile({ canvas, file, type, quality: workingQuality });
+    compressedFile = await renderCompressedFile({ canvas, file, type, quality: workingQuality, suffix });
   }
 
   if (compressedFile.size > maxBytes) {
@@ -97,14 +108,11 @@ async function compressWithinBudget({ canvas, file, type, quality, minQuality, m
   return { file: compressedFile, quality: workingQuality };
 }
 
-export async function compressImage(file, options = {}) {
-  assertImageFile(file);
-
+async function compressLoadedImage(file, sourceImage, options = {}, { suffix = "" } = {}) {
   const config = { ...DEFAULT_POST_OPTIONS, ...options };
-  const image = await loadImageFromFile(file);
   const target = getTargetSize(
-    image.naturalWidth || image.width,
-    image.naturalHeight || image.height,
+    sourceImage.naturalWidth || sourceImage.width,
+    sourceImage.naturalHeight || sourceImage.height,
     config.maxWidth,
     config.maxHeight
   );
@@ -120,7 +128,7 @@ export async function compressImage(file, options = {}) {
   context.imageSmoothingQuality = "high";
   context.fillStyle = "#FFFFFF";
   context.fillRect(0, 0, target.width, target.height);
-  context.drawImage(image, 0, 0, target.width, target.height);
+  context.drawImage(sourceImage, 0, 0, target.width, target.height);
 
   const { file: compressedFile, quality } = await compressWithinBudget({
     canvas,
@@ -129,11 +137,12 @@ export async function compressImage(file, options = {}) {
     quality: config.quality,
     minQuality: config.minQuality,
     maxBytes: config.maxBytes,
+    suffix,
   });
 
   return {
     file: compressedFile,
-    previewUrl: URL.createObjectURL(compressedFile),
+    previewUrl: config.preview === false ? null : URL.createObjectURL(compressedFile),
     width: target.width,
     height: target.height,
     size: compressedFile.size,
@@ -143,12 +152,30 @@ export async function compressImage(file, options = {}) {
   };
 }
 
+export async function compressImage(file, options = {}) {
+  assertImageFile(file);
+
+  const image = await loadImageFromFile(file);
+  return compressLoadedImage(file, image, options);
+}
+
 export function compressAvatarImage(file) {
   return compressImage(file, DEFAULT_AVATAR_OPTIONS);
 }
 
-export function compressPostImage(file) {
-  return compressImage(file, DEFAULT_POST_OPTIONS);
+export async function compressPostImage(file) {
+  assertImageFile(file);
+
+  const image = await loadImageFromFile(file);
+  const optimized = await compressLoadedImage(file, image, DEFAULT_POST_OPTIONS);
+  const thumbnail = await compressLoadedImage(file, image, DEFAULT_POST_THUMBNAIL_OPTIONS, {
+    suffix: "feed",
+  });
+
+  return {
+    ...optimized,
+    thumbnail,
+  };
 }
 
 export function revokePreviewUrl(url) {
