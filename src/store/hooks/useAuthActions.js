@@ -5,6 +5,49 @@ import * as Auth from "@/lib/supabase/auth";
 import * as ProfilesDB from "@/lib/db/profiles";
 import { getProfileStatus } from "../utils/appHelpers";
 
+function clearLocalAuthCaches() {
+  if (typeof window === "undefined") return;
+
+  try {
+    const keysToRemove = [];
+
+    for (let index = 0; index < window.localStorage.length; index += 1) {
+      const key = window.localStorage.key(index);
+      if (!key) continue;
+
+      if (
+        key === "soldierhub_current_profile_v1" ||
+        key.startsWith("soldierhub_notifications_cache_v1_") ||
+        key.startsWith("sb-") ||
+        key.includes("supabase")
+      ) {
+        keysToRemove.push(key);
+      }
+    }
+
+    keysToRemove.forEach((key) => window.localStorage.removeItem(key));
+  } catch {
+    // Local cleanup should never block logout.
+  }
+
+  try {
+    const keysToRemove = [];
+
+    for (let index = 0; index < window.sessionStorage.length; index += 1) {
+      const key = window.sessionStorage.key(index);
+      if (!key) continue;
+
+      if (key.startsWith("sb-") || key.includes("supabase")) {
+        keysToRemove.push(key);
+      }
+    }
+
+    keysToRemove.forEach((key) => window.sessionStorage.removeItem(key));
+  } catch {
+    // Session cleanup should never block logout.
+  }
+}
+
 export function useAuthActions({
   SUPA,
   router,
@@ -206,24 +249,26 @@ export function useAuthActions({
   );
 
   const handleLogout = useCallback(async () => {
+    setCurrentUser(null);
+    setMyUpvotes(new Set());
+    setMyReports(new Set());
+    setNotifications([]);
+    setMyPosts([]);
+    setAuthModal(null);
+    setMobileMenu(false);
+    clearLocalAuthCaches();
+
+    if (typeof window !== "undefined") {
+      window.location.assign("/auth/signout");
+      return;
+    }
+
     try {
       if (SUPA) await Auth.signOut();
     } catch (error) {
       console.error("Logout failed:", error);
     } finally {
-      setCurrentUser(null);
-      setMyUpvotes(new Set());
-      setMyReports(new Set());
-      setNotifications([]);
-      setMyPosts([]);
-      setAuthModal(null);
-      setMobileMenu(false);
-
-      if (typeof window !== "undefined") {
-        window.location.replace("/");
-      } else {
-        router.replace("/");
-      }
+      router.replace("/");
     }
   }, [
     SUPA,
