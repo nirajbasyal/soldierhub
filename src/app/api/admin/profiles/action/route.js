@@ -50,12 +50,11 @@ function isExpectedAdmin({ user, profile }) {
   const authEmail = user?.email?.trim().toLowerCase() || "";
   const profileEmail = profile?.email?.trim().toLowerCase() || "";
   const personalEmail = profile?.personal_email?.trim().toLowerCase() || "";
-  const militaryEmail = profile?.military_email?.trim().toLowerCase() || "";
 
   return (
     profile?.role === "admin" &&
     expectedEmails.some((expectedEmail) =>
-      [authEmail, profileEmail, personalEmail, militaryEmail].includes(expectedEmail)
+      [authEmail, profileEmail, personalEmail].includes(expectedEmail)
     )
   );
 }
@@ -169,7 +168,7 @@ export async function POST(request) {
 
   const { data: adminProfile, error: adminProfileError } = await supabase
     .from("profiles")
-    .select("id, email, personal_email, military_email, role")
+    .select("id, email, personal_email, role")
     .eq("id", user.id)
     .maybeSingle();
 
