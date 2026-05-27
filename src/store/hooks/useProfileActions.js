@@ -210,8 +210,7 @@ export function useProfileActions({
     return { ok: true, data: updated };
   };
 
-  const requestRereview = async ({ militaryEmail, phone } = {}) => {
-    const cleanMilitaryEmail = militaryEmail?.trim().toLowerCase() || "";
+  const requestRereview = async ({ phone } = {}) => {
     const cleanPhone = phone?.trim() || "";
 
     if (!currentUser) {
@@ -220,7 +219,6 @@ export function useProfileActions({
 
     if (SUPA) {
       const { error } = await ProfilesDB.requestProfileRereview({
-        militaryEmail: cleanMilitaryEmail,
         phone: cleanPhone,
       });
       if (error) {
@@ -233,7 +231,6 @@ export function useProfileActions({
         ...currentUser,
         status: "pending",
         verification_status: "pending",
-        military_email: cleanMilitaryEmail || currentUser.military_email,
         phone: cleanPhone || currentUser.phone,
       };
 
@@ -256,7 +253,6 @@ export function useProfileActions({
       ...currentUser,
       status: "pending",
       verification_status: "pending",
-      military_email: cleanMilitaryEmail || currentUser.military_email,
       phone: cleanPhone || currentUser.phone,
     };
 
