@@ -16,6 +16,7 @@ import {
 } from "@/components/feed/composer/composerUtils";
 
 const DEFAULT_CATEGORY = "General Q&A";
+const CATEGORY_BODY_SAFETY_MIN_OLD_LENGTH = 40;
 
 function escapePlainTextToHtml(text = "") {
   if (typeof document === "undefined") return String(text || "");
@@ -50,11 +51,19 @@ function getPlainTextFromBody(body = "") {
     .trim();
 }
 
+function normalizeText(value = "") {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
 function preparePostBodyForEditor(body = "") {
   return looksLikeHtml(body) ? sanitizeComposerHtml(body) : escapePlainTextToHtml(body);
 }
 
 export default function EditPostModal({ open = false, post = {}, onClose, onSave }) {
+  const isOpen = open === true;
   const safePostBody = post?.body || "";
   const safePostCategory = post?.category || DEFAULT_CATEGORY;
   const [category, setCategory] = useState(safePostCategory);
@@ -68,6 +77,7 @@ export default function EditPostModal({ open = false, post = {}, onClose, onSave
   const editorRef = useRef(null);
   const bodyRef = useRef(body);
   const plainTextRef = useRef(plainText);
+  const initialPlainTextRef = useRef(plainText);
 
   const canSave = useMemo(() => plainText.trim().length > 0, [plainText]);
 
@@ -78,8 +88,16 @@ export default function EditPostModal({ open = false, post = {}, onClose, onSave
 
   const syncEditorState = () => {
     const editor = editorRef.current;
-    const cleanHtml = sanitizeComposerHtml(editor?.innerHTML || bodyRef.current || "");
-    const cleanText = getPlainEditorText(editor) || plainTextRef.current || "";
+    const rawHtml =
+      typeof editor?.getHTML === "function"
+        ? editor.getHTML()
+        : editor?.innerHTML || bodyRef.current || "";
+    const rawText =
+      typeof editor?.getText === "function"
+        ? editor.getText()
+        : getPlainEditorText(editor) || plainTextRef.current || "";
+    const cleanHtml = sanitizeComposerHtml(rawHtml || "");
+    const cleanText = String(rawText || "").replace(/\u00a0/g, " ").trim();
     const isStructured = Boolean(
       editor?.hasStructuredContent?.() || cleanHtml.match(/<\/?(ul|ol|li|strong|em)\b/i)
     );
@@ -96,13 +114,14 @@ export default function EditPostModal({ open = false, post = {}, onClose, onSave
   };
 
   useEffect(() => {
-    if (!open) return;
+    if (!isOpen) return;
 
     const nextBody = preparePostBodyForEditor(post?.body || "");
     const plainSource = getPlainTextFromBody(post?.body || "");
 
     bodyRef.current = nextBody;
     plainTextRef.current = plainSource;
+    initialPlainTextRef.current = plainSource;
     setBody(nextBody);
     setPlainText(plainSource);
     setCategory(post?.category || DEFAULT_CATEGORY);
@@ -119,7 +138,7 @@ export default function EditPostModal({ open = false, post = {}, onClose, onSave
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, post?.id]);
+  }, [isOpen, post?.id]);
 
   const handleEditorChange = ({ html, text, structured: nextStructured }) => {
     const cleanHtml = sanitizeComposerHtml(html || "");
@@ -156,9 +175,21 @@ export default function EditPostModal({ open = false, post = {}, onClose, onSave
     const { cleanHtml, cleanText } = syncEditorState();
     const cleanedBody = sanitizeComposerHtml(cleanHtml).trim();
     const cleanedPlainText = cleanText.trim();
+    const originalPlainText = initialPlainTextRef.current || "";
 
     if (!cleanedPlainText) {
       setError("Post body is required.");
+      editorRef.current?.focus?.({ preventScroll: true });
+      return;
+    }
+
+    const categoryLooksLikeBody =
+      normalizeText(cleanedPlainText) === normalizeText(category) &&
+      normalizeText(originalPlainText) !== normalizeText(category) &&
+      originalPlainText.length >= CATEGORY_BODY_SAFETY_MIN_OLD_LENGTH;
+
+    if (categoryLooksLikeBody) {
+      setError("The editor did not load your full post body. Close this window, reopen Edit, and try again. Your post was not overwritten.");
       editorRef.current?.focus?.({ preventScroll: true });
       return;
     }
@@ -194,8 +225,10 @@ export default function EditPostModal({ open = false, post = {}, onClose, onSave
     }
   };
 
+  if (!isOpen) return null;
+
   return (
-    <Modal open={Boolean(open)} onClose={submitting ? () => {} : onClose} maxWidth={680}>
+    <Modal open={isOpen} onClose={submitting ? () => {} : onClose} maxWidth={680}>
       <div className="relative overflow-hidden rounded-[28px]" style={{ backgroundColor: T.card }}>
         <button
           type="button"
