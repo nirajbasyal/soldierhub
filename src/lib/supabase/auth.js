@@ -5,6 +5,20 @@ import { createClient } from "./client";
 const CURRENT_USER_PROFILE_FIELDS =
   "id, full_name, email, personal_email, military_email, phone, bio, avatar_color, avatar_url, role, status, verification_status, base, created_at, updated_at";
 
+function getAuthRedirectUrl(path = "/auth/callback") {
+  const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
+
+  if (configuredSiteUrl) {
+    return `${configuredSiteUrl}${path}`;
+  }
+
+  if (typeof window !== "undefined") {
+    return `${window.location.origin}${path}`;
+  }
+
+  return undefined;
+}
+
 /**
  * Auth helpers — thin wrappers over Supabase auth that match the shapes
  * AppContext expects. All functions return { data, error } so callers can
@@ -47,10 +61,7 @@ export async function signUp({
         bio: cleanBio,
         avatar_color: avatarColor || "#314A66",
       },
-      emailRedirectTo:
-        typeof window !== "undefined"
-          ? `${window.location.origin}/auth/callback`
-          : undefined,
+      emailRedirectTo: getAuthRedirectUrl("/auth/callback"),
     },
   });
 
@@ -87,7 +98,6 @@ export async function signOut() {
   }
 
   const { error } = await supabase.auth.signOut();
-
   return { error };
 }
 
@@ -164,10 +174,7 @@ export async function resendSignupConfirmation(email) {
     type: "signup",
     email: cleanEmail,
     options: {
-      emailRedirectTo:
-        typeof window !== "undefined"
-          ? `${window.location.origin}/auth/callback`
-          : undefined,
+      emailRedirectTo: getAuthRedirectUrl("/auth/callback"),
     },
   });
 
@@ -187,10 +194,7 @@ export async function resetPasswordForEmail(email) {
   const cleanEmail = email?.trim().toLowerCase() || "";
 
   const { data, error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
-    redirectTo:
-      typeof window !== "undefined"
-        ? `${window.location.origin}/auth/callback?next=/reset-password`
-        : undefined,
+    redirectTo: getAuthRedirectUrl("/auth/callback?next=/reset-password"),
   });
 
   return { data, error };
