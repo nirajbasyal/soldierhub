@@ -3,7 +3,7 @@
 import { createClient } from "./client";
 
 const CURRENT_USER_PROFILE_FIELDS =
-  "id, full_name, email, personal_email, military_email, phone, bio, avatar_color, avatar_url, role, status, verification_status, base, created_at, updated_at";
+  "id, full_name, email, personal_email, phone, bio, avatar_color, avatar_url, role, status, verification_status, base, created_at, updated_at";
 
 function getAuthRedirectUrl(path = "/auth/callback") {
   const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
@@ -29,7 +29,6 @@ export async function signUp({
   email,
   password,
   fullName,
-  militaryEmail,
   phone,
   bio,
   avatarColor,
@@ -45,7 +44,6 @@ export async function signUp({
 
   const cleanEmail = email?.trim().toLowerCase() || "";
   const cleanFullName = fullName?.trim() || "";
-  const cleanMilitaryEmail = militaryEmail?.trim().toLowerCase() || "";
   const cleanPhone = phone?.trim() || "";
   const cleanBio = bio?.trim() || "";
 
@@ -56,7 +54,6 @@ export async function signUp({
       data: {
         full_name: cleanFullName,
         personal_email: cleanEmail,
-        military_email: cleanMilitaryEmail,
         phone: cleanPhone,
         bio: cleanBio,
         avatar_color: avatarColor || "#314A66",
