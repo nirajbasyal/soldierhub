@@ -18,7 +18,6 @@ function userMatchesSearch(user, searchQuery) {
     user.full_name,
     user.email,
     user.personal_email,
-    user.military_email,
     user.phone,
     user.status,
     user.verification_status,
@@ -52,7 +51,7 @@ export default function MembersList({ searchQuery = "" }) {
   }
 
   if (visibleUsers.length === 0) {
-    return <EmptyState icon={User} title="No matching members" body="Try searching by name, email, military email, or phone number." />;
+    return <EmptyState icon={User} title="No matching members" body="Try searching by name, email, or phone number." />;
   }
 
   return (
@@ -81,7 +80,6 @@ export default function MembersList({ searchQuery = "" }) {
               </div>
 
               <DetailLine icon={Mail}>{email}</DetailLine>
-              {u.military_email && <DetailLine icon={Mail}>Military email: {u.military_email}</DetailLine>}
               {u.phone && <DetailLine icon={Phone}>Phone: {u.phone}</DetailLine>}
             </div>
 
