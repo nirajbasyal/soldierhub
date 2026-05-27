@@ -509,6 +509,13 @@ export function useDataLoader({
   }, [SUPA, currentUser, refreshUnreadCount, setHasMoreNotifications, setMyPosts, setMyReports, setMyUpvotes, setNotifications, setNotificationsCursor, setNotificationsLoading, setUnreadCount]);
 
   useEffect(() => {
+    if (!SUPA || !currentUser) return;
+    if (getProfileStatus(currentUser) !== "verified") return;
+    if (currentUser.role !== "admin") return;
+    reloadAdminData();
+  }, [SUPA, currentUser, reloadAdminData]);
+
+  useEffect(() => {
     if (!SUPA || !currentUser?.id) return;
     if (getProfileStatus(currentUser) !== "verified") return;
     if (!visibleFeedPostIdsKey) return;
