@@ -246,3 +246,8 @@
     margin: 0 !important;
   }
 }
+
+/* Signup hotfix: the community agreement must appear above the auth modal. */
+.z-\[80\] {
+  z-index: 120 !important;
+}
