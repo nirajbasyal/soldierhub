@@ -25,10 +25,9 @@ export function useAuthActions({
   sendToPendingReview,
 }) {
   const handleSignup = useCallback(
-    async ({ name, email, militaryEmail, phone, bio, password }) => {
+    async ({ name, email, phone, bio, password }) => {
       const cleanName = name?.trim() || "";
       const cleanEmail = email?.trim().toLowerCase() || "";
-      const cleanMilitaryEmail = militaryEmail?.trim().toLowerCase() || "";
       const cleanPhone = phone?.trim() || "";
       const cleanBio = bio?.trim() || "";
 
@@ -37,7 +36,6 @@ export function useAuthActions({
           email: cleanEmail,
           password,
           fullName: cleanName,
-          militaryEmail: cleanMilitaryEmail,
           phone: cleanPhone,
           bio: cleanBio,
           avatarColor: colorFromString(cleanName),
@@ -70,7 +68,6 @@ export function useAuthActions({
         full_name: cleanName,
         email: cleanEmail,
         personal_email: cleanEmail,
-        military_email: cleanMilitaryEmail || null,
         phone: cleanPhone || null,
         bio: cleanBio,
         password,
