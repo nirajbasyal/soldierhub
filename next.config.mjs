@@ -64,6 +64,22 @@ const securityHeaders = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  async redirects() {
+    return [
+      {
+        source: "/",
+        has: [
+          {
+            type: "query",
+            key: "post",
+            value: "(?<postId>.*)",
+          },
+        ],
+        destination: "/post/:postId",
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
       {
