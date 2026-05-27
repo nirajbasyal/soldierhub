@@ -1,4 +1,22 @@
+-- ============================================================================
+-- Soldier Hub performance fix: faster admin profile queues
+-- ============================================================================
+-- Purpose:
+--   Make Admin Dashboard pending / verified / blocked member lists load faster.
+--
+-- Safety model:
+--   - Only authenticated users can call the function.
+--   - The function checks public.is_admin() before returning any rows.
+--   - public.is_admin() requires the caller's profile to be role='admin',
+--     status='verified', and verification_status='verified'.
+--   - PUBLIC and anon execution are explicitly revoked.
+--   - The function uses a fixed search_path to avoid unsafe function/table lookup.
+-- ============================================================================
+
 begin;
+
+set local lock_timeout = '5s';
+set local statement_timeout = '30s';
 
 create index if not exists profiles_status_created_at_idx
   on public.profiles (status, created_at desc, id desc);
@@ -39,6 +57,10 @@ begin
     raise exception 'Admin access is required to load profile queues.';
   end if;
 
+  if v_queue not in ('pending', 'verified', 'blocked') then
+    raise exception 'Invalid admin profile queue.';
+  end if;
+
   return query
   select
     p.id,
@@ -65,6 +87,8 @@ begin
 end;
 $$;
 
+revoke all on function public.admin_list_profiles(text, integer) from public;
+revoke all on function public.admin_list_profiles(text, integer) from anon;
 grant execute on function public.admin_list_profiles(text, integer) to authenticated;
 
 commit;
