@@ -77,6 +77,42 @@ async function runAdminProfileAction(payload, fallbackMessage) {
   return postJsonToApi("/api/admin/profiles/action", accessToken, payload, fallbackMessage);
 }
 
+async function listAdminProfileQueue(queue, { limit = DEFAULT_ADMIN_PROFILE_LIMIT } = {}) {
+  const supabase = createClient();
+  if (!supabase) return { data: [], error: null };
+
+  const safeLimit = cleanLimit(limit);
+
+  const { data, error } = await supabase.rpc("admin_list_profiles", {
+    p_queue: queue,
+    p_limit: safeLimit,
+  });
+
+  if (!error) return { data: data || [], error: null };
+
+  // Fallback keeps the admin dashboard usable if the SQL migration has not
+  // been applied yet in Supabase.
+  if (queue === "blocked") {
+    const fallback = await supabase
+      .from("profiles")
+      .select(ADMIN_PROFILE_FIELDS)
+      .in("status", ["rejected", "revoked"])
+      .order("created_at", { ascending: false })
+      .limit(safeLimit);
+
+    return { data: fallback.data || [], error: fallback.error };
+  }
+
+  const fallback = await supabase
+    .from("profiles")
+    .select(ADMIN_PROFILE_FIELDS)
+    .eq("status", queue)
+    .order("created_at", { ascending: false })
+    .limit(safeLimit);
+
+  return { data: fallback.data || [], error: fallback.error };
+}
+
 export async function getProfile(userId) {
   const supabase = createClient();
   if (!supabase) return { data: null, error: null };
@@ -91,33 +127,11 @@ export async function getProfile(userId) {
 }
 
 export async function listVerifiedProfiles({ limit = DEFAULT_ADMIN_PROFILE_LIMIT } = {}) {
-  const supabase = createClient();
-  if (!supabase) return { data: [], error: null };
-
-  const safeLimit = cleanLimit(limit);
-  const { data, error } = await supabase
-    .from("profiles")
-    .select(ADMIN_PROFILE_FIELDS)
-    .eq("status", "verified")
-    .order("created_at", { ascending: false })
-    .limit(safeLimit);
-
-  return { data: data || [], error };
+  return listAdminProfileQueue("verified", { limit });
 }
 
 export async function listPendingProfiles({ limit = DEFAULT_ADMIN_PROFILE_LIMIT } = {}) {
-  const supabase = createClient();
-  if (!supabase) return { data: [], error: null };
-
-  const safeLimit = cleanLimit(limit);
-  const { data, error } = await supabase
-    .from("profiles")
-    .select(ADMIN_PROFILE_FIELDS)
-    .eq("status", "pending")
-    .order("created_at", { ascending: false })
-    .limit(safeLimit);
-
-  return { data: data || [], error };
+  return listAdminProfileQueue("pending", { limit });
 }
 
 export async function updateMyProfile(userId, updates) {
@@ -186,18 +200,7 @@ export async function adminVerifyProfileByEmail(email) {
 }
 
 export async function listBlockedProfiles({ limit = DEFAULT_ADMIN_PROFILE_LIMIT } = {}) {
-  const supabase = createClient();
-  if (!supabase) return { data: [], error: null };
-
-  const safeLimit = cleanLimit(limit);
-  const { data, error } = await supabase
-    .from("profiles")
-    .select(ADMIN_PROFILE_FIELDS)
-    .in("status", ["rejected", "revoked"])
-    .order("created_at", { ascending: false })
-    .limit(safeLimit);
-
-  return { data: data || [], error };
+  return listAdminProfileQueue("blocked", { limit });
 }
 
 export async function adminRevokeProfileByEmail(email) {
