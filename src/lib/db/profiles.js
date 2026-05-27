@@ -3,10 +3,10 @@
 import { createClient } from "@/lib/supabase/client";
 
 const SELF_PROFILE_FIELDS =
-  "id, full_name, email, personal_email, military_email, phone, bio, avatar_color, avatar_url, role, status, verification_status, base, created_at, updated_at";
+  "id, full_name, email, personal_email, phone, bio, avatar_color, avatar_url, role, status, verification_status, base, created_at, updated_at";
 
 const ADMIN_PROFILE_FIELDS =
-  "id, full_name, email, personal_email, military_email, phone, bio, avatar_color, avatar_url, role, status, verification_status, base, created_at, updated_at";
+  "id, full_name, email, personal_email, phone, bio, avatar_color, avatar_url, role, status, verification_status, base, created_at, updated_at";
 
 const DEFAULT_ADMIN_PROFILE_LIMIT = 50;
 const MAX_ADMIN_PROFILE_LIMIT = 100;
@@ -167,12 +167,11 @@ export async function adminRemoveProfile(profileId) {
   );
 }
 
-export async function requestProfileRereview({ militaryEmail, phone }) {
+export async function requestProfileRereview({ phone } = {}) {
   const supabase = createClient();
   if (!supabase) return { error: null };
 
   const { error } = await supabase.rpc("request_profile_rereview", {
-    p_military_email: militaryEmail || "",
     p_phone: phone || "",
   });
 
