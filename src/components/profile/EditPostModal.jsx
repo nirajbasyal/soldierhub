@@ -15,6 +15,8 @@ import {
   sanitizeComposerHtml,
 } from "@/components/feed/composer/composerUtils";
 
+const DEFAULT_CATEGORY = "General Q&A";
+
 function escapePlainTextToHtml(text = "") {
   if (typeof document === "undefined") return String(text || "");
 
@@ -33,14 +35,31 @@ function looksLikeHtml(text = "") {
   return /<\/?(p|div|strong|em|ul|ol|li|br|b|i)\b/i.test(String(text || ""));
 }
 
+function getPlainTextFromBody(body = "") {
+  return String(body || "")
+    .replace(/<br\s*\/?\s*>/gi, "\n")
+    .replace(/<\/(p|div|li)>/gi, "\n")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/\s+\n/g, "\n")
+    .replace(/\n\s+/g, "\n")
+    .replace(/[ \t]+/g, " ")
+    .trim();
+}
+
 function preparePostBodyForEditor(body = "") {
   return looksLikeHtml(body) ? sanitizeComposerHtml(body) : escapePlainTextToHtml(body);
 }
 
-export default function EditPostModal({ post, onClose, onSave }) {
-  const [category, setCategory] = useState(post.category);
-  const [body, setBody] = useState(() => preparePostBodyForEditor(post.body || ""));
-  const [plainText, setPlainText] = useState("");
+export default function EditPostModal({ open = false, post = {}, onClose, onSave }) {
+  const safePostBody = post?.body || "";
+  const safePostCategory = post?.category || DEFAULT_CATEGORY;
+  const [category, setCategory] = useState(safePostCategory);
+  const [body, setBody] = useState(() => preparePostBodyForEditor(safePostBody));
+  const [plainText, setPlainText] = useState(() => getPlainTextFromBody(safePostBody));
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [activeFormats, setActiveFormats] = useState({});
@@ -48,9 +67,14 @@ export default function EditPostModal({ post, onClose, onSave }) {
 
   const editorRef = useRef(null);
   const bodyRef = useRef(body);
-  const plainTextRef = useRef("");
+  const plainTextRef = useRef(plainText);
 
   const canSave = useMemo(() => plainText.trim().length > 0, [plainText]);
+
+  const syncFormatState = () => {
+    const nextFormats = editorRef.current?.getActiveFormats?.() || {};
+    setActiveFormats(nextFormats);
+  };
 
   const syncEditorState = () => {
     const editor = editorRef.current;
@@ -67,23 +91,25 @@ export default function EditPostModal({ post, onClose, onSave }) {
     setStructured(isStructured);
     setError("");
     safeRequestAnimationFrame(syncFormatState);
-  };
 
-  const syncFormatState = () => {
-    const nextFormats = editorRef.current?.getActiveFormats?.() || {};
-    setActiveFormats(nextFormats);
+    return { cleanHtml, cleanText };
   };
 
   useEffect(() => {
-    const nextBody = preparePostBodyForEditor(post.body || "");
-    const plainSource = String(post.body || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+    if (!open) return;
+
+    const nextBody = preparePostBodyForEditor(post?.body || "");
+    const plainSource = getPlainTextFromBody(post?.body || "");
 
     bodyRef.current = nextBody;
     plainTextRef.current = plainSource;
     setBody(nextBody);
     setPlainText(plainSource);
-    setCategory(post.category);
+    setCategory(post?.category || DEFAULT_CATEGORY);
+    setStructured(Boolean(nextBody.match(/<\/?(ul|ol|li|strong|em)\b/i)));
+    setSubmitting(false);
     setError("");
+    setActiveFormats({});
 
     safeRequestAnimationFrame(() => {
       if (editorRef.current) {
@@ -93,7 +119,7 @@ export default function EditPostModal({ post, onClose, onSave }) {
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [post?.id]);
+  }, [open, post?.id]);
 
   const handleEditorChange = ({ html, text, structured: nextStructured }) => {
     const cleanHtml = sanitizeComposerHtml(html || "");
@@ -124,11 +150,12 @@ export default function EditPostModal({ post, onClose, onSave }) {
   };
 
   const submit = async () => {
-    setError("");
-    syncEditorState();
+    if (submitting) return;
 
-    const cleanedBody = sanitizeComposerHtml(bodyRef.current).trim();
-    const cleanedPlainText = plainTextRef.current.trim();
+    setError("");
+    const { cleanHtml, cleanText } = syncEditorState();
+    const cleanedBody = sanitizeComposerHtml(cleanHtml).trim();
+    const cleanedPlainText = cleanText.trim();
 
     if (!cleanedPlainText) {
       setError("Post body is required.");
@@ -136,30 +163,39 @@ export default function EditPostModal({ post, onClose, onSave }) {
       return;
     }
 
-    const m = await moderateAsync(cleanedPlainText);
-
-    if (!m.allowed) {
-      setError(m.reason);
-      editorRef.current?.focus?.({ preventScroll: true });
-      return;
-    }
-
     setSubmitting(true);
 
-    const result = await onSave({
-      body: cleanedBody || cleanedPlainText,
-      category,
-    });
+    try {
+      const m = await moderateAsync(cleanedPlainText);
 
-    setSubmitting(false);
+      if (!m.allowed) {
+        setError(m.reason || "This post could not be saved.");
+        editorRef.current?.focus?.({ preventScroll: true });
+        return;
+      }
 
-    if (result?.ok === false) {
-      setError(result.error || "Could not save changes.");
+      if (typeof onSave !== "function") {
+        setError("Post save action is not available. Please refresh and try again.");
+        return;
+      }
+
+      const result = await onSave({
+        body: cleanedBody || cleanedPlainText,
+        category,
+      });
+
+      if (result?.ok === false) {
+        setError(result.error || "Could not save changes.");
+      }
+    } catch (saveError) {
+      setError(saveError?.message || "Could not save changes. Please try again.");
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
-    <Modal open onClose={onClose} maxWidth={680}>
+    <Modal open={Boolean(open)} onClose={submitting ? () => {} : onClose} maxWidth={680}>
       <div className="relative overflow-hidden rounded-[28px]" style={{ backgroundColor: T.card }}>
         <button
           type="button"
@@ -257,10 +293,10 @@ export default function EditPostModal({ post, onClose, onSave }) {
           )}
 
           <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <Button variant="ghost" onClick={onClose} disabled={submitting}>
+            <Button type="button" variant="ghost" onClick={onClose} disabled={submitting}>
               Cancel
             </Button>
-            <Button variant="primary" onClick={submit} icon={Check} disabled={submitting || !canSave}>
+            <Button type="button" variant="primary" onClick={submit} icon={Check} disabled={submitting || !canSave}>
               {submitting ? "Saving…" : "Save changes"}
             </Button>
           </div>
