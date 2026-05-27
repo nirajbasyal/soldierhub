@@ -217,17 +217,12 @@ export async function findProfileByEmailForSearch(email) {
   const cleanEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
   if (!cleanEmail) return { data: null, error: { message: "Enter a valid email." } };
 
-  const { accessToken, error } = await getAccessTokenForApi(
-    supabase,
-    "Please log in again before searching profiles."
-  );
+  const { data, error } = await supabase.rpc("find_verified_profile_by_email", {
+    p_email: cleanEmail,
+  });
 
-  if (error || !accessToken) return { data: null, error };
+  if (error) return { data: null, error };
 
-  return postJsonToApi(
-    "/api/profiles/search-by-email",
-    accessToken,
-    { email: cleanEmail },
-    "User not found."
-  );
+  const profile = Array.isArray(data) ? data[0] || null : data || null;
+  return { data: profile, error: null };
 }
