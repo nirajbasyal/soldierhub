@@ -161,7 +161,7 @@ function getAnonymousDisplayName(postId) {
 
 function getPostUrl(postId) {
   if (typeof window === "undefined") return "";
-  return `${window.location.origin}/?post=${encodeURIComponent(postId)}`;
+  return `${window.location.origin}/post/${encodeURIComponent(postId)}`;
 }
 
 function getPostImage(post) {
@@ -340,86 +340,26 @@ function MenuButton({ children, icon: Icon, danger = false, onClick }) {
   );
 }
 
-function AuthorAvatarName({ userId, fallbackName = "", name, color, src, size, anonymous = false, children }) {
-  if (anonymous || !userId) {
-    return children || <Avatar name={name} color={color} src={anonymous ? null : src} size={size} />;
-  }
-
-  return (
-    <ProfileIdentityLink userId={userId} fallbackName={fallbackName || name} className="inline-flex cursor-pointer transition hover:opacity-80 focus:outline-none">
-      {children || <Avatar name={name} color={color} src={src} size={size} />}
-    </ProfileIdentityLink>
-  );
-}
-
-function CommentRow({ comment, post, currentUser, isAdmin = false, menuOpen = false, onToggleMenu, onDeleteRequest }) {
-  const postId = getPostId(post);
-  const postAuthorId = getAuthorId(post);
-  const commentId = getCommentId(comment);
-  const commentAuthorId = getAuthorId(comment);
-  const anonymousName = getAnonymousDisplayName(postId);
-  const anonymousAuthor = Boolean(
-    comment?.is_anonymous_author === true ||
-      comment?.anonymous === true ||
-      comment?.comment_anonymous === true ||
-      comment?.mask_optimistic_identity === true ||
-      (post?.anonymous && commentAuthorId && postAuthorId && commentAuthorId === postAuthorId) ||
-      (post?.anonymous && comment?.viewer_is_author === true && !commentAuthorId)
-  );
-  const name = anonymousAuthor ? anonymousName : getDisplayName(comment, "Member");
-  const color = anonymousAuthor ? "#5C6470" : getDisplayColor(comment, name);
-  const avatarUrl = anonymousAuthor ? null : getDisplayAvatarUrl(comment);
-  const isMine = viewerOwnsComment(comment, currentUser);
-  const isReplyingComment = isTemporaryCommentId(commentId);
-  const canDeleteComment = Boolean(commentId && !isReplyingComment && currentUser?.id && (isAdmin || isMine));
-
-  return (
-    <div className="group flex items-start gap-2.5">
-      <AuthorAvatarName userId={anonymousAuthor ? null : commentAuthorId} fallbackName={name} name={name} color={color} src={avatarUrl} size={30} anonymous={anonymousAuthor}>
-        <Avatar name={name} color={color} src={avatarUrl} size={30} />
-      </AuthorAvatarName>
-      <div className="min-w-0 flex-1">
-        <div className="relative min-w-0 rounded-2xl px-3 py-2 pr-10" style={{ backgroundColor: "rgba(244,248,253,0.95)" }}>
-          <div className="flex min-w-0 items-center gap-1.5 text-xs font-bold" style={{ color: T.text }}>
-            {anonymousAuthor ? <Lock size={11} className="shrink-0" /> : null}
-            <AuthorAvatarName userId={anonymousAuthor ? null : commentAuthorId} fallbackName={name} name={name} color={color} src={avatarUrl} size={30} anonymous={anonymousAuthor}>
-              <span className={anonymousAuthor || !commentAuthorId ? "truncate" : "truncate cursor-pointer transition hover:opacity-80"}>{name}</span>
-            </AuthorAvatarName>
-            {isMine ? <span className="shrink-0" style={{ color: T.textSubtle }}>(you)</span> : null}
-            {isReplyingComment ? <span className="shrink-0" style={{ color: T.textSubtle }}>Replying…</span> : null}
-          </div>
-
-          <p className="mt-1 whitespace-pre-wrap text-sm leading-6" style={{ color: T.textMuted }}>
-            {comment?.body || comment?.content || comment?.text || ""}
-          </p>
-
-          {canDeleteComment ? (
-            <div className="absolute right-1.5 top-1.5 z-20">
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onToggleMenu?.(commentId);
-                }}
-                className="h-7 w-7 rounded-full flex items-center justify-center opacity-70 transition hover:bg-black/[0.05] hover:opacity-100"
-                style={{ color: T.textMuted }}
-                aria-label="Comment options"
-              >
-                <MoreHorizontal size={16} />
-              </button>
-
-              {menuOpen ? (
-                <div onClick={(event) => event.stopPropagation()} className="absolute right-0 top-8 z-30 w-44 overflow-hidden rounded-2xl border shadow-xl" style={{ backgroundColor: T.card, borderColor: T.border }}>
-                  <MenuButton icon={Trash2} danger onClick={() => onDeleteRequest?.(comment)}>
-                    Delete comment
-                  </MenuButton>
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-      </div>
+function AuthorAvatarName({ post, displayName, displayColor, displayAvatarUrl, authorId }) {
+  const content = (
+    <div className="flex items-center gap-2 min-w-0">
+      <Avatar name={displayName} color={displayColor} avatarUrl={displayAvatarUrl} size="sm" />
+      <span className="font-semibold truncate" style={{ color: T.text }}>
+        {displayName}
+      </span>
     </div>
+  );
+
+  if (post?.anonymous || !authorId) return content;
+
+  return (
+    <ProfileIdentityLink
+      userId={authorId}
+      fallbackName={displayName}
+      className="min-w-0 cursor-pointer rounded-full transition hover:opacity-85 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1E4E8C]/25"
+    >
+      {content}
+    </ProfileIdentityLink>
   );
 }
 
@@ -630,10 +570,12 @@ export default function PostCard({ post, openRepliesDefault = false }) {
   const handleShare = async () => {
     if (!ensurePostId()) return;
     const url = getPostUrl(postId);
+    const title = "SoldierHub post";
+    const text = "View this SoldierHub community post.";
 
     if (navigator?.share) {
       try {
-        await navigator.share({ url });
+        await navigator.share({ title, text, url });
         return;
       } catch {
         // User cancelled share or the device share sheet failed. Do not show an error.
@@ -761,169 +703,212 @@ export default function PostCard({ post, openRepliesDefault = false }) {
 
   return (
     <>
-      <article className="group overflow-visible rounded-none border-x-0 border-t border-b-0 shadow-none transition-colors duration-200 md:border md:rounded-[24px] md:shadow-sm" style={{ backgroundColor: T.card, borderColor: T.border }}>
-        <div className="px-4 md:px-5 pt-4 pb-3">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-start gap-3 min-w-0 flex-1">
-              <AuthorAvatarName userId={authorId} fallbackName={displayName} name={displayName} color={displayColor} src={displayAvatarUrl} size={42} anonymous={post?.anonymous}>
-                <Avatar name={displayName} color={displayColor} src={displayAvatarUrl} size={42} />
-              </AuthorAvatarName>
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <AuthorAvatarName userId={authorId} fallbackName={displayName} name={displayName} color={displayColor} src={displayAvatarUrl} size={42} anonymous={post?.anonymous}>
-                    <span className={`font-bold text-sm md:text-[15px] truncate transition ${post?.anonymous || !authorId ? "" : "cursor-pointer hover:opacity-80"}`} style={{ color: T.text }}>
-                      {displayName}
-                    </span>
-                  </AuthorAvatarName>
-                  {post?.anonymous ? <Lock size={13} style={{ color: T.textSubtle }} /> : null}
-                  <span className="text-xs" style={{ color: T.textSubtle }}>
-                    <ClientTimeAgo date={postCreatedAt} />
+      <article
+        className="relative overflow-visible rounded-[26px] border bg-white shadow-sm scroll-mt-28 md:scroll-mt-32"
+        style={{ borderColor: T.border }}
+        data-post-id={postId}
+      >
+        <div className="p-4 sm:p-5">
+          <div className="flex items-start justify-between gap-3 text-sm">
+            <div className="min-w-0 flex-1">
+              <div className="mb-2 flex flex-wrap items-center gap-2 text-xs" style={{ color: T.muted }}>
+                <AuthorAvatarName
+                  post={safePost}
+                  displayName={displayName}
+                  displayColor={displayColor}
+                  displayAvatarUrl={displayAvatarUrl}
+                  authorId={authorId}
+                />
+                <span>•</span>
+                <ClientTimeAgo value={postCreatedAt} />
+                {editedPost ? (
+                  <>
+                    <span>•</span>
+                    <span>Edited</span>
+                  </>
+                ) : null}
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold"
+                  style={{ backgroundColor: category.bg, color: category.color }}
+                >
+                  {category.label}
+                </span>
+                {post?.anonymous ? (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-600">
+                    <Lock size={12} /> Anonymous
                   </span>
-                  {editedPost ? (
-                    <>
-                      <span className="text-[10px] leading-none" style={{ color: "rgba(102,112,133,0.45)" }}>•</span>
-                      <span className="text-[11px] font-semibold leading-none" style={{ color: "rgba(102,112,133,0.62)" }} title={postUpdatedAt ? `Edited ${new Date(postUpdatedAt).toLocaleString()}` : "Edited"}>
-                        edited
-                      </span>
-                    </>
-                  ) : null}
-                </div>
-                <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                  <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-bold" style={{ backgroundColor: "rgba(244,248,253,0.95)", borderColor: T.border, color: T.textMuted }}>
-                    {category?.label || post?.category || "General"}
+                ) : null}
+                {isReported ? (
+                  <span className="inline-flex items-center rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] font-bold text-rose-700">
+                    Under review
                   </span>
-                  {isReported ? (
-                    <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-bold" style={{ backgroundColor: T.goldBg, borderColor: "#F3D08A", color: T.gold }}>
-                      Post under review
-                    </span>
-                  ) : null}
-                </div>
+                ) : null}
               </div>
             </div>
 
-            <div className="relative shrink-0">
+            <div className="relative">
               <button
                 type="button"
                 onClick={(event) => {
                   event.stopPropagation();
-                  setMenuOpen((value) => !value);
-                  setCommentMenuOpenId(null);
+                  setMenuOpen((open) => !open);
                 }}
-                className="h-9 w-9 rounded-full flex items-center justify-center transition hover:bg-black/[0.04]"
-                style={{ color: T.textMuted }}
+                className="h-9 w-9 rounded-full flex items-center justify-center transition hover:bg-slate-100"
+                style={{ color: T.muted }}
                 aria-label="Post options"
+                aria-expanded={menuOpen}
               >
-                <MoreHorizontal size={19} />
+                <MoreHorizontal size={20} />
               </button>
-
               {menuOpen ? (
-                <div onClick={(event) => event.stopPropagation()} className="absolute right-0 top-10 z-30 w-48 overflow-hidden rounded-2xl border shadow-xl" style={{ backgroundColor: T.card, borderColor: T.border }}>
-                  {ownsPost ? (
-                    <>
-                      <MenuButton icon={Edit3} onClick={handleEditClick}>Edit post</MenuButton>
-                      <MenuButton icon={Trash2} danger onClick={handleDeleteClick}>Delete post</MenuButton>
-                    </>
-                  ) : (
-                    <>
-                      {isAdmin ? <MenuButton icon={Trash2} danger onClick={handleDeleteClick}>Delete post</MenuButton> : null}
-                      <MenuButton icon={Flag} danger={userReported} onClick={handleReport}>{userReported ? "Reported" : "Report post"}</MenuButton>
-                    </>
-                  )}
+                <div
+                  className="absolute right-0 top-10 z-30 w-48 overflow-hidden rounded-2xl border bg-white shadow-xl"
+                  style={{ borderColor: T.border }}
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  {ownsPost ? <MenuButton icon={Edit3} onClick={handleEditClick}>Edit post</MenuButton> : null}
+                  {ownsPost || isAdmin ? <MenuButton icon={Trash2} danger onClick={handleDeleteClick}>{isAdmin && !ownsPost ? "Delete as admin" : "Delete post"}</MenuButton> : null}
+                  {!ownsPost ? <MenuButton icon={Flag} danger onClick={handleReport}>{userReported ? "Already reported" : "Report post"}</MenuButton> : null}
                 </div>
               ) : null}
             </div>
           </div>
 
-          {bodyText ? (
-            <div className="mt-4 text-[16px] md:text-[17px] leading-8" style={{ color: T.text }}>
-              <ExpandableText text={bodyText} />
-            </div>
-          ) : null}
-
-          {postImage ? <PostImagePreview image={postImage} onOpen={setActiveImage} /> : null}
+          <div className="mt-3">
+            <ExpandableText html={bodyText} />
+            {postImage ? <PostImagePreview image={postImage} onOpen={setActiveImage} /> : null}
+          </div>
         </div>
 
-        <div className="mx-4 md:mx-5 border-t flex items-center justify-between gap-1 py-1.5" style={{ borderColor: T.borderSoft || T.border }}>
-          <ActionButton icon={ArrowBigUp} label="Upvote" count={upvoteCount} active={userUpvoted} fillWhenActive onClick={handleUpvote} disabled={upvoteSubmitting} />
-          <ActionButton icon={MessageCircle} label="Replies" count={commentCount} active={showComments} fillWhenActive onClick={handleToggleComments} />
+        <div className="mx-2 flex items-center justify-between border-t px-2 py-2" style={{ borderColor: T.border }}>
+          <ActionButton
+            icon={ArrowBigUp}
+            label="Upvote"
+            count={upvoteCount}
+            active={userUpvoted}
+            fillWhenActive
+            onClick={handleUpvote}
+            disabled={upvoteSubmitting}
+          />
+          <ActionButton icon={MessageCircle} label="Reply" count={commentCount} active={showComments} onClick={handleToggleComments} />
           <ActionButton icon={Share2} label="Share" onClick={handleShare} />
         </div>
 
         {showComments ? (
-          <div className="px-4 md:px-5 pb-4">
-            <div className="space-y-3 pt-2">
-              {commentsLoading ? (
-                <div className="py-3 text-center text-sm font-medium" style={{ color: T.textSubtle }}>
-                  Loading replies…
-                </div>
-              ) : null}
-              {!commentsLoading && comments.length === 0 ? (
-                <div className="py-2 text-sm" style={{ color: T.textSubtle }}>
-                  No replies yet. Be the first to help.
-                </div>
-              ) : null}
-              {comments.map((item) => {
-                const itemCommentId = getCommentId(item);
+          <div className="border-t px-4 py-3" style={{ borderColor: T.border }}>
+            {commentsLoading ? (
+              <div className="py-2 text-sm font-medium" style={{ color: T.muted }}>
+                Loading replies...
+              </div>
+            ) : comments.length ? (
+              <div className="mb-3 space-y-3">
+                {comments.map((c) => {
+                  const commentId = getCommentId(c) || `${postId}-${c.created_at}-${getDisplayName(c, "Member")}`;
+                  const commentName = shouldMaskViewerReply && viewerOwnsComment(c, currentUser) ? anonymousName : getDisplayName(c, "Member");
+                  const commentColor = shouldMaskViewerReply && viewerOwnsComment(c, currentUser) ? "#5C6470" : getDisplayColor(c, commentName);
+                  const commentAvatarUrl = shouldMaskViewerReply && viewerOwnsComment(c, currentUser) ? null : getDisplayAvatarUrl(c);
+                  const commentAuthorId = getAuthorId(c);
+                  const canDeleteComment = viewerOwnsComment(c, currentUser) || isAdmin;
 
-                return (
-                  <CommentRow
-                    key={itemCommentId || `${postId}-${item.created_at}-${item.body}`}
-                    comment={item}
-                    post={safePost}
-                    currentUser={currentUser}
-                    isAdmin={isAdmin}
-                    menuOpen={commentMenuOpenId === itemCommentId}
-                    onToggleMenu={(id) => {
-                      setMenuOpen(false);
-                      setCommentMenuOpenId((value) => (value === id ? null : id));
-                    }}
-                    onDeleteRequest={(selectedComment) => {
-                      setCommentMenuOpenId(null);
-                      setCommentToDelete(selectedComment);
-                    }}
-                  />
-                );
-              })}
-            </div>
+                  return (
+                    <div key={commentId} className="flex gap-2 text-sm">
+                      <Avatar name={commentName} color={commentColor} avatarUrl={commentAvatarUrl} size="xs" />
+                      <div className="min-w-0 flex-1 rounded-2xl px-3 py-2" style={{ backgroundColor: "#F6F8FB" }}>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <ProfileIdentityLink
+                              userId={commentAuthorId}
+                              fallbackName={commentName}
+                              className="font-semibold hover:opacity-85 focus:outline-none"
+                              style={{ color: T.text }}
+                            >
+                              {commentName}
+                            </ProfileIdentityLink>
+                            <p className="whitespace-pre-wrap break-words" style={{ color: T.textMuted }}>
+                              {c.body}
+                            </p>
+                          </div>
 
-            <div className="mt-3 flex items-start gap-2.5">
-              <AuthorAvatarName userId={shouldMaskViewerReply ? null : currentUser?.id} fallbackName={replyName} name={replyName} color={replyColor} src={replyAvatarUrl} size={32} anonymous={shouldMaskViewerReply}>
-                <Avatar name={replyName} color={replyColor} src={replyAvatarUrl} size={32} />
-              </AuthorAvatarName>
+                          {canDeleteComment ? (
+                            <div className="relative shrink-0">
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setCommentMenuOpenId((openId) => (openId === commentId ? null : commentId));
+                                }}
+                                className="flex h-7 w-7 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-200 hover:text-slate-700"
+                                aria-label="Comment options"
+                                aria-expanded={commentMenuOpenId === commentId}
+                              >
+                                <MoreHorizontal size={15} />
+                              </button>
+
+                              {commentMenuOpenId === commentId ? (
+                                <div
+                                  className="absolute right-0 top-8 z-30 w-40 overflow-hidden rounded-2xl border bg-white shadow-xl"
+                                  style={{ borderColor: T.border }}
+                                  onClick={(event) => event.stopPropagation()}
+                                >
+                                  <MenuButton
+                                    icon={Trash2}
+                                    danger
+                                    onClick={() => {
+                                      setCommentMenuOpenId(null);
+                                      setCommentToDelete(c);
+                                    }}
+                                  >
+                                    Delete reply
+                                  </MenuButton>
+                                </div>
+                              ) : null}
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="mb-3 text-sm" style={{ color: T.muted }}>
+                No replies yet.
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <Avatar name={replyName} color={replyColor} avatarUrl={replyAvatarUrl} size="xs" />
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 rounded-2xl border px-3 py-2" style={{ borderColor: T.border, backgroundColor: "rgba(244,248,253,0.72)" }}>
+                <div className="flex gap-2">
                   <input
                     value={comment}
-                    onChange={(event) => {
-                      setComment(event.target.value);
-                      setCommentError("");
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" && !event.shiftKey) {
-                        event.preventDefault();
+                    onChange={(e) => setComment(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
                         submitComment();
                       }
                     }}
-                    placeholder={commentSubmitting ? "Posting reply…" : "Write a reply..."}
-                    className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[#9AA4B2] disabled:cursor-not-allowed disabled:opacity-70"
-                    style={{ color: T.text }}
+                    placeholder="Write a reply..."
                     disabled={commentSubmitting}
+                    className="min-w-0 flex-1 rounded-full border px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-[#1E4E8C]/20 disabled:cursor-wait disabled:bg-slate-50"
+                    style={{ borderColor: T.border }}
                   />
                   <button
                     type="button"
                     onClick={submitComment}
                     disabled={commentSubmitting || !comment.trim()}
-                    className="h-8 w-8 rounded-full flex items-center justify-center disabled:opacity-45 disabled:pointer-events-none"
-                    style={{ backgroundColor: T.navy, color: "white" }}
+                    className="h-10 w-10 rounded-full flex items-center justify-center text-white transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ backgroundColor: T.primary }}
                     aria-label="Send reply"
                   >
-                    <Send size={15} />
+                    <Send size={17} />
                   </button>
                 </div>
                 {commentError ? (
-                  <div className="mt-2 text-xs font-medium" style={{ color: T.red }}>
-                    {commentError}
-                  </div>
+                  <p className="mt-2 text-xs font-semibold text-rose-600">{commentError}</p>
                 ) : null}
               </div>
             </div>
@@ -931,33 +916,29 @@ export default function PostCard({ post, openRepliesDefault = false }) {
         ) : null}
       </article>
 
-      {activeImage ? <PostImageLightbox image={activeImage} onClose={() => setActiveImage(null)} /> : null}
-
-      {editingOpen ? <EditPostModal post={safePost} onClose={() => setEditingOpen(false)} onSave={handleEditSave} /> : null}
+      <EditPostModal open={editingOpen} post={safePost} onClose={() => setEditingOpen(false)} onSave={handleEditSave} />
 
       <ConfirmDialog
         open={deletingOpen}
-        title="Delete this post?"
-        body={adminModeratingOtherPost ? "This will permanently delete another user's post and its comments from SoldierHub. This cannot be undone." : "This will remove this post from SoldierHub."}
-        confirmText={deleting ? "Deleting…" : "Delete post"}
+        title={adminModeratingOtherPost ? "Delete this post as admin?" : "Delete this post?"}
+        message={adminModeratingOtherPost ? "This will permanently remove the post from the community feed." : "This will permanently remove your post from the community feed."}
+        confirmLabel={deleting ? "Deleting..." : "Delete"}
         danger
         onConfirm={handleDeleteConfirm}
-        onCancel={() => {
-          if (!deleting) setDeletingOpen(false);
-        }}
+        onCancel={() => (deleting ? null : setDeletingOpen(false))}
       />
 
       <ConfirmDialog
         open={Boolean(commentToDelete)}
-        title="Delete this comment?"
-        body="This will remove this comment from the post."
-        confirmText={deletingComment ? "Deleting…" : "Delete comment"}
+        title="Delete this reply?"
+        message="This will permanently remove the reply from the post."
+        confirmLabel={deletingComment ? "Deleting..." : "Delete"}
         danger
         onConfirm={handleDeleteCommentConfirm}
-        onCancel={() => {
-          if (!deletingComment) setCommentToDelete(null);
-        }}
+        onCancel={() => (deletingComment ? null : setCommentToDelete(null))}
       />
+
+      {activeImage ? <PostImageLightbox image={activeImage} onClose={() => setActiveImage(null)} /> : null}
     </>
   );
 }
