@@ -1,1 +1,3 @@
-__PLACEHOLDER__
+-- DO NOT USE OR MERGE THIS PLACEHOLDER FILE.
+-- The final production_rebuild.sql must be uploaded again after verification.
+-- This placeholder exists only to prevent accidental use of an incomplete rebuild file.
