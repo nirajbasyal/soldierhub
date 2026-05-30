@@ -17,6 +17,22 @@ You'll set up four things, in this order:
 
 ---
 
+## Critical database source-of-truth rule
+
+For production, **do not restore or rebuild the database by blindly running `supabase/schema.sql` and `supabase/policies.sql` only**.
+
+Those files may be useful as an older snapshot/reference, but the production source of truth is the ordered SQL in:
+
+```txt
+supabase/migrations/
+```
+
+Run migrations in filename order. New production SQL changes must be added as new migration files and committed to the repo. This keeps the live Supabase database and GitHub repo synced.
+
+For an emergency rebuild or a new Supabase project, start from the base schema only if needed, then apply every migration in `supabase/migrations/` in order. Do not re-run stale policy files after newer hardening migrations, because older broad policies can undo newer privacy/security fixes.
+
+---
+
 ## Phase 1 — Supabase setup (~25 min)
 
 ### 1.1 Create the project
@@ -27,16 +43,16 @@ You'll set up four things, in this order:
    - **Name:** `soldier-hub`
    - **Database password:** Generate one and **save it in a password manager**. You will not need it day-to-day, but losing it means losing recovery access.
    - **Region:** Pick the one closest to El Paso — **US East (N. Virginia)** is fine.
-   - **Plan:** Free tier is plenty for launch.
+   - **Plan:** Use a paid project for production launch. Free tier is okay only for early testing.
 4. Click **Create new project**. Wait ~2 minutes for it to provision.
 
-### 1.2 Run the schema
+### 1.2 Run the database SQL
 
 1. In the Supabase dashboard left sidebar, click **SQL Editor**.
 2. Click **New query**.
-3. Open `supabase/schema.sql` from your project, copy the entire contents, paste into the editor.
-4. Click **Run** (or `Ctrl/Cmd + Enter`). You should see "Success. No rows returned."
-5. New query → paste `supabase/policies.sql` → Run. Same success message.
+3. For a fresh setup, apply the base schema only if the database is empty and you need the original tables/functions.
+4. Then apply every file in `supabase/migrations/` in filename order.
+5. **Do not run `supabase/policies.sql` after newer migrations** unless you have reviewed it carefully, because it may recreate older broad policies that newer migrations intentionally replaced.
 6. **Skip `seed.sql` for production launch** — you only need it in development to fake some posts.
 
 ### 1.3 Verify tables
@@ -49,7 +65,7 @@ In the dashboard, click **Database → Tables**. You should see:
 - `reports`
 - `notifications`
 
-Each should show "RLS enabled" with a green shield. If any don't, re-run `policies.sql`.
+Each should show "RLS enabled" with a green shield. If any do not, stop and review the migration history before opening production traffic.
 
 ### 1.4 Configure email auth
 
@@ -78,7 +94,7 @@ Each should show "RLS enabled" with a green shield. If any don't, re-run `polici
 <p>Thanks for joining the Fort Bliss community. Click the button below to confirm your email address.</p>
 <p><a href="{{ .ConfirmationURL }}">Confirm email address</a></p>
 <p>After confirming, an admin will review your profile and verify it for posting access.</p>
-<p>— Soldier Hub<br/><em>Unofficial. Not affiliated with the Department of War.</em></p>
+<p>— Soldier Hub<br/><em>Unofficial. Not affiliated with the U.S. Government, Department of Defense, Army, or any installation.</em></p>
 ```
 
 ### 1.6 Grab your API keys
@@ -150,6 +166,15 @@ Before clicking Deploy, expand **Environment Variables** and add these. **All th
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY`   | (from Supabase → Settings → API)       |
 | `NEXT_PUBLIC_SITE_URL`            | `https://soldierhub.com`               |
 | `MODERATION_API_KEY`              | (optional — your OpenAI key)           |
+| `UPSTASH_REDIS_REST_URL`          | (from Upstash Redis / Vercel KV)       |
+| `UPSTASH_REDIS_REST_TOKEN`        | (from Upstash Redis / Vercel KV)       |
+| `R2_ACCOUNT_ID`                   | (from Cloudflare R2)                   |
+| `R2_ACCESS_KEY_ID`                | (from Cloudflare R2)                   |
+| `R2_SECRET_ACCESS_KEY`            | (from Cloudflare R2)                   |
+| `R2_BUCKET_NAME`                  | (from Cloudflare R2)                   |
+| `NEXT_PUBLIC_R2_PUBLIC_BASE_URL`  | (public R2/custom-domain image URL)    |
+| `NEXT_PUBLIC_SENTRY_DSN`          | (from Sentry, if enabled)              |
+| `SENTRY_DSN`                      | (from Sentry, if enabled)              |
 
 > Do NOT add `SUPABASE_SERVICE_ROLE_KEY` to Vercel unless you have a server
 > route that actually needs it. The service role bypasses RLS — storing it
@@ -178,150 +203,5 @@ In Supabase **SQL Editor**, run:
 ```sql
 update public.profiles
 set role = 'admin', status = 'verified'
-where email = 'niraj.basyal2054@gmail.com';
+where id = 'YOUR_USER_ID';
 ```
-
-Then sign up with `niraj.basyal2054@gmail.com` through the app. The `handle_new_user` trigger in `schema.sql` already auto-promotes that email to admin, so you'll be admin immediately on first signup. The SQL above is just a manual fallback.
-
-After signing in as admin, refresh — you'll see the **Admin** button in the top nav. Click it to verify the test account you signed up earlier.
-
----
-
-## Phase 4 — Custom domain (~30 min, mostly DNS waiting)
-
-### 4.1 Add domain in Vercel
-
-1. In your Vercel project: **Settings → Domains**.
-2. Type `soldierhub.com` → **Add**.
-3. Vercel will show you DNS records to add. Two options:
-
-**Option A — Easier: transfer DNS to Vercel**
-- In your registrar (Namecheap/GoDaddy/wherever you bought it), change the nameservers to Vercel's.
-- Vercel handles the rest. ~1 hour for DNS propagation.
-
-**Option B — Keep your registrar's DNS, add records**
-- In your registrar's DNS settings, add:
-  - **A record** `@` → `76.76.21.21`
-  - **CNAME record** `www` → `cname.vercel-dns.com`
-- ~10 minutes for DNS propagation.
-
-### 4.2 Add www redirect
-
-Back in Vercel **Settings → Domains**:
-- Add `www.soldierhub.com` too.
-- Set **Redirect www.soldierhub.com → soldierhub.com (308 permanent)**.
-
-### 4.3 SSL
-
-Vercel issues an SSL certificate automatically once DNS propagates. You'll see "Valid Configuration" with a green checkmark next to your domain.
-
-### 4.4 Update Supabase redirect URLs
-
-Go back to Supabase → **Authentication → URL Configuration**:
-- **Site URL:** `https://soldierhub.com`
-- **Additional redirect URLs:** make sure `https://soldierhub.com/auth/callback` is in the allow list.
-
-### 4.5 Final test
-
-Visit https://soldierhub.com. Everything should work. If signup emails are slow or going to spam, see the troubleshooting section below.
-
----
-
-## Post-launch checklist
-
-- [ ] Sign in as admin and verify your test profile actually got verified
-- [ ] Create a test post → confirm it shows up in the feed
-- [ ] Have a friend sign up → verify they appear in admin pending → verify them → confirm they can post
-- [ ] Test report flow → comment notification flow → upvote flow
-- [ ] Open the site on a phone → check mobile menu, bottom nav, post composer
-- [ ] Submit signup at 100% browser zoom → confirm modal scrolls inside (the bug you originally reported)
-
----
-
-## Troubleshooting
-
-### "Invalid login credentials"
-You signed up but didn't confirm your email yet. Check spam folder. The link expires after 24 hours — request a new one by trying to sign in again.
-
-### Signup emails not arriving
-Supabase free tier sends from `noreply@mail.app.supabase.io` and is rate-limited to ~30 emails/hour. For production volume, configure a custom SMTP provider in **Authentication → Email Settings** (Resend, Postmark, SendGrid all work).
-
-### "Build failed" on Vercel
-Check the build log. Most common causes:
-- Missing environment variable → add it in **Settings → Environment Variables**, then click **Redeploy**.
-- Syntax error in code you committed → fix and push again.
-
-### Posts not appearing for new users
-The user's profile has `status='pending'`. Sign in as admin, go to `/admin`, verify them.
-
-### "permission denied for table posts"
-Your RLS policies aren't set up. Re-run `supabase/policies.sql` in the SQL Editor.
-
-### Domain shows "Invalid Configuration" in Vercel
-DNS hasn't propagated yet. Wait 30 minutes, refresh. If still failing, check that the records you added actually saved in your registrar's panel.
-
-### Realtime updates not coming through
-In Supabase: **Database → Replication** → make sure `posts` and `notifications` tables have replication enabled (slider next to each).
-
-### I deployed but the app behaves like local mode (no real auth, data resets on refresh)
-Your env vars aren't set in Vercel. Production code reads them at build time, not runtime — after adding env vars, you must trigger a **Redeploy** (Vercel Settings → Deployments → ⋯ on latest → Redeploy).
-
----
-
-## Ongoing operations
-
-### Pushing updates
-
-Edit code locally → commit → push to `main`:
-```bash
-git add .
-git commit -m "describe the change"
-git push
-```
-
-Vercel rebuilds and redeploys automatically. Takes ~90 seconds.
-
-### Database migrations
-
-When you change the schema:
-1. Edit `supabase/schema.sql`.
-2. Run the changed parts in Supabase SQL Editor.
-3. Commit the file so it stays in sync with what's actually deployed.
-
-Never run destructive SQL (DROP, DELETE without WHERE) on production without a backup.
-
-### Backups
-
-Supabase Free tier backs up daily and retains 7 days. For more, upgrade to Pro ($25/month) which gives you point-in-time recovery.
-
-### Monitoring
-
-- **Errors:** browser dev tools → console; for production add Sentry (https://sentry.io free tier).
-- **Performance:** Vercel Analytics is free for basic metrics.
-- **Database health:** Supabase dashboard → **Reports**.
-
----
-
-## Costs
-
-| Service             | Free tier                                  | When to upgrade                |
-| ------------------- | ------------------------------------------ | ------------------------------ |
-| **Vercel**          | 100 GB bandwidth/mo, unlimited deploys     | When bandwidth exceeds free    |
-| **Supabase**        | 500 MB DB, 1 GB storage, 50K monthly users | When approaching DB limit      |
-| **Domain**          | ~$12/year                                  | Already paid                   |
-
-Realistic estimate: **$0/month** for the first 6–12 months at small-community scale. Upgrading both Pro: ~$45/month total.
-
----
-
-## Next steps after launch
-
-Once you have real users and feedback:
-
-1. **Add image uploads** — wire up Supabase Storage in `src/lib/storage/`.
-2. **Better moderation** — set `MODERATION_API_KEY` to enable AI moderation.
-3. **Custom email templates** — switch Supabase to your own SMTP for branded emails.
-4. **Analytics** — add Plausible or Vercel Analytics to see what people actually use.
-5. **Push notifications** — add web push so users get pinged when someone replies.
-
-Good luck with the launch.
