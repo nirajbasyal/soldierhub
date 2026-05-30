@@ -205,3 +205,146 @@ update public.profiles
 set role = 'admin', status = 'verified'
 where id = 'YOUR_USER_ID';
 ```
+
+After signing in as admin, refresh — you'll see the **Admin** button in the top nav. Click it to verify the test account you signed up earlier.
+
+---
+
+## Phase 4 — Custom domain (~30 min, mostly DNS waiting)
+
+### 4.1 Add domain in Vercel
+
+1. In your Vercel project: **Settings → Domains**.
+2. Type `soldierhub.com` → **Add**.
+3. Vercel will show you DNS records to add. Two options:
+
+**Option A — Easier: transfer DNS to Vercel**
+- In your registrar (Namecheap/GoDaddy/wherever you bought it), change the nameservers to Vercel's.
+- Vercel handles the rest. ~1 hour for DNS propagation.
+
+**Option B — Keep your registrar's DNS, add records**
+- In your registrar's DNS settings, add:
+  - **A record** `@` → `76.76.21.21`
+  - **CNAME record** `www` → `cname.vercel-dns.com`
+- ~10 minutes for DNS propagation.
+
+### 4.2 Add www redirect
+
+Back in Vercel **Settings → Domains**:
+- Add `www.soldierhub.com` too.
+- Set **Redirect www.soldierhub.com → soldierhub.com (308 permanent)**.
+
+### 4.3 SSL
+
+Vercel issues an SSL certificate automatically once DNS propagates. You'll see "Valid Configuration" with a green checkmark next to your domain.
+
+### 4.4 Update Supabase redirect URLs
+
+Go back to Supabase → **Authentication → URL Configuration**:
+- **Site URL:** `https://soldierhub.com`
+- **Additional redirect URLs:** make sure `https://soldierhub.com/auth/callback` is in the allow list.
+
+### 4.5 Final test
+
+Visit https://soldierhub.com. Everything should work. If signup emails are slow or going to spam, see the troubleshooting section below.
+
+---
+
+## Post-launch checklist
+
+- [ ] Sign in as admin and verify your test profile actually got verified
+- [ ] Create a test post → confirm it shows up in the feed
+- [ ] Have a friend sign up → verify they appear in admin pending → verify them → confirm they can post
+- [ ] Test report flow → comment notification flow → upvote flow
+- [ ] Open the site on a phone → check mobile menu, bottom nav, post composer
+- [ ] Submit signup at 100% browser zoom → confirm modal scrolls inside (the bug you originally reported)
+
+---
+
+## Troubleshooting
+
+### "Invalid login credentials"
+You signed up but didn't confirm your email yet. Check spam folder. The link expires after 24 hours — request a new one by trying to sign in again.
+
+### Signup emails not arriving
+Use your configured custom SMTP provider, such as Resend, in **Authentication → Email Settings** for production volume. If emails are slow or missing, verify SMTP credentials, sender domain DNS, and Supabase Auth logs.
+
+### "Build failed" on Vercel
+Check the build log. Most common causes:
+- Missing environment variable → add it in **Settings → Environment Variables**, then click **Redeploy**.
+- Syntax error in code you committed → fix and push again.
+
+### Posts not appearing for new users
+The user's profile has `status='pending'`. Sign in as admin, go to `/admin`, verify them.
+
+### "permission denied for table posts"
+Stop and review your migrations/RLS setup. Do not blindly re-run stale `supabase/policies.sql` on production after newer hardening migrations.
+
+### Domain shows "Invalid Configuration" in Vercel
+DNS hasn't propagated yet. Wait 30 minutes, refresh. If still failing, check that the records you added actually saved in your registrar's panel.
+
+### Realtime updates not coming through
+In Supabase: **Database → Replication** → make sure `posts` and `notifications` tables have replication enabled (slider next to each).
+
+### I deployed but the app behaves like local mode (no real auth, data resets on refresh)
+Your env vars aren't set in Vercel. Production code reads them at build time, not runtime — after adding env vars, you must trigger a **Redeploy** (Vercel Settings → Deployments → ⋯ on latest → Redeploy).
+
+---
+
+## Ongoing operations
+
+### Pushing updates
+
+Edit code locally → commit → push to `main`:
+```bash
+git add .
+git commit -m "describe the change"
+git push
+```
+
+Vercel rebuilds and redeploys automatically. Takes ~90 seconds.
+
+### Database migrations
+
+When you change the database:
+1. Add a new SQL file under `supabase/migrations/`.
+2. Run that exact migration in the Supabase SQL Editor.
+3. Commit the migration file so GitHub and the live database stay synced.
+4. Regenerate `supabase/schema.sql` later only after confirming live Supabase is correct.
+
+Never run destructive SQL (DROP, DELETE without WHERE) on production without a backup.
+
+### Backups
+
+Use a paid Supabase production project with an appropriate backup/restore plan before opening the app widely.
+
+### Monitoring
+
+- **Errors:** use Sentry for production error tracking.
+- **Performance:** Vercel Analytics is free for basic metrics.
+- **Database health:** Supabase dashboard → **Reports**.
+
+---
+
+## Costs
+
+| Service             | Free tier                                  | When to upgrade                |
+| ------------------- | ------------------------------------------ | ------------------------------ |
+| **Vercel**          | 100 GB bandwidth/mo, unlimited deploys     | When bandwidth exceeds free    |
+| **Supabase**        | 500 MB DB, 1 GB storage, 50K monthly users | Use paid plan for production   |
+| **Domain**          | ~$12/year                                  | Already paid                   |
+
+Realistic estimate depends on actual traffic, uploads, and database usage. Monitor Vercel, Supabase, Upstash/KV, R2, and Sentry after launch.
+
+---
+
+## Next steps after launch
+
+Once you have real users and feedback:
+
+1. **Load testing** — test 100, 250, and 500 simulated users before broad launch.
+2. **Better moderation** — set `MODERATION_API_KEY` and review fail-open behavior.
+3. **Analytics** — add Plausible or Vercel Analytics to see what people actually use.
+4. **Push notifications** — add web push so users get pinged when someone replies.
+
+Good luck with the launch.
