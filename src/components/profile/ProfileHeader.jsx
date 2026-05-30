@@ -25,7 +25,6 @@ import ProfileStats from "@/components/profile/ProfileStats";
 import ProfileInfoPill from "@/components/profile/ProfileInfoPill";
 import ProfileAvatarActions from "@/components/profile/ProfileAvatarActions";
 import ProfileColorPicker from "@/components/profile/ProfileColorPicker";
-import ProfileFollowListPanel, { getFollowProfileId } from "@/components/profile/ProfileFollowListPanel";
 
 const COLOR_OPTIONS = [
   "#0B1C2C",
@@ -38,8 +37,6 @@ const COLOR_OPTIONS = [
   "#1F6E66",
   "#7A5C20",
 ];
-
-const FOLLOW_LIST_PREVIEW_LIMIT = 30;
 
 function postBelongsToCurrentUser(post, user) {
   if (!post || !user?.id) return false;
@@ -86,12 +83,6 @@ export default function ProfileHeader() {
     isFollowing: false,
   });
   const [followLoading, setFollowLoading] = useState(false);
-  const [connectionsTab, setConnectionsTab] = useState(null);
-  const [connections, setConnections] = useState([]);
-  const [connectionsLoading, setConnectionsLoading] = useState(false);
-  const [connectionsRefreshing, setConnectionsRefreshing] = useState(false);
-  const [connectionsError, setConnectionsError] = useState("");
-  const [unfollowingId, setUnfollowingId] = useState("");
 
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -160,107 +151,6 @@ export default function ProfileHeader() {
     if (myPosts.length > 0) return myPosts;
     return posts.filter((post) => postBelongsToCurrentUser(post, currentUser));
   }, [currentUser, myPosts, posts]);
-
-  const openConnections = useCallback(
-    async (type) => {
-      if (!currentUser?.id) return;
-
-      if (connectionsTab === type) {
-        setConnectionsTab(null);
-        setConnections([]);
-        setConnectionsError("");
-        setConnectionsRefreshing(false);
-        return;
-      }
-
-      const expectedCount =
-        type === "following"
-          ? Number(followSummary.followingCount) || 0
-          : Number(followSummary.followersCount) || 0;
-
-      setConnectionsTab(type);
-      setConnectionsError("");
-
-      if (expectedCount === 0) {
-        setConnections([]);
-        setConnectionsLoading(false);
-        setConnectionsRefreshing(false);
-        return;
-      }
-
-      const cachedConnections = Follows.getCachedFollowConnections?.(type, currentUser.id);
-      if (cachedConnections) {
-        setConnections(cachedConnections);
-        setConnectionsLoading(false);
-        setConnectionsRefreshing(true);
-      } else {
-        setConnections([]);
-        setConnectionsLoading(true);
-        setConnectionsRefreshing(false);
-      }
-
-      const { data, error } = await Follows.listFollowConnections(type, currentUser.id, {
-        limit: FOLLOW_LIST_PREVIEW_LIMIT,
-        skipCache: Boolean(cachedConnections),
-      });
-
-      setConnectionsLoading(false);
-      setConnectionsRefreshing(false);
-
-      if (error) {
-        setConnectionsError(error.message || "Could not load this list.");
-        return;
-      }
-
-      setConnections(data || []);
-    },
-    [connectionsTab, currentUser?.id, followSummary.followersCount, followSummary.followingCount]
-  );
-
-  const handleUnfollowFromList = useCallback(
-    async (targetProfileId) => {
-      if (unfollowingId || !currentUser?.id) return;
-
-      if (!Follows.isValidProfileId?.(targetProfileId)) {
-        Follows.clearCachedFollowConnections?.("following", currentUser.id);
-        setConnections((items) => items.filter((item) => Boolean(getFollowProfileId(item))));
-        setConnectionsError("This follow list had an old cached profile. Please tap Following again to refresh.");
-        return;
-      }
-
-      const previousConnections = connections;
-      const previousSummary = followSummary;
-
-      setUnfollowingId(targetProfileId);
-      setConnections((items) =>
-        items.filter((item) => getFollowProfileId(item) !== targetProfileId)
-      );
-      setFollowSummary((prev) => {
-        const next = {
-          ...prev,
-          followingCount: Math.max(0, (prev.followingCount || 0) - 1),
-        };
-        Follows.cacheFollowSummary?.(currentUser.id, currentUser.id, next);
-        return next;
-      });
-      Follows.removeProfileFromCachedFollowing?.(currentUser.id, targetProfileId);
-
-      const { error } = await Follows.unfollowUser(targetProfileId);
-      setUnfollowingId("");
-
-      if (error) {
-        setConnections(previousConnections);
-        setFollowSummary(previousSummary);
-        Follows.cacheFollowSummary?.(currentUser.id, currentUser.id, previousSummary);
-        pushToast?.(error.message || "Could not unfollow this member.", "error");
-        return;
-      }
-
-      pushToast?.("Member unfollowed.", "success");
-      loadFollowSummary({ silent: true, skipCache: true });
-    },
-    [connections, currentUser?.id, followSummary, loadFollowSummary, pushToast, unfollowingId]
-  );
 
   const resetPasswordForm = () => {
     setCurrentPassword("");
@@ -432,8 +322,6 @@ export default function ProfileHeader() {
 
   const followerValue = followSummary.followersCount || 0;
   const followingValue = followSummary.followingCount || 0;
-  const activeConnectionsTotal =
-    connectionsTab === "following" ? followingValue : connectionsTab === "followers" ? followerValue : 0;
 
   return (
     <section
@@ -460,9 +348,6 @@ export default function ProfileHeader() {
             followersCount={followerValue}
             followingCount={followingValue}
             loading={followLoading}
-            activeTab={connectionsTab}
-            onOpenFollowers={() => openConnections("followers")}
-            onOpenFollowing={() => openConnections("following")}
           />
 
           <div className="mx-4 mt-4 sm:mx-5">
@@ -475,21 +360,6 @@ export default function ProfileHeader() {
             profileName={displayName}
             pushToast={pushToast}
           />
-
-          <div className="mx-4 sm:mx-5">
-            {connectionsTab ? (
-              <ProfileFollowListPanel
-                type={connectionsTab}
-                items={connections}
-                loading={connectionsLoading}
-                refreshing={connectionsRefreshing}
-                error={connectionsError}
-                onUnfollow={handleUnfollowFromList}
-                unfollowingId={unfollowingId}
-                totalCount={activeConnectionsTotal}
-              />
-            ) : null}
-          </div>
         </div>
       ) : (
         <div className="min-w-0 p-4 sm:p-5">
