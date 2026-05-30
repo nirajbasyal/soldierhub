@@ -1,19 +1,42 @@
 "use client";
 
-import { useEffect } from "react";
-import { AlertTriangle, ArrowLeft } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowLeft, Loader2, Send } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { T } from "@/lib/theme";
 import AppShell from "@/components/layout/AppShell";
 import PostComposer from "@/components/feed/composer/PostComposer";
 
+const COMPOSE_SUBMIT_EVENT = "soldierhub-compose-submit";
+const COMPOSE_STATE_EVENT = "soldierhub-compose-state";
+
 export default function ComposePage() {
   const router = useRouter();
+  const [composerState, setComposerState] = useState({ canPublish: false, submitting: false });
 
   useEffect(() => {
     // The previous full-screen expanded editor used browser contentEditable + execCommand.
     // It is intentionally disabled so the compose page uses one editor system only: TipTap.
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const handleComposerState = (event) => {
+      setComposerState({
+        canPublish: Boolean(event?.detail?.canPublish),
+        submitting: Boolean(event?.detail?.submitting),
+      });
+    };
+
+    window.addEventListener(COMPOSE_STATE_EVENT, handleComposerState);
+    return () => window.removeEventListener(COMPOSE_STATE_EVENT, handleComposerState);
+  }, []);
+
+  const publishPost = () => {
+    if (typeof window === "undefined" || composerState.submitting || !composerState.canPublish) return;
+    window.dispatchEvent(new CustomEvent(COMPOSE_SUBMIT_EVENT));
+  };
 
   return (
     <AppShell hideNav>
@@ -44,19 +67,17 @@ export default function ComposePage() {
               New Post
             </h1>
 
-            <div
-              className="flex min-w-0 max-w-[126px] shrink-0 items-center justify-end gap-1 rounded-full border px-2 py-1.5 text-right text-[9px] font-semibold leading-tight md:max-w-[260px] md:px-3 md:text-xs"
-              style={{
-                backgroundColor: "rgba(255,244,246,0.9)",
-                borderColor: "rgba(179,25,66,0.16)",
-                color: "#6E2333",
-              }}
-              title="Do not post sensitive info. Be kind."
+            <button
+              type="button"
+              onClick={publishPost}
+              disabled={!composerState.canPublish || composerState.submitting}
+              className="sh-tap inline-flex h-10 min-w-[104px] shrink-0 items-center justify-center gap-1.5 rounded-full px-3 text-sm font-extrabold text-white shadow-sm transition active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-45 md:h-11 md:min-w-[132px] md:px-4 md:text-base"
+              style={{ backgroundColor: "#B31942", boxShadow: "0 14px 28px rgba(179,25,66,0.18)" }}
+              aria-label="Publish post"
             >
-              <AlertTriangle size={12} className="shrink-0" style={{ color: "#B31942" }} />
-              <span className="truncate md:hidden">No sensitive info</span>
-              <span className="hidden truncate md:inline">Do not post sensitive info. Be kind.</span>
-            </div>
+              {composerState.submitting ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+              {composerState.submitting ? "Posting" : "Publish"}
+            </button>
           </div>
         </div>
 
