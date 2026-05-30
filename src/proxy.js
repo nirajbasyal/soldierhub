@@ -1,21 +1,24 @@
 import { NextResponse } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 
-/**
- * Proxy runs on every matching request (formerly called "middleware" in
- * Next.js ≤15; renamed in Next.js 16 to clarify the network-boundary role).
- *
- * Responsibilities:
- *   1. Refresh the Supabase auth session cookie so server components
- *      see the user as logged in.
- *   2. Guard the /admin route — only admins can access it.
- *
- * If Supabase is not configured (demo mode) we just pass through.
- *
- * Note: per Next.js 16 docs, the proxy runtime is Node.js (not Edge).
- */
+function isUuidLike(value = "") {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
 export async function proxy(request) {
-  // If Supabase env vars aren't set, skip middleware entirely
+  const path = request.nextUrl.pathname;
+
+  if (path === "/") {
+    const sharedPostId = request.nextUrl.searchParams.get("post");
+
+    if (sharedPostId && isUuidLike(sharedPostId)) {
+      const nextUrl = request.nextUrl.clone();
+      nextUrl.pathname = `/post/${sharedPostId}`;
+      nextUrl.search = "";
+      return NextResponse.redirect(nextUrl);
+    }
+  }
+
   if (
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||
     !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -25,8 +28,6 @@ export async function proxy(request) {
 
   const { response, supabase } = await updateSession(request);
 
-  // ─── Guard /admin ────────────────────────────────────────────────────
-  const path = request.nextUrl.pathname;
   if (path.startsWith("/admin")) {
     const {
       data: { user },
@@ -49,12 +50,6 @@ export async function proxy(request) {
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except:
-     *   - _next/static, _next/image (assets)
-     *   - favicon.ico, robots.txt, sitemap.xml
-     *   - common image extensions
-     */
     "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
