@@ -1,5 +1,0 @@
--- Soldier Hub production rebuild is split into numbered files because the full rebuild SQL is large.
--- Do not paste this file into Supabase.
--- Instead, open the folder: supabase/production_rebuild/
--- Run the numbered SQL files in order from 01 to 04.
--- This split rebuild must be uploaded to this branch before PR #41 is merged.
