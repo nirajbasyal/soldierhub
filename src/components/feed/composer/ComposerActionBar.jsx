@@ -23,6 +23,7 @@ export default function ComposerActionBar({
 }) {
   const actionBarClassName = `${pageMode ? "sticky bottom-2 z-40 md:static" : ""} mt-3 rounded-[24px] border px-2.5 py-2 md:rounded-[20px] md:px-3 md:py-2.5`;
   const noticeVisible = Boolean(showAnonymousNotice && anonymous);
+  const showBottomPublish = !pageMode;
 
   return (
     <div
@@ -53,7 +54,13 @@ export default function ComposerActionBar({
         </div>
       </div>
 
-      <div className="grid grid-cols-[minmax(108px,1fr)_46px_minmax(96px,0.82fr)] items-center gap-2 md:flex md:items-center md:justify-between md:gap-3">
+      <div
+        className={
+          pageMode
+            ? "grid grid-cols-[minmax(0,1fr)_minmax(112px,0.72fr)] items-center gap-2 md:flex md:items-center md:justify-between md:gap-3"
+            : "grid grid-cols-[minmax(108px,1fr)_46px_minmax(96px,0.82fr)] items-center gap-2 md:flex md:items-center md:justify-between md:gap-3"
+        }
+      >
         <button
           type="button"
           onClick={onToggleAnonymous}
@@ -94,7 +101,11 @@ export default function ComposerActionBar({
           type="button"
           onClick={onOpenImagePicker}
           disabled={submitting || imageProcessing}
-          className="sh-tap inline-flex h-[58px] w-[46px] shrink-0 items-center justify-center rounded-[18px] border text-[11px] font-extrabold transition active:scale-[0.98] disabled:opacity-45 md:h-11 md:w-auto md:px-4"
+          className={
+            pageMode
+              ? "sh-tap inline-flex h-[58px] w-full shrink-0 items-center justify-center gap-1.5 rounded-[18px] border px-2 text-[11px] font-extrabold transition active:scale-[0.98] disabled:opacity-45 md:h-11 md:w-auto md:px-4"
+              : "sh-tap inline-flex h-[58px] w-[46px] shrink-0 items-center justify-center rounded-[18px] border text-[11px] font-extrabold transition active:scale-[0.98] disabled:opacity-45 md:h-11 md:w-auto md:px-4"
+          }
           style={{
             backgroundColor: selectedImage ? "rgba(63, 95, 125, 0.12)" : "#FFFFFF",
             borderColor: selectedImage ? "rgba(63,95,125,0.28)" : T.border,
@@ -104,22 +115,26 @@ export default function ComposerActionBar({
           aria-label={selectedImage ? "Replace photo" : "Add photo"}
         >
           {imageProcessing ? <Loader2 size={17} className="animate-spin" /> : <ImagePlus size={18} strokeWidth={2.5} />}
-          <span className="hidden md:ml-1.5 md:inline">{selectedImage ? "Photo" : "Add photo"}</span>
+          <span className={pageMode ? "inline leading-tight" : "hidden md:ml-1.5 md:inline"}>
+            {selectedImage ? "Photo" : "Add image"}
+          </span>
         </button>
 
-        <Button
-          type="button"
-          variant="primary"
-          size="lg"
-          onClick={onSubmit}
-          disabled={!canPublish || submitting || imageProcessing}
-          className="h-[58px] min-w-0 rounded-[18px] px-3 text-[12px] md:h-11 md:min-w-[140px] md:rounded-full md:px-5 md:text-sm"
-        >
-          <span className="inline-flex items-center justify-center gap-1.5">
-            {submitting ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
-            {submitting ? "Posting" : "Publish"}
-          </span>
-        </Button>
+        {showBottomPublish ? (
+          <Button
+            type="button"
+            variant="primary"
+            size="lg"
+            onClick={onSubmit}
+            disabled={!canPublish || submitting || imageProcessing}
+            className="h-[58px] min-w-0 rounded-[18px] px-3 text-[12px] md:h-11 md:min-w-[140px] md:rounded-full md:px-5 md:text-sm"
+          >
+            <span className="inline-flex items-center justify-center gap-1.5">
+              {submitting ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
+              {submitting ? "Posting" : "Publish"}
+            </span>
+          </Button>
+        ) : null}
       </div>
 
       <ComposerDraftStatus
