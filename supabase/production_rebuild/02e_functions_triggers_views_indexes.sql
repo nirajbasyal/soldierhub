@@ -29,7 +29,8 @@ begin
     new.author_color_cached := pcolor;
   end if;
   return new;
-end $function$;
+end;
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.tg_cache_comment_author()
@@ -47,7 +48,8 @@ begin
   new.author_name_cached  := pname;
   new.author_color_cached := pcolor;
   return new;
-end $function$;
+end;
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.tg_mark_post_reported()
@@ -59,7 +61,8 @@ AS $function$
 begin
   update public.posts set status = 'reported' where id = new.post_id and status = 'active';
   return new;
-end $function$;
+end;
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.tg_notify_on_comment()
@@ -90,7 +93,8 @@ begin
     (post_author, new.author_id, actor_name_local, 'comment', new.post_id, new.id);
 
   return new;
-end $function$;
+end;
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.tg_notify_on_upvote()
@@ -187,28 +191,28 @@ CREATE OR REPLACE FUNCTION public.tg_recount_report_counters()
  SET search_path TO 'public'
 AS $function$
                                                                                                                                                                                                                                                                                                                                           begin
-                                                                                                                                                                                                                                                                                                                                            if tg_op = 'INSERT' then
-                                                                                                                                                                                                                                                                                                                                                perform public.recount_post_counters(new.post_id);
-                                                                                                                                                                                                                                                                                                                                                    return new;
+                                                                                                                                                                                                                                                                            if tg_op = 'INSERT' then
+                                                                                                                                                                                                                                                                                perform public.recount_post_counters(new.post_id);
+                                                                                                                                                                                                                                                                                    return new;
 
-                                                                                                                                                                                                                                                                                                                                                      elsif tg_op = 'DELETE' then
-                                                                                                                                                                                                                                                                                                                                                          perform public.recount_post_counters(old.post_id);
-                                                                                                                                                                                                                                                                                                                                                              return old;
+                                                                                                                                                                                                                                                                                      elsif tg_op = 'DELETE' then
+                                                                                                                                                                                                                                                                                          perform public.recount_post_counters(old.post_id);
+                                                                                                                                                                                                                                                                                              return old;
 
-                                                                                                                                                                                                                                                                                                                                                                elsif tg_op = 'UPDATE' then
-                                                                                                                                                                                                                                                                                                                                                                    if old.post_id is distinct from new.post_id then
-                                                                                                                                                                                                                                                                                                                                                                          perform public.recount_post_counters(old.post_id);
-                                                                                                                                                                                                                                                                                                                                                                                perform public.recount_post_counters(new.post_id);
-                                                                                                                                                                                                                                                                                                                                                                                    else
-                                                                                                                                                                                                                                                                                                                                                                                          perform public.recount_post_counters(new.post_id);
-                                                                                                                                                                                                                                                                                                                                                                                              end if;
+                                                                                                                                                                                                                                                                                                elsif tg_op = 'UPDATE' then
+                                                                                                                                                                                                                                                                                                    if old.post_id is distinct from new.post_id then
+                                                                                                                                                                                                                                                                                                          perform public.recount_post_counters(old.post_id);
+                                                                                                                                                                                                                                                                                                                perform public.recount_post_counters(new.post_id);
+                                                                                                                                                                                                                                                                                                                    else
+                                                                                                                                                                                                                                                                                                                          perform public.recount_post_counters(new.post_id);
+                                                                                                                                                                                                                                                                                                                              end if;
 
-                                                                                                                                                                                                                                                                                                                                                                                                  return new;
-                                                                                                                                                                                                                                                                                                                                                                                                    end if;
+                                                                                                                                                                                                                                                                                                                                  return new;
+                                                                                                                                                                                                                                                                                                                                    end if;
 
-                                                                                                                                                                                                                                                                                                                                                                                                      return null;
-                                                                                                                                                                                                                                                                                                                                                                                                      end;
-                                                                                                                                                                                                                                                                                                                                                                                                      $function$;
+                                                                                                                                                                                                                                                                                                                                      return null;
+                                                                                                                                                                                                                                                                                                                                      end;
+                                                                                                                                                                                                                                                                                                                                      $function$;
 
 
 CREATE OR REPLACE FUNCTION public.tg_recount_upvote_counters()
@@ -249,7 +253,8 @@ AS $function$
 begin
   new.updated_at = now();
   return new;
-end $function$;
+end;
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.toggle_post_report(p_post_id uuid, p_reason text DEFAULT ''::text)
@@ -410,86 +415,70 @@ create index if not exists comments_post_created_id_idx ON public.comments USING
 create index if not exists notifications_actor_user_id_idx ON public.notifications USING btree (actor_user_id) WHERE (actor_user_id IS NOT NULL);
 create index if not exists notifications_comment_id_idx ON public.notifications USING btree (comment_id);
 create unique index if not exists notifications_pkey ON public.notifications USING btree (id);
-create index if not exists notifications_post_id_idx ON public.notifications USING btree (post_id);
-create index if not exists notifications_recipient_created_id_idx ON public.notifications USING btree (recipient_user_id, created_at DESC, id DESC);
-create index if not exists notifications_recipient_read_created_idx ON public.notifications USING btree (recipient_user_id, read, created_at DESC);
-create index if not exists notifications_recipient_read_idx ON public.notifications USING btree (recipient_user_id, read);
-create unique index if not exists notifications_unique_follow_actor_recipient_idx ON public.notifications USING btree (recipient_user_id, actor_user_id, type) WHERE ((type = 'follow'::text) AND (actor_user_id IS NOT NULL));
-create unique index if not exists notifications_unique_upvote_actor_post_idx ON public.notifications USING btree (recipient_user_id, actor_user_id, post_id, type) WHERE ((type = 'upvote'::text) AND (actor_user_id IS NOT NULL) AND (post_id IS NOT NULL));
-create index if not exists idx_posts_image_key ON public.posts USING btree (image_key) WHERE (image_key IS NOT NULL);
-create index if not exists posts_author_created_id_idx ON public.posts USING btree (author_id, created_at DESC, id DESC);
-create index if not exists posts_author_created_idx ON public.posts USING btree (author_id, created_at DESC);
-create index if not exists posts_category_status_created_id_idx ON public.posts USING btree (category, status, created_at DESC, id DESC);
-create index if not exists posts_feed_status_created_id_idx ON public.posts USING btree (status, created_at DESC, id DESC);
-create index if not exists posts_image_thumbnail_key_idx ON public.posts USING btree (image_thumbnail_key) WHERE (image_thumbnail_key IS NOT NULL);
+create index if not exists notifications_recipient_created_idx ON public.notifications USING btree (recipient_user_id, created_at DESC, id DESC);
+create index if not exists notifications_recipient_user_id_idx ON public.notifications USING btree (recipient_user_id, created_at DESC);
+create index if not exists notifications_unread_recipient_idx ON public.notifications USING btree (recipient_user_id, created_at DESC) WHERE (read = false);
+create index if not exists posts_author_created_id_idx ON public.posts USING btree (author_id, created_at DESC, id DESC) WHERE ((anonymous IS FALSE) AND (status = ANY (ARRAY['active'::text, 'reported'::text])));
+create index if not exists posts_created_at_idx ON public.posts USING btree (created_at DESC);
+create index if not exists posts_feed_created_id_idx ON public.posts USING btree (created_at DESC, id DESC) WHERE (status = ANY (ARRAY['active'::text, 'reported'::text]));
 create unique index if not exists posts_pkey ON public.posts USING btree (id);
-create index if not exists posts_reported_created_id_idx ON public.posts USING btree (created_at DESC, id DESC) WHERE (status = 'reported'::text);
-create index if not exists profile_follows_follower_created_following_idx ON public.profile_follows USING btree (follower_id, created_at DESC, following_id);
-create index if not exists profile_follows_follower_created_idx ON public.profile_follows USING btree (follower_id, created_at DESC);
-create index if not exists profile_follows_follower_following_idx ON public.profile_follows USING btree (follower_id, following_id);
-create index if not exists profile_follows_following_created_follower_idx ON public.profile_follows USING btree (following_id, created_at DESC, follower_id);
 create index if not exists profile_follows_following_created_idx ON public.profile_follows USING btree (following_id, created_at DESC);
-create index if not exists profile_follows_following_follower_idx ON public.profile_follows USING btree (following_id, follower_id);
 create unique index if not exists profile_follows_pkey ON public.profile_follows USING btree (follower_id, following_id);
+create index if not exists profiles_admin_queue_idx ON public.profiles USING btree (status, verification_status, created_at DESC);
 create unique index if not exists profiles_email_key ON public.profiles USING btree (email);
 create unique index if not exists profiles_pkey ON public.profiles USING btree (id);
-create index if not exists profiles_role_idx ON public.profiles USING btree (role);
-create index if not exists profiles_status_created_at_idx ON public.profiles USING btree (status, created_at DESC, id DESC);
-create index if not exists profiles_status_created_idx ON public.profiles USING btree (status, created_at DESC);
-create index if not exists profiles_verified_email_lower_idx ON public.profiles USING btree (lower(email)) WHERE ((status = 'verified'::text) AND (verification_status = 'verified'::text));
-create index if not exists profiles_verified_lookup_idx ON public.profiles USING btree (id) WHERE ((status = 'verified'::text) AND (verification_status = 'verified'::text));
-create index if not exists profiles_verified_personal_email_lower_idx ON public.profiles USING btree (lower(personal_email)) WHERE ((status = 'verified'::text) AND (verification_status = 'verified'::text));
+create index if not exists reports_post_id_idx ON public.reports USING btree (post_id);
 create unique index if not exists reports_pkey ON public.reports USING btree (post_id, user_id);
-create index if not exists reports_user_id_idx ON public.reports USING btree (user_id);
-create index if not exists resources_created_at_idx ON public.resources USING btree (created_at DESC);
+create index if not exists resources_display_idx ON public.resources USING btree (section, display_order);
 create unique index if not exists resources_pkey ON public.resources USING btree (id);
+create index if not exists upvotes_post_id_idx ON public.upvotes USING btree (post_id);
 create unique index if not exists upvotes_pkey ON public.upvotes USING btree (post_id, user_id);
-create index if not exists upvotes_user_id_idx ON public.upvotes USING btree (user_id);
-create unique index if not exists visitor_reports_pkey ON public.visitor_reports USING btree (id);
 create unique index if not exists visitor_reports_post_id_visitor_key_hash_key ON public.visitor_reports USING btree (post_id, visitor_key_hash);
+create index if not exists visitor_reports_post_id_idx ON public.visitor_reports USING btree (post_id);
+create unique index if not exists visitor_reports_pkey ON public.visitor_reports USING btree (id);
 
 -- TRIGGERS
 drop trigger if exists on_auth_user_created on auth.users;
-CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION handle_new_user();
+CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION handle_new_user();;
 
-drop trigger if exists comment_creates_notification on public.comments;
-CREATE TRIGGER comment_creates_notification AFTER INSERT ON comments FOR EACH ROW EXECUTE FUNCTION tg_notify_on_comment();
+drop trigger if exists profiles_protect_sensitive_fields on public.profiles;
+CREATE TRIGGER profiles_protect_sensitive_fields BEFORE UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION protect_profile_sensitive_fields();;
 
-drop trigger if exists comments_cache_author on public.comments;
-CREATE TRIGGER comments_cache_author BEFORE INSERT ON comments FOR EACH ROW EXECUTE FUNCTION tg_cache_comment_author();
+drop trigger if exists trg_cache_comment_author on public.comments;
+CREATE TRIGGER trg_cache_comment_author BEFORE INSERT OR UPDATE OF author_id ON public.comments FOR EACH ROW EXECUTE FUNCTION tg_cache_comment_author();;
 
-drop trigger if exists comments_recount_post_counters on public.comments;
-CREATE TRIGGER comments_recount_post_counters AFTER INSERT OR DELETE OR UPDATE ON comments FOR EACH ROW EXECUTE FUNCTION tg_recount_comment_counters();
+drop trigger if exists trg_cache_post_author_fields on public.posts;
+CREATE TRIGGER trg_cache_post_author_fields BEFORE INSERT OR UPDATE OF author_id, anonymous ON public.posts FOR EACH ROW EXECUTE FUNCTION tg_cache_author_fields();;
 
-drop trigger if exists posts_cache_author on public.posts;
-CREATE TRIGGER posts_cache_author BEFORE INSERT OR UPDATE OF anonymous, author_id ON posts FOR EACH ROW EXECUTE FUNCTION tg_cache_author_fields();
+drop trigger if exists trg_comment_notify on public.comments;
+CREATE TRIGGER trg_comment_notify AFTER INSERT ON public.comments FOR EACH ROW EXECUTE FUNCTION tg_notify_on_comment();;
 
-drop trigger if exists posts_updated_at on public.posts;
-CREATE TRIGGER posts_updated_at BEFORE UPDATE ON posts FOR EACH ROW EXECUTE FUNCTION tg_set_updated_at();
+drop trigger if exists trg_comments_recount on public.comments;
+CREATE TRIGGER trg_comments_recount AFTER INSERT OR DELETE OR UPDATE OF post_id, deleted_at ON public.comments FOR EACH ROW EXECUTE FUNCTION tg_recount_comment_counters();;
 
-drop trigger if exists profile_follows_create_notification_trigger on public.profile_follows;
-CREATE TRIGGER profile_follows_create_notification_trigger AFTER INSERT ON profile_follows FOR EACH ROW EXECUTE FUNCTION create_follow_notification();
+drop trigger if exists trg_posts_updated_at on public.posts;
+CREATE TRIGGER trg_posts_updated_at BEFORE UPDATE ON public.posts FOR EACH ROW EXECUTE FUNCTION tg_set_updated_at();;
 
-drop trigger if exists profiles_updated_at on public.profiles;
-CREATE TRIGGER profiles_updated_at BEFORE UPDATE ON profiles FOR EACH ROW EXECUTE FUNCTION tg_set_updated_at();
+drop trigger if exists trg_profile_follows_notify on public.profile_follows;
+CREATE TRIGGER trg_profile_follows_notify AFTER INSERT ON public.profile_follows FOR EACH ROW EXECUTE FUNCTION create_follow_notification();;
 
-drop trigger if exists trg_profiles_protect_sensitive_fields on public.profiles;
-CREATE TRIGGER trg_profiles_protect_sensitive_fields BEFORE UPDATE ON profiles FOR EACH ROW EXECUTE FUNCTION protect_profile_sensitive_fields();
+drop trigger if exists trg_report_mark_post on public.reports;
+CREATE TRIGGER trg_report_mark_post AFTER INSERT ON public.reports FOR EACH ROW EXECUTE FUNCTION tg_mark_post_reported();;
 
-drop trigger if exists report_marks_post on public.reports;
-CREATE TRIGGER report_marks_post AFTER INSERT ON reports FOR EACH ROW EXECUTE FUNCTION tg_mark_post_reported();
+drop trigger if exists trg_reports_recount on public.reports;
+CREATE TRIGGER trg_reports_recount AFTER INSERT OR DELETE OR UPDATE OF post_id ON public.reports FOR EACH ROW EXECUTE FUNCTION tg_recount_report_counters();;
 
-drop trigger if exists reports_recount_post_counters on public.reports;
-CREATE TRIGGER reports_recount_post_counters AFTER INSERT OR DELETE OR UPDATE ON reports FOR EACH ROW EXECUTE FUNCTION tg_recount_report_counters();
+drop trigger if exists trg_resources_updated_at on public.resources;
+CREATE TRIGGER trg_resources_updated_at BEFORE UPDATE ON public.resources FOR EACH ROW EXECUTE FUNCTION tg_set_updated_at();;
 
-drop trigger if exists upvote_creates_notification on public.upvotes;
-CREATE TRIGGER upvote_creates_notification AFTER INSERT ON upvotes FOR EACH ROW EXECUTE FUNCTION tg_notify_on_upvote();
+drop trigger if exists trg_upvote_notify on public.upvotes;
+CREATE TRIGGER trg_upvote_notify AFTER INSERT ON public.upvotes FOR EACH ROW EXECUTE FUNCTION tg_notify_on_upvote();;
 
-drop trigger if exists upvotes_recount_post_counters on public.upvotes;
-CREATE TRIGGER upvotes_recount_post_counters AFTER INSERT OR DELETE OR UPDATE ON upvotes FOR EACH ROW EXECUTE FUNCTION tg_recount_upvote_counters();
+drop trigger if exists trg_upvotes_recount on public.upvotes;
+CREATE TRIGGER trg_upvotes_recount AFTER INSERT OR DELETE OR UPDATE OF post_id ON public.upvotes FOR EACH ROW EXECUTE FUNCTION tg_recount_upvote_counters();;
 
-drop trigger if exists visitor_reports_recount_post_counters on public.visitor_reports;
-CREATE TRIGGER visitor_reports_recount_post_counters AFTER INSERT OR DELETE OR UPDATE ON visitor_reports FOR EACH ROW EXECUTE FUNCTION tg_recount_report_counters();
+drop trigger if exists trg_visitor_reports_recount on public.visitor_reports;
+CREATE TRIGGER trg_visitor_reports_recount AFTER INSERT OR DELETE OR UPDATE OF post_id ON public.visitor_reports FOR EACH ROW EXECUTE FUNCTION tg_recount_report_counters();;
 
 set check_function_bodies = on;
 
