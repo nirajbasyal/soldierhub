@@ -107,6 +107,18 @@ function hasFeedCursor(cursorCreatedAt, cursorId) {
   return Boolean(cursorCreatedAt || cursorId);
 }
 
+function cleanSearchLimit(limit, fallback = 20, max = 50) {
+  const parsed = Number(limit);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+  return Math.min(Math.floor(parsed), max);
+}
+
+function cleanSearchOffset(offset) {
+  const parsed = Number(offset);
+  if (!Number.isFinite(parsed) || parsed < 0) return 0;
+  return Math.floor(parsed);
+}
+
 async function fetchProfilesByIds(supabase, authorIds = []) {
   const safeIds = [...new Set((authorIds || []).filter(Boolean))].slice(0, 100);
   if (!supabase || safeIds.length === 0) return [];
@@ -133,13 +145,7 @@ async function attachProfilesToPosts(supabase, rows = []) {
   const normalizedRows = rows.map(normalizePostRow);
   const profileRows = normalizedRows.filter((row) => {
     if (!row.author_id || row.anonymous) return false;
-
-    return (
-      !row.author_name ||
-      row.author_name === "Member" ||
-      !row.author_color ||
-      !row.author_avatar_url
-    );
+    return !row.author_name || row.author_name === "Member" || !row.author_color || !row.author_avatar_url;
   });
 
   if (profileRows.length === 0) return normalizedRows;
@@ -212,6 +218,26 @@ export async function listPosts({ limit = 30, cursorCreatedAt = null, cursorId =
   if (!supabase) return { data: [], error: null };
 
   return listPostsFromRpc(supabase, { limit, cursorCreatedAt, cursorId });
+}
+
+export async function searchPostsForSearchPage(query, { limit = 20, offset = 0 } = {}) {
+  const supabase = createClient();
+  if (!supabase) return { data: [], error: { message: "Supabase is not configured." } };
+
+  const cleanQuery = typeof query === "string" ? query.trim() : "";
+  if (cleanQuery.length < 2) return { data: [], error: null };
+
+  const safeLimit = cleanSearchLimit(limit, 20, 50);
+  const safeOffset = cleanSearchOffset(offset);
+
+  const { data, error } = await supabase.rpc("search_public_posts", {
+    p_query: cleanQuery,
+    p_limit: safeLimit,
+    p_offset: safeOffset,
+  });
+
+  if (error) return { data: [], error };
+  return { data: await attachProfilesToPosts(supabase, data || []), error: null };
 }
 
 export async function getLatestPublicPostMarker() {
@@ -404,13 +430,16 @@ export async function deletePost(postId) {
   };
 }
 
+export async function deleteMyPost(postId) {
+  return deletePost(postId);
+}
+
 export async function restoreReportedPost(postId) {
   const supabase = createClient();
   if (!supabase) return { error: null };
 
-  const resolvedPostId = resolvePostId(postId);
   const { data, error } = await supabase.rpc("restore_reported_post", {
-    p_post_id: resolvedPostId,
+    p_post_id: resolvePostId(postId),
   });
 
   if (error) console.error("Restore reported post failed:", error);
@@ -465,24 +494,20 @@ export async function listMyUpvotedPostIds(userId, postIds = []) {
   const safePostIds = uniquePostIds(postIds);
   let query = supabase.from("upvotes").select("post_id").eq("user_id", userId);
 
-  if (safePostIds.length > 0) {
-    query = query.in("post_id", safePostIds);
-  } else {
-    query = query.limit(250);
-  }
+  if (safePostIds.length > 0) query = query.in("post_id", safePostIds);
+  else query = query.limit(250);
 
   const { data, error } = await query;
 
   if (error) console.error("List my upvotes failed:", error);
 
-  return { data: (data || []).map((r) => r.post_id), error };
+  return { data: uniquePostIds((data || []).map((row) => row.post_id)), error };
 }
 
 export async function addUpvote(postId) {
   const supabase = createClient();
   if (!supabase) return { data: null, error: null };
 
-  const resolvedPostId = resolvePostId(postId);
   const { accessToken, error } = await getAccessTokenForApi(
     supabase,
     "Please log in again before voting."
@@ -492,7 +517,7 @@ export async function addUpvote(postId) {
   return postJsonToApi(
     "/api/posts/upvote",
     accessToken,
-    { post_id: resolvedPostId, action: "add" },
+    { post_id: resolvePostId(postId), action: "add" },
     "Could not add vote."
   );
 }
@@ -501,7 +526,6 @@ export async function removeUpvote(postId) {
   const supabase = createClient();
   if (!supabase) return { data: null, error: null };
 
-  const resolvedPostId = resolvePostId(postId);
   const { accessToken, error } = await getAccessTokenForApi(
     supabase,
     "Please log in again before voting."
@@ -511,7 +535,7 @@ export async function removeUpvote(postId) {
   return postJsonToApi(
     "/api/posts/upvote",
     accessToken,
-    { post_id: resolvedPostId, action: "remove" },
+    { post_id: resolvePostId(postId), action: "remove" },
     "Could not remove vote."
   );
 }
@@ -520,7 +544,6 @@ export async function toggleUpvote(postId) {
   const supabase = createClient();
   if (!supabase) return { data: null, error: null };
 
-  const resolvedPostId = resolvePostId(postId);
   const { accessToken, error } = await getAccessTokenForApi(
     supabase,
     "Please log in again before voting."
@@ -530,9 +553,13 @@ export async function toggleUpvote(postId) {
   return postJsonToApi(
     "/api/posts/upvote",
     accessToken,
-    { post_id: resolvedPostId, action: "toggle" },
+    { post_id: resolvePostId(postId), action: "toggle" },
     "Could not update vote."
   );
+}
+
+export async function togglePostUpvote(postId) {
+  return toggleUpvote(postId);
 }
 
 export async function listMyReportedPostIds(userId, postIds = []) {
@@ -542,17 +569,14 @@ export async function listMyReportedPostIds(userId, postIds = []) {
   const safePostIds = uniquePostIds(postIds);
   let query = supabase.from("reports").select("post_id").eq("user_id", userId);
 
-  if (safePostIds.length > 0) {
-    query = query.in("post_id", safePostIds);
-  } else {
-    query = query.limit(250);
-  }
+  if (safePostIds.length > 0) query = query.in("post_id", safePostIds);
+  else query = query.limit(250);
 
   const { data, error } = await query;
 
   if (error) console.error("List my reports failed:", error);
 
-  return { data: (data || []).map((r) => r.post_id), error };
+  return { data: uniquePostIds((data || []).map((row) => row.post_id)), error };
 }
 
 export async function reportPost(postId, userId, reason = "") {
@@ -577,4 +601,17 @@ export async function reportPost(postId, userId, reason = "") {
     { post_id: resolvedPostId, reason },
     "Could not report post."
   );
+}
+
+export async function togglePostReport(postId, reason = "") {
+  const supabase = createClient();
+  if (!supabase) return { data: null, error: null };
+
+  const { data, error } = await supabase.rpc("toggle_post_report", {
+    p_post_id: resolvePostId(postId),
+    p_reason: reason,
+  });
+
+  const row = Array.isArray(data) ? data[0] : data;
+  return { data: row || null, error };
 }
