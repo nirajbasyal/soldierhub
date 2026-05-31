@@ -8,10 +8,12 @@ const SELF_PROFILE_FIELDS =
 const ADMIN_PROFILE_FIELDS =
   "id, full_name, email, personal_email, phone, bio, avatar_color, avatar_url, role, status, verification_status, base, created_at, updated_at";
 
+const PUBLIC_PROFILE_SEARCH_FIELDS = "id, full_name, avatar_color, avatar_url, base";
 const DEFAULT_ADMIN_PROFILE_LIMIT = 50;
 const MAX_ADMIN_PROFILE_LIMIT = 100;
 const DEFAULT_MEMBER_SEARCH_LIMIT = 8;
 const MAX_MEMBER_SEARCH_LIMIT = 12;
+const EMAIL_SEARCH_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function cleanLimit(limit) {
   const parsed = Number(limit);
@@ -23,6 +25,27 @@ function cleanMemberSearchLimit(limit) {
   const parsed = Number(limit);
   if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_MEMBER_SEARCH_LIMIT;
   return Math.min(Math.floor(parsed), MAX_MEMBER_SEARCH_LIMIT);
+}
+
+function isEmailSearch(value) {
+  return EMAIL_SEARCH_PATTERN.test(String(value || "").trim().toLowerCase());
+}
+
+function escapeIlikePattern(value) {
+  return String(value || "").replace(/[\\%_]/g, "\\$&");
+}
+
+function normalizePublicProfileSearchRows(rows = [], matchType = "name") {
+  return (Array.isArray(rows) ? rows : [])
+    .filter((profile) => profile?.id)
+    .map((profile) => ({
+      id: profile.id,
+      full_name: profile.full_name || "SoldierHub member",
+      avatar_color: profile.avatar_color || "#314A66",
+      avatar_url: profile.avatar_url || null,
+      base: profile.base || "Fort Bliss",
+      match_type: matchType,
+    }));
 }
 
 async function getAccessTokenForApi(supabase, fallbackMessage) {
@@ -235,23 +258,73 @@ export async function findProfileByEmailForSearch(email) {
   return { data: profile, error: null };
 }
 
-export async function searchVerifiedProfiles(query, { limit = DEFAULT_MEMBER_SEARCH_LIMIT } = {}) {
+export async function searchVerifiedProfilesByName(query, { limit = DEFAULT_MEMBER_SEARCH_LIMIT } = {}) {
   const supabase = createClient();
   if (!supabase) return { data: [], error: { message: "Supabase is not configured." } };
 
   const cleanQuery = typeof query === "string" ? query.trim() : "";
   if (cleanQuery.length < 2) return { data: [], error: null };
 
-  const { data, error } = await supabase.rpc("search_verified_profiles", {
+  const safeLimit = cleanMemberSearchLimit(limit);
+  const escapedQuery = escapeIlikePattern(cleanQuery);
+
+  // Use the existing public profile view first so the feature does not depend
+  // on a brand-new RPC being present in the Supabase schema cache.
+  const publicViewResult = await supabase
+    .from("public_profiles")
+    .select(PUBLIC_PROFILE_SEARCH_FIELDS)
+    .ilike("full_name", `${escapedQuery}%`)
+    .order("full_name", { ascending: true })
+    .limit(safeLimit);
+
+  if (!publicViewResult.error) {
+    return {
+      data: normalizePublicProfileSearchRows(publicViewResult.data, "name"),
+      error: null,
+    };
+  }
+
+  // Optional fallback for projects where the optimized SQL migration has been
+  // applied. If it is missing, return a friendly error instead of exposing the
+  // raw schema-cache message to users.
+  const rpcResult = await supabase.rpc("search_verified_profiles_by_name", {
     p_query: cleanQuery,
-    p_limit: cleanMemberSearchLimit(limit),
+    p_limit: safeLimit,
   });
 
-  if (error) return { data: [], error };
+  if (!rpcResult.error) {
+    return {
+      data: normalizePublicProfileSearchRows(rpcResult.data, "name"),
+      error: null,
+    };
+  }
 
-  return { data: Array.isArray(data) ? data : [], error: null };
+  const isMissingRpc =
+    rpcResult.error?.code === "PGRST202" ||
+    /schema cache|search_verified_profiles_by_name/i.test(rpcResult.error?.message || "");
+
+  return {
+    data: [],
+    error: {
+      message: isMissingRpc
+        ? "Member name search is not fully available yet. Exact email search still works."
+        : publicViewResult.error?.message || rpcResult.error?.message || "Could not search members right now.",
+    },
+  };
 }
 
-export async function searchVerifiedProfilesByName(query, options = {}) {
-  return searchVerifiedProfiles(query, options);
+export async function searchVerifiedProfiles(query, { limit = DEFAULT_MEMBER_SEARCH_LIMIT } = {}) {
+  const cleanQuery = typeof query === "string" ? query.trim() : "";
+  if (cleanQuery.length < 2) return { data: [], error: null };
+
+  if (isEmailSearch(cleanQuery)) {
+    const { data, error } = await findProfileByEmailForSearch(cleanQuery);
+    if (error) return { data: [], error };
+    return {
+      data: data ? normalizePublicProfileSearchRows([{ ...data }], "email") : [],
+      error: null,
+    };
+  }
+
+  return searchVerifiedProfilesByName(cleanQuery, { limit });
 }
