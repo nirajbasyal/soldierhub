@@ -198,7 +198,7 @@ function getDownloadFileName(url = "") {
   return "soldierhub-post-image.jpg";
 }
 
-function PostImagePreview({ image, onOpen }) {
+function PostImagePreview({ image, onOpen, alt }) {
   const ratio = getImageRatio(image);
   const isVeryTall = ratio ? ratio < 0.58 : false;
   const aspectRatio = ratio ? `${image.width} / ${image.height}` : "16 / 10";
@@ -215,11 +215,11 @@ function PostImagePreview({ image, onOpen }) {
         aspectRatio: isVeryTall ? undefined : aspectRatio,
         maxHeight: isVeryTall ? "430px" : "620px",
       }}
-      aria-label="Open post image"
+      aria-label={alt ? `Open image: ${alt}` : "Open post image"}
     >
       <img
         src={image.url}
-        alt="Post attachment"
+        alt={alt || "Image attached to this post"}
         loading="lazy"
         decoding="async"
         className="block h-full w-full object-cover"
@@ -229,7 +229,7 @@ function PostImagePreview({ image, onOpen }) {
   );
 }
 
-function PostImageLightbox({ image, onClose }) {
+function PostImageLightbox({ image, onClose, alt }) {
   const displayUrl = image?.fullUrl || image?.url;
   const fullImage = {
     ...image,
@@ -295,7 +295,7 @@ function PostImageLightbox({ image, onClose }) {
         <div className={isLongImage ? "min-h-full" : "flex min-h-full items-center justify-center"}>
           <img
             src={displayUrl}
-            alt="Full size post attachment"
+            alt={alt ? `Full size image: ${alt}` : "Full size image attached to this post"}
             className={isLongImage ? "mx-auto block w-full max-w-[720px] object-contain" : "mx-auto block max-h-[calc(100dvh-110px)] max-w-full object-contain"}
             decoding="async"
           />
@@ -496,6 +496,15 @@ export default function PostCard({ post, openRepliesDefault = false }) {
   const replyAvatarUrl = shouldMaskViewerReply ? null : currentUser?.avatar_url || null;
   const bodyText = post?.body || post?.content || post?.text || "";
   const postImage = getPostImage(post);
+
+  // Descriptive alt text for accessibility and image SEO. Derived from the post
+  // body (preferred), falling back to category + author when there is no text.
+  const imageAlt = (() => {
+    const fromBody = String(bodyText || "").replace(/\s+/g, " ").trim();
+    if (fromBody) return fromBody.length > 120 ? `${fromBody.slice(0, 119).trimEnd()}…` : fromBody;
+    const categoryLabel = category?.label || post?.category || "community";
+    return `${categoryLabel} post by ${displayName}`;
+  })();
 
   useEffect(() => {
     setShowComments(Boolean(openRepliesDefault));
@@ -840,7 +849,9 @@ export default function PostCard({ post, openRepliesDefault = false }) {
             </div>
           ) : null}
 
-          {postImage ? <PostImagePreview image={postImage} onOpen={setActiveImage} /> : null}
+          {postImage ? (
+            <PostImagePreview image={postImage} onOpen={setActiveImage} alt={imageAlt} />
+          ) : null}
         </div>
 
         <div className="mx-4 md:mx-5 border-t flex items-center justify-between gap-1 py-1.5" style={{ borderColor: T.borderSoft || T.border }}>
@@ -931,7 +942,9 @@ export default function PostCard({ post, openRepliesDefault = false }) {
         ) : null}
       </article>
 
-      {activeImage ? <PostImageLightbox image={activeImage} onClose={() => setActiveImage(null)} /> : null}
+      {activeImage ? (
+        <PostImageLightbox image={activeImage} onClose={() => setActiveImage(null)} alt={imageAlt} />
+      ) : null}
 
       {editingOpen ? <EditPostModal post={safePost} onClose={() => setEditingOpen(false)} onSave={handleEditSave} /> : null}
 
