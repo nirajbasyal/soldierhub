@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FORMAT_ACTIONS, sanitizeComposerHtml } from "./composerUtils";
 import { T } from "@/lib/theme";
 
@@ -15,16 +15,146 @@ function getViewportBox() {
   };
 }
 
-function moveSelectionToEnd(element) {
-  if (!element || typeof window === "undefined") return;
-  const selection = window.getSelection?.();
-  if (!selection || typeof document === "undefined") return;
+function escapeHtml(value = "") {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
 
-  const range = document.createRange();
-  range.selectNodeContents(element);
-  range.collapse(false);
-  selection.removeAllRanges();
-  selection.addRange(range);
+function normalizeText(value = "") {
+  return String(value || "")
+    .replace(/\u00a0/g, " ")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n");
+}
+
+function htmlToMobileText(html = "") {
+  const raw = String(html || "").trim();
+  if (!raw) return "";
+
+  if (typeof window === "undefined" || typeof DOMParser === "undefined") {
+    return normalizeText(raw.replace(/<br\s*\/?/gi, "\n").replace(/<[^>]*>/g, ""));
+  }
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(`<div>${sanitizeComposerHtml(raw)}</div>`, "text/html");
+
+  const readNode = (node, listContext = null, index = 1) => {
+    if (node.nodeType === Node.TEXT_NODE) return node.textContent || "";
+    if (node.nodeType !== Node.ELEMENT_NODE) return "";
+
+    const tag = node.tagName?.toUpperCase();
+    if (tag === "BR") return "\n";
+
+    const children = Array.from(node.childNodes).map((child, childIndex) => readNode(child, listContext, childIndex + 1)).join("");
+
+    if (tag === "STRONG" || tag === "B") return children ? `**${children}**` : "";
+    if (tag === "EM" || tag === "I") return children ? `*${children}*` : "";
+
+    if (tag === "LI") {
+      const clean = children.trim();
+      if (!clean) return "";
+      if (listContext?.type === "ol") return `${listContext.index}. ${clean}\n`;
+      return `• ${clean}\n`;
+    }
+
+    if (tag === "UL" || tag === "OL") {
+      return Array.from(node.children)
+        .filter((child) => child.tagName?.toUpperCase() === "LI")
+        .map((child, childIndex) => readNode(child, { type: tag === "OL" ? "ol" : "ul", index: childIndex + 1 }, childIndex + 1))
+        .join("") + "\n";
+    }
+
+    if (tag === "P" || tag === "DIV") return `${children}\n`;
+    return children;
+  };
+
+  return normalizeText(Array.from(doc.body.firstElementChild?.childNodes || []).map((node) => readNode(node)).join(""))
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function inlineMobileTextToHtml(value = "") {
+  let output = escapeHtml(value);
+
+  output = output.replace(/\*\*([^*]+?)\*\*/g, "<strong>$1</strong>");
+  output = output.replace(/(^|[^*])\*([^*\n]+?)\*/g, "$1<em>$2</em>");
+
+  return output;
+}
+
+function mobileTextToHtml(text = "") {
+  const lines = normalizeText(text).split("\n");
+  const htmlParts = [];
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      htmlParts.push("<p><br /></p>");
+      continue;
+    }
+
+    if (/^(•|-|\*)\s+/.test(trimmed)) {
+      const items = [];
+      while (index < lines.length && /^(•|-|\*)\s+/.test(lines[index].trim())) {
+        items.push(`<li>${inlineMobileTextToHtml(lines[index].trim().replace(/^(•|-|\*)\s+/, ""))}</li>`);
+        index += 1;
+      }
+      index -= 1;
+      htmlParts.push(`<ul>${items.join("")}</ul>`);
+      continue;
+    }
+
+    if (/^\d+[.)]\s+/.test(trimmed)) {
+      const items = [];
+      while (index < lines.length && /^\d+[.)]\s+/.test(lines[index].trim())) {
+        items.push(`<li>${inlineMobileTextToHtml(lines[index].trim().replace(/^\d+[.)]\s+/, ""))}</li>`);
+        index += 1;
+      }
+      index -= 1;
+      htmlParts.push(`<ol>${items.join("")}</ol>`);
+      continue;
+    }
+
+    htmlParts.push(`<p>${inlineMobileTextToHtml(line)}</p>`);
+  }
+
+  return sanitizeComposerHtml(htmlParts.join(""));
+}
+
+function wrapSelection(value, start, end, before, after = before) {
+  const selected = value.slice(start, end);
+  const nextValue = `${value.slice(0, start)}${before}${selected}${after}${value.slice(end)}`;
+  return {
+    value: nextValue,
+    start: start + before.length,
+    end: end + before.length + selected.length,
+  };
+}
+
+function formatSelectedLines(value, start, end, type) {
+  const lineStart = value.lastIndexOf("\n", Math.max(0, start - 1)) + 1;
+  const nextBreak = value.indexOf("\n", end);
+  const lineEnd = nextBreak === -1 ? value.length : nextBreak;
+  const selectedBlock = value.slice(lineStart, lineEnd);
+  const lines = selectedBlock.split("\n");
+
+  const formattedLines = lines.map((line, lineIndex) => {
+    const clean = line.replace(/^(•|-|\*)\s+/, "").replace(/^\d+[.)]\s+/, "");
+    if (!clean.trim()) return clean;
+    if (type === "number") return `${lineIndex + 1}. ${clean}`;
+    return `• ${clean}`;
+  });
+
+  const formattedBlock = formattedLines.join("\n");
+  return {
+    value: `${value.slice(0, lineStart)}${formattedBlock}${value.slice(lineEnd)}`,
+    start: lineStart,
+    end: lineStart + formattedBlock.length,
+  };
 }
 
 export default function MobileTextEditorOverlay({
@@ -40,99 +170,76 @@ export default function MobileTextEditorOverlay({
 }) {
   const [viewportBox, setViewportBox] = useState(() => getViewportBox());
   const [editorVisible, setEditorVisible] = useState(false);
-  const [nativeFormats, setNativeFormats] = useState({ bold: false, italic: false, bullet: false, number: false });
-  const nativeEditorRef = useRef(null);
-  const savedNativeRangeRef = useRef(null);
+  const [nativeText, setNativeText] = useState(() => htmlToMobileText(nativeEditorHtml));
+  const textareaRef = useRef(null);
+
+  const toolbarFormats = useMemo(() => (nativeMode ? { bold: false, italic: false, bullet: false, number: false } : activeFormats), [activeFormats, nativeMode]);
 
   const updateViewportBox = useCallback(() => {
     setViewportBox(getViewportBox());
   }, []);
 
-  const nativeSelectionIsInside = useCallback(() => {
-    if (!nativeMode || typeof window === "undefined") return false;
-    const element = nativeEditorRef.current;
-    const selection = window.getSelection?.();
-    if (!element || !selection || selection.rangeCount === 0) return false;
+  const focusNativeEditor = useCallback((selectionStart = null, selectionEnd = null) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
 
-    const anchorInside = selection.anchorNode ? element.contains(selection.anchorNode) : false;
-    const focusInside = selection.focusNode ? element.contains(selection.focusNode) : false;
-    return anchorInside || focusInside;
-  }, [nativeMode]);
+    textarea.focus({ preventScroll: true });
 
-  const saveNativeSelection = useCallback(() => {
-    if (!nativeSelectionIsInside()) return;
-    const selection = window.getSelection?.();
-    if (!selection || selection.rangeCount === 0) return;
-    savedNativeRangeRef.current = selection.getRangeAt(0).cloneRange();
-  }, [nativeSelectionIsInside]);
-
-  const restoreNativeSelection = useCallback(() => {
-    const element = nativeEditorRef.current;
-    const range = savedNativeRangeRef.current;
-    const selection = window.getSelection?.();
-    if (!element || !range || !selection) return;
-
-    element.focus({ preventScroll: true });
-    selection.removeAllRanges();
-    selection.addRange(range);
+    if (selectionStart !== null && selectionEnd !== null) {
+      window.setTimeout(() => {
+        textarea.setSelectionRange(selectionStart, selectionEnd);
+      }, 0);
+    }
   }, []);
 
-  const updateNativeFormats = useCallback(() => {
-    if (!nativeMode || typeof document === "undefined") return;
-    setNativeFormats({
-      bold: Boolean(document.queryCommandState?.("bold")),
-      italic: Boolean(document.queryCommandState?.("italic")),
-      bullet: Boolean(document.queryCommandState?.("insertUnorderedList")),
-      number: Boolean(document.queryCommandState?.("insertOrderedList")),
-    });
-  }, [nativeMode]);
-
-  const finishNativeEditor = useCallback(() => {
+  const finishEditor = useCallback(() => {
     if (!nativeMode) {
       onDone?.();
       return;
     }
 
-    const cleanHtml = sanitizeComposerHtml(nativeEditorRef.current?.innerHTML || "");
-    onNativeDone?.(cleanHtml);
+    onNativeDone?.(mobileTextToHtml(nativeText));
     onDone?.();
-  }, [nativeMode, onDone, onNativeDone]);
+  }, [nativeMode, nativeText, onDone, onNativeDone]);
 
-  const runNativeFormat = useCallback(
+  const runFormat = useCallback(
     (command) => {
-      if (!nativeMode || typeof document === "undefined") {
+      if (!nativeMode) {
         onFormat?.(command);
         return;
       }
 
-      restoreNativeSelection();
+      const textarea = textareaRef.current;
+      if (!textarea) return;
 
-      const commandMap = {
-        bold: "bold",
-        italic: "italic",
-        insertUnorderedList: "insertUnorderedList",
-        insertOrderedList: "insertOrderedList",
-      };
+      const start = textarea.selectionStart ?? 0;
+      const end = textarea.selectionEnd ?? start;
+      let result = { value: nativeText, start, end };
 
-      const execCommand = commandMap[command];
-      if (execCommand) document.execCommand(execCommand, false, null);
+      if (command === "bold") result = wrapSelection(nativeText, start, end, "**");
+      if (command === "italic") result = wrapSelection(nativeText, start, end, "*");
+      if (command === "insertUnorderedList") result = formatSelectedLines(nativeText, start, end, "bullet");
+      if (command === "insertOrderedList") result = formatSelectedLines(nativeText, start, end, "number");
 
-      saveNativeSelection();
-      updateNativeFormats();
+      setNativeText(result.value);
+      focusNativeEditor(result.start, result.end);
     },
-    [nativeMode, onFormat, restoreNativeSelection, saveNativeSelection, updateNativeFormats]
+    [focusNativeEditor, nativeMode, nativeText, onFormat]
   );
+
+  useEffect(() => {
+    if (nativeMode) setNativeText(htmlToMobileText(nativeEditorHtml));
+  }, [nativeEditorHtml, nativeMode]);
 
   useEffect(() => {
     updateViewportBox();
 
     const readyTimer = window.setTimeout(() => {
       if (nativeMode) {
-        const element = nativeEditorRef.current;
-        element?.focus({ preventScroll: true });
-        moveSelectionToEnd(element);
-        saveNativeSelection();
-        updateNativeFormats();
+        const textarea = textareaRef.current;
+        textarea?.focus({ preventScroll: true });
+        const end = textarea?.value?.length ?? 0;
+        textarea?.setSelectionRange(end, end);
       } else {
         onOverlayReady?.();
       }
@@ -156,22 +263,7 @@ export default function MobileTextEditorOverlay({
       window.removeEventListener("resize", delayedUpdate);
       window.removeEventListener("orientationchange", delayedUpdate);
     };
-  }, [nativeMode, onOverlayReady, saveNativeSelection, updateNativeFormats, updateViewportBox]);
-
-  useEffect(() => {
-    if (!nativeMode || typeof document === "undefined") return undefined;
-
-    const handleSelectionChange = () => {
-      if (!nativeSelectionIsInside()) return;
-      saveNativeSelection();
-      updateNativeFormats();
-    };
-
-    document.addEventListener("selectionchange", handleSelectionChange);
-    return () => document.removeEventListener("selectionchange", handleSelectionChange);
-  }, [nativeMode, nativeSelectionIsInside, saveNativeSelection, updateNativeFormats]);
-
-  const toolbarFormats = nativeMode ? nativeFormats : activeFormats;
+  }, [nativeMode, onOverlayReady, updateViewportBox]);
 
   return (
     <div
@@ -195,7 +287,7 @@ export default function MobileTextEditorOverlay({
             onClick={(event) => {
               event.preventDefault();
               event.stopPropagation();
-              finishNativeEditor();
+              finishEditor();
             }}
             className="sh-tap w-16 rounded-full px-2 py-2 text-right text-[17px] font-bold transition active:scale-[0.98]"
             style={{ color: T.navy }}
@@ -216,7 +308,7 @@ export default function MobileTextEditorOverlay({
                   onPointerDown={(event) => {
                     event.preventDefault();
                     event.stopPropagation();
-                    runNativeFormat(action.command);
+                    runFormat(action.command);
                   }}
                   onClick={(event) => {
                     event.preventDefault();
@@ -237,44 +329,20 @@ export default function MobileTextEditorOverlay({
       </div>
 
       <div
-        className="soldierhub-mobile-text-shell absolute bottom-0 left-0 right-0 overflow-y-auto overscroll-contain bg-[#F8FAFD]"
-        style={{ top: `calc(env(safe-area-inset-top) + ${TOOLBAR_HEIGHT}px)`, WebkitOverflowScrolling: "touch", scrollPaddingTop: "18px", scrollPaddingBottom: "96px" }}
+        className="soldierhub-mobile-text-shell absolute bottom-0 left-0 right-0 overflow-hidden bg-[#F8FAFD]"
+        style={{ top: `calc(env(safe-area-inset-top) + ${TOOLBAR_HEIGHT}px)` }}
         onClick={nativeMode ? undefined : onEditorAreaClick}
       >
-        <div
-          className="soldierhub-writing-editor min-h-full bg-[#F8FAFD] transition-opacity duration-150 ease-out"
-          style={{ opacity: editorVisible ? 1 : 0 }}
-        >
+        <div className="soldierhub-writing-editor min-h-full bg-[#F8FAFD] transition-opacity duration-150 ease-out" style={{ opacity: editorVisible ? 1 : 0 }}>
           {nativeMode ? (
-            <div
-              ref={nativeEditorRef}
-              className="soldierhub-native-mobile-editor"
-              contentEditable
-              suppressContentEditableWarning
+            <textarea
+              ref={textareaRef}
+              className="soldierhub-native-mobile-textarea"
+              value={nativeText}
+              onChange={(event) => setNativeText(event.target.value)}
+              placeholder="Ask, share, or help the Fort Bliss community."
               spellCheck
-              role="textbox"
               aria-label="Write your Soldier Hub post"
-              aria-multiline="true"
-              data-placeholder="Ask, share, or help the Fort Bliss community."
-              dangerouslySetInnerHTML={{ __html: sanitizeComposerHtml(nativeEditorHtml || "") }}
-              onInput={() => {
-                saveNativeSelection();
-                updateNativeFormats();
-              }}
-              onKeyUp={() => {
-                saveNativeSelection();
-                updateNativeFormats();
-              }}
-              onMouseUp={() => {
-                saveNativeSelection();
-                updateNativeFormats();
-              }}
-              onTouchEnd={() => {
-                window.setTimeout(() => {
-                  saveNativeSelection();
-                  updateNativeFormats();
-                }, 0);
-              }}
             />
           ) : (
             editorContent
@@ -286,18 +354,6 @@ export default function MobileTextEditorOverlay({
         .soldierhub-mobile-text-shell,
         .soldierhub-mobile-text-shell * {
           -webkit-tap-highlight-color: transparent;
-        }
-
-        .soldierhub-mobile-text-shell {
-          overflow-anchor: none;
-          touch-action: pan-y;
-        }
-
-        .soldierhub-writing-editor,
-        .soldierhub-writing-editor * {
-          -webkit-touch-callout: default !important;
-          -webkit-user-select: text !important;
-          user-select: text !important;
         }
 
         .soldierhub-writing-editor,
@@ -314,7 +370,7 @@ export default function MobileTextEditorOverlay({
         }
 
         .soldierhub-writing-editor .ProseMirror,
-        .soldierhub-native-mobile-editor {
+        .soldierhub-native-mobile-textarea {
           flex: 1 1 auto;
           min-height: 100%;
           width: 100%;
@@ -332,10 +388,19 @@ export default function MobileTextEditorOverlay({
           line-height: 2rem;
           caret-color: auto !important;
           cursor: text !important;
+          -webkit-touch-callout: default !important;
+          -webkit-user-select: text !important;
+          user-select: text !important;
           touch-action: auto !important;
         }
 
-        .soldierhub-native-mobile-editor:empty::before,
+        .soldierhub-native-mobile-textarea {
+          resize: none !important;
+          overflow-y: auto !important;
+          overscroll-behavior: contain;
+          -webkit-overflow-scrolling: touch;
+        }
+
         .soldierhub-writing-editor .ProseMirror p.is-editor-empty:first-child::before {
           content: attr(data-placeholder);
           float: left;
