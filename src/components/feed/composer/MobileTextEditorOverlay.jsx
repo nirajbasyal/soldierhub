@@ -59,7 +59,7 @@ export default function MobileTextEditorOverlay({ editorContent, activeFormats, 
       aria-label="Expanded post text editor"
     >
       <div
-        className="absolute left-0 right-0 top-0 z-50 border-b bg-[#F8FAFD]/98 shadow-[0_12px_28px_rgba(15,23,42,0.08)] backdrop-blur-xl"
+        className="soldierhub-mobile-editor-toolbar absolute left-0 right-0 top-0 z-50 border-b bg-[#F8FAFD]/98 shadow-[0_12px_28px_rgba(15,23,42,0.08)] backdrop-blur-xl"
         style={{ borderColor: T.borderSoft, paddingTop: "env(safe-area-inset-top)" }}
       >
         <div className="flex h-[56px] items-center justify-between px-4">
@@ -116,7 +116,9 @@ export default function MobileTextEditorOverlay({ editorContent, activeFormats, 
       <div
         className="soldierhub-mobile-text-shell absolute bottom-0 left-0 right-0 overflow-y-auto overscroll-contain bg-[#F8FAFD]"
         style={{ top: `calc(env(safe-area-inset-top) + ${TOOLBAR_HEIGHT}px)`, WebkitOverflowScrolling: "touch", scrollPaddingTop: "18px", scrollPaddingBottom: "96px" }}
-        onClick={onEditorAreaClick}
+        onClick={(event) => {
+          if (event.target === event.currentTarget) onEditorAreaClick?.();
+        }}
       >
         <div
           className="soldierhub-writing-editor min-h-full bg-[#F8FAFD] transition-opacity duration-150 ease-out"
@@ -127,13 +129,19 @@ export default function MobileTextEditorOverlay({ editorContent, activeFormats, 
       </div>
 
       <style jsx global>{`
-        .soldierhub-mobile-text-shell,
-        .soldierhub-mobile-text-shell * {
+        .soldierhub-mobile-editor-toolbar,
+        .soldierhub-mobile-editor-toolbar * {
+          -webkit-user-select: none !important;
+          user-select: none !important;
           -webkit-tap-highlight-color: transparent;
+          touch-action: manipulation;
         }
 
         .soldierhub-mobile-text-shell {
           overflow-anchor: none;
+          touch-action: auto !important;
+          -webkit-user-select: text !important;
+          user-select: text !important;
         }
 
         .soldierhub-writing-editor,
@@ -147,6 +155,17 @@ export default function MobileTextEditorOverlay({ editorContent, activeFormats, 
           border-radius: 0 !important;
           box-shadow: none !important;
           outline: 0 !important;
+        }
+
+        .soldierhub-writing-editor,
+        .soldierhub-writing-editor * {
+          -webkit-touch-callout: default !important;
+        }
+
+        .soldierhub-writing-editor .ProseMirror,
+        .soldierhub-writing-editor .ProseMirror * {
+          -webkit-user-select: text !important;
+          user-select: text !important;
         }
 
         .soldierhub-writing-editor .ProseMirror {
@@ -165,6 +184,9 @@ export default function MobileTextEditorOverlay({ editorContent, activeFormats, 
           overflow-wrap: anywhere;
           font-size: 18px;
           line-height: 2rem;
+          caret-color: auto !important;
+          cursor: text !important;
+          touch-action: auto !important;
         }
 
         .soldierhub-writing-editor .ProseMirror p.is-editor-empty:first-child::before {
