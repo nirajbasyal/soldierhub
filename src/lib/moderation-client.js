@@ -42,7 +42,7 @@ export async function moderateAsync(text) {
   if (looksSafeForFastPath(cleaned)) return allowByDefault();
 
   const controller = new AbortController();
-  const timeoutId = window.setTimeout(() => controller.abort(), MODERATION_TIMEOUT_MS);
+  const timeoutId = setTimeout(() => controller.abort(), MODERATION_TIMEOUT_MS);
 
   try {
     const response = await fetch("/api/moderate", {
@@ -69,6 +69,6 @@ export async function moderateAsync(text) {
     // Production behavior: fail open so a slow moderation endpoint does not freeze posting.
     return allowByDefault();
   } finally {
-    window.clearTimeout(timeoutId);
+    clearTimeout(timeoutId);
   }
 }

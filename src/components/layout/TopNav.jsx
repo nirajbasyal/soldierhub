@@ -119,6 +119,8 @@ export default function TopNav() {
           onFocus={() => setSearchFocused(true)}
           onBlur={() => window.setTimeout(() => setSearchFocused(false), 120)}
           placeholder="Search posts or members"
+          aria-label="Search posts or members"
+          type="search"
           autoComplete="off"
           inputMode="search"
           enterKeyHint="search"

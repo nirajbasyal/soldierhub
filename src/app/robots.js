@@ -13,6 +13,9 @@ export default function robots() {
           "/compose",
           "/notifications",
           "/pending-review",
+          // The signed-in user's own profile (and /profile/[id], the
+          // authenticated duplicate of a member page). Public member profiles
+          // are indexable under /users/[userId] instead.
           "/profile",
         ],
       },
