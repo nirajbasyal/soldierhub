@@ -145,13 +145,7 @@ async function attachProfilesToPosts(supabase, rows = []) {
   const normalizedRows = rows.map(normalizePostRow);
   const profileRows = normalizedRows.filter((row) => {
     if (!row.author_id || row.anonymous) return false;
-
-    return (
-      !row.author_name ||
-      row.author_name === "Member" ||
-      !row.author_color ||
-      !row.author_avatar_url
-    );
+    return !row.author_name || row.author_name === "Member" || !row.author_color || !row.author_avatar_url;
   });
 
   if (profileRows.length === 0) return normalizedRows;
@@ -400,9 +394,9 @@ export async function updateMyPost(postId, updates = {}) {
   if (error || !accessToken) return { data: null, error };
 
   const result = await postJsonToApi(
-    "/api/posts/update",
+    "/api/posts/manage",
     accessToken,
-    { postId: resolvedPostId, updates },
+    { action: "update", post_id: resolvedPostId, updates },
     "Could not update post."
   );
   if (result.error) return result;
@@ -410,35 +404,203 @@ export async function updateMyPost(postId, updates = {}) {
   return { data: normalizePostRow(result.data?.post || {}), error: null };
 }
 
-export async function deleteMyPost(postId) {
+export async function deletePost(postId) {
   const supabase = createClient();
-  if (!supabase) return { data: null, error: null };
+  if (!supabase) return { data: null, error: null, deleted: false };
 
   const resolvedPostId = resolvePostId(postId);
   const { accessToken, error } = await getAccessTokenForApi(
     supabase,
     "Please log in again before deleting your post."
   );
+  if (error || !accessToken) return { data: null, error, deleted: false };
+
+  const result = await postJsonToApi(
+    "/api/posts/manage",
+    accessToken,
+    { action: "delete", post_id: resolvedPostId },
+    "Could not delete post."
+  );
+  if (result.error) return { data: null, error: result.error, deleted: false };
+
+  return {
+    data: result.data?.data || result.data?.post || { id: resolvedPostId },
+    error: null,
+    deleted: result.data?.deleted === true,
+  };
+}
+
+export async function deleteMyPost(postId) {
+  return deletePost(postId);
+}
+
+export async function restoreReportedPost(postId) {
+  const supabase = createClient();
+  if (!supabase) return { error: null };
+
+  const { data, error } = await supabase.rpc("restore_reported_post", {
+    p_post_id: resolvePostId(postId),
+  });
+
+  if (error) console.error("Restore reported post failed:", error);
+
+  return { data, error };
+}
+
+export async function listMyFeedViewerState(userId, postIds = []) {
+  const supabase = createClient();
+  const safePostIds = uniquePostIds(postIds);
+
+  if (!supabase || !userId || safePostIds.length === 0) {
+    return { data: { upvotedPostIds: [], reportedPostIds: [] }, error: null };
+  }
+
+  const rpcResult = await supabase.rpc("get_my_feed_viewer_state", {
+    p_post_ids: safePostIds,
+  });
+
+  if (!rpcResult.error) {
+    const row = Array.isArray(rpcResult.data) ? rpcResult.data[0] : rpcResult.data;
+    return {
+      data: {
+        upvotedPostIds: row?.upvoted_post_ids || [],
+        reportedPostIds: row?.reported_post_ids || [],
+      },
+      error: null,
+    };
+  }
+
+  console.error("Feed viewer state RPC failed; using safe fallback:", rpcResult.error);
+
+  const [{ data: upvotedPostIds, error: upvoteError }, { data: reportedPostIds, error: reportError }] =
+    await Promise.all([
+      listMyUpvotedPostIds(userId, safePostIds),
+      listMyReportedPostIds(userId, safePostIds),
+    ]);
+
+  return {
+    data: {
+      upvotedPostIds: upvotedPostIds || [],
+      reportedPostIds: reportedPostIds || [],
+    },
+    error: upvoteError || reportError || null,
+  };
+}
+
+export async function listMyUpvotedPostIds(userId, postIds = []) {
+  const supabase = createClient();
+  if (!supabase || !userId) return { data: [], error: null };
+
+  const safePostIds = uniquePostIds(postIds);
+  let query = supabase.from("upvotes").select("post_id").eq("user_id", userId);
+
+  if (safePostIds.length > 0) query = query.in("post_id", safePostIds);
+  else query = query.limit(250);
+
+  const { data, error } = await query;
+
+  if (error) console.error("List my upvotes failed:", error);
+
+  return { data: uniquePostIds((data || []).map((row) => row.post_id)), error };
+}
+
+export async function addUpvote(postId) {
+  const supabase = createClient();
+  if (!supabase) return { data: null, error: null };
+
+  const { accessToken, error } = await getAccessTokenForApi(
+    supabase,
+    "Please log in again before voting."
+  );
   if (error || !accessToken) return { data: null, error };
 
   return postJsonToApi(
-    "/api/posts/delete",
+    "/api/posts/upvote",
     accessToken,
-    { postId: resolvedPostId },
-    "Could not delete post."
+    { post_id: resolvePostId(postId), action: "add" },
+    "Could not add vote."
+  );
+}
+
+export async function removeUpvote(postId) {
+  const supabase = createClient();
+  if (!supabase) return { data: null, error: null };
+
+  const { accessToken, error } = await getAccessTokenForApi(
+    supabase,
+    "Please log in again before voting."
+  );
+  if (error || !accessToken) return { data: null, error };
+
+  return postJsonToApi(
+    "/api/posts/upvote",
+    accessToken,
+    { post_id: resolvePostId(postId), action: "remove" },
+    "Could not remove vote."
+  );
+}
+
+export async function toggleUpvote(postId) {
+  const supabase = createClient();
+  if (!supabase) return { data: null, error: null };
+
+  const { accessToken, error } = await getAccessTokenForApi(
+    supabase,
+    "Please log in again before voting."
+  );
+  if (error || !accessToken) return { data: null, error };
+
+  return postJsonToApi(
+    "/api/posts/upvote",
+    accessToken,
+    { post_id: resolvePostId(postId), action: "toggle" },
+    "Could not update vote."
   );
 }
 
 export async function togglePostUpvote(postId) {
+  return toggleUpvote(postId);
+}
+
+export async function listMyReportedPostIds(userId, postIds = []) {
+  const supabase = createClient();
+  if (!supabase || !userId) return { data: [], error: null };
+
+  const safePostIds = uniquePostIds(postIds);
+  let query = supabase.from("reports").select("post_id").eq("user_id", userId);
+
+  if (safePostIds.length > 0) query = query.in("post_id", safePostIds);
+  else query = query.limit(250);
+
+  const { data, error } = await query;
+
+  if (error) console.error("List my reports failed:", error);
+
+  return { data: uniquePostIds((data || []).map((row) => row.post_id)), error };
+}
+
+export async function reportPost(postId, userId, reason = "") {
   const supabase = createClient();
   if (!supabase) return { data: null, error: null };
 
-  const { data, error } = await supabase.rpc("toggle_post_upvote", {
-    p_post_id: resolvePostId(postId),
-  });
+  const resolvedPostId = resolvePostId(postId);
 
-  const row = Array.isArray(data) ? data[0] : data;
-  return { data: row || null, error };
+  if (!userId) {
+    return { data: null, error: { message: "Please log in before reporting a post." } };
+  }
+
+  const { accessToken, error } = await getAccessTokenForApi(
+    supabase,
+    "Please log in again before reporting a post."
+  );
+  if (error || !accessToken) return { data: null, error };
+
+  return postJsonToApi(
+    "/api/posts/report",
+    accessToken,
+    { post_id: resolvedPostId, reason },
+    "Could not report post."
+  );
 }
 
 export async function togglePostReport(postId, reason = "") {
@@ -452,17 +614,4 @@ export async function togglePostReport(postId, reason = "") {
 
   const row = Array.isArray(data) ? data[0] : data;
   return { data: row || null, error };
-}
-
-export async function listMyUpvotedPostIds(userId) {
-  const supabase = createClient();
-  if (!supabase || !userId) return { data: [], error: null };
-
-  const { data, error } = await supabase
-    .from("upvotes")
-    .select("post_id")
-    .eq("user_id", userId)
-    .limit(500);
-
-  return { data: uniquePostIds((data || []).map((row) => row.post_id)), error };
 }
