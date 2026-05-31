@@ -16,21 +16,16 @@ export default function manifest() {
     dir: "ltr",
     icons: [
       {
-        src: "/brand/soldierhub-icon.png",
-        sizes: "1024x1024",
-        type: "image/png",
-        purpose: "any",
-      },
-      {
-        src: "/brand/soldierhub-logo.png",
-        sizes: "512x512",
-        type: "image/png",
-        purpose: "any",
-      },
-      {
         src: "/brand/soldierhub-favicon.svg",
         sizes: "any",
         type: "image/svg+xml",
+        purpose: "any",
+      },
+      {
+        src: "/brand/soldierhub-icon.png",
+        sizes: "168x168",
+        type: "image/png",
+        purpose: "any",
       },
     ],
   };
