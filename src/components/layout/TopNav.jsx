@@ -11,7 +11,6 @@ import {
   Search,
   Shield,
   UserPlus,
-  X,
 } from "lucide-react";
 import { T } from "@/lib/theme";
 import { useApp } from "@/store/AppContext";
@@ -34,7 +33,6 @@ function getUserAvatarUrl(user) {
 
 export default function TopNav() {
   const router = useRouter();
-  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
 
   const app = useApp() || {};
@@ -88,16 +86,15 @@ export default function TopNav() {
     router.push("/notifications");
   };
 
-  const goSearchPage = () => {
-    const q = String(search || "").trim();
+  const goSearchPage = ({ includeQuery = true } = {}) => {
+    const q = includeQuery ? String(search || "").trim() : "";
     const searchUrl = q ? `/search?q=${encodeURIComponent(q)}` : "/search";
-    setMobileSearchOpen(false);
     router.push(searchUrl);
   };
 
   const handleSearchSubmit = (event) => {
     event?.preventDefault?.();
-    goSearchPage();
+    goSearchPage({ includeQuery: true });
   };
 
   const iconButtonStyle = ({ active = false, alert = false } = {}) => ({
@@ -107,64 +104,52 @@ export default function TopNav() {
     boxShadow: active || alert ? "0 8px 18px rgba(179,25,66,0.08)" : "0 8px 18px rgba(7,27,51,0.045)",
   });
 
-  const searchForm = (mode = "desktop") => {
-    const hideLeftIcon = mode === "mobile" && searchFocused;
+  const searchForm = () => (
+    <form onSubmit={handleSearchSubmit} className="hidden min-w-0 flex-1 md:flex">
+      <div className="relative w-full">
+        <Search
+          size={17}
+          className="absolute left-4 top-1/2 -translate-y-1/2 transition-colors"
+          style={{ color: searchIconColor }}
+        />
 
-    return (
-      <form
-        onSubmit={handleSearchSubmit}
-        className={mode === "desktop" ? "hidden min-w-0 flex-1 md:flex" : "w-full"}
-      >
-        <div className="relative w-full">
-          {!hideLeftIcon ? (
-            <Search
-              size={17}
-              className="absolute left-4 top-1/2 -translate-y-1/2 transition-colors"
-              style={{ color: searchIconColor }}
-            />
-          ) : null}
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          onFocus={() => setSearchFocused(true)}
+          onBlur={() => window.setTimeout(() => setSearchFocused(false), 120)}
+          placeholder="Search posts or members"
+          autoComplete="off"
+          inputMode="search"
+          enterKeyHint="search"
+          className="h-11 w-full rounded-full border pl-11 pr-16 text-sm font-medium outline-none shadow-sm transition-all"
+          style={{
+            borderColor: searchFocused ? "rgba(179,25,66,0.30)" : "rgba(207,218,232,0.92)",
+            background:
+              "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,251,255,0.98) 100%)",
+            color: T.text,
+            boxShadow: searchFocused
+              ? "0 0 0 4px rgba(179,25,66,0.075), 0 12px 24px rgba(7,27,51,0.055)"
+              : "0 8px 18px rgba(7,27,51,0.035)",
+          }}
+        />
 
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onFocus={() => {
-              setSearchFocused(true);
-              if (mode === "mobile") setMobileSearchOpen(true);
-            }}
-            onBlur={() => window.setTimeout(() => setSearchFocused(false), 120)}
-            placeholder={mode === "mobile" ? "Search posts or members…" : "Search posts or members"}
-            autoComplete="off"
-            inputMode="search"
-            enterKeyHint="search"
-            className={`h-11 w-full ${hideLeftIcon ? "pl-4" : "pl-11"} rounded-full border pr-16 text-sm font-medium outline-none shadow-sm transition-all`}
-            style={{
-              borderColor: searchFocused ? "rgba(179,25,66,0.30)" : "rgba(207,218,232,0.92)",
-              background:
-                "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,251,255,0.98) 100%)",
-              color: T.text,
-              boxShadow: searchFocused
-                ? "0 0 0 4px rgba(179,25,66,0.075), 0 12px 24px rgba(7,27,51,0.055)"
-                : "0 8px 18px rgba(7,27,51,0.035)",
-            }}
-          />
-
-          <button
-            type="submit"
-            className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border transition-all active:scale-95"
-            style={{
-              color: rightSearchButtonColor,
-              borderColor: rightSearchButtonActive ? "rgba(179,25,66,0.34)" : "rgba(207,218,232,0.86)",
-              backgroundColor: rightSearchButtonActive ? "rgba(253,236,240,0.96)" : "rgba(255,255,255,0.86)",
-            }}
-            aria-label="Open search results"
-            title="Search"
-          >
-            <Search size={16} aria-hidden="true" />
-          </button>
-        </div>
-      </form>
-    );
-  };
+        <button
+          type="submit"
+          className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border transition-all active:scale-95"
+          style={{
+            color: rightSearchButtonColor,
+            borderColor: rightSearchButtonActive ? "rgba(179,25,66,0.34)" : "rgba(207,218,232,0.86)",
+            backgroundColor: rightSearchButtonActive ? "rgba(253,236,240,0.96)" : "rgba(255,255,255,0.86)",
+          }}
+          aria-label="Open search results"
+          title="Search"
+        >
+          <Search size={16} aria-hidden="true" />
+        </button>
+      </div>
+    </form>
+  );
 
   return (
     <div className="sticky top-0 z-40 mb-2 md:mb-0">
@@ -189,25 +174,19 @@ export default function TopNav() {
             />
           </Link>
 
-          {searchForm("desktop")}
+          {searchForm()}
 
           <div className="flex-1 md:hidden" />
 
           <div className="flex shrink-0 items-center gap-1.5 md:hidden">
             <button
               type="button"
-              onClick={() => {
-                if (mobileSearchOpen && hasSearchText) {
-                  goSearchPage();
-                  return;
-                }
-                setMobileSearchOpen((open) => !open);
-              }}
+              onClick={() => goSearchPage({ includeQuery: false })}
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition-all active:scale-95"
-              style={iconButtonStyle({ active: hasSearchText || mobileSearchOpen })}
-              aria-label={mobileSearchOpen ? "Search" : "Open search"}
+              style={iconButtonStyle()}
+              aria-label="Open search page"
             >
-              {mobileSearchOpen && !hasSearchText ? <X size={17} /> : <Search size={17} />}
+              <Search size={17} />
             </button>
 
             <button
@@ -337,22 +316,6 @@ export default function TopNav() {
             )}
           </div>
         </div>
-
-        {mobileSearchOpen ? (
-          <div className="px-3 pb-3 md:hidden sm:px-4">
-            <div
-              className="rounded-[24px] border p-2 shadow-sm"
-              style={{
-                background:
-                  "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,251,255,0.98) 100%)",
-                borderColor: "rgba(207,218,232,0.9)",
-                boxShadow: "0 12px 28px rgba(11,28,44,0.06)",
-              }}
-            >
-              {searchForm("mobile")}
-            </div>
-          </div>
-        ) : null}
       </div>
     </div>
   );
