@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { FORMAT_ACTIONS } from "./composerUtils";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { FORMAT_ACTIONS, sanitizeComposerHtml } from "./composerUtils";
 import { T } from "@/lib/theme";
 
 const TOOLBAR_HEIGHT = 113;
@@ -15,19 +15,127 @@ function getViewportBox() {
   };
 }
 
-export default function MobileTextEditorOverlay({ editorContent, activeFormats, onDone, onFormat, onEditorAreaClick, onOverlayReady }) {
+function moveSelectionToEnd(element) {
+  if (!element || typeof window === "undefined") return;
+  const selection = window.getSelection?.();
+  if (!selection || typeof document === "undefined") return;
+
+  const range = document.createRange();
+  range.selectNodeContents(element);
+  range.collapse(false);
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
+export default function MobileTextEditorOverlay({
+  editorContent,
+  activeFormats,
+  onDone,
+  onFormat,
+  onEditorAreaClick,
+  onOverlayReady,
+  nativeEditorHtml = "",
+  nativeMode = false,
+  onNativeDone,
+}) {
   const [viewportBox, setViewportBox] = useState(() => getViewportBox());
   const [editorVisible, setEditorVisible] = useState(false);
+  const [nativeFormats, setNativeFormats] = useState({ bold: false, italic: false, bullet: false, number: false });
+  const nativeEditorRef = useRef(null);
+  const savedNativeRangeRef = useRef(null);
 
   const updateViewportBox = useCallback(() => {
     setViewportBox(getViewportBox());
   }, []);
 
+  const nativeSelectionIsInside = useCallback(() => {
+    if (!nativeMode || typeof window === "undefined") return false;
+    const element = nativeEditorRef.current;
+    const selection = window.getSelection?.();
+    if (!element || !selection || selection.rangeCount === 0) return false;
+
+    const anchorInside = selection.anchorNode ? element.contains(selection.anchorNode) : false;
+    const focusInside = selection.focusNode ? element.contains(selection.focusNode) : false;
+    return anchorInside || focusInside;
+  }, [nativeMode]);
+
+  const saveNativeSelection = useCallback(() => {
+    if (!nativeSelectionIsInside()) return;
+    const selection = window.getSelection?.();
+    if (!selection || selection.rangeCount === 0) return;
+    savedNativeRangeRef.current = selection.getRangeAt(0).cloneRange();
+  }, [nativeSelectionIsInside]);
+
+  const restoreNativeSelection = useCallback(() => {
+    const element = nativeEditorRef.current;
+    const range = savedNativeRangeRef.current;
+    const selection = window.getSelection?.();
+    if (!element || !range || !selection) return;
+
+    element.focus({ preventScroll: true });
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }, []);
+
+  const updateNativeFormats = useCallback(() => {
+    if (!nativeMode || typeof document === "undefined") return;
+    setNativeFormats({
+      bold: Boolean(document.queryCommandState?.("bold")),
+      italic: Boolean(document.queryCommandState?.("italic")),
+      bullet: Boolean(document.queryCommandState?.("insertUnorderedList")),
+      number: Boolean(document.queryCommandState?.("insertOrderedList")),
+    });
+  }, [nativeMode]);
+
+  const finishNativeEditor = useCallback(() => {
+    if (!nativeMode) {
+      onDone?.();
+      return;
+    }
+
+    const cleanHtml = sanitizeComposerHtml(nativeEditorRef.current?.innerHTML || "");
+    onNativeDone?.(cleanHtml);
+    onDone?.();
+  }, [nativeMode, onDone, onNativeDone]);
+
+  const runNativeFormat = useCallback(
+    (command) => {
+      if (!nativeMode || typeof document === "undefined") {
+        onFormat?.(command);
+        return;
+      }
+
+      restoreNativeSelection();
+
+      const commandMap = {
+        bold: "bold",
+        italic: "italic",
+        insertUnorderedList: "insertUnorderedList",
+        insertOrderedList: "insertOrderedList",
+      };
+
+      const execCommand = commandMap[command];
+      if (execCommand) document.execCommand(execCommand, false, null);
+
+      saveNativeSelection();
+      updateNativeFormats();
+    },
+    [nativeMode, onFormat, restoreNativeSelection, saveNativeSelection, updateNativeFormats]
+  );
+
   useEffect(() => {
     updateViewportBox();
 
     const readyTimer = window.setTimeout(() => {
-      onOverlayReady?.();
+      if (nativeMode) {
+        const element = nativeEditorRef.current;
+        element?.focus({ preventScroll: true });
+        moveSelectionToEnd(element);
+        saveNativeSelection();
+        updateNativeFormats();
+      } else {
+        onOverlayReady?.();
+      }
       window.setTimeout(() => setEditorVisible(true), 90);
     }, 90);
 
@@ -48,7 +156,22 @@ export default function MobileTextEditorOverlay({ editorContent, activeFormats, 
       window.removeEventListener("resize", delayedUpdate);
       window.removeEventListener("orientationchange", delayedUpdate);
     };
-  }, [onOverlayReady, updateViewportBox]);
+  }, [nativeMode, onOverlayReady, saveNativeSelection, updateNativeFormats, updateViewportBox]);
+
+  useEffect(() => {
+    if (!nativeMode || typeof document === "undefined") return undefined;
+
+    const handleSelectionChange = () => {
+      if (!nativeSelectionIsInside()) return;
+      saveNativeSelection();
+      updateNativeFormats();
+    };
+
+    document.addEventListener("selectionchange", handleSelectionChange);
+    return () => document.removeEventListener("selectionchange", handleSelectionChange);
+  }, [nativeMode, nativeSelectionIsInside, saveNativeSelection, updateNativeFormats]);
+
+  const toolbarFormats = nativeMode ? nativeFormats : activeFormats;
 
   return (
     <div
@@ -72,7 +195,7 @@ export default function MobileTextEditorOverlay({ editorContent, activeFormats, 
             onClick={(event) => {
               event.preventDefault();
               event.stopPropagation();
-              onDone?.();
+              finishNativeEditor();
             }}
             className="sh-tap w-16 rounded-full px-2 py-2 text-right text-[17px] font-bold transition active:scale-[0.98]"
             style={{ color: T.navy }}
@@ -85,7 +208,7 @@ export default function MobileTextEditorOverlay({ editorContent, activeFormats, 
           <div className="grid grid-cols-4 items-center gap-2">
             {FORMAT_ACTIONS.map((action) => {
               const Icon = action.icon;
-              const isActive = Boolean(activeFormats?.[action.key]);
+              const isActive = Boolean(toolbarFormats?.[action.key]);
               return (
                 <button
                   key={action.key}
@@ -93,7 +216,7 @@ export default function MobileTextEditorOverlay({ editorContent, activeFormats, 
                   onPointerDown={(event) => {
                     event.preventDefault();
                     event.stopPropagation();
-                    onFormat?.(action.command);
+                    runNativeFormat(action.command);
                   }}
                   onClick={(event) => {
                     event.preventDefault();
@@ -116,13 +239,46 @@ export default function MobileTextEditorOverlay({ editorContent, activeFormats, 
       <div
         className="soldierhub-mobile-text-shell absolute bottom-0 left-0 right-0 overflow-y-auto overscroll-contain bg-[#F8FAFD]"
         style={{ top: `calc(env(safe-area-inset-top) + ${TOOLBAR_HEIGHT}px)`, WebkitOverflowScrolling: "touch", scrollPaddingTop: "18px", scrollPaddingBottom: "96px" }}
-        onClick={onEditorAreaClick}
+        onClick={nativeMode ? undefined : onEditorAreaClick}
       >
         <div
           className="soldierhub-writing-editor min-h-full bg-[#F8FAFD] transition-opacity duration-150 ease-out"
           style={{ opacity: editorVisible ? 1 : 0 }}
         >
-          {editorContent}
+          {nativeMode ? (
+            <div
+              ref={nativeEditorRef}
+              className="soldierhub-native-mobile-editor"
+              contentEditable
+              suppressContentEditableWarning
+              spellCheck
+              role="textbox"
+              aria-label="Write your Soldier Hub post"
+              aria-multiline="true"
+              data-placeholder="Ask, share, or help the Fort Bliss community."
+              dangerouslySetInnerHTML={{ __html: sanitizeComposerHtml(nativeEditorHtml || "") }}
+              onInput={() => {
+                saveNativeSelection();
+                updateNativeFormats();
+              }}
+              onKeyUp={() => {
+                saveNativeSelection();
+                updateNativeFormats();
+              }}
+              onMouseUp={() => {
+                saveNativeSelection();
+                updateNativeFormats();
+              }}
+              onTouchEnd={() => {
+                window.setTimeout(() => {
+                  saveNativeSelection();
+                  updateNativeFormats();
+                }, 0);
+              }}
+            />
+          ) : (
+            editorContent
+          )}
         </div>
       </div>
 
@@ -157,7 +313,8 @@ export default function MobileTextEditorOverlay({ editorContent, activeFormats, 
           outline: 0 !important;
         }
 
-        .soldierhub-writing-editor .ProseMirror {
+        .soldierhub-writing-editor .ProseMirror,
+        .soldierhub-native-mobile-editor {
           flex: 1 1 auto;
           min-height: 100%;
           width: 100%;
@@ -178,6 +335,7 @@ export default function MobileTextEditorOverlay({ editorContent, activeFormats, 
           touch-action: auto !important;
         }
 
+        .soldierhub-native-mobile-editor:empty::before,
         .soldierhub-writing-editor .ProseMirror p.is-editor-empty:first-child::before {
           content: attr(data-placeholder);
           float: left;
