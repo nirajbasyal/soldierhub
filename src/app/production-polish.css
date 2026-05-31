@@ -12,15 +12,20 @@
   overflow: hidden !important;
 }
 
-/* Make post images feel native to the card: edge-to-edge, square image corners, and no gap above actions. */
-.sh-feed-post-list > article > div:first-child:has([aria-label="Open post image"]) {
+/* Make post images feel native to the card: edge-to-edge, square image corners, and no forced rounded preview crop. */
+.sh-feed-post-list > article > div:first-child:has([aria-label="Open post image"]),
+.sh-feed-post-list > article > div:first-child:has([aria-label^="Open image:"]) {
   padding-bottom: 0 !important;
 }
 
-.sh-feed-post-list > article [aria-label="Open post image"] {
+.sh-feed-post-list > article [aria-label="Open post image"],
+.sh-feed-post-list > article [aria-label^="Open image:"] {
   display: block !important;
   width: calc(100% + 2rem) !important;
   max-width: none !important;
+  height: auto !important;
+  max-height: none !important;
+  aspect-ratio: auto !important;
   margin-left: -1rem !important;
   margin-right: -1rem !important;
   margin-bottom: 0 !important;
@@ -31,12 +36,18 @@
   box-shadow: none !important;
 }
 
-.sh-feed-post-list > article [aria-label="Open post image"] img {
+.sh-feed-post-list > article [aria-label="Open post image"] img,
+.sh-feed-post-list > article [aria-label^="Open image:"] img {
+  width: 100% !important;
+  height: auto !important;
   border-radius: 0 !important;
+  object-fit: contain !important;
+  object-position: center center !important;
 }
 
 @media (min-width: 768px) {
-  .sh-feed-post-list > article [aria-label="Open post image"] {
+  .sh-feed-post-list > article [aria-label="Open post image"],
+  .sh-feed-post-list > article [aria-label^="Open image:"] {
     width: calc(100% + 2.5rem) !important;
     margin-left: -1.25rem !important;
     margin-right: -1.25rem !important;
