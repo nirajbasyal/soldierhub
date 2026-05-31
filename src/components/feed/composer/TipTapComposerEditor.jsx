@@ -415,7 +415,7 @@ export default function TipTapComposerEditor({
         activeFormats={activeFormats}
         onDone={closeWritingMode}
         onFormat={runFormatCommand}
-        onOverlayReady={() => editor?.commands.focus(undefined, { scrollIntoView: false })}
+        onOverlayReady={() => focusEditorAtEnd(editor, true)}
         onEditorAreaClick={() => keepCursorVisible(editor)}
       />
     );
