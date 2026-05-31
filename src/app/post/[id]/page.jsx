@@ -54,7 +54,11 @@ export async function generateMetadata({ params }) {
   }
 
   // Posts are body-only (no title column); derive a title from the body.
-  const rawTitle = truncate(post.body, 70) || "Community post";
+  // Fall back to a category-based title when the body is empty or too thin
+  // (e.g. emoji-only / a bare link) to make a meaningful title.
+  const bodyTitle = truncate(post.body, 70);
+  const categoryTitle = `${post.category || "Community"} post on SoldierHub`;
+  const rawTitle = bodyTitle.replace(/[^\p{L}\p{N}]/gu, "").length >= 12 ? bodyTitle : categoryTitle;
   const description =
     truncate(post.body, 160) ||
     `A post in the ${post.category || "community"} category on SoldierHub.`;

@@ -2,6 +2,10 @@ import { createClient } from "@/lib/supabase/server";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://soldierhub.com";
 
+// Regenerate the sitemap at most once an hour so newly published posts are
+// discoverable without rebuilding the site.
+export const revalidate = 3600;
+
 // Cap how many post URLs we emit so the sitemap stays well under the 50k-URL
 // / 50MB limits and keeps generation fast.
 const MAX_POST_URLS = 1000;
