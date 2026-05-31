@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -15,7 +15,7 @@ import {
   UserPlus,
   X,
 } from "lucide-react";
-import { findProfileByEmailForSearch } from "@/lib/db/profiles";
+import { findProfileByEmailForSearch, searchVerifiedProfilesByName } from "@/lib/db/profiles";
 import { T } from "@/lib/theme";
 import { useApp } from "@/store/AppContext";
 import Avatar from "@/components/ui/Avatar";
@@ -30,6 +30,11 @@ function isEmailSearch(value) {
   return EMAIL_SEARCH_PATTERN.test(String(value || "").trim().toLowerCase());
 }
 
+function isLikelyNameSearch(value) {
+  const q = String(value || "").trim();
+  return q.length >= 2 && !q.includes("@");
+}
+
 function getUserAvatarUrl(user) {
   return (
     user?.avatar_url ||
@@ -40,9 +45,17 @@ function getUserAvatarUrl(user) {
   );
 }
 
+function getProfileAvatarUrl(profile) {
+  return profile?.avatar_url || profile?.profile_avatar_url || null;
+}
+
 export default function TopNav() {
   const router = useRouter();
+  const nameSearchTimerRef = useRef(null);
+  const latestNameSearchRef = useRef(0);
   const [profileSearchLoading, setProfileSearchLoading] = useState(false);
+  const [nameSearchLoading, setNameSearchLoading] = useState(false);
+  const [profileNameResults, setProfileNameResults] = useState([]);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
   const [searchNotice, setSearchNotice] = useState(null);
@@ -74,9 +87,15 @@ export default function TopNav() {
   const searchIconColor = hasSearchText ? SEARCH_ACTIVE_COLOR : SEARCH_IDLE_COLOR;
   const rightSearchButtonActive = hasSearchText || searchFocused;
   const rightSearchButtonColor = rightSearchButtonActive ? SEARCH_ACTIVE_COLOR : SEARCH_IDLE_COLOR;
+  const showNameResults = searchFocused && isLikelyNameSearch(search) && profileNameResults.length > 0;
 
   const clearSearchNotice = () => {
     if (searchNotice) setSearchNotice(null);
+  };
+
+  const clearNameResults = () => {
+    setProfileNameResults([]);
+    setNameSearchLoading(false);
   };
 
   const showSearchNotice = ({ title, message, type = "error" }) => {
@@ -108,6 +127,27 @@ export default function TopNav() {
     router.push("/notifications");
   };
 
+  const goToSearchProfile = (profile) => {
+    if (!profile?.id) return;
+
+    setSearch("");
+    setProfileNameResults([]);
+    setMobileSearchOpen(false);
+    setSearchFocused(false);
+    setSearchNotice(null);
+
+    if (profile.id === safeUser?.id) {
+      router.push("/profile");
+      return;
+    }
+
+    router.push(
+      `/profile/${encodeURIComponent(profile.id)}?name=${encodeURIComponent(
+        profile.full_name || "SoldierHub member"
+      )}`
+    );
+  };
+
   const handleSearchSubmit = async (event) => {
     event?.preventDefault?.();
 
@@ -115,6 +155,7 @@ export default function TopNav() {
 
     if (!q) {
       clearSearchNotice();
+      clearNameResults();
       setSearch("");
       router.push("/");
       return;
@@ -122,6 +163,7 @@ export default function TopNav() {
 
     if (!isEmailSearch(q)) {
       if (q.includes("@")) {
+        clearNameResults();
         showSearchNotice({
           title: "Invalid email format",
           message: "Enter the full email address, like name@example.com.",
@@ -135,6 +177,7 @@ export default function TopNav() {
     }
 
     if (!safeUser) {
+      clearNameResults();
       showSearchNotice({
         title: "Sign in required",
         message: "Please sign in to search member profiles by email.",
@@ -147,6 +190,7 @@ export default function TopNav() {
 
     if (userStatus !== "verified") {
       clearSearchNotice();
+      clearNameResults();
       router.push(
         `/pending-review?email=${encodeURIComponent(displayEmail)}&name=${encodeURIComponent(displayName)}&found=1`
       );
@@ -156,6 +200,7 @@ export default function TopNav() {
     try {
       setProfileSearchLoading(true);
       clearSearchNotice();
+      clearNameResults();
 
       const { data, error } = await findProfileByEmailForSearch(q);
 
@@ -167,21 +212,7 @@ export default function TopNav() {
         return;
       }
 
-      setSearch("");
-      setMobileSearchOpen(false);
-      setSearchFocused(false);
-      setSearchNotice(null);
-
-      if (data.id === safeUser.id) {
-        router.push("/profile");
-        return;
-      }
-
-      router.push(
-        `/profile/${encodeURIComponent(data.id)}?name=${encodeURIComponent(
-          data.full_name || "SoldierHub member"
-        )}`
-      );
+      goToSearchProfile(data);
     } catch {
       showSearchNotice({
         title: "Search unavailable",
@@ -192,12 +223,102 @@ export default function TopNav() {
     }
   };
 
+  useEffect(() => {
+    const q = String(search || "").trim();
+    const requestId = latestNameSearchRef.current + 1;
+    latestNameSearchRef.current = requestId;
+
+    if (nameSearchTimerRef.current) window.clearTimeout(nameSearchTimerRef.current);
+
+    if (!safeUser || userStatus !== "verified" || !isLikelyNameSearch(q)) {
+      clearNameResults();
+      return undefined;
+    }
+
+    setNameSearchLoading(true);
+
+    nameSearchTimerRef.current = window.setTimeout(async () => {
+      const { data, error } = await searchVerifiedProfilesByName(q, { limit: 8 });
+
+      if (latestNameSearchRef.current !== requestId) return;
+
+      if (error) {
+        setProfileNameResults([]);
+        setNameSearchLoading(false);
+        return;
+      }
+
+      setProfileNameResults(data || []);
+      setNameSearchLoading(false);
+    }, 220);
+
+    return () => {
+      if (nameSearchTimerRef.current) window.clearTimeout(nameSearchTimerRef.current);
+    };
+  }, [safeUser, search, userStatus]);
+
   const renderSearchSubmitIcon = (size = 17) => {
     if (profileSearchLoading) {
       return <Loader2 size={size} className="animate-spin" aria-hidden="true" />;
     }
 
     return <Search size={size} aria-hidden="true" />;
+  };
+
+  const renderProfileNameResults = (mode = "desktop") => {
+    const isMobile = mode === "mobile";
+    const canShowLoading = searchFocused && isLikelyNameSearch(search) && nameSearchLoading;
+
+    if (!showNameResults && !canShowLoading) return null;
+
+    return (
+      <div
+        className={`absolute left-0 right-0 top-[calc(100%+8px)] z-[70] overflow-hidden rounded-[22px] border shadow-xl ${isMobile ? "max-h-[260px]" : "max-h-[320px]"}`}
+        style={{
+          background: "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,251,255,0.98) 100%)",
+          borderColor: "rgba(207,218,232,0.92)",
+          boxShadow: "0 18px 44px rgba(7,27,51,0.14)",
+        }}
+      >
+        <div className="border-b px-3.5 py-2.5 text-[11px] font-extrabold uppercase tracking-[0.16em]" style={{ borderColor: T.borderSoft, color: T.textSubtle }}>
+          Members
+        </div>
+
+        {canShowLoading && !showNameResults ? (
+          <div className="flex items-center gap-2 px-3.5 py-3 text-sm font-semibold" style={{ color: T.textSubtle }}>
+            <Loader2 size={15} className="animate-spin" />
+            Searching members…
+          </div>
+        ) : null}
+
+        <div className="max-h-[250px] overflow-y-auto py-1.5">
+          {profileNameResults.map((profile) => (
+            <button
+              key={profile.id}
+              type="button"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => goToSearchProfile(profile)}
+              className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left transition hover:bg-[#F4F8FD] active:bg-[#EEF4FA]"
+            >
+              <Avatar
+                name={profile.full_name || "SoldierHub member"}
+                color={profile.avatar_color}
+                src={getProfileAvatarUrl(profile)}
+                size={36}
+              />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-extrabold" style={{ color: T.text }}>
+                  {profile.full_name || "SoldierHub member"}
+                </div>
+                <div className="truncate text-xs font-semibold" style={{ color: T.textSubtle }}>
+                  {profile.base || "Fort Bliss"}
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
   };
 
   const renderSearchNotice = () => {
@@ -291,8 +412,8 @@ export default function TopNav() {
                 setSearchFocused(true);
                 if (mode === "mobile") setMobileSearchOpen(true);
               }}
-              onBlur={() => setSearchFocused(false)}
-              placeholder={mode === "mobile" ? "Search posts or exact email…" : "Search posts or member email"}
+              onBlur={() => window.setTimeout(() => setSearchFocused(false), 140)}
+              placeholder={mode === "mobile" ? "Search posts or members…" : "Search posts or members"}
               autoComplete="off"
               inputMode="search"
               enterKeyHint="go"
@@ -322,6 +443,8 @@ export default function TopNav() {
             >
               {renderSearchSubmitIcon(16)}
             </button>
+
+            {renderProfileNameResults(mode)}
           </div>
 
           {isMobile ? renderSearchNotice() : null}
