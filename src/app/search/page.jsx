@@ -577,41 +577,35 @@ export default function SearchPage() {
   };
 
   return (
-    <AppShell>
-      <main className="mx-auto w-full max-w-[640px] px-3 pb-24 pt-2 sm:px-5 md:pt-5">
+    <AppShell hideNav>
+      <main className="mx-auto w-full max-w-[640px] px-0 pb-24 pt-0 sm:px-5 md:pt-4">
         <section
-          className="overflow-hidden rounded-[28px] border p-3 shadow-sm md:p-4"
+          className="sticky top-0 z-30 border-b px-3 pb-0 pt-[max(10px,env(safe-area-inset-top))] backdrop-blur-xl sm:rounded-b-[24px] sm:border sm:px-4 sm:shadow-sm"
           style={{
-            background:
-              "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(247,250,255,0.98) 100%)",
+            backgroundColor: "rgba(255,255,255,0.96)",
             borderColor: "rgba(207,218,232,0.92)",
-            boxShadow: "0 14px 32px rgba(7,27,51,0.075)",
+            boxShadow: "0 8px 22px rgba(7,27,51,0.05)",
           }}
         >
-          <div className="flex items-center justify-between gap-3 px-0.5">
-            <div>
-              <p className="text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: T.textSubtle }}>
-                Soldier Hub
-              </p>
-              <h1 className="mt-0.5 text-[23px] font-black leading-none tracking-[-0.05em] md:text-[27px]" style={{ color: T.text }}>
-                Search Results
-              </h1>
-            </div>
+          <div className="relative flex h-9 items-center justify-center">
+            <h1 className="text-[18px] font-black tracking-[-0.025em]" style={{ color: T.text }}>
+              Search Results
+            </h1>
             <button
               type="button"
               onClick={() => router.push("/")}
-              className="rounded-full px-2.5 py-1.5 text-[14px] font-extrabold transition active:scale-[0.98]"
+              className="absolute right-0 rounded-full px-1.5 py-1 text-[15px] font-bold transition active:scale-[0.98]"
               style={{ color: T.blue }}
             >
               Cancel
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="mt-3">
-            <div className="relative">
+          <form onSubmit={handleSubmit} className="mt-1.5">
+            <div className="relative pr-[70px]">
               <Search
-                size={19}
-                className="absolute left-3.5 top-1/2 -translate-y-1/2"
+                size={17}
+                className="absolute left-3 top-1/2 -translate-y-1/2"
                 style={{ color: cleanQuery ? SEARCH_ACTIVE_COLOR : SEARCH_IDLE_COLOR }}
               />
               <input
@@ -621,32 +615,33 @@ export default function SearchPage() {
                 autoComplete="off"
                 inputMode="search"
                 enterKeyHint="search"
-                className="h-[48px] w-full rounded-[18px] border pl-10 pr-3 text-[16px] font-bold outline-none transition placeholder:font-bold"
+                className="h-[38px] w-full rounded-[14px] border pl-9 pr-3 text-[16px] font-semibold outline-none transition placeholder:font-semibold"
                 style={{
-                  backgroundColor: "#F3F6FB",
-                  borderColor: "rgba(207,218,232,0.86)",
+                  backgroundColor: "#F0F2F5",
+                  borderColor: "rgba(207,218,232,0.72)",
                   color: T.text,
-                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.86), 0 8px 18px rgba(7,27,51,0.03)",
+                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.78)",
                 }}
               />
             </div>
           </form>
 
-          <div className="mt-3 grid grid-cols-3 border-b" style={{ borderColor: "rgba(207,218,232,0.92)" }}>
+          <div className="mt-1 grid grid-cols-3" style={{ borderColor: "rgba(207,218,232,0.92)" }}>
             {searchTabs.map((tab) => {
               const active = activeTab === tab.key;
+              const label = tab.key === "members" ? "Member" : tab.label;
               return (
                 <button
                   key={tab.key}
                   type="button"
                   onClick={() => setTab(tab.key)}
-                  className="relative flex h-10 items-center justify-center gap-1.5 text-[14px] font-black transition active:scale-[0.98]"
-                  style={{ color: active ? T.blue : "#7A8493" }}
+                  className="relative flex h-10 items-center justify-center gap-1 text-[15px] font-bold transition active:scale-[0.98]"
+                  style={{ color: active ? T.blue : "#7A7F87" }}
                 >
-                  <span>{tab.label}</span>
+                  <span>{label}</span>
                   {cleanQuery.length >= 2 && tab.count > 0 ? (
                     <span
-                      className="rounded-full px-1.5 py-0.5 text-[10px] font-black"
+                      className="rounded-full px-1 py-0.5 text-[9px] font-black"
                       style={{
                         backgroundColor: active ? T.brandBlueSoft : "#EEF3F8",
                         color: active ? T.blue : T.textSubtle,
@@ -657,7 +652,7 @@ export default function SearchPage() {
                   ) : null}
                   {active ? (
                     <span
-                      className="absolute bottom-[-1px] left-1/2 h-[3px] w-20 max-w-[76%] -translate-x-1/2 rounded-full"
+                      className="absolute bottom-0 left-1/2 h-[3px] w-20 max-w-[76%] -translate-x-1/2 rounded-full"
                       style={{ backgroundColor: T.blue }}
                     />
                   ) : null}
@@ -667,7 +662,7 @@ export default function SearchPage() {
           </div>
         </section>
 
-        <section className="mt-3">
+        <section className="mt-3 px-3 sm:px-0">
           {activeTab === "all"
             ? renderAllResults()
             : activeTab === "members"
