@@ -12,7 +12,7 @@ const PUBLIC_PROFILE_SEARCH_FIELDS = "id, full_name, avatar_color, avatar_url, b
 const DEFAULT_ADMIN_PROFILE_LIMIT = 50;
 const MAX_ADMIN_PROFILE_LIMIT = 100;
 const DEFAULT_MEMBER_SEARCH_LIMIT = 8;
-const MAX_MEMBER_SEARCH_LIMIT = 12;
+const MAX_MEMBER_SEARCH_LIMIT = 25;
 const EMAIL_SEARCH_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function cleanLimit(limit) {
@@ -27,12 +27,18 @@ function cleanMemberSearchLimit(limit) {
   return Math.min(Math.floor(parsed), MAX_MEMBER_SEARCH_LIMIT);
 }
 
+function cleanMemberSearchOffset(offset) {
+  const parsed = Number(offset);
+  if (!Number.isFinite(parsed) || parsed < 0) return 0;
+  return Math.floor(parsed);
+}
+
 function isEmailSearch(value) {
   return EMAIL_SEARCH_PATTERN.test(String(value || "").trim().toLowerCase());
 }
 
 function escapeIlikePattern(value) {
-  return String(value || "").replace(/[\\%_]/g, "\\$&");
+  return String(value || "").replace(/[\%_]/g, "\$&");
 }
 
 function normalizePublicProfileSearchRows(rows = [], matchType = "name") {
@@ -44,7 +50,7 @@ function normalizePublicProfileSearchRows(rows = [], matchType = "name") {
       avatar_color: profile.avatar_color || "#314A66",
       avatar_url: profile.avatar_url || null,
       base: profile.base || "Fort Bliss",
-      match_type: matchType,
+      match_type: profile.match_type || matchType,
     }));
 }
 
@@ -121,8 +127,6 @@ async function listAdminProfileQueue(queue, { limit = DEFAULT_ADMIN_PROFILE_LIMI
 
   if (!error) return { data: data || [], error: null };
 
-  // Fallback keeps the admin dashboard usable if the SQL migration has not
-  // been applied yet in Supabase.
   if (queue === "blocked") {
     const fallback = await supabase
       .from("profiles")
@@ -176,7 +180,6 @@ export async function updateMyProfile(userId, updates) {
     avatar_url: updates.avatar_url,
   };
 
-  // Strip undefined keys
   Object.keys(allowed).forEach((key) => {
     if (allowed[key] === undefined) delete allowed[key];
   });
@@ -237,7 +240,7 @@ export async function listBlockedProfiles({ limit = DEFAULT_ADMIN_PROFILE_LIMIT 
 export async function adminRevokeProfileByEmail(email) {
   return runAdminProfileAction(
     { action: "revoke_by_email", email },
-    "Could not revoke profile by email."
+    "Could not revoke profile."
   );
 }
 
@@ -258,7 +261,10 @@ export async function findProfileByEmailForSearch(email) {
   return { data: profile, error: null };
 }
 
-export async function searchVerifiedProfilesByName(query, { limit = DEFAULT_MEMBER_SEARCH_LIMIT } = {}) {
+export async function searchVerifiedProfilesByName(
+  query,
+  { limit = DEFAULT_MEMBER_SEARCH_LIMIT, offset = 0 } = {}
+) {
   const supabase = createClient();
   if (!supabase) return { data: [], error: { message: "Supabase is not configured." } };
 
@@ -266,30 +272,12 @@ export async function searchVerifiedProfilesByName(query, { limit = DEFAULT_MEMB
   if (cleanQuery.length < 2) return { data: [], error: null };
 
   const safeLimit = cleanMemberSearchLimit(limit);
-  const escapedQuery = escapeIlikePattern(cleanQuery);
+  const safeOffset = cleanMemberSearchOffset(offset);
 
-  // Use the existing public profile view first so the feature does not depend
-  // on a brand-new RPC being present in the Supabase schema cache.
-  const publicViewResult = await supabase
-    .from("public_profiles")
-    .select(PUBLIC_PROFILE_SEARCH_FIELDS)
-    .ilike("full_name", `${escapedQuery}%`)
-    .order("full_name", { ascending: true })
-    .limit(safeLimit);
-
-  if (!publicViewResult.error) {
-    return {
-      data: normalizePublicProfileSearchRows(publicViewResult.data, "name"),
-      error: null,
-    };
-  }
-
-  // Optional fallback for projects where the optimized SQL migration has been
-  // applied. If it is missing, return a friendly error instead of exposing the
-  // raw schema-cache message to users.
-  const rpcResult = await supabase.rpc("search_verified_profiles_by_name", {
+  const rpcResult = await supabase.rpc("search_verified_profiles", {
     p_query: cleanQuery,
     p_limit: safeLimit,
+    p_offset: safeOffset,
   });
 
   if (!rpcResult.error) {
@@ -299,32 +287,58 @@ export async function searchVerifiedProfilesByName(query, { limit = DEFAULT_MEMB
     };
   }
 
-  const isMissingRpc =
+  const isMissingPaginationRpc =
     rpcResult.error?.code === "PGRST202" ||
-    /schema cache|search_verified_profiles_by_name/i.test(rpcResult.error?.message || "");
+    /schema cache|search_verified_profiles/i.test(rpcResult.error?.message || "");
 
-  return {
-    data: [],
-    error: {
-      message: isMissingRpc
-        ? "Member name search is not fully available yet. Exact email search still works."
-        : publicViewResult.error?.message || rpcResult.error?.message || "Could not search members right now.",
-    },
-  };
-}
-
-export async function searchVerifiedProfiles(query, { limit = DEFAULT_MEMBER_SEARCH_LIMIT } = {}) {
-  const cleanQuery = typeof query === "string" ? query.trim() : "";
-  if (cleanQuery.length < 2) return { data: [], error: null };
-
-  if (isEmailSearch(cleanQuery)) {
-    const { data, error } = await findProfileByEmailForSearch(cleanQuery);
-    if (error) return { data: [], error };
+  if (!isMissingPaginationRpc) {
     return {
-      data: data ? normalizePublicProfileSearchRows([{ ...data }], "email") : [],
+      data: [],
+      error: { message: rpcResult.error?.message || "Could not search members right now." },
+    };
+  }
+
+  const escapedQuery = escapeIlikePattern(cleanQuery);
+  const publicViewResult = await supabase
+    .from("public_profiles")
+    .select(PUBLIC_PROFILE_SEARCH_FIELDS)
+    .ilike("full_name", `${escapedQuery}%`)
+    .order("full_name", { ascending: true })
+    .range(safeOffset, safeOffset + safeLimit - 1);
+
+  if (!publicViewResult.error) {
+    return {
+      data: normalizePublicProfileSearchRows(publicViewResult.data, "name"),
       error: null,
     };
   }
 
-  return searchVerifiedProfilesByName(cleanQuery, { limit });
+  return {
+    data: [],
+    error: {
+      message:
+        publicViewResult.error?.message ||
+        "Member name search is not fully available yet. Exact email search still works.",
+    },
+  };
+}
+
+export async function searchVerifiedProfiles(
+  query,
+  { limit = DEFAULT_MEMBER_SEARCH_LIMIT, offset = 0 } = {}
+) {
+  const cleanQuery = typeof query === "string" ? query.trim() : "";
+  if (cleanQuery.length < 2) return { data: [], error: null };
+
+  if (isEmailSearch(cleanQuery)) {
+    if (offset > 0) return { data: [], error: null };
+    const { data, error } = await findProfileByEmailForSearch(cleanQuery);
+    if (error) return { data: [], error };
+    return {
+      data: data ? normalizePublicProfileSearchRows([{ ...data, match_type: "email" }], "email") : [],
+      error: null,
+    };
+  }
+
+  return searchVerifiedProfilesByName(cleanQuery, { limit, offset });
 }
