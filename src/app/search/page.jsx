@@ -623,7 +623,7 @@ export default function SearchPage() {
           <div className="mt-1 grid grid-cols-3" style={{ borderColor: "rgba(207,218,232,0.92)" }}>
             {searchTabs.map((tab) => {
               const active = activeTab === tab.key;
-              const label = tab.key === "members" ? "Member" : tab.label;
+              const label = tab.label;
               return (
                 <button
                   key={tab.key}
