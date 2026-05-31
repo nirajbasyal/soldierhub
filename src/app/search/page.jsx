@@ -141,8 +141,8 @@ function getProfileAvatarUrl(profile) {
 }
 
 function parseTab(value) {
-  if (value === "all" || value === "members") return value;
-  return "posts";
+  if (value === "posts" || value === "members") return value;
+  return "all";
 }
 
 export default function SearchPage() {
@@ -231,7 +231,7 @@ export default function SearchPage() {
         setPostSearchError(error.message || "Could not search posts right now.");
         setSearchPostPool([]);
       } else {
-        setPostSearchPool(data || []);
+        setSearchPostPool(data || []);
         setPostSearchError("");
       }
 
@@ -298,7 +298,7 @@ export default function SearchPage() {
   const updateUrl = (nextQuery = cleanQuery, nextTab = activeTab) => {
     const params = new URLSearchParams();
     if (nextQuery.trim()) params.set("q", nextQuery.trim());
-    if (nextTab !== "posts") params.set("tab", nextTab);
+    if (nextTab !== "all") params.set("tab", nextTab);
     const nextUrl = params.toString() ? `/search?${params.toString()}` : "/search";
     router.push(nextUrl);
   };
@@ -518,10 +518,28 @@ export default function SearchPage() {
       );
     }
 
+    const hasPostResults = postResults.length > 0;
+    const hasMemberResults = memberResults.length > 0;
+    const isCheckingResults = postsLoading || postSearchLoading || memberLoading;
+
+    if (hasPostResults || hasMemberResults) {
+      return (
+        <div className="flex flex-col gap-4">
+          {hasPostResults ? renderPostResults({ showTitle: true }) : null}
+          {hasMemberResults ? renderMembers({ showTitle: true }) : null}
+        </div>
+      );
+    }
+
+    if (isCheckingResults) return null;
+
     return (
-      <div className="flex flex-col gap-4">
-        {renderPostResults({ showTitle: true })}
-        {renderMembers({ showTitle: true })}
+      <div className="rounded-[24px] border p-5 shadow-sm" style={{ backgroundColor: T.card, borderColor: T.border }}>
+        <EmptyState
+          icon={Search}
+          title="No results found"
+          body={`No posts or members matched "${cleanQuery}".`}
+        />
       </div>
     );
   };
