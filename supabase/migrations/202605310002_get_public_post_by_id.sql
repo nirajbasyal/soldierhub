@@ -38,7 +38,9 @@ set search_path = public
 as $$
   select
     p.id,
-    p.author_id,
+    -- Mask author identity on anonymous posts, exactly like get_public_posts(),
+    -- so per-post OG/metadata can never deanonymize an anonymous author.
+    case when p.anonymous then null::uuid else p.author_id end as author_id,
     p.category,
     p.body,
     p.anonymous,
@@ -46,10 +48,10 @@ as $$
     p.edited,
     p.created_at,
     p.updated_at,
-    p.author_name_cached as author_name,
-    p.author_color_cached as author_color,
-    p.upvote_count,
-    p.comment_count
+    case when p.anonymous then null::text else p.author_name_cached end as author_name,
+    case when p.anonymous then null::text else p.author_color_cached end as author_color,
+    coalesce(p.upvote_count, 0)::bigint as upvote_count,
+    coalesce(p.comment_count, 0)::bigint as comment_count
   from public.posts p
   where p.id = p_id
     and p.status = 'active'
