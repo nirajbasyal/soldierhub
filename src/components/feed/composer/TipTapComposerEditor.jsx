@@ -55,6 +55,7 @@ export default function TipTapComposerEditor({
   const savedSelectionRef = useRef(null);
   const suppressOpenUntilRef = useRef(0);
   const phoneScreenRef = useRef(false);
+  const writingModeOpenRef = useRef(false);
   const manualInlineFormatsRef = useRef({ bold: false, italic: false });
 
   const extensions = useMemo(
@@ -172,7 +173,7 @@ export default function TipTapComposerEditor({
       },
       handleDOMEvents: {
         beforeinput(view, event) {
-          if (pageMode && phoneScreenRef.current && !writingModeOpen) {
+          if (pageMode && phoneScreenRef.current && !writingModeOpenRef.current) {
             event.preventDefault();
             return true;
           }
@@ -225,17 +226,9 @@ export default function TipTapComposerEditor({
   const openWritingMode = useCallback(() => {
     if (!mounted || !pageMode || !phoneScreenRef.current || submitting) return;
     if (Date.now() < suppressOpenUntilRef.current) return;
+    if (editor) rememberSelection(editor);
     setWritingModeOpen(true);
-  }, [mounted, pageMode, submitting]);
-
-  const handleNativeEditorDone = useCallback(
-    (nextHtml) => {
-      const cleanHtml = sanitizeComposerHtml(nextHtml || "");
-      editor?.commands.setContent(cleanHtml || "", false);
-      window.requestAnimationFrame?.(() => emitContent(editor));
-    },
-    [editor, emitContent]
-  );
+  }, [editor, mounted, pageMode, rememberSelection, submitting]);
 
   const closeWritingMode = useCallback(() => {
     suppressOpenUntilRef.current = Date.now() + 500;
@@ -256,16 +249,18 @@ export default function TipTapComposerEditor({
       editor.commands.setTextSelection({ from, to });
 
       if (command === "bold") {
-        const nextBold = !manualInlineFormatsRef.current.bold;
+        const selectedBold = from !== to ? editor.isActive("bold") : manualInlineFormatsRef.current.bold;
+        const nextBold = !selectedBold;
         manualInlineFormatsRef.current = { ...manualInlineFormatsRef.current, bold: nextBold };
-        if (from !== to) nextBold ? editor.commands.setBold() : editor.commands.unsetBold();
+        nextBold ? editor.commands.setBold() : editor.commands.unsetBold();
         applyStoredMarks(editor);
       }
 
       if (command === "italic") {
-        const nextItalic = !manualInlineFormatsRef.current.italic;
+        const selectedItalic = from !== to ? editor.isActive("italic") : manualInlineFormatsRef.current.italic;
+        const nextItalic = !selectedItalic;
         manualInlineFormatsRef.current = { ...manualInlineFormatsRef.current, italic: nextItalic };
-        if (from !== to) nextItalic ? editor.commands.setItalic() : editor.commands.unsetItalic();
+        nextItalic ? editor.commands.setItalic() : editor.commands.unsetItalic();
         applyStoredMarks(editor);
       }
 
@@ -275,8 +270,9 @@ export default function TipTapComposerEditor({
       rememberSelection(editor);
       syncFormats(editor);
       keepCursorVisible(editor);
+      emitContent(editor);
     },
-    [applyStoredMarks, editor, keepCursorVisible, rememberSelection, submitting, syncFormats]
+    [applyStoredMarks, editor, emitContent, keepCursorVisible, rememberSelection, submitting, syncFormats]
   );
 
   useEffect(() => {
@@ -286,6 +282,10 @@ export default function TipTapComposerEditor({
   useEffect(() => {
     editor?.setEditable(mounted && !submitting);
   }, [editor, mounted, submitting]);
+
+  useEffect(() => {
+    writingModeOpenRef.current = writingModeOpen;
+  }, [writingModeOpen]);
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
@@ -386,11 +386,8 @@ export default function TipTapComposerEditor({
         activeFormats={activeFormats}
         onDone={closeWritingMode}
         onFormat={runFormatCommand}
-        onOverlayReady={() => focusEditorAtEnd(editor, true)}
+        onOverlayReady={() => editor?.commands.focus(undefined, { scrollIntoView: false })}
         onEditorAreaClick={() => keepCursorVisible(editor)}
-        nativeMode={pageMode && phoneScreen}
-        nativeEditorHtml={editor ? sanitizeComposerHtml(editor.getHTML()) : body || ""}
-        onNativeDone={handleNativeEditorDone}
       />
     );
   }
