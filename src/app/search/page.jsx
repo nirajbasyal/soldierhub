@@ -10,7 +10,6 @@ import { useApp } from "@/store/AppContext";
 import AppShell from "@/components/layout/AppShell";
 import PostCard from "@/components/feed/PostCard";
 import Avatar from "@/components/ui/Avatar";
-import EmptyState from "@/components/ui/EmptyState";
 import PostSkeleton from "@/components/ui/PostSkeleton";
 
 const SEARCH_ACTIVE_COLOR = "#B31942";
@@ -85,12 +84,7 @@ function postMatchesQuery(post, query) {
   const cleanQuery = String(query || "").trim().toLowerCase();
   if (!cleanQuery) return false;
 
-  const haystack = [
-    post?.title,
-    stripHtml(post?.body),
-    post?.category,
-    getPostAuthorName(post),
-  ]
+  const haystack = [post?.title, stripHtml(post?.body), post?.category, getPostAuthorName(post)]
     .filter(Boolean)
     .join(" ")
     .toLowerCase();
@@ -602,7 +596,7 @@ export default function SearchPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="mt-1.5">
-            <div className="relative pr-[70px]">
+            <div className="relative">
               <Search
                 size={17}
                 className="absolute left-3 top-1/2 -translate-y-1/2"
