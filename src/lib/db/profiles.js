@@ -10,11 +10,19 @@ const ADMIN_PROFILE_FIELDS =
 
 const DEFAULT_ADMIN_PROFILE_LIMIT = 50;
 const MAX_ADMIN_PROFILE_LIMIT = 100;
+const DEFAULT_MEMBER_SEARCH_LIMIT = 8;
+const MAX_MEMBER_SEARCH_LIMIT = 12;
 
 function cleanLimit(limit) {
   const parsed = Number(limit);
   if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_ADMIN_PROFILE_LIMIT;
   return Math.min(Math.floor(parsed), MAX_ADMIN_PROFILE_LIMIT);
+}
+
+function cleanMemberSearchLimit(limit) {
+  const parsed = Number(limit);
+  if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_MEMBER_SEARCH_LIMIT;
+  return Math.min(Math.floor(parsed), MAX_MEMBER_SEARCH_LIMIT);
 }
 
 async function getAccessTokenForApi(supabase, fallbackMessage) {
@@ -225,4 +233,21 @@ export async function findProfileByEmailForSearch(email) {
 
   const profile = Array.isArray(data) ? data[0] || null : data || null;
   return { data: profile, error: null };
+}
+
+export async function searchVerifiedProfilesByName(query, { limit = DEFAULT_MEMBER_SEARCH_LIMIT } = {}) {
+  const supabase = createClient();
+  if (!supabase) return { data: [], error: { message: "Supabase is not configured." } };
+
+  const cleanQuery = typeof query === "string" ? query.trim() : "";
+  if (cleanQuery.length < 2) return { data: [], error: null };
+
+  const { data, error } = await supabase.rpc("search_verified_profiles_by_name", {
+    p_query: cleanQuery,
+    p_limit: cleanMemberSearchLimit(limit),
+  });
+
+  if (error) return { data: [], error };
+
+  return { data: Array.isArray(data) ? data : [], error: null };
 }
