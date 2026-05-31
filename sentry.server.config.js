@@ -1,40 +1,19 @@
+// This file configures the initialization of Sentry on the server.
+// The config you add here will be used whenever the server handles a request.
+// https://docs.sentry.io/platforms/javascript/guides/nextjs/
+
 import * as Sentry from "@sentry/nextjs";
 
-const dsn = process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN;
+Sentry.init({
+  dsn: "https://77552e0c6b99538e4b2bb012d1f1654f@o4511391652315136.ingest.us.sentry.io/4511480968314880",
 
-if (dsn) {
-  Sentry.init({
-    dsn,
-    environment: process.env.NODE_ENV,
+  // Define how likely traces are sampled. Adjust this value in production, or use tracesSampler for greater control.
+  tracesSampleRate: process.env.NODE_ENV === "development" ? 1.0 : 0.1,
 
-    // Keep this privacy-safe for a military/community app.
-    sendDefaultPii: false,
+  // Enable logs to be sent to Sentry
+  enableLogs: true,
 
-    tracesSampleRate: process.env.NODE_ENV === "production" ? 0.05 : 1.0,
-
-    // Do not attach server local variables by default because they may include
-    // tokens, emails, moderation text, or profile details.
-    includeLocalVariables: false,
-
-    enableLogs: true,
-
-    beforeSend(event) {
-      if (event?.user) {
-        delete event.user.email;
-        delete event.user.ip_address;
-      }
-
-      if (event?.request?.headers) {
-        delete event.request.headers.authorization;
-        delete event.request.headers.cookie;
-        delete event.request.headers["x-supabase-auth"];
-      }
-
-      if (event?.request?.cookies) {
-        delete event.request.cookies;
-      }
-
-      return event;
-    },
-  });
-}
+  // Enable sending user PII (Personally Identifiable Information)
+  // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#sendDefaultPii
+  sendDefaultPii: false,
+});

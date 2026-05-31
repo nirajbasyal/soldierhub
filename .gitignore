@@ -21,3 +21,6 @@ npm-debug.log*
 .vscode/
 *.swp
 .env*
+
+# Sentry Config File
+.env.sentry-build-plugin
