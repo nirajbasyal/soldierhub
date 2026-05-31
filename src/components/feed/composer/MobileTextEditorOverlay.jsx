@@ -134,6 +134,14 @@ export default function MobileTextEditorOverlay({ editorContent, activeFormats, 
 
         .soldierhub-mobile-text-shell {
           overflow-anchor: none;
+          touch-action: pan-y;
+        }
+
+        .soldierhub-writing-editor,
+        .soldierhub-writing-editor * {
+          -webkit-touch-callout: default !important;
+          -webkit-user-select: text !important;
+          user-select: text !important;
         }
 
         .soldierhub-writing-editor,
@@ -165,6 +173,9 @@ export default function MobileTextEditorOverlay({ editorContent, activeFormats, 
           overflow-wrap: anywhere;
           font-size: 18px;
           line-height: 2rem;
+          caret-color: auto !important;
+          cursor: text !important;
+          touch-action: auto !important;
         }
 
         .soldierhub-writing-editor .ProseMirror p.is-editor-empty:first-child::before {
