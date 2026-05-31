@@ -145,6 +145,41 @@ function parseTab(value) {
   return "all";
 }
 
+function SearchStatusCard({ title, body, icon: Icon = Search }) {
+  return (
+    <div
+      className="overflow-hidden rounded-[32px] border p-5 shadow-sm md:p-6"
+      style={{
+        background:
+          "radial-gradient(circle at 50% 0%, rgba(61,111,151,0.08) 0%, rgba(255,255,255,0.98) 46%, rgba(248,251,255,0.98) 100%)",
+        borderColor: "rgba(207,218,232,0.92)",
+        boxShadow: "0 18px 42px rgba(7,27,51,0.08)",
+      }}
+    >
+      <div className="mx-auto flex max-w-sm flex-col items-center py-7 text-center md:py-9">
+        <div
+          className="mb-5 flex h-[72px] w-[72px] items-center justify-center rounded-[24px] border shadow-sm"
+          style={{
+            background: "linear-gradient(180deg, #FFFFFF 0%, #F3F7FC 100%)",
+            borderColor: "rgba(207,218,232,0.9)",
+            color: T.blue,
+            boxShadow: "0 14px 30px rgba(49,74,102,0.10)",
+          }}
+        >
+          <Icon size={32} strokeWidth={2.35} />
+        </div>
+
+        <h2 className="text-[22px] font-black tracking-[-0.04em]" style={{ color: T.text }}>
+          {title}
+        </h2>
+        <p className="mt-3 text-[15px] font-semibold leading-7" style={{ color: T.textSubtle }}>
+          {body}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function SearchPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -330,13 +365,11 @@ export default function SearchPage() {
 
     if (!cleanQuery || cleanQuery.length < 2) {
       return (
-        <div className="rounded-[24px] border p-5 shadow-sm" style={{ backgroundColor: T.card, borderColor: T.border }}>
-          <EmptyState
-            icon={Search}
-            title="Search posts"
-            body="Type at least 2 letters to find matching posts."
-          />
-        </div>
+        <SearchStatusCard
+          icon={Search}
+          title="Search posts"
+          body="Type at least 2 letters to find matching posts from the community feed."
+        />
       );
     }
 
@@ -351,21 +384,19 @@ export default function SearchPage() {
 
     if (postResults.length === 0) {
       return (
-        <div className="rounded-[24px] border p-5 shadow-sm" style={{ backgroundColor: T.card, borderColor: T.border }}>
-          <EmptyState
-            icon={Search}
-            title="No posts found"
-            body={postSearchError || `No posts matched "${cleanQuery}".`}
-          />
-        </div>
+        <SearchStatusCard
+          icon={Search}
+          title="No posts found"
+          body={postSearchError || `No posts matched "${cleanQuery}".`}
+        />
       );
     }
 
     return (
       <div className="flex flex-col gap-2.5">
         {showTitle ? (
-          <div className="flex items-center justify-between px-1">
-            <h2 className="text-sm font-black uppercase tracking-[0.14em]" style={{ color: T.textSubtle }}>
+          <div className="flex items-center justify-between px-2 pb-0.5">
+            <h2 className="text-[12px] font-black uppercase tracking-[0.18em]" style={{ color: T.textSubtle }}>
               Posts
             </h2>
             {isLoadingPosts ? (
@@ -389,19 +420,20 @@ export default function SearchPage() {
   const renderMembers = ({ showTitle = false } = {}) => {
     if (!cleanQuery || cleanQuery.length < 2) {
       return (
-        <div className="rounded-[24px] border p-5 shadow-sm" style={{ backgroundColor: T.card, borderColor: T.border }}>
-          <EmptyState
-            icon={UserRound}
-            title="Search members by name or email"
-            body="Type at least 2 letters for a name, or enter an exact email address."
-          />
-        </div>
+        <SearchStatusCard
+          icon={UserRound}
+          title="Search members"
+          body="Type at least 2 letters for a name, or enter an exact email address."
+        />
       );
     }
 
     if (!currentUser) {
       return (
-        <div className="rounded-[24px] border p-5 text-center shadow-sm" style={{ backgroundColor: T.card, borderColor: T.border }}>
+        <div
+          className="rounded-[32px] border p-6 text-center shadow-sm"
+          style={{ backgroundColor: T.card, borderColor: T.border }}
+        >
           <UserRound className="mx-auto mb-3" size={34} style={{ color: T.navy }} />
           <h2 className="text-lg font-extrabold" style={{ color: T.text }}>Sign in to search members</h2>
           <p className="mx-auto mt-1 max-w-sm text-sm leading-6" style={{ color: T.textSubtle }}>
@@ -421,19 +453,20 @@ export default function SearchPage() {
 
     if (!isVerified) {
       return (
-        <div className="rounded-[24px] border p-5 text-center shadow-sm" style={{ backgroundColor: T.card, borderColor: T.border }}>
-          <UserRound className="mx-auto mb-3" size={34} style={{ color: T.navy }} />
-          <h2 className="text-lg font-extrabold" style={{ color: T.text }}>Verification required</h2>
-          <p className="mx-auto mt-1 max-w-sm text-sm leading-6" style={{ color: T.textSubtle }}>
-            To protect privacy, only verified members can search other verified profiles.
-          </p>
-        </div>
+        <SearchStatusCard
+          icon={UserRound}
+          title="Verification required"
+          body="To protect privacy, only verified members can search other verified profiles."
+        />
       );
     }
 
     if (memberLoading) {
       return (
-        <div className="rounded-[24px] border p-6 text-center shadow-sm" style={{ backgroundColor: T.card, borderColor: T.border }}>
+        <div
+          className="rounded-[32px] border p-6 text-center shadow-sm"
+          style={{ backgroundColor: T.card, borderColor: T.border }}
+        >
           <Loader2 className="mx-auto animate-spin" size={28} style={{ color: T.navy }} />
           <p className="mt-3 text-sm font-semibold" style={{ color: T.textSubtle }}>Searching members…</p>
         </div>
@@ -442,33 +475,29 @@ export default function SearchPage() {
 
     if (memberError) {
       return (
-        <div className="rounded-[24px] border p-5 shadow-sm" style={{ backgroundColor: T.card, borderColor: T.border }}>
-          <EmptyState
-            icon={UserRound}
-            title="Member search unavailable"
-            body={memberError}
-          />
-        </div>
+        <SearchStatusCard
+          icon={UserRound}
+          title="Member search unavailable"
+          body={memberError}
+        />
       );
     }
 
     if (memberResults.length === 0) {
       return (
-        <div className="rounded-[24px] border p-5 shadow-sm" style={{ backgroundColor: T.card, borderColor: T.border }}>
-          <EmptyState
-            icon={UserRound}
-            title="No members found"
-            body={isEmail(cleanQuery) ? "No verified member matched that exact email." : `No verified member names matched "${cleanQuery}".`}
-          />
-        </div>
+        <SearchStatusCard
+          icon={UserRound}
+          title="No members found"
+          body={isEmail(cleanQuery) ? "No verified member matched that exact email." : `No verified member names matched "${cleanQuery}".`}
+        />
       );
     }
 
     return (
       <div className="flex flex-col gap-2.5">
         {showTitle ? (
-          <div className="flex items-center justify-between px-1">
-            <h2 className="text-sm font-black uppercase tracking-[0.14em]" style={{ color: T.textSubtle }}>
+          <div className="flex items-center justify-between px-2 pb-0.5">
+            <h2 className="text-[12px] font-black uppercase tracking-[0.18em]" style={{ color: T.textSubtle }}>
               Members
             </h2>
           </div>
@@ -480,14 +509,18 @@ export default function SearchPage() {
               key={profile.id}
               type="button"
               onClick={() => openProfile(profile)}
-              className="flex w-full items-center gap-3 rounded-[22px] border p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.99]"
-              style={{ backgroundColor: T.card, borderColor: T.border }}
+              className="flex w-full items-center gap-3 rounded-[24px] border p-3.5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.99]"
+              style={{
+                background: "linear-gradient(180deg, #FFFFFF 0%, #F8FBFF 100%)",
+                borderColor: "rgba(207,218,232,0.92)",
+                boxShadow: "0 12px 26px rgba(7,27,51,0.055)",
+              }}
             >
               <Avatar
                 name={profile.full_name || "SoldierHub member"}
                 color={profile.avatar_color}
                 src={getProfileAvatarUrl(profile)}
-                size={46}
+                size={48}
               />
               <div className="min-w-0 flex-1">
                 <div className="truncate text-[15px] font-extrabold" style={{ color: T.text }}>
@@ -498,6 +531,9 @@ export default function SearchPage() {
                   {profile.match_type === "email" ? <span>• exact email match</span> : null}
                 </div>
               </div>
+              <span className="text-xl font-light" style={{ color: T.textSubtle }}>
+                ›
+              </span>
             </button>
           ))}
         </div>
@@ -508,13 +544,11 @@ export default function SearchPage() {
   const renderAllResults = () => {
     if (!cleanQuery || cleanQuery.length < 2) {
       return (
-        <div className="rounded-[24px] border p-5 shadow-sm" style={{ backgroundColor: T.card, borderColor: T.border }}>
-          <EmptyState
-            icon={Search}
-            title="Search Soldier Hub"
-            body="Search posts by topic or text, and search members by name or exact email."
-          />
-        </div>
+        <SearchStatusCard
+          icon={Search}
+          title="Search Soldier Hub"
+          body="Find community posts by topic, and search verified members by name or exact email."
+        />
       );
     }
 
@@ -534,69 +568,71 @@ export default function SearchPage() {
     if (isCheckingResults) return null;
 
     return (
-      <div className="rounded-[24px] border p-5 shadow-sm" style={{ backgroundColor: T.card, borderColor: T.border }}>
-        <EmptyState
-          icon={Search}
-          title="No results found"
-          body={`No posts or members matched "${cleanQuery}".`}
-        />
-      </div>
+      <SearchStatusCard
+        icon={Search}
+        title="No results found"
+        body={`No posts or members matched "${cleanQuery}".`}
+      />
     );
   };
 
   return (
     <AppShell>
-      <main className="mx-auto w-full max-w-[620px] px-1.5 pb-24 pt-2 sm:px-5 md:pt-6">
+      <main className="mx-auto w-full max-w-[640px] px-3 pb-24 pt-3 sm:px-5 md:pt-6">
         <section
-          className="rounded-[26px] border p-3 shadow-sm md:p-4"
+          className="overflow-hidden rounded-[34px] border p-4 shadow-sm md:p-5"
           style={{
-            backgroundColor: T.card,
-            borderColor: T.border,
-            boxShadow: "0 10px 24px rgba(7,27,51,0.055)",
+            background:
+              "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(247,250,255,0.98) 100%)",
+            borderColor: "rgba(207,218,232,0.92)",
+            boxShadow: "0 20px 44px rgba(7,27,51,0.085)",
           }}
         >
-          <div className="flex items-center justify-between gap-3 px-1">
-            <h1 className="text-xl font-black tracking-[-0.03em] md:text-2xl" style={{ color: T.text }}>
-              Search Results
-            </h1>
+          <div className="flex items-center justify-between gap-3 px-0.5">
+            <div>
+              <p className="text-[11px] font-black uppercase tracking-[0.2em]" style={{ color: T.textSubtle }}>
+                Soldier Hub
+              </p>
+              <h1 className="mt-0.5 text-[28px] font-black leading-none tracking-[-0.055em] md:text-[32px]" style={{ color: T.text }}>
+                Search Results
+              </h1>
+            </div>
             <button
               type="button"
               onClick={() => router.push("/")}
-              className="rounded-full px-3 py-1.5 text-sm font-extrabold transition active:scale-[0.98]"
+              className="rounded-full px-3 py-2 text-[15px] font-extrabold transition active:scale-[0.98]"
               style={{ color: T.blue }}
             >
               Cancel
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="mt-3">
-            <div className="flex items-center gap-2">
-              <div className="relative min-w-0 flex-1">
-                <Search
-                  size={19}
-                  className="absolute left-4 top-1/2 -translate-y-1/2"
-                  style={{ color: cleanQuery ? SEARCH_ACTIVE_COLOR : SEARCH_IDLE_COLOR }}
-                />
-                <input
-                  value={localQuery}
-                  onChange={(event) => setLocalQuery(event.target.value)}
-                  placeholder="Search posts or members"
-                  autoComplete="off"
-                  inputMode="search"
-                  enterKeyHint="search"
-                  className="h-12 w-full rounded-[18px] border pl-11 pr-4 text-[16px] font-semibold outline-none transition"
-                  style={{
-                    backgroundColor: "#F3F6FB",
-                    borderColor: "rgba(207,218,232,0.78)",
-                    color: T.text,
-                    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.78)",
-                  }}
-                />
-              </div>
+          <form onSubmit={handleSubmit} className="mt-5">
+            <div className="relative">
+              <Search
+                size={22}
+                className="absolute left-4 top-1/2 -translate-y-1/2"
+                style={{ color: cleanQuery ? SEARCH_ACTIVE_COLOR : SEARCH_IDLE_COLOR }}
+              />
+              <input
+                value={localQuery}
+                onChange={(event) => setLocalQuery(event.target.value)}
+                placeholder="Search posts or members"
+                autoComplete="off"
+                inputMode="search"
+                enterKeyHint="search"
+                className="h-[58px] w-full rounded-[22px] border pl-12 pr-4 text-[18px] font-bold outline-none transition placeholder:font-bold"
+                style={{
+                  backgroundColor: "#F3F6FB",
+                  borderColor: "rgba(207,218,232,0.86)",
+                  color: T.text,
+                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.86), 0 10px 22px rgba(7,27,51,0.035)",
+                }}
+              />
             </div>
           </form>
 
-          <div className="mt-3 grid grid-cols-3 border-b" style={{ borderColor: T.borderSoft }}>
+          <div className="mt-4 grid grid-cols-3 border-b" style={{ borderColor: "rgba(207,218,232,0.92)" }}>
             {searchTabs.map((tab) => {
               const active = activeTab === tab.key;
               return (
@@ -604,15 +640,15 @@ export default function SearchPage() {
                   key={tab.key}
                   type="button"
                   onClick={() => setTab(tab.key)}
-                  className="relative flex h-11 items-center justify-center gap-1.5 text-sm font-extrabold transition"
-                  style={{ color: active ? T.blue : T.textSubtle }}
+                  className="relative flex h-12 items-center justify-center gap-1.5 text-[16px] font-black transition active:scale-[0.98]"
+                  style={{ color: active ? T.blue : "#7A8493" }}
                 >
                   <span>{tab.label}</span>
                   {cleanQuery.length >= 2 && tab.count > 0 ? (
                     <span
                       className="rounded-full px-1.5 py-0.5 text-[10px] font-black"
                       style={{
-                        backgroundColor: active ? T.brandBlueSoft : T.surface,
+                        backgroundColor: active ? T.brandBlueSoft : "#EEF3F8",
                         color: active ? T.blue : T.textSubtle,
                       }}
                     >
@@ -631,7 +667,7 @@ export default function SearchPage() {
           </div>
         </section>
 
-        <section className="mt-3">
+        <section className="mt-4">
           {activeTab === "all"
             ? renderAllResults()
             : activeTab === "members"
