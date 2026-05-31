@@ -56,6 +56,7 @@ export default function TipTapComposerEditor({
   const suppressOpenUntilRef = useRef(0);
   const phoneScreenRef = useRef(false);
   const manualInlineFormatsRef = useRef({ bold: false, italic: false });
+  const userSelectingUntilRef = useRef(0);
 
   const extensions = useMemo(
     () => [
@@ -116,27 +117,50 @@ export default function TipTapComposerEditor({
     tiptap.view.dispatch(tiptap.state.tr.setStoredMarks(marks));
   }, []);
 
-  const keepCursorVisible = useCallback((tiptap, placeNearKeyboard = false) => {
-    const scrollBox = document.querySelector(".soldierhub-mobile-text-shell");
-    if (!scrollBox || !tiptap?.view) return;
-
-    window.requestAnimationFrame?.(() => {
-      try {
-        const position = tiptap.state.selection?.to ?? tiptap.state.doc.content.size;
-        const cursor = tiptap.view.coordsAtPos(position);
-        const box = scrollBox.getBoundingClientRect();
-        const desiredBottomGap = placeNearKeyboard ? 56 : 74;
-        const desiredBottom = box.bottom - desiredBottomGap;
-        const safeTop = box.top + 24;
-
-        if (cursor.bottom > desiredBottom) scrollBox.scrollTop += cursor.bottom - desiredBottom;
-        if (placeNearKeyboard && cursor.bottom < desiredBottom - 88) scrollBox.scrollTop -= desiredBottom - cursor.bottom - 88;
-        if (cursor.top < safeTop) scrollBox.scrollTop -= safeTop - cursor.top + 16;
-      } catch {
-        scrollBox.scrollTop = Math.max(0, scrollBox.scrollHeight - scrollBox.clientHeight - 56);
-      }
-    });
+  const pauseAutoScrollForSelection = useCallback(() => {
+    userSelectingUntilRef.current = Date.now() + 1200;
   }, []);
+
+  const shouldSkipAutoScroll = useCallback((placeNearKeyboard) => {
+    if (placeNearKeyboard) return false;
+    if (Date.now() < userSelectingUntilRef.current) return true;
+
+    if (typeof window !== "undefined") {
+      const selection = window.getSelection?.();
+      if (selection && !selection.isCollapsed) return true;
+    }
+
+    return false;
+  }, []);
+
+  const keepCursorVisible = useCallback(
+    (tiptap, placeNearKeyboard = false) => {
+      const scrollBox = document.querySelector(".soldierhub-mobile-text-shell");
+      if (!scrollBox || !tiptap?.view || shouldSkipAutoScroll(placeNearKeyboard)) return;
+
+      window.requestAnimationFrame?.(() => {
+        if (shouldSkipAutoScroll(placeNearKeyboard)) return;
+
+        try {
+          const position = tiptap.state.selection?.to ?? tiptap.state.doc.content.size;
+          const cursor = tiptap.view.coordsAtPos(position);
+          const box = scrollBox.getBoundingClientRect();
+          const desiredBottomGap = placeNearKeyboard ? 56 : 74;
+          const desiredBottom = box.bottom - desiredBottomGap;
+          const safeTop = box.top + 24;
+
+          if (cursor.bottom > desiredBottom) scrollBox.scrollTop += cursor.bottom - desiredBottom;
+          if (placeNearKeyboard && cursor.bottom < desiredBottom - 88) scrollBox.scrollTop -= desiredBottom - cursor.bottom - 88;
+          if (cursor.top < safeTop) scrollBox.scrollTop -= safeTop - cursor.top + 16;
+        } catch {
+          if (!shouldSkipAutoScroll(placeNearKeyboard)) {
+            scrollBox.scrollTop = Math.max(0, scrollBox.scrollHeight - scrollBox.clientHeight - 56);
+          }
+        }
+      });
+    },
+    [shouldSkipAutoScroll]
+  );
 
   const focusEditorAtEnd = useCallback(
     (tiptap, placeNearKeyboard = true) => {
@@ -180,6 +204,26 @@ export default function TipTapComposerEditor({
             event.preventDefault();
             return true;
           }
+          return false;
+        },
+        pointerdown() {
+          pauseAutoScrollForSelection();
+          return false;
+        },
+        pointermove() {
+          pauseAutoScrollForSelection();
+          return false;
+        },
+        touchstart() {
+          pauseAutoScrollForSelection();
+          return false;
+        },
+        touchmove() {
+          pauseAutoScrollForSelection();
+          return false;
+        },
+        selectionchange() {
+          pauseAutoScrollForSelection();
           return false;
         },
       },
