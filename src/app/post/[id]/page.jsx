@@ -25,14 +25,15 @@ async function fetchPost(id) {
     const supabase = await createClient();
     if (!supabase) return null;
 
-    const { data } = await supabase
-      .from("posts_with_meta")
-      .select("id, title, body, category, anonymous, author_name, status")
-      .eq("id", id)
-      .maybeSingle();
+    // Logged-out crawlers cannot read public.posts directly (no anon SELECT
+    // policy; posts_with_meta runs security_invoker). The security-definer
+    // get_public_post RPC is the supported anonymous read path.
+    const { data, error } = await supabase.rpc("get_public_post", { p_id: id });
+    if (error) return null;
 
-    if (!data || data.status === "deleted" || data.status === "removed") return null;
-    return data;
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row || row.status !== "active") return null;
+    return row;
   } catch {
     return null;
   }
@@ -52,7 +53,8 @@ export async function generateMetadata({ params }) {
     };
   }
 
-  const rawTitle = stripHtml(post.title) || truncate(post.body, 70) || "Community post";
+  // Posts are body-only (no title column); derive a title from the body.
+  const rawTitle = truncate(post.body, 70) || "Community post";
   const description =
     truncate(post.body, 160) ||
     `A post in the ${post.category || "community"} category on SoldierHub.`;
