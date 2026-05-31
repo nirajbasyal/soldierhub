@@ -55,9 +55,7 @@ export default function TipTapComposerEditor({
   const savedSelectionRef = useRef(null);
   const suppressOpenUntilRef = useRef(0);
   const phoneScreenRef = useRef(false);
-  const writingModeOpenRef = useRef(false);
   const manualInlineFormatsRef = useRef({ bold: false, italic: false });
-  const selectionAutoScrollPauseUntilRef = useRef(0);
 
   const extensions = useMemo(
     () => [
@@ -91,8 +89,8 @@ export default function TipTapComposerEditor({
 
   const getDisplayFormats = useCallback((tiptap) => {
     return {
-      bold: Boolean(manualInlineFormatsRef.current.bold),
-      italic: Boolean(manualInlineFormatsRef.current.italic),
+      bold: Boolean(tiptap?.isActive("bold") || manualInlineFormatsRef.current.bold),
+      italic: Boolean(tiptap?.isActive("italic") || manualInlineFormatsRef.current.italic),
       bullet: Boolean(tiptap?.isActive("bulletList")),
       number: Boolean(tiptap?.isActive("orderedList")),
     };
@@ -118,43 +116,27 @@ export default function TipTapComposerEditor({
     tiptap.view.dispatch(tiptap.state.tr.setStoredMarks(marks));
   }, []);
 
-  const suppressSelectionAutoScroll = useCallback((durationMs = 900) => {
-    selectionAutoScrollPauseUntilRef.current = Date.now() + durationMs;
+  const keepCursorVisible = useCallback((tiptap, placeNearKeyboard = false) => {
+    const scrollBox = document.querySelector(".soldierhub-mobile-text-shell");
+    if (!scrollBox || !tiptap?.view || !tiptap?.state?.selection?.empty) return;
+
+    window.requestAnimationFrame?.(() => {
+      try {
+        const position = tiptap.state.selection?.to ?? tiptap.state.doc.content.size;
+        const cursor = tiptap.view.coordsAtPos(position);
+        const box = scrollBox.getBoundingClientRect();
+        const desiredBottomGap = placeNearKeyboard ? 56 : 74;
+        const desiredBottom = box.bottom - desiredBottomGap;
+        const safeTop = box.top + 24;
+
+        if (cursor.bottom > desiredBottom) scrollBox.scrollTop += cursor.bottom - desiredBottom;
+        if (placeNearKeyboard && cursor.bottom < desiredBottom - 88) scrollBox.scrollTop -= desiredBottom - cursor.bottom - 88;
+        if (cursor.top < safeTop) scrollBox.scrollTop -= safeTop - cursor.top + 16;
+      } catch {
+        scrollBox.scrollTop = Math.max(0, scrollBox.scrollHeight - scrollBox.clientHeight - 56);
+      }
+    });
   }, []);
-
-  const shouldSkipCursorAutoScroll = useCallback((tiptap) => {
-    const selection = tiptap?.state?.selection;
-    if (!selection) return false;
-    if (Date.now() < selectionAutoScrollPauseUntilRef.current) return true;
-    return !selection.empty;
-  }, []);
-
-  const keepCursorVisible = useCallback(
-    (tiptap, placeNearKeyboard = false) => {
-      const scrollBox = document.querySelector(".soldierhub-mobile-text-shell");
-      if (!scrollBox || !tiptap?.view || shouldSkipCursorAutoScroll(tiptap)) return;
-
-      window.requestAnimationFrame?.(() => {
-        if (shouldSkipCursorAutoScroll(tiptap)) return;
-
-        try {
-          const position = tiptap.state.selection?.to ?? tiptap.state.doc.content.size;
-          const cursor = tiptap.view.coordsAtPos(position);
-          const box = scrollBox.getBoundingClientRect();
-          const desiredBottomGap = placeNearKeyboard ? 56 : 74;
-          const desiredBottom = box.bottom - desiredBottomGap;
-          const safeTop = box.top + 24;
-
-          if (cursor.bottom > desiredBottom) scrollBox.scrollTop += cursor.bottom - desiredBottom;
-          if (placeNearKeyboard && cursor.bottom < desiredBottom - 88) scrollBox.scrollTop -= desiredBottom - cursor.bottom - 88;
-          if (cursor.top < safeTop) scrollBox.scrollTop -= safeTop - cursor.top + 16;
-        } catch {
-          scrollBox.scrollTop = Math.max(0, scrollBox.scrollHeight - scrollBox.clientHeight - 56);
-        }
-      });
-    },
-    [shouldSkipCursorAutoScroll]
-  );
 
   const focusEditorAtEnd = useCallback(
     (tiptap, placeNearKeyboard = true) => {
@@ -169,10 +151,6 @@ export default function TipTapComposerEditor({
     },
     [applyStoredMarks, keepCursorVisible, rememberSelection, syncFormats]
   );
-
-  const suppressMobileEditorOpen = useCallback(() => {
-    suppressOpenUntilRef.current = Date.now() + 700;
-  }, []);
 
   const editor = useEditor({
     extensions,
@@ -193,16 +171,8 @@ export default function TipTapComposerEditor({
         return String(text || "");
       },
       handleDOMEvents: {
-        pointerdown() {
-          if (writingModeOpenRef.current && phoneScreenRef.current) suppressSelectionAutoScroll();
-          return false;
-        },
-        touchstart() {
-          if (writingModeOpenRef.current && phoneScreenRef.current) suppressSelectionAutoScroll();
-          return false;
-        },
         beforeinput(view, event) {
-          if (pageMode && phoneScreenRef.current && !writingModeOpenRef.current) {
+          if (pageMode && phoneScreenRef.current && !writingModeOpen) {
             event.preventDefault();
             return true;
           }
@@ -237,6 +207,10 @@ export default function TipTapComposerEditor({
     },
   });
 
+  const suppressMobileEditorOpen = useCallback(() => {
+    suppressOpenUntilRef.current = Date.now() + 700;
+  }, []);
+
   const handleRemoveImage = useCallback(
     (event) => {
       event?.preventDefault?.();
@@ -251,14 +225,17 @@ export default function TipTapComposerEditor({
   const openWritingMode = useCallback(() => {
     if (!mounted || !pageMode || !phoneScreenRef.current || submitting) return;
     if (Date.now() < suppressOpenUntilRef.current) return;
-
-    if (editor) {
-      const endPosition = Math.max(0, editor.state?.doc?.content?.size ?? 0);
-      editor.commands.setTextSelection(endPosition);
-    }
-
     setWritingModeOpen(true);
-  }, [editor, mounted, pageMode, submitting]);
+  }, [mounted, pageMode, submitting]);
+
+  const handleNativeEditorDone = useCallback(
+    (nextHtml) => {
+      const cleanHtml = sanitizeComposerHtml(nextHtml || "");
+      editor?.commands.setContent(cleanHtml || "", false);
+      window.requestAnimationFrame?.(() => emitContent(editor));
+    },
+    [editor, emitContent]
+  );
 
   const closeWritingMode = useCallback(() => {
     suppressOpenUntilRef.current = Date.now() + 500;
@@ -311,10 +288,6 @@ export default function TipTapComposerEditor({
   }, [editor, mounted, submitting]);
 
   useEffect(() => {
-    writingModeOpenRef.current = writingModeOpen;
-  }, [writingModeOpen]);
-
-  useEffect(() => {
     if (typeof window === "undefined") return undefined;
     const query = window.matchMedia("(max-width: 640px)");
     const updatePhoneScreen = () => {
@@ -360,24 +333,6 @@ export default function TipTapComposerEditor({
       window.scrollTo(0, scrollY);
     };
   }, [writingModeOpen]);
-
-  useEffect(() => {
-    if (!writingModeOpen || typeof document === "undefined") return undefined;
-
-    const handleSelectionChange = () => {
-      const editorDom = editor?.view?.dom;
-      const selection = document.getSelection?.();
-      if (!editorDom || !selection || selection.rangeCount === 0 || selection.isCollapsed) return;
-
-      const anchorInside = selection.anchorNode ? editorDom.contains(selection.anchorNode) : false;
-      const focusInside = selection.focusNode ? editorDom.contains(selection.focusNode) : false;
-
-      if (anchorInside || focusInside) suppressSelectionAutoScroll(1200);
-    };
-
-    document.addEventListener("selectionchange", handleSelectionChange);
-    return () => document.removeEventListener("selectionchange", handleSelectionChange);
-  }, [editor, suppressSelectionAutoScroll, writingModeOpen]);
 
   useEffect(() => {
     if (!mounted || !editor || editor.isFocused || writingModeOpen) return;
@@ -433,6 +388,9 @@ export default function TipTapComposerEditor({
         onFormat={runFormatCommand}
         onOverlayReady={() => focusEditorAtEnd(editor, true)}
         onEditorAreaClick={() => keepCursorVisible(editor)}
+        nativeMode={pageMode && phoneScreen}
+        nativeEditorHtml={editor ? sanitizeComposerHtml(editor.getHTML()) : body || ""}
+        onNativeDone={handleNativeEditorDone}
       />
     );
   }
