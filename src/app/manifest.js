@@ -17,6 +17,12 @@ export default function manifest() {
     icons: [
       {
         src: "/brand/soldierhub-icon.png",
+        sizes: "1024x1024",
+        type: "image/png",
+        purpose: "any",
+      },
+      {
+        src: "/brand/soldierhub-logo.png",
         sizes: "512x512",
         type: "image/png",
         purpose: "any",
