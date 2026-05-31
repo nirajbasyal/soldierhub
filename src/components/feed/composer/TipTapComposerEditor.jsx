@@ -55,7 +55,9 @@ export default function TipTapComposerEditor({
   const savedSelectionRef = useRef(null);
   const suppressOpenUntilRef = useRef(0);
   const phoneScreenRef = useRef(false);
+  const writingModeOpenRef = useRef(false);
   const manualInlineFormatsRef = useRef({ bold: false, italic: false });
+  const selectionAutoScrollPauseUntilRef = useRef(0);
 
   const extensions = useMemo(
     () => [
@@ -116,27 +118,43 @@ export default function TipTapComposerEditor({
     tiptap.view.dispatch(tiptap.state.tr.setStoredMarks(marks));
   }, []);
 
-  const keepCursorVisible = useCallback((tiptap, placeNearKeyboard = false) => {
-    const scrollBox = document.querySelector(".soldierhub-mobile-text-shell");
-    if (!scrollBox || !tiptap?.view) return;
-
-    window.requestAnimationFrame?.(() => {
-      try {
-        const position = tiptap.state.selection?.to ?? tiptap.state.doc.content.size;
-        const cursor = tiptap.view.coordsAtPos(position);
-        const box = scrollBox.getBoundingClientRect();
-        const desiredBottomGap = placeNearKeyboard ? 56 : 74;
-        const desiredBottom = box.bottom - desiredBottomGap;
-        const safeTop = box.top + 24;
-
-        if (cursor.bottom > desiredBottom) scrollBox.scrollTop += cursor.bottom - desiredBottom;
-        if (placeNearKeyboard && cursor.bottom < desiredBottom - 88) scrollBox.scrollTop -= desiredBottom - cursor.bottom - 88;
-        if (cursor.top < safeTop) scrollBox.scrollTop -= safeTop - cursor.top + 16;
-      } catch {
-        scrollBox.scrollTop = Math.max(0, scrollBox.scrollHeight - scrollBox.clientHeight - 56);
-      }
-    });
+  const suppressSelectionAutoScroll = useCallback((durationMs = 900) => {
+    selectionAutoScrollPauseUntilRef.current = Date.now() + durationMs;
   }, []);
+
+  const shouldSkipCursorAutoScroll = useCallback((tiptap) => {
+    const selection = tiptap?.state?.selection;
+    if (!selection) return false;
+    if (Date.now() < selectionAutoScrollPauseUntilRef.current) return true;
+    return !selection.empty;
+  }, []);
+
+  const keepCursorVisible = useCallback(
+    (tiptap, placeNearKeyboard = false) => {
+      const scrollBox = document.querySelector(".soldierhub-mobile-text-shell");
+      if (!scrollBox || !tiptap?.view || shouldSkipCursorAutoScroll(tiptap)) return;
+
+      window.requestAnimationFrame?.(() => {
+        if (shouldSkipCursorAutoScroll(tiptap)) return;
+
+        try {
+          const position = tiptap.state.selection?.to ?? tiptap.state.doc.content.size;
+          const cursor = tiptap.view.coordsAtPos(position);
+          const box = scrollBox.getBoundingClientRect();
+          const desiredBottomGap = placeNearKeyboard ? 56 : 74;
+          const desiredBottom = box.bottom - desiredBottomGap;
+          const safeTop = box.top + 24;
+
+          if (cursor.bottom > desiredBottom) scrollBox.scrollTop += cursor.bottom - desiredBottom;
+          if (placeNearKeyboard && cursor.bottom < desiredBottom - 88) scrollBox.scrollTop -= desiredBottom - cursor.bottom - 88;
+          if (cursor.top < safeTop) scrollBox.scrollTop -= safeTop - cursor.top + 16;
+        } catch {
+          scrollBox.scrollTop = Math.max(0, scrollBox.scrollHeight - scrollBox.clientHeight - 56);
+        }
+      });
+    },
+    [shouldSkipCursorAutoScroll]
+  );
 
   const focusEditorAtEnd = useCallback(
     (tiptap, placeNearKeyboard = true) => {
@@ -175,8 +193,16 @@ export default function TipTapComposerEditor({
         return String(text || "");
       },
       handleDOMEvents: {
+        pointerdown() {
+          if (writingModeOpenRef.current && phoneScreenRef.current) suppressSelectionAutoScroll();
+          return false;
+        },
+        touchstart() {
+          if (writingModeOpenRef.current && phoneScreenRef.current) suppressSelectionAutoScroll();
+          return false;
+        },
         beforeinput(view, event) {
-          if (pageMode && phoneScreenRef.current && !writingModeOpen) {
+          if (pageMode && phoneScreenRef.current && !writingModeOpenRef.current) {
             event.preventDefault();
             return true;
           }
@@ -285,6 +311,10 @@ export default function TipTapComposerEditor({
   }, [editor, mounted, submitting]);
 
   useEffect(() => {
+    writingModeOpenRef.current = writingModeOpen;
+  }, [writingModeOpen]);
+
+  useEffect(() => {
     if (typeof window === "undefined") return undefined;
     const query = window.matchMedia("(max-width: 640px)");
     const updatePhoneScreen = () => {
@@ -303,18 +333,51 @@ export default function TipTapComposerEditor({
     const previousBodyOverflow = document.body.style.overflow;
     const previousHtmlOverflow = document.documentElement.style.overflow;
     const previousOverscroll = document.documentElement.style.overscrollBehavior;
+    const previousBodyPosition = document.body.style.position;
+    const previousBodyTop = document.body.style.top;
+    const previousBodyLeft = document.body.style.left;
+    const previousBodyRight = document.body.style.right;
+    const previousBodyWidth = document.body.style.width;
 
     document.documentElement.style.overflow = "hidden";
     document.body.style.overflow = "hidden";
     document.documentElement.style.overscrollBehavior = "none";
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.left = "0";
+    document.body.style.right = "0";
+    document.body.style.width = "100%";
 
     return () => {
       document.documentElement.style.overflow = previousHtmlOverflow;
       document.body.style.overflow = previousBodyOverflow;
       document.documentElement.style.overscrollBehavior = previousOverscroll;
+      document.body.style.position = previousBodyPosition;
+      document.body.style.top = previousBodyTop;
+      document.body.style.left = previousBodyLeft;
+      document.body.style.right = previousBodyRight;
+      document.body.style.width = previousBodyWidth;
       window.scrollTo(0, scrollY);
     };
   }, [writingModeOpen]);
+
+  useEffect(() => {
+    if (!writingModeOpen || typeof document === "undefined") return undefined;
+
+    const handleSelectionChange = () => {
+      const editorDom = editor?.view?.dom;
+      const selection = document.getSelection?.();
+      if (!editorDom || !selection || selection.rangeCount === 0 || selection.isCollapsed) return;
+
+      const anchorInside = selection.anchorNode ? editorDom.contains(selection.anchorNode) : false;
+      const focusInside = selection.focusNode ? editorDom.contains(selection.focusNode) : false;
+
+      if (anchorInside || focusInside) suppressSelectionAutoScroll(1200);
+    };
+
+    document.addEventListener("selectionchange", handleSelectionChange);
+    return () => document.removeEventListener("selectionchange", handleSelectionChange);
+  }, [editor, suppressSelectionAutoScroll, writingModeOpen]);
 
   useEffect(() => {
     if (!mounted || !editor || editor.isFocused || writingModeOpen) return;
