@@ -8,12 +8,7 @@ if (dsn) {
 
     tracesSampleRate: process.env.NODE_ENV === "production" ? 0.05 : 1.0,
 
-    replaysSessionSampleRate:
-      process.env.NODE_ENV === "production" ? 0.01 : 0,
-
-    replaysOnErrorSampleRate: 1.0,
-
-    integrations: [Sentry.replayIntegration()],
+    sendDefaultPii: false,
 
     enabled: true,
   });

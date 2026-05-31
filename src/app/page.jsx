@@ -162,8 +162,8 @@ export default function HomePage() {
     setHasNewFeedItems,
   } = useApp();
 
-  const [cachedPosts, setCachedPosts] = useState(readCachedFeed);
-  const [displayedPosts, setDisplayedPosts] = useState(() => readCachedFeed());
+  const [cachedPosts, setCachedPosts] = useState([]);
+  const [displayedPosts, setDisplayedPosts] = useState([]);
   const [renderLimit, setRenderLimit] = useState(INITIAL_RENDERED_POSTS);
   const [refreshingFeed, setRefreshingFeed] = useState(false);
   const postListRef = useRef(null);
@@ -172,6 +172,17 @@ export default function HomePage() {
   const manualFeedRefreshRef = useRef(false);
   const newPostCheckRunningRef = useRef(false);
   const hasHandledPublishScrollRef = useRef(false);
+
+  useEffect(() => {
+    const cached = readCachedFeed();
+
+    if (!cached.length) return;
+
+    setCachedPosts(cached);
+    displayedPostsRef.current = cached;
+    setDisplayedPosts(cached);
+    topFeedMarkerRef.current = buildPostMarker(cached[0]);
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
