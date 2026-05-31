@@ -1,264 +1,69 @@
-"use client";
+import { createClient } from "@/lib/supabase/server";
+import VisitorProfileView from "./VisitorProfileView";
 
-import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, CalendarDays, FileText, ShieldCheck, UserRound } from "lucide-react";
-import { T } from "@/lib/theme";
-import { useApp } from "@/store/AppContext";
-import AppShell from "@/components/layout/AppShell";
-import Footer from "@/components/layout/Footer";
-import Avatar from "@/components/ui/Avatar";
-import Badge from "@/components/ui/Badge";
-import Button from "@/components/ui/Button";
-import VisitorPostList from "@/components/profile/VisitorPostList";
-import { getPublicProfile, listPublicPostsByAuthor } from "@/lib/db/visitorProfiles";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://soldierhub.com";
 
-const VISITOR_PROFILE_CACHE_PREFIX = "soldierhub_visitor_profile_cache_";
-
-function getVisitorProfileCacheKey(userId) {
-  return `${VISITOR_PROFILE_CACHE_PREFIX}${userId || "unknown"}`;
+function clean(value, max = 200) {
+  const text = String(value || "").replace(/\s+/g, " ").trim();
+  if (text.length <= max) return text;
+  return `${text.slice(0, max - 1).trimEnd()}…`;
 }
 
-function readCachedVisitorProfile(userId) {
-  if (typeof window === "undefined" || !userId) {
-    return { profile: null, posts: [] };
-  }
+async function fetchPublicProfile(userId) {
+  if (!userId) return null;
 
   try {
-    const raw = window.localStorage.getItem(getVisitorProfileCacheKey(userId));
-    if (!raw) return { profile: null, posts: [] };
+    const supabase = await createClient();
+    if (!supabase) return null;
 
-    const parsed = JSON.parse(raw);
+    const { data } = await supabase.rpc("get_public_profile", {
+      p_user_id: userId,
+    });
+
+    return data?.[0] || null;
+  } catch {
+    return null;
+  }
+}
+
+export async function generateMetadata({ params }) {
+  const { userId } = await params;
+  const profile = await fetchPublicProfile(userId);
+  const canonical = `${SITE_URL}/users/${userId}`;
+
+  if (!profile) {
+    // Unverified, private, anonymous, or missing — keep these out of the index.
     return {
-      profile: parsed?.profile || null,
-      posts: Array.isArray(parsed?.posts) ? parsed.posts : [],
+      title: "Member profile",
+      robots: { index: false, follow: false },
+      alternates: { canonical },
     };
-  } catch {
-    return { profile: null, posts: [] };
   }
-}
 
-function saveCachedVisitorProfile(userId, profile, posts) {
-  if (typeof window === "undefined" || !userId || !profile) return;
+  const name = clean(profile.full_name, 70) || "SoldierHub member";
+  const title = `${name} — Member profile`;
+  const description = profile.bio
+    ? clean(profile.bio, 160)
+    : `${name} is a verified member of the SoldierHub Fort Bliss and El Paso military community.`;
 
-  try {
-    window.localStorage.setItem(
-      getVisitorProfileCacheKey(userId),
-      JSON.stringify({
-        savedAt: Date.now(),
-        profile,
-        posts: Array.isArray(posts) ? posts.slice(0, 50) : [],
-      })
-    );
-  } catch {
-    // Browser storage can fail in private mode or when full. Live loading still works normally.
-  }
-}
-
-function VisitorStatusCard({ icon: Icon, title, body, action }) {
-  return (
-    <AppShell hideNav>
-      <main className="min-h-screen flex items-center justify-center px-4 pb-24 md:pb-12" style={{ background: "radial-gradient(circle at top left, rgba(220,232,247,0.9), transparent 32%), linear-gradient(180deg, #F4F8FD 0%, #FFFFFF 48%, #F4F8FD 100%)" }}>
-        <div className="w-full max-w-md rounded-[28px] border p-6 text-center" style={{ backgroundColor: T.card, borderColor: "#D5E2F2", boxShadow: "0 18px 44px rgba(7,27,51,0.08)" }}>
-          <div className="w-14 h-14 rounded-2xl mx-auto flex items-center justify-center mb-4" style={{ backgroundColor: "rgba(220,232,247,0.95)", color: T.blue }}>
-            <Icon size={24} />
-          </div>
-          <h1 className="text-2xl font-extrabold mb-2" style={{ color: T.navy }}>{title}</h1>
-          <p className="text-sm leading-7 mb-5" style={{ color: T.textMuted }}>{body}</p>
-          {action}
-        </div>
-      </main>
-    </AppShell>
-  );
-}
-
-function formatJoinDate(value) {
-  if (!value) return "Member";
-  try {
-    return new Intl.DateTimeFormat("en", { month: "short", year: "numeric" }).format(new Date(value));
-  } catch {
-    return "Member";
-  }
+  return {
+    title,
+    description,
+    alternates: { canonical },
+    openGraph: {
+      type: "profile",
+      url: canonical,
+      title,
+      description,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+    },
+  };
 }
 
 export default function VisitorProfilePage() {
-  const router = useRouter();
-  const params = useParams();
-  const userId = params?.userId;
-  const { currentUser, authLoading } = useApp();
-
-  const [profile, setProfile] = useState(null);
-  const [posts, setPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
-
-  useEffect(() => {
-    if (!userId) return;
-
-    const cached = readCachedVisitorProfile(userId);
-    if (cached.profile) {
-      setProfile(cached.profile);
-      setPosts(cached.posts);
-      setLoading(false);
-      setNotFound(false);
-    }
-  }, [userId]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadVisitorProfile() {
-      if (!userId) return;
-
-      const cached = readCachedVisitorProfile(userId);
-      const hasCachedProfile = Boolean(cached.profile);
-
-      if (!hasCachedProfile) {
-        setLoading(true);
-      }
-      setNotFound(false);
-
-      const [profileResult, postsResult] = await Promise.all([
-        getPublicProfile(userId),
-        listPublicPostsByAuthor(userId),
-      ]);
-
-      if (cancelled) return;
-
-      if (profileResult.error || !profileResult.data) {
-        if (!hasCachedProfile) {
-          setProfile(null);
-          setPosts([]);
-          setNotFound(true);
-        }
-        setLoading(false);
-        return;
-      }
-
-      const freshProfile = profileResult.data;
-      const freshPosts = postsResult.data || [];
-
-      setProfile(freshProfile);
-      setPosts(freshPosts);
-      setNotFound(false);
-      setLoading(false);
-      saveCachedVisitorProfile(userId, freshProfile, freshPosts);
-    }
-
-    loadVisitorProfile();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [userId]);
-
-  useEffect(() => {
-    if (authLoading) return;
-    if (currentUser?.id && userId && currentUser.id === userId) {
-      router.replace("/profile");
-    }
-  }, [authLoading, currentUser?.id, router, userId]);
-
-  const totals = useMemo(() => {
-    return posts.reduce(
-      (acc, post) => ({
-        upvotes: acc.upvotes + (post.upvote_count || 0),
-        replies: acc.replies + (post.comment_count || 0),
-      }),
-      { upvotes: 0, replies: 0 }
-    );
-  }, [posts]);
-
-  if (loading && !profile) {
-    return <VisitorStatusCard icon={UserRound} title="Loading profile" body="Getting this member profile ready." />;
-  }
-
-  if (notFound || !profile) {
-    return (
-      <VisitorStatusCard
-        icon={UserRound}
-        title="Profile not available"
-        body="This profile may be private, unverified, deleted, or unavailable. Anonymous author profiles are not shown."
-        action={<Button variant="primary" onClick={() => router.push("/")}>Back to feed</Button>}
-      />
-    );
-  }
-
-  return (
-    <AppShell hideNav>
-      <main className="min-h-screen pb-24 md:pb-12" style={{ background: "radial-gradient(circle at top left, rgba(220,232,247,0.9), transparent 32%), linear-gradient(180deg, #F4F8FD 0%, #FFFFFF 48%, #F4F8FD 100%)" }}>
-        <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-10">
-          <Link href="/" className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition hover:-translate-y-0.5" style={{ backgroundColor: "rgba(255,255,255,0.86)", borderColor: "#D5E2F2", color: T.navy }}>
-            <ArrowLeft size={16} />
-            Back to feed
-          </Link>
-
-          <section className="mt-6 rounded-[26px] md:rounded-[32px] border overflow-hidden relative" style={{ borderColor: "#BCD0EA", background: "linear-gradient(135deg, rgba(220,232,247,0.96) 0%, rgba(253,254,255,0.98) 52%, rgba(253,236,240,0.9) 100%)", boxShadow: "0 22px 60px rgba(7,27,51,0.08)" }}>
-            <div className="absolute left-0 top-0 h-full w-1.5 md:w-2 bg-[#B31942]" />
-            <div className="absolute right-0 top-0 h-full w-1.5 md:w-2 bg-[#1E4E8C]" />
-
-            <div className="px-4 py-5 md:p-8">
-              <div className="flex flex-col lg:flex-row gap-4 md:gap-6 lg:items-start lg:justify-between">
-                <div className="flex flex-col md:flex-row gap-3 md:gap-5 md:items-start min-w-0">
-                  <div className="rounded-[22px] md:rounded-[28px] p-1.5 md:p-2 border shrink-0 mx-auto md:mx-0" style={{ backgroundColor: "rgba(255,255,255,0.65)", borderColor: "#D5E2F2" }}>
-                    <div className="md:hidden">
-                      <Avatar name={profile.full_name} color={profile.avatar_color} src={profile.avatar_url} size={68} />
-                    </div>
-                    <div className="hidden md:block">
-                      <Avatar name={profile.full_name} color={profile.avatar_color} src={profile.avatar_url} size={92} />
-                    </div>
-                  </div>
-
-                  <div className="flex-1 min-w-0 text-center md:text-left">
-                    <div className="inline-flex items-center gap-1.5 md:gap-2 rounded-full border px-2.5 md:px-3 py-1 md:py-1.5 text-[10px] md:text-xs font-bold uppercase tracking-[0.12em]" style={{ backgroundColor: "rgba(255,255,255,0.72)", borderColor: "#D5E2F2", color: T.blue }}>
-                      <UserRound size={13} />
-                      Member Profile
-                    </div>
-
-                    <div className="mt-3 md:mt-4 flex items-center justify-center md:justify-start gap-2 flex-wrap">
-                      <h1 className="text-[2rem] sm:text-4xl md:text-5xl font-extrabold tracking-[-0.04em] leading-[0.95]" style={{ color: T.navy }}>{profile.full_name || "SoldierHub member"}</h1>
-                      <Badge tone="blue" icon={ShieldCheck}>Verified</Badge>
-                    </div>
-
-                    <div className="mt-2 md:mt-3 max-w-xl mx-auto md:mx-0">
-                      {profile.bio ? (
-                        <p className="text-sm md:text-base leading-6 md:leading-7" style={{ color: T.text }}>{profile.bio}</p>
-                      ) : (
-                        <p className="text-sm md:text-base leading-6 md:leading-7" style={{ color: T.textMuted }}>This member has not added a bio yet.</p>
-                      )}
-                    </div>
-
-                    <div className="mt-3 md:mt-4 max-w-xl mx-auto md:mx-0">
-                      <div className="rounded-2xl border px-3 py-2.5 flex items-center gap-2.5 min-w-0" style={{ backgroundColor: "rgba(255,255,255,0.76)", borderColor: "#D5E2F2" }}>
-                        <div className="h-8 w-8 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: "rgba(220,232,247,0.92)", color: T.blue }}>
-                          <CalendarDays size={15} />
-                        </div>
-                        <div className="min-w-0 text-left">
-                          <div className="text-[10px] md:text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: T.textSubtle }}>Joined</div>
-                          <div className="text-xs md:text-sm font-semibold truncate" style={{ color: T.navy }}>{formatJoinDate(profile.created_at)}</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 lg:grid-cols-1 gap-2 lg:min-w-[150px]">
-                  {[["Posts", posts.length], ["Upvotes", totals.upvotes], ["Replies", totals.replies]].map(([label, value]) => (
-                    <div key={label} className="rounded-2xl border px-2 py-2.5 md:p-3 text-center lg:text-left" style={{ backgroundColor: "rgba(255,255,255,0.72)", borderColor: "#D5E2F2" }}>
-                      <div className="text-xl md:text-2xl font-extrabold tabular-nums" style={{ color: T.navy }}>{value}</div>
-                      <div className="text-[10px] md:text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: T.textSubtle }}>{label}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <VisitorPostList posts={posts} profileName={profile.full_name || "this member"} />
-          <Footer />
-        </div>
-      </main>
-    </AppShell>
-  );
+  return <VisitorProfileView />;
 }

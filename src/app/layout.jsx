@@ -141,21 +141,14 @@ export const metadata = {
     siteName: SITE_NAME,
     type: "website",
     locale: "en_US",
-    images: [
-      {
-        url: BRAND_ICON,
-        width: 512,
-        height: 512,
-        alt: "SoldierHub logo for the Fort Bliss and El Paso military community",
-      },
-    ],
+    // Social image is provided by the generated opengraph-image route (1200x630 PNG).
   },
 
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
-    images: [BRAND_ICON],
+    // Image is provided by the generated twitter-image route (1200x630 PNG).
   },
 
   robots: {
