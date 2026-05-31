@@ -235,14 +235,14 @@ export async function findProfileByEmailForSearch(email) {
   return { data: profile, error: null };
 }
 
-export async function searchVerifiedProfilesByName(query, { limit = DEFAULT_MEMBER_SEARCH_LIMIT } = {}) {
+export async function searchVerifiedProfiles(query, { limit = DEFAULT_MEMBER_SEARCH_LIMIT } = {}) {
   const supabase = createClient();
   if (!supabase) return { data: [], error: { message: "Supabase is not configured." } };
 
   const cleanQuery = typeof query === "string" ? query.trim() : "";
   if (cleanQuery.length < 2) return { data: [], error: null };
 
-  const { data, error } = await supabase.rpc("search_verified_profiles_by_name", {
+  const { data, error } = await supabase.rpc("search_verified_profiles", {
     p_query: cleanQuery,
     p_limit: cleanMemberSearchLimit(limit),
   });
@@ -250,4 +250,8 @@ export async function searchVerifiedProfilesByName(query, { limit = DEFAULT_MEMB
   if (error) return { data: [], error };
 
   return { data: Array.isArray(data) ? data : [], error: null };
+}
+
+export async function searchVerifiedProfilesByName(query, options = {}) {
+  return searchVerifiedProfiles(query, options);
 }
