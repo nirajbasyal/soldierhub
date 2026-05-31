@@ -148,31 +148,31 @@ function parseTab(value) {
 function SearchStatusCard({ title, body, icon: Icon = Search }) {
   return (
     <div
-      className="overflow-hidden rounded-[32px] border p-5 shadow-sm md:p-6"
+      className="overflow-hidden rounded-[28px] border p-4 shadow-sm md:p-5"
       style={{
         background:
           "radial-gradient(circle at 50% 0%, rgba(61,111,151,0.08) 0%, rgba(255,255,255,0.98) 46%, rgba(248,251,255,0.98) 100%)",
         borderColor: "rgba(207,218,232,0.92)",
-        boxShadow: "0 18px 42px rgba(7,27,51,0.08)",
+        boxShadow: "0 14px 34px rgba(7,27,51,0.07)",
       }}
     >
-      <div className="mx-auto flex max-w-sm flex-col items-center py-7 text-center md:py-9">
+      <div className="mx-auto flex max-w-sm flex-col items-center py-5 text-center md:py-7">
         <div
-          className="mb-5 flex h-[72px] w-[72px] items-center justify-center rounded-[24px] border shadow-sm"
+          className="mb-4 flex h-[60px] w-[60px] items-center justify-center rounded-[20px] border shadow-sm"
           style={{
             background: "linear-gradient(180deg, #FFFFFF 0%, #F3F7FC 100%)",
             borderColor: "rgba(207,218,232,0.9)",
             color: T.blue,
-            boxShadow: "0 14px 30px rgba(49,74,102,0.10)",
+            boxShadow: "0 12px 24px rgba(49,74,102,0.09)",
           }}
         >
-          <Icon size={32} strokeWidth={2.35} />
+          <Icon size={28} strokeWidth={2.35} />
         </div>
 
-        <h2 className="text-[22px] font-black tracking-[-0.04em]" style={{ color: T.text }}>
+        <h2 className="text-[20px] font-black tracking-[-0.04em]" style={{ color: T.text }}>
           {title}
         </h2>
-        <p className="mt-3 text-[15px] font-semibold leading-7" style={{ color: T.textSubtle }}>
+        <p className="mt-2 text-[14px] font-semibold leading-6" style={{ color: T.textSubtle }}>
           {body}
         </p>
       </div>
@@ -431,10 +431,10 @@ export default function SearchPage() {
     if (!currentUser) {
       return (
         <div
-          className="rounded-[32px] border p-6 text-center shadow-sm"
+          className="rounded-[28px] border p-5 text-center shadow-sm"
           style={{ backgroundColor: T.card, borderColor: T.border }}
         >
-          <UserRound className="mx-auto mb-3" size={34} style={{ color: T.navy }} />
+          <UserRound className="mx-auto mb-3" size={32} style={{ color: T.navy }} />
           <h2 className="text-lg font-extrabold" style={{ color: T.text }}>Sign in to search members</h2>
           <p className="mx-auto mt-1 max-w-sm text-sm leading-6" style={{ color: T.textSubtle }}>
             Member profile search is available to signed-in verified Soldier Hub users.
@@ -464,10 +464,10 @@ export default function SearchPage() {
     if (memberLoading) {
       return (
         <div
-          className="rounded-[32px] border p-6 text-center shadow-sm"
+          className="rounded-[28px] border p-5 text-center shadow-sm"
           style={{ backgroundColor: T.card, borderColor: T.border }}
         >
-          <Loader2 className="mx-auto animate-spin" size={28} style={{ color: T.navy }} />
+          <Loader2 className="mx-auto animate-spin" size={26} style={{ color: T.navy }} />
           <p className="mt-3 text-sm font-semibold" style={{ color: T.textSubtle }}>Searching members…</p>
         </div>
       );
@@ -578,40 +578,40 @@ export default function SearchPage() {
 
   return (
     <AppShell>
-      <main className="mx-auto w-full max-w-[640px] px-3 pb-24 pt-3 sm:px-5 md:pt-6">
+      <main className="mx-auto w-full max-w-[640px] px-3 pb-24 pt-2 sm:px-5 md:pt-5">
         <section
-          className="overflow-hidden rounded-[34px] border p-4 shadow-sm md:p-5"
+          className="overflow-hidden rounded-[28px] border p-3 shadow-sm md:p-4"
           style={{
             background:
               "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(247,250,255,0.98) 100%)",
             borderColor: "rgba(207,218,232,0.92)",
-            boxShadow: "0 20px 44px rgba(7,27,51,0.085)",
+            boxShadow: "0 14px 32px rgba(7,27,51,0.075)",
           }}
         >
           <div className="flex items-center justify-between gap-3 px-0.5">
             <div>
-              <p className="text-[11px] font-black uppercase tracking-[0.2em]" style={{ color: T.textSubtle }}>
+              <p className="text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: T.textSubtle }}>
                 Soldier Hub
               </p>
-              <h1 className="mt-0.5 text-[28px] font-black leading-none tracking-[-0.055em] md:text-[32px]" style={{ color: T.text }}>
+              <h1 className="mt-0.5 text-[23px] font-black leading-none tracking-[-0.05em] md:text-[27px]" style={{ color: T.text }}>
                 Search Results
               </h1>
             </div>
             <button
               type="button"
               onClick={() => router.push("/")}
-              className="rounded-full px-3 py-2 text-[15px] font-extrabold transition active:scale-[0.98]"
+              className="rounded-full px-2.5 py-1.5 text-[14px] font-extrabold transition active:scale-[0.98]"
               style={{ color: T.blue }}
             >
               Cancel
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="mt-5">
+          <form onSubmit={handleSubmit} className="mt-3">
             <div className="relative">
               <Search
-                size={22}
-                className="absolute left-4 top-1/2 -translate-y-1/2"
+                size={19}
+                className="absolute left-3.5 top-1/2 -translate-y-1/2"
                 style={{ color: cleanQuery ? SEARCH_ACTIVE_COLOR : SEARCH_IDLE_COLOR }}
               />
               <input
@@ -621,18 +621,18 @@ export default function SearchPage() {
                 autoComplete="off"
                 inputMode="search"
                 enterKeyHint="search"
-                className="h-[58px] w-full rounded-[22px] border pl-12 pr-4 text-[18px] font-bold outline-none transition placeholder:font-bold"
+                className="h-[48px] w-full rounded-[18px] border pl-10 pr-3 text-[16px] font-bold outline-none transition placeholder:font-bold"
                 style={{
                   backgroundColor: "#F3F6FB",
                   borderColor: "rgba(207,218,232,0.86)",
                   color: T.text,
-                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.86), 0 10px 22px rgba(7,27,51,0.035)",
+                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.86), 0 8px 18px rgba(7,27,51,0.03)",
                 }}
               />
             </div>
           </form>
 
-          <div className="mt-4 grid grid-cols-3 border-b" style={{ borderColor: "rgba(207,218,232,0.92)" }}>
+          <div className="mt-3 grid grid-cols-3 border-b" style={{ borderColor: "rgba(207,218,232,0.92)" }}>
             {searchTabs.map((tab) => {
               const active = activeTab === tab.key;
               return (
@@ -640,7 +640,7 @@ export default function SearchPage() {
                   key={tab.key}
                   type="button"
                   onClick={() => setTab(tab.key)}
-                  className="relative flex h-12 items-center justify-center gap-1.5 text-[16px] font-black transition active:scale-[0.98]"
+                  className="relative flex h-10 items-center justify-center gap-1.5 text-[14px] font-black transition active:scale-[0.98]"
                   style={{ color: active ? T.blue : "#7A8493" }}
                 >
                   <span>{tab.label}</span>
@@ -657,7 +657,7 @@ export default function SearchPage() {
                   ) : null}
                   {active ? (
                     <span
-                      className="absolute bottom-[-1px] left-1/2 h-[3px] w-24 max-w-[82%] -translate-x-1/2 rounded-full"
+                      className="absolute bottom-[-1px] left-1/2 h-[3px] w-20 max-w-[76%] -translate-x-1/2 rounded-full"
                       style={{ backgroundColor: T.blue }}
                     />
                   ) : null}
@@ -667,7 +667,7 @@ export default function SearchPage() {
           </div>
         </section>
 
-        <section className="mt-4">
+        <section className="mt-3">
           {activeTab === "all"
             ? renderAllResults()
             : activeTab === "members"
