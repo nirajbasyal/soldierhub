@@ -330,7 +330,7 @@ async function getAccessTokenForApi(supabase, fallbackMessage) {
     return { accessToken: null, error: sessionError || { message: fallbackMessage } };
   }
 
-  return { accessToken, error: null };
+  return { accessToken: session.access_token, error: null };
 }
 
 async function postJsonToApi(path, accessToken, payload, fallbackMessage) {
