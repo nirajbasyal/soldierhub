@@ -17,7 +17,6 @@ function getViewportBox() {
 
 export default function MobileTextEditorOverlay({ editorContent, activeFormats, onDone, onFormat, onEditorAreaClick, onOverlayReady }) {
   const [viewportBox, setViewportBox] = useState(() => getViewportBox());
-  const [editorVisible, setEditorVisible] = useState(false);
 
   const updateViewportBox = useCallback(() => {
     setViewportBox(getViewportBox());
@@ -28,7 +27,6 @@ export default function MobileTextEditorOverlay({ editorContent, activeFormats, 
 
     const readyTimer = window.setTimeout(() => {
       onOverlayReady?.();
-      window.setTimeout(() => setEditorVisible(true), 90);
     }, 90);
 
     const delayedUpdate = () => {
@@ -120,10 +118,7 @@ export default function MobileTextEditorOverlay({ editorContent, activeFormats, 
           if (event.target === event.currentTarget) onEditorAreaClick?.();
         }}
       >
-        <div
-          className="soldierhub-writing-editor min-h-full bg-[#F8FAFD] transition-opacity duration-150 ease-out"
-          style={{ opacity: editorVisible ? 1 : 0 }}
-        >
+        <div className="soldierhub-writing-editor min-h-full bg-[#F8FAFD]">
           {editorContent}
         </div>
       </div>
@@ -155,6 +150,9 @@ export default function MobileTextEditorOverlay({ editorContent, activeFormats, 
           border-radius: 0 !important;
           box-shadow: none !important;
           outline: 0 !important;
+          transform: none !important;
+          transition: none !important;
+          animation: none !important;
         }
 
         .soldierhub-writing-editor,
@@ -187,6 +185,9 @@ export default function MobileTextEditorOverlay({ editorContent, activeFormats, 
           caret-color: auto !important;
           cursor: text !important;
           touch-action: auto !important;
+          transform: none !important;
+          transition: none !important;
+          animation: none !important;
         }
 
         .soldierhub-writing-editor .ProseMirror p.is-editor-empty:first-child::before {
