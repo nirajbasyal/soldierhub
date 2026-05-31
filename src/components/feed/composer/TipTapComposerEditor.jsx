@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -227,9 +227,9 @@ export default function TipTapComposerEditor({
   const openWritingMode = useCallback(() => {
     if (!mounted || !pageMode || !phoneScreenRef.current || submitting) return;
     if (Date.now() < suppressOpenUntilRef.current) return;
-    if (editor) rememberSelection(editor);
+    if (editor) focusEditorAtEnd(editor, true);
     setWritingModeOpen(true);
-  }, [editor, mounted, pageMode, rememberSelection, submitting]);
+  }, [editor, focusEditorAtEnd, mounted, pageMode, submitting]);
 
   const closeWritingMode = useCallback(() => {
     suppressOpenUntilRef.current = Date.now() + 500;
@@ -315,6 +315,11 @@ export default function TipTapComposerEditor({
   useEffect(() => {
     writingModeOpenRef.current = writingModeOpen;
   }, [writingModeOpen]);
+
+  useLayoutEffect(() => {
+    if (!writingModeOpen || !editor) return;
+    focusEditorAtEnd(editor, true);
+  }, [editor, focusEditorAtEnd, writingModeOpen]);
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
