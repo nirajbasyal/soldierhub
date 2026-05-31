@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FileText, Loader2, Search, UserRound } from "lucide-react";
 import { T } from "@/lib/theme";
-import { searchVerifiedProfiles } from "@/lib/db/profiles";
+import { createClient } from "@/lib/supabase/client";
+import { findProfileByEmailForSearch } from "@/lib/db/profiles";
 import { useApp } from "@/store/AppContext";
 import AppShell from "@/components/layout/AppShell";
 import PostCard from "@/components/feed/PostCard";
@@ -56,6 +57,32 @@ function searchPosts(posts = [], query = "") {
 
 function getProfileAvatarUrl(profile) {
   return profile?.avatar_url || profile?.profile_avatar_url || null;
+}
+
+async function searchMembersForResults(query) {
+  const cleanQuery = String(query || "").trim();
+  if (cleanQuery.length < 2) return { data: [], error: null };
+
+  if (isEmail(cleanQuery)) {
+    const { data, error } = await findProfileByEmailForSearch(cleanQuery);
+    if (error) return { data: [], error };
+    return { data: data ? [{ ...data, match_type: "email" }] : [], error: null };
+  }
+
+  const supabase = createClient();
+  if (!supabase) return { data: [], error: { message: "Supabase is not configured." } };
+
+  const { data, error } = await supabase.rpc("search_verified_profiles_by_name", {
+    p_query: cleanQuery,
+    p_limit: 12,
+  });
+
+  if (error) return { data: [], error };
+
+  return {
+    data: Array.isArray(data) ? data.map((profile) => ({ ...profile, match_type: "name" })) : [],
+    error: null,
+  };
 }
 
 export default function SearchPage() {
@@ -121,7 +148,7 @@ export default function SearchPage() {
     setMemberLoading(true);
 
     const timer = window.setTimeout(async () => {
-      const { data, error } = await searchVerifiedProfiles(q, { limit: 12 });
+      const { data, error } = await searchMembersForResults(q);
 
       if (cancelled) return;
 
