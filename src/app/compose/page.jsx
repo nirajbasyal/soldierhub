@@ -137,6 +137,12 @@ export default function ComposePage() {
             animation: soldierhubAnonymousComposeNotice 4.6s ease-in-out forwards;
             will-change: opacity, max-height, margin, padding, transform;
           }
+
+          @media (max-width: 640px) {
+            .compose-shell .soldierhub-normal-editor [data-composer-media="true"] img {
+              max-height: 40vh !important;
+            }
+          }
         `}</style>
       </main>
     </AppShell>
