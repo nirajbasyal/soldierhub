@@ -10,6 +10,7 @@ import { EDITOR_CLASSNAME, sanitizeComposerHtml } from "./composerUtils";
 import MobileTextEditorOverlay from "./MobileTextEditorOverlay";
 
 const PLACEHOLDER = "Ask, share, or help the Fort Bliss community.";
+const USER_SCROLL_LOCK_MS = 1400;
 
 function isEmptyHtml(html = "") {
   return !String(html || "")
@@ -57,6 +58,7 @@ export default function TipTapComposerEditor({
   const writingModeOpenRef = useRef(false);
   const manualInlineFormatsRef = useRef({ bold: false, italic: false });
   const compactTapStartRef = useRef({ x: 0, y: 0, scrollTop: 0, started: false });
+  const userScrollLockUntilRef = useRef(0);
   const [activeFormats, setActiveFormats] = useState({ bold: false, italic: false, bullet: false, number: false });
 
   const extensions = useMemo(
@@ -118,16 +120,23 @@ export default function TipTapComposerEditor({
     tiptap.view.dispatch(tiptap.state.tr.setStoredMarks(marks));
   }, []);
 
-  const keepCursorVisible = useCallback((tiptap, placeNearKeyboard = false) => {
+  const markUserScrolling = useCallback(() => {
+    userScrollLockUntilRef.current = Date.now() + USER_SCROLL_LOCK_MS;
+  }, []);
+
+  const keepCursorVisible = useCallback((tiptap, placeNearKeyboard = false, force = false) => {
     const scrollBox = document.querySelector(".soldierhub-mobile-text-shell");
     if (!scrollBox || !tiptap?.view || !tiptap?.state?.selection?.empty) return;
+    if (!force && writingModeOpenRef.current && Date.now() < userScrollLockUntilRef.current) return;
 
     window.requestAnimationFrame?.(() => {
+      if (!force && writingModeOpenRef.current && Date.now() < userScrollLockUntilRef.current) return;
+
       try {
         const position = tiptap.state.selection?.to ?? tiptap.state.doc.content.size;
         const cursor = tiptap.view.coordsAtPos(position);
         const box = scrollBox.getBoundingClientRect();
-        const desiredBottomGap = placeNearKeyboard ? 56 : 74;
+        const desiredBottomGap = placeNearKeyboard ? 96 : 120;
         const desiredBottom = box.bottom - desiredBottomGap;
         const safeTop = box.top + 24;
 
@@ -135,7 +144,7 @@ export default function TipTapComposerEditor({
         if (placeNearKeyboard && cursor.bottom < desiredBottom - 88) scrollBox.scrollTop -= desiredBottom - cursor.bottom - 88;
         if (cursor.top < safeTop) scrollBox.scrollTop -= safeTop - cursor.top + 16;
       } catch {
-        scrollBox.scrollTop = Math.max(0, scrollBox.scrollHeight - scrollBox.clientHeight - 56);
+        if (force) scrollBox.scrollTop = Math.max(0, scrollBox.scrollHeight - scrollBox.clientHeight - 56);
       }
     });
   }, []);
@@ -149,7 +158,7 @@ export default function TipTapComposerEditor({
       applyStoredMarks(tiptap);
       rememberSelection(tiptap);
       syncFormats(tiptap);
-      keepCursorVisible(tiptap, placeNearKeyboard);
+      keepCursorVisible(tiptap, placeNearKeyboard, true);
     },
     [applyStoredMarks, keepCursorVisible, rememberSelection, syncFormats]
   );
@@ -191,7 +200,7 @@ export default function TipTapComposerEditor({
       applyStoredMarks(tiptap);
       emitContent(tiptap);
       syncFormats(tiptap);
-      keepCursorVisible(tiptap);
+      keepCursorVisible(tiptap, false, true);
     },
     onSelectionUpdate({ editor: tiptap }) {
       rememberSelection(tiptap);
@@ -202,7 +211,7 @@ export default function TipTapComposerEditor({
       rememberSelection(tiptap);
       applyStoredMarks(tiptap);
       syncFormats(tiptap);
-      keepCursorVisible(tiptap);
+      keepCursorVisible(tiptap, false, true);
     },
     onBlur({ editor: tiptap }) {
       rememberSelection(tiptap);
@@ -270,7 +279,7 @@ export default function TipTapComposerEditor({
 
       rememberSelection(editor);
       syncFormats(editor);
-      keepCursorVisible(editor);
+      keepCursorVisible(editor, false, true);
       emitContent(editor);
     },
     [applyStoredMarks, editor, emitContent, keepCursorVisible, rememberSelection, submitting, syncFormats]
@@ -340,6 +349,13 @@ export default function TipTapComposerEditor({
     const previousBodyLeft = document.body.style.left;
     const previousBodyRight = document.body.style.right;
     const previousBodyWidth = document.body.style.width;
+    let scrollBox = null;
+    const attachTimer = window.setTimeout(() => {
+      scrollBox = document.querySelector(".soldierhub-mobile-text-shell");
+      scrollBox?.addEventListener("scroll", markUserScrolling, { passive: true });
+      scrollBox?.addEventListener("touchstart", markUserScrolling, { passive: true });
+      scrollBox?.addEventListener("wheel", markUserScrolling, { passive: true });
+    }, 0);
 
     document.documentElement.style.overflow = "hidden";
     document.body.style.overflow = "hidden";
@@ -351,6 +367,10 @@ export default function TipTapComposerEditor({
     document.body.style.width = "100%";
 
     return () => {
+      window.clearTimeout(attachTimer);
+      scrollBox?.removeEventListener("scroll", markUserScrolling);
+      scrollBox?.removeEventListener("touchstart", markUserScrolling);
+      scrollBox?.removeEventListener("wheel", markUserScrolling);
       document.documentElement.style.overflow = previousHtmlOverflow;
       document.body.style.overflow = previousBodyOverflow;
       document.documentElement.style.overscrollBehavior = previousOverscroll;
@@ -361,7 +381,7 @@ export default function TipTapComposerEditor({
       document.body.style.width = previousBodyWidth;
       window.scrollTo(0, scrollY);
     };
-  }, [writingModeOpen]);
+  }, [markUserScrolling, writingModeOpen]);
 
   useEffect(() => {
     if (!mounted || !editor || editor.isFocused || writingModeOpen) return;
@@ -416,7 +436,8 @@ export default function TipTapComposerEditor({
         onDone={closeWritingMode}
         onFormat={runFormatCommand}
         onOverlayReady={() => focusEditorAtEnd(editor, true)}
-        onEditorAreaClick={() => keepCursorVisible(editor)}
+        onEditorAreaClick={() => keepCursorVisible(editor, false, true)}
+        onViewportChange={() => keepCursorVisible(editor, true, true)}
       />
     );
   }
@@ -455,7 +476,7 @@ export default function TipTapComposerEditor({
           onClick={(event) => event.stopPropagation()}
         >
           <div className="relative flex justify-center bg-[#EEF3F8]">
-            <img src={selectedImage.previewUrl} alt="Selected post preview" className="block max-h-[62vh] w-full object-cover md:max-h-[340px]" style={{ aspectRatio: selectedImageAspectRatio }} />
+            <img src={selectedImage.previewUrl} alt="Selected post preview" className="block max-h-[40vh] w-full object-cover md:max-h-[340px]" style={{ aspectRatio: selectedImageAspectRatio }} />
             <button
               type="button"
               onPointerDown={(event) => {
@@ -483,7 +504,7 @@ export default function TipTapComposerEditor({
         .soldierhub-normal-editor .ProseMirror::-webkit-scrollbar { width: 6px; }
         .soldierhub-normal-editor .ProseMirror::-webkit-scrollbar-track { background: transparent; }
         .soldierhub-normal-editor .ProseMirror::-webkit-scrollbar-thumb { background-color: rgba(63,95,125,0.22); border-radius: 999px; border: 2px solid transparent; background-clip: content-box; }
-        @media (max-width: 640px) { .soldierhub-normal-editor .ProseMirror { caret-color: transparent; cursor: pointer; user-select: none; touch-action: pan-y; } .soldierhub-normal-editor .ProseMirror::-webkit-scrollbar { width: 4px; } }
+        @media (max-width: 640px) { .soldierhub-normal-editor .ProseMirror { max-height: 170px; overflow-y: hidden; caret-color: transparent; cursor: pointer; user-select: none; touch-action: manipulation; } .soldierhub-normal-editor .ProseMirror::-webkit-scrollbar { width: 4px; } }
         @media (min-width: 641px) { .soldierhub-normal-editor .ProseMirror { max-height: none; overflow-y: visible; user-select: text; caret-color: auto; cursor: text; } }
         .soldierhub-normal-editor .ProseMirror p.is-editor-empty:first-child::before { content: attr(data-placeholder); float: left; color: #a8abb2; pointer-events: none; height: 0; }
       `}</style>
