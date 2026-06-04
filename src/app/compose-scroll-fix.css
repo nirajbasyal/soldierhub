@@ -1,0 +1,6 @@
+@media (max-width: 640px) {
+  .compose-shell .soldierhub-normal-editor .ProseMirror {
+    overflow-y: hidden !important;
+    touch-action: manipulation !important;
+  }
+}
