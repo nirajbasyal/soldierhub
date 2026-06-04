@@ -15,7 +15,7 @@ function getViewportBox() {
   };
 }
 
-export default function MobileTextEditorOverlay({ editorContent, activeFormats, onDone, onFormat, onEditorAreaClick, onOverlayReady }) {
+export default function MobileTextEditorOverlay({ editorContent, activeFormats, onDone, onFormat, onEditorAreaClick, onOverlayReady, onViewportChange }) {
   const [viewportBox, setViewportBox] = useState(() => getViewportBox());
 
   const updateViewportBox = useCallback(() => {
@@ -29,9 +29,14 @@ export default function MobileTextEditorOverlay({ editorContent, activeFormats, 
       onOverlayReady?.();
     }, 90);
 
+    let viewportTimer = null;
     const delayedUpdate = () => {
       updateViewportBox();
-      window.setTimeout(updateViewportBox, 120);
+      if (viewportTimer) window.clearTimeout(viewportTimer);
+      viewportTimer = window.setTimeout(() => {
+        updateViewportBox();
+        onViewportChange?.();
+      }, 120);
     };
 
     window.visualViewport?.addEventListener("resize", delayedUpdate);
@@ -41,12 +46,13 @@ export default function MobileTextEditorOverlay({ editorContent, activeFormats, 
 
     return () => {
       window.clearTimeout(readyTimer);
+      if (viewportTimer) window.clearTimeout(viewportTimer);
       window.visualViewport?.removeEventListener("resize", delayedUpdate);
       window.visualViewport?.removeEventListener("scroll", delayedUpdate);
       window.removeEventListener("resize", delayedUpdate);
       window.removeEventListener("orientationchange", delayedUpdate);
     };
-  }, [onOverlayReady, updateViewportBox]);
+  }, [onOverlayReady, onViewportChange, updateViewportBox]);
 
   return (
     <div
