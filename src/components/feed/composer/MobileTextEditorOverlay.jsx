@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { FORMAT_ACTIONS } from "./composerUtils";
 import { T } from "@/lib/theme";
 
@@ -15,8 +15,18 @@ function getViewportBox() {
   };
 }
 
-export default function MobileTextEditorOverlay({ editorContent, activeFormats, onDone, onFormat, onEditorAreaClick, onOverlayReady }) {
+export default function MobileTextEditorOverlay({ editorContent, activeFormats, onDone, onFormat, onEditorAreaClick, onOverlayReady, onViewportChange }) {
   const [viewportBox, setViewportBox] = useState(() => getViewportBox());
+  const onOverlayReadyRef = useRef(onOverlayReady);
+  const onViewportChangeRef = useRef(onViewportChange);
+
+  useEffect(() => {
+    onOverlayReadyRef.current = onOverlayReady;
+  }, [onOverlayReady]);
+
+  useEffect(() => {
+    onViewportChangeRef.current = onViewportChange;
+  }, [onViewportChange]);
 
   const updateViewportBox = useCallback(() => {
     setViewportBox(getViewportBox());
@@ -26,12 +36,17 @@ export default function MobileTextEditorOverlay({ editorContent, activeFormats, 
     updateViewportBox();
 
     const readyTimer = window.setTimeout(() => {
-      onOverlayReady?.();
+      onOverlayReadyRef.current?.();
     }, 90);
 
+    let viewportTimer = null;
     const delayedUpdate = () => {
       updateViewportBox();
-      window.setTimeout(updateViewportBox, 120);
+      if (viewportTimer) window.clearTimeout(viewportTimer);
+      viewportTimer = window.setTimeout(() => {
+        updateViewportBox();
+        onViewportChangeRef.current?.();
+      }, 120);
     };
 
     window.visualViewport?.addEventListener("resize", delayedUpdate);
@@ -41,12 +56,13 @@ export default function MobileTextEditorOverlay({ editorContent, activeFormats, 
 
     return () => {
       window.clearTimeout(readyTimer);
+      if (viewportTimer) window.clearTimeout(viewportTimer);
       window.visualViewport?.removeEventListener("resize", delayedUpdate);
       window.visualViewport?.removeEventListener("scroll", delayedUpdate);
       window.removeEventListener("resize", delayedUpdate);
       window.removeEventListener("orientationchange", delayedUpdate);
     };
-  }, [onOverlayReady, updateViewportBox]);
+  }, [updateViewportBox]);
 
   return (
     <div

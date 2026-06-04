@@ -11,6 +11,8 @@ export default function BottomNav() {
   const router = useRouter();
   const pathname = usePathname();
 
+  if (pathname === "/compose") return null;
+
   const app = useApp() || {};
   const {
     currentUser,

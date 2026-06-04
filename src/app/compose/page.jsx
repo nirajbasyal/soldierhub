@@ -41,7 +41,7 @@ export default function ComposePage() {
   return (
     <AppShell hideNav>
       <main
-        className="compose-page min-h-[100dvh] overflow-x-hidden overflow-y-auto pb-24 md:pb-10"
+        className="compose-page min-h-[100dvh] overflow-x-hidden overflow-y-auto pb-6 md:pb-10"
         style={{ backgroundColor: T.bg, WebkitOverflowScrolling: "touch" }}
       >
         <div
