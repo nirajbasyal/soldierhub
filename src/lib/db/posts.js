@@ -220,24 +220,69 @@ export async function listPosts({ limit = 30, cursorCreatedAt = null, cursorId =
   return listPostsFromRpc(supabase, { limit, cursorCreatedAt, cursorId });
 }
 
-export async function searchPostsForSearchPage(query, { limit = 20, offset = 0 } = {}) {
+export async function searchPostsForSearchPage(
+  query,
+  { limit = 20, cursor = null, offset = 0 } = {}
+) {
   const supabase = createClient();
-  if (!supabase) return { data: [], error: { message: "Supabase is not configured." } };
+  if (!supabase) {
+    return { data: [], error: { message: "Supabase is not configured." }, nextCursor: null };
+  }
 
   const cleanQuery = typeof query === "string" ? query.trim() : "";
-  if (cleanQuery.length < 2) return { data: [], error: null };
+  if (cleanQuery.length < 2) return { data: [], error: null, nextCursor: null };
 
   const safeLimit = cleanSearchLimit(limit, 20, 50);
-  const safeOffset = cleanSearchOffset(offset);
 
+  // Preferred path: keyset cursor pagination. This avoids deep OFFSET slowdown.
+  // Safe deployment behavior: if the SQL migration has not been run yet, fall
+  // back to the existing offset RPC instead of breaking search in production.
+  const keysetResult = await supabase.rpc("search_public_posts_keyset", {
+    p_query: cleanQuery,
+    p_limit: safeLimit,
+    p_cursor_rank: cursor?.rank ?? null,
+    p_cursor_created_at: cursor?.createdAt ?? null,
+    p_cursor_id: cursor?.id ?? null,
+  });
+
+  if (!keysetResult.error) {
+    const rawRows = keysetResult.data || [];
+    const lastRow = rawRows[rawRows.length - 1] || null;
+    const nextCursor =
+      lastRow && rawRows.length === safeLimit
+        ? {
+            rank: lastRow.relevance_rank,
+            createdAt: lastRow.created_at,
+            id: lastRow.id,
+          }
+        : null;
+
+    return {
+      data: await attachProfilesToPosts(supabase, rawRows),
+      error: null,
+      nextCursor,
+    };
+  }
+
+  console.warn("Post search keyset RPC unavailable; falling back to offset search.", keysetResult.error);
+
+  // Backward-compatible fallback for deployments where the keyset migration has
+  // not been applied yet.
+  const safeOffset = cleanSearchOffset(offset);
   const { data, error } = await supabase.rpc("search_public_posts", {
     p_query: cleanQuery,
     p_limit: safeLimit,
     p_offset: safeOffset,
   });
 
-  if (error) return { data: [], error };
-  return { data: await attachProfilesToPosts(supabase, data || []), error: null };
+  if (error) return { data: [], error, nextCursor: null };
+
+  const rawRows = data || [];
+  return {
+    data: await attachProfilesToPosts(supabase, rawRows),
+    error: null,
+    nextCursor: null,
+  };
 }
 
 export async function getLatestPublicPostMarker() {
