@@ -504,7 +504,7 @@ export default function TipTapComposerEditor({
         .soldierhub-normal-editor .ProseMirror::-webkit-scrollbar { width: 6px; }
         .soldierhub-normal-editor .ProseMirror::-webkit-scrollbar-track { background: transparent; }
         .soldierhub-normal-editor .ProseMirror::-webkit-scrollbar-thumb { background-color: rgba(63,95,125,0.22); border-radius: 999px; border: 2px solid transparent; background-clip: content-box; }
-        @media (max-width: 640px) { .soldierhub-normal-editor .ProseMirror { max-height: 170px; overflow-y: hidden; caret-color: transparent; cursor: pointer; user-select: none; touch-action: manipulation; } .soldierhub-normal-editor .ProseMirror::-webkit-scrollbar { width: 4px; } }
+        @media (max-width: 640px) { .soldierhub-normal-editor .ProseMirror { max-height: 170px; overflow-y: auto; -webkit-overflow-scrolling: touch; caret-color: transparent; cursor: pointer; user-select: none; touch-action: pan-y; overscroll-behavior: contain; } .soldierhub-normal-editor .ProseMirror::-webkit-scrollbar { width: 4px; } }
         @media (min-width: 641px) { .soldierhub-normal-editor .ProseMirror { max-height: none; overflow-y: visible; user-select: text; caret-color: auto; cursor: text; } }
         .soldierhub-normal-editor .ProseMirror p.is-editor-empty:first-child::before { content: attr(data-placeholder); float: left; color: #a8abb2; pointer-events: none; height: 0; }
       `}</style>
