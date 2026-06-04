@@ -26,15 +26,32 @@ async function getAccessTokenForApi(supabase, fallbackMessage) {
   return { accessToken: session.access_token, error: null };
 }
 
-async function postJsonToApi(path, accessToken, payload, fallbackMessage) {
-  const response = await fetch(path, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
+function networkErrorResult(fallbackMessage) {
+  return {
+    data: null,
+    error: {
+      message: fallbackMessage,
+      transient: true,
     },
-    body: JSON.stringify(payload),
-  });
+  };
+}
+
+async function postJsonToApi(path, accessToken, payload, fallbackMessage) {
+  let response;
+
+  try {
+    response = await fetch(path, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch (error) {
+    console.warn("Notification API POST request failed:", error);
+    return networkErrorResult(fallbackMessage);
+  }
 
   let result = null;
 
@@ -61,13 +78,20 @@ async function postJsonToApi(path, accessToken, payload, fallbackMessage) {
 }
 
 async function getJsonFromApi(path, accessToken, fallbackMessage) {
-  const response = await fetch(path, {
-    method: "GET",
-    headers: {
-      Accept: "application/json",
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
+  let response;
+
+  try {
+    response = await fetch(path, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+  } catch (error) {
+    console.warn("Notification API GET request failed:", error);
+    return networkErrorResult(fallbackMessage);
+  }
 
   let result = null;
 
