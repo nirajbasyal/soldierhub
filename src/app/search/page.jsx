@@ -123,6 +123,7 @@ export default function SearchPage() {
   const [localQuery, setLocalQuery] = useState(qFromUrl);
   const [activeTab, setActiveTab] = useState(tabFromUrl);
   const [postResults, setPostResults] = useState([]);
+  const [postCursor, setPostCursor] = useState(null);
   const [postLoading, setPostLoading] = useState(false);
   const [postLoadingMore, setPostLoadingMore] = useState(false);
   const [postHasMore, setPostHasMore] = useState(false);
@@ -161,6 +162,7 @@ export default function SearchPage() {
 
     if (!shouldSearchPosts) {
       setPostResults([]);
+      setPostCursor(null);
       setPostLoading(false);
       setPostLoadingMore(false);
       setPostHasMore(false);
@@ -172,8 +174,9 @@ export default function SearchPage() {
     setPostError("");
 
     const timer = window.setTimeout(async () => {
-      const { data, error } = await PostsDB.searchPostsForSearchPage(cleanQuery, {
+      const { data, error, nextCursor } = await PostsDB.searchPostsForSearchPage(cleanQuery, {
         limit: activePostLimit,
+        cursor: null,
         offset: 0,
       });
 
@@ -181,12 +184,14 @@ export default function SearchPage() {
 
       if (error) {
         setPostResults([]);
+        setPostCursor(null);
         setPostHasMore(false);
         setPostError(error.message || "Could not search posts right now.");
       } else {
         const rows = (data || []).map(normalizeFeedPostForCard);
         setPostResults(rows);
-        setPostHasMore(rows.length === activePostLimit);
+        setPostCursor(nextCursor);
+        setPostHasMore(Boolean(nextCursor) || rows.length === activePostLimit);
         setPostError("");
       }
 
@@ -293,8 +298,9 @@ export default function SearchPage() {
     if (postLoadingMore || postLoading || !postHasMore || cleanQuery.length < 2) return;
 
     setPostLoadingMore(true);
-    const { data, error } = await PostsDB.searchPostsForSearchPage(cleanQuery, {
+    const { data, error, nextCursor } = await PostsDB.searchPostsForSearchPage(cleanQuery, {
       limit: POST_PAGE_LIMIT,
+      cursor: postCursor,
       offset: postResults.length,
     });
 
@@ -303,7 +309,8 @@ export default function SearchPage() {
     } else {
       const rows = (data || []).map(normalizeFeedPostForCard);
       setPostResults((current) => mergeUniqueById(current, rows));
-      setPostHasMore(rows.length === POST_PAGE_LIMIT);
+      setPostCursor(nextCursor);
+      setPostHasMore(Boolean(nextCursor) || rows.length === POST_PAGE_LIMIT);
       setPostError("");
     }
 
