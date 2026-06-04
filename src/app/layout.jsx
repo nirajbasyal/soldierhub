@@ -1,6 +1,7 @@
 import "./globals.css";
 import "./feed-polish.css";
 import "./production-polish.css";
+import "./compose-scroll-fix.css";
 import Providers from "./providers";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://soldierhub.com";
@@ -29,7 +30,7 @@ const siteSchema = {
   potentialAction: {
     "@type": "SearchAction",
     target: `${SITE_URL}/?q={search_term_string}`,
-    "query-input": "required name={search_term_string}",
+    "query-input": "required name={search_term_string}`,
   },
   audience: {
     "@type": "Audience",
@@ -141,14 +142,12 @@ export const metadata = {
     siteName: SITE_NAME,
     type: "website",
     locale: "en_US",
-    // Social image is provided by the generated opengraph-image route (1200x630 PNG).
   },
 
   twitter: {
     card: "summary_large_image",
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
-    // Image is provided by the generated twitter-image route (1200x630 PNG).
   },
 
   robots: {
