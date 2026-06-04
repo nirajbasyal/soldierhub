@@ -60,6 +60,10 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
 
   const canPublish = useMemo(() => plainText.trim().length > 0, [plainText]);
   const syncFormatState = () => setActiveFormats(editorRef.current?.getActiveFormats?.() || {});
+  const showInlineSubmitError = (message) => {
+    setError(message);
+    safeRequestAnimationFrame(syncFormatState);
+  };
 
   const focusComposerField = () => {
     safeRequestAnimationFrame(() => {
@@ -305,8 +309,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     const imageToUpload = selectedImageRef.current;
 
     if (!cleanedText && !imageToUpload) {
-      setError("Write something or add a photo before publishing.");
-      focusComposerField();
+      showInlineSubmitError("Write something or add a photo before publishing.");
       return;
     }
 
@@ -316,8 +319,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
       if (cleanedText) {
         const mod = await moderateAsync(cleanedText);
         if (!mod.allowed) {
-          setError(mod.reason || SAFETY_MESSAGE);
-          focusComposerField();
+          showInlineSubmitError(mod.reason || SAFETY_MESSAGE);
           return;
         }
       }
@@ -326,8 +328,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
       const result = await createPost({ body: cleanedBody || cleanedText, category: categoryValueRef.current, anonymous: anonymousValueRef.current, image: uploadedImage });
 
       if (result?.ok === false) {
-        setError(result.error || "Could not create post. Try again.");
-        focusComposerField();
+        showInlineSubmitError(result.error || "Could not create post. Try again.");
         return;
       }
 
@@ -340,8 +341,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
       router.push("/");
     } catch (err) {
       console.error(err);
-      setError(err?.message || "Could not create post. Try again.");
-      focusComposerField();
+      showInlineSubmitError(err?.message || "Could not create post. Try again.");
     } finally {
       setSubmitting(false);
       submittingValueRef.current = false;
