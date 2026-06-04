@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { FORMAT_ACTIONS } from "./composerUtils";
 import { T } from "@/lib/theme";
 
@@ -17,6 +17,16 @@ function getViewportBox() {
 
 export default function MobileTextEditorOverlay({ editorContent, activeFormats, onDone, onFormat, onEditorAreaClick, onOverlayReady, onViewportChange }) {
   const [viewportBox, setViewportBox] = useState(() => getViewportBox());
+  const onOverlayReadyRef = useRef(onOverlayReady);
+  const onViewportChangeRef = useRef(onViewportChange);
+
+  useEffect(() => {
+    onOverlayReadyRef.current = onOverlayReady;
+  }, [onOverlayReady]);
+
+  useEffect(() => {
+    onViewportChangeRef.current = onViewportChange;
+  }, [onViewportChange]);
 
   const updateViewportBox = useCallback(() => {
     setViewportBox(getViewportBox());
@@ -26,7 +36,7 @@ export default function MobileTextEditorOverlay({ editorContent, activeFormats, 
     updateViewportBox();
 
     const readyTimer = window.setTimeout(() => {
-      onOverlayReady?.();
+      onOverlayReadyRef.current?.();
     }, 90);
 
     let viewportTimer = null;
@@ -35,7 +45,7 @@ export default function MobileTextEditorOverlay({ editorContent, activeFormats, 
       if (viewportTimer) window.clearTimeout(viewportTimer);
       viewportTimer = window.setTimeout(() => {
         updateViewportBox();
-        onViewportChange?.();
+        onViewportChangeRef.current?.();
       }, 120);
     };
 
@@ -52,7 +62,7 @@ export default function MobileTextEditorOverlay({ editorContent, activeFormats, 
       window.removeEventListener("resize", delayedUpdate);
       window.removeEventListener("orientationchange", delayedUpdate);
     };
-  }, [onOverlayReady, onViewportChange, updateViewportBox]);
+  }, [updateViewportBox]);
 
   return (
     <div
