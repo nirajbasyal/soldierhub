@@ -6,10 +6,9 @@ export default function Loading() {
           <div className="mb-5 flex items-center gap-3">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[#E2E9F3] bg-[#071B33] shadow-sm">
               <img
-                src="/icon.png"
+                src="/brand/soldierhub-app-icon.svg"
                 alt="Soldier Hub app icon"
                 className="h-full w-full object-cover"
-                draggable="false"
               />
             </div>
             <div>
