@@ -62,10 +62,15 @@ export default function ProductionFallback({
           <div className="mb-5 flex items-center justify-between gap-3">
             <Link href="/" className="flex items-center gap-3" aria-label="Go to Soldier Hub home">
               <div
-                className="flex h-11 w-11 items-center justify-center rounded-2xl text-sm font-black tracking-tight text-white"
-                style={{ backgroundColor: T.brandNavy }}
+                className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl border shadow-sm"
+                style={{ backgroundColor: T.brandNavy, borderColor: "rgba(207,218,232,0.9)" }}
               >
-                SH
+                <img
+                  src="/icon.png"
+                  alt="Soldier Hub app icon"
+                  className="h-full w-full object-cover"
+                  draggable="false"
+                />
               </div>
               <div>
                 <p className="text-base font-black leading-tight" style={{ color: T.brandNavy }}>
