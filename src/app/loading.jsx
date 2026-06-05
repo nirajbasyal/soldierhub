@@ -4,8 +4,13 @@ export default function Loading() {
       <section className="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-3xl items-center justify-center">
         <div className="w-full rounded-[2rem] border border-[#E2E9F3] bg-[#FDFEFF] p-6 shadow-[0_24px_70px_rgba(7,27,51,0.10)] sm:p-8">
           <div className="mb-5 flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#071B33] text-sm font-black tracking-tight text-white">
-              SH
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[#E2E9F3] bg-[#071B33] shadow-sm">
+              <img
+                src="/icon.png"
+                alt="Soldier Hub app icon"
+                className="h-full w-full object-cover"
+                draggable="false"
+              />
             </div>
             <div>
               <p className="text-base font-black leading-tight text-[#071B33]">Soldier Hub</p>
