@@ -66,10 +66,9 @@ export default function ProductionFallback({
                 style={{ backgroundColor: T.brandNavy, borderColor: "rgba(207,218,232,0.9)" }}
               >
                 <img
-                  src="/icon.png"
+                  src="/brand/soldierhub-app-icon.svg"
                   alt="Soldier Hub app icon"
                   className="h-full w-full object-cover"
-                  draggable="false"
                 />
               </div>
               <div>
