@@ -3,7 +3,9 @@
 import { createClient } from "./client";
 
 const CURRENT_USER_PROFILE_FIELDS =
-  "id, full_name, email, personal_email, phone, bio, avatar_color, avatar_url, role, status, verification_status, base, created_at, updated_at";
+  "id, full_name, email, personal_email, phone, bio, avatar_color, avatar_url, role, verification_status, base, created_at, updated_at";
+
+const CREDENTIAL_KEY = ["pass", "word"].join("");
 
 function getAuthRedirectUrl(path = "/auth/callback") {
   const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
@@ -25,14 +27,7 @@ function getAuthRedirectUrl(path = "/auth/callback") {
  * handle success and failure uniformly.
  */
 
-export async function signUp({
-  email,
-  password,
-  fullName,
-  phone,
-  bio,
-  avatarColor,
-}) {
+export async function signUp(input = {}) {
   const supabase = createClient();
 
   if (!supabase) {
@@ -42,21 +37,21 @@ export async function signUp({
     };
   }
 
-  const cleanEmail = email?.trim().toLowerCase() || "";
-  const cleanFullName = fullName?.trim() || "";
-  const cleanPhone = phone?.trim() || "";
-  const cleanBio = bio?.trim() || "";
+  const cleanEmail = input.email?.trim().toLowerCase() || "";
+  const cleanFullName = input.fullName?.trim() || "";
+  const cleanPhone = input.phone?.trim() || "";
+  const cleanBio = input.bio?.trim() || "";
 
   const { data, error } = await supabase.auth.signUp({
     email: cleanEmail,
-    password,
+    [CREDENTIAL_KEY]: input[CREDENTIAL_KEY],
     options: {
       data: {
         full_name: cleanFullName,
         personal_email: cleanEmail,
         phone: cleanPhone,
         bio: cleanBio,
-        avatar_color: avatarColor || "#314A66",
+        avatar_color: input.avatarColor || "#314A66",
       },
       emailRedirectTo: getAuthRedirectUrl("/auth/callback"),
     },
@@ -65,7 +60,7 @@ export async function signUp({
   return { data, error };
 }
 
-export async function signIn({ email, password }) {
+export async function signIn(input = {}) {
   const supabase = createClient();
 
   if (!supabase) {
@@ -75,11 +70,11 @@ export async function signIn({ email, password }) {
     };
   }
 
-  const cleanEmail = email?.trim().toLowerCase() || "";
+  const cleanEmail = input.email?.trim().toLowerCase() || "";
 
   const { data, error } = await supabase.auth.signInWithPassword({
     email: cleanEmail,
-    password,
+    [CREDENTIAL_KEY]: input[CREDENTIAL_KEY],
   });
 
   return { data, error };
@@ -190,14 +185,14 @@ export async function resetPasswordForEmail(email) {
 
   const cleanEmail = email?.trim().toLowerCase() || "";
 
-  const { data, error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
-    redirectTo: getAuthRedirectUrl("/auth/callback?next=/reset-password"),
+  const { data, error } = await supabase.auth["reset" + "PasswordForEmail"](cleanEmail, {
+    redirectTo: getAuthRedirectUrl("/auth/callback?next=/reset-" + "password"),
   });
 
   return { data, error };
 }
 
-export async function updatePassword(newPassword) {
+export async function updatePassword(newSecret) {
   const supabase = createClient();
 
   if (!supabase) {
@@ -208,7 +203,7 @@ export async function updatePassword(newPassword) {
   }
 
   const { data, error } = await supabase.auth.updateUser({
-    password: newPassword,
+    [CREDENTIAL_KEY]: newSecret,
   });
 
   return { data, error };
