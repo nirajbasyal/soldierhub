@@ -142,11 +142,11 @@ function PendingReviewContent() {
 
         const { data: profile } = await supabase
           .from("profiles")
-          .select("id, email, personal_email, full_name, phone, status, verification_status")
+          .select("id, email, personal_email, full_name, phone, verification_status")
           .eq("id", user.id)
           .maybeSingle();
 
-        const liveStatus = profile?.status || profile?.verification_status || statusFromUrl || "pending";
+        const liveStatus = profile?.verification_status || statusFromUrl || "pending";
         const profileEmail = profile?.email || profile?.personal_email || user.email || queryEmail;
         const profileName = profile?.full_name || user.user_metadata?.full_name || user.user_metadata?.name || queryName;
 
