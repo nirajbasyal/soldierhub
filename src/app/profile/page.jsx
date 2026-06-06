@@ -57,8 +57,7 @@ export default function ProfilePage() {
 
   const { currentUser, authLoading, setAuthModal, handleLogout } = useApp();
 
-  const userStatus =
-    currentUser?.status || currentUser?.verification_status || "pending";
+  const userStatus = currentUser?.verification_status || "pending";
 
   const isVerified = userStatus === "verified";
 
