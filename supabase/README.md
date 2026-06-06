@@ -1,6 +1,6 @@
 # Soldier Hub Supabase Database Guide
 
-This folder contains the database source of truth for Soldier Hub.
+This folder is the database source-of-truth area for Soldier Hub.
 
 Soldier Hub is an independent, unofficial community platform and is not affiliated with, endorsed by, or operated by the U.S. Government, Department of Defense, Department of the Army, or any military installation.
 
@@ -8,64 +8,57 @@ Soldier Hub is an independent, unofficial community platform and is not affiliat
 
 `supabase/migrations/` is the only production source of truth for database structure and database changes.
 
-A fresh Supabase database should be rebuilt by applying the timestamped SQL files in `supabase/migrations/` in order.
+A fresh Supabase database should be rebuilt by applying every timestamped SQL file in `supabase/migrations/` from oldest to newest.
 
-Those migration files are responsible for recreating the schema, tables, functions, triggers, indexes, views, grants, and RLS policies.
+Those migration files must recreate all database objects the app needs:
 
-Do not rebuild production from old snapshots, copied SQL, archived fixes, pending migrations, or SQL pasted from chat history.
+```txt
+schema
+extensions
+tables
+columns
+primary keys
+foreign keys
+check constraints
+indexes
+functions
+triggers
+views
+grants
+RLS policies
+```
 
-## What belongs here
+`seed.sql` is not production history. It is optional local/demo helper data only.
+
+## Clean folder structure
+
+The active Supabase folder should stay simple:
 
 ```txt
 supabase/
   README.md
   seed.sql
+  step1_20260606_rebuild_database_from_migrations.md
   migrations/
 ```
 
-- `migrations/` — production database history and rebuild source.
-- `seed.sql` — optional local/demo seed helper only. Never treat seed data as production migration history.
-- `README.md` — human instructions only.
+Do not use deleted old snapshots or chat-pasted SQL as source of truth. The rebuild path is migrations only.
 
-## What must stay deleted
+## Important verification note
 
-Do not bring these back as active production SQL:
+A migration chain is only truly production-safe after a fresh rebuild test passes:
 
-```txt
-supabase/schema.sql
-supabase/policies.sql
-supabase/live-policies-*.json
-supabase/archive/
-supabase/pending_migrations/
-supabase/production_rebuild/
+```bash
+supabase db reset
 ```
 
-Those files/folders were removed because they could become stale while live Supabase changed.
+or by creating a brand-new Supabase project/branch and running:
 
-## Migration filename rule
-
-Do not rename old migration files after they have been applied.
-
-Supabase migration files must keep the timestamp first, for example:
-
-```txt
-20260606203000_stage2c_drop_profiles_status.sql
+```bash
+supabase db push
 ```
 
-For future migrations, use this style:
-
-```txt
-YYYYMMDDHHMMSS_stepNN_short_description.sql
-```
-
-Example:
-
-```txt
-20260607090000_step01_add_new_table.sql
-20260607093000_step02_add_new_policy.sql
-```
-
-Do not start a real migration filename with only `step1_`. The timestamp must stay first so Supabase can run files in order.
+If a fresh rebuild fails because an early migration expects a table/function that does not exist yet, create an earlier timestamped baseline migration before the failing file, then test again.
 
 ## Beginner-safe workflow for future database changes
 
@@ -93,6 +86,31 @@ Do not start a real migration filename with only `step1_`. The timestamp must st
 
 6. Smoke test login, admin, posts, comments, follows, uploads, notifications, and profile pages.
 
+## Migration filename rule
+
+Do not rename old migration files after they have been applied.
+
+Supabase migration files must keep the timestamp first:
+
+```txt
+YYYYMMDDHHMMSS_short_description.sql
+```
+
+For future migrations, use a human step number after the timestamp:
+
+```txt
+YYYYMMDDHHMMSS_stepNN_short_description.sql
+```
+
+Example:
+
+```txt
+20260607090000_step01_add_new_table.sql
+20260607093000_step02_add_new_policy.sql
+```
+
+Do not start a real migration filename with only `step1_`. The timestamp must stay first so Supabase can run files in order.
+
 ## Rebuild a brand-new Supabase project from GitHub
 
 Use this if the old Supabase project is deleted or you intentionally create a new Supabase project.
@@ -104,17 +122,22 @@ git clone https://github.com/nirajbasyal/soldierhub.git
 cd soldierhub
 ```
 
-### Step 2 — login and link Supabase CLI
+### Step 2 — install and login
 
 ```bash
 npm install -g supabase
 supabase login
+```
+
+### Step 3 — link the new Supabase project
+
+```bash
 supabase link --project-ref NEW_PROJECT_REF
 ```
 
 `NEW_PROJECT_REF` comes from the new Supabase dashboard URL.
 
-### Step 3 — apply migrations
+### Step 4 — apply migrations
 
 ```bash
 supabase db push
@@ -122,11 +145,11 @@ supabase db push
 
 This applies all SQL files in `supabase/migrations/` in timestamp order.
 
-### Step 4 — update app environment variables
+### Step 5 — update app environment variables
 
 Update local/Vercel environment variables to point to the new Supabase project. Keep private server keys private. Never place private server keys in browser/frontend code.
 
-### Step 5 — manually recheck non-database settings
+### Step 6 — manually recheck non-database settings
 
 Migrations recreate the database. They do not automatically recreate every external/dashboard setting.
 
@@ -136,15 +159,14 @@ Check:
 Supabase Auth redirect URLs
 Supabase Auth email settings/templates
 OAuth providers if used
-Storage/R2 bucket settings
-Cloudflare R2 credentials
+Cloudflare R2 bucket and credentials
 Vercel environment variables
 Sentry environment variables
 Realtime settings if changed
 Edge function secrets if any
 ```
 
-### Step 6 — smoke test
+### Step 7 — smoke test
 
 After deploy, test:
 
@@ -179,24 +201,6 @@ Only if the CLI is not available:
 8. Repeat every migration file in order.
 9. If one file errors, stop and fix it before continuing.
 10. Do not run `seed.sql` against production unless intentionally reviewed.
-
-## Temporary one-file copy-paste bundle
-
-If you want one temporary SQL file for copy-paste, generate it locally and do not commit it.
-
-PowerShell:
-
-```powershell
-Get-ChildItem .\supabase\migrations\*.sql | Sort-Object Name | Get-Content | Set-Content .\supabase_rebuild_bundle_DO_NOT_COMMIT.sql
-```
-
-Mac/Linux/Git Bash:
-
-```bash
-cat $(find supabase/migrations -type f -name "*.sql" | sort) > supabase_rebuild_bundle_DO_NOT_COMMIT.sql
-```
-
-The generated bundle is temporary only. The real source of truth remains `supabase/migrations/`.
 
 ## Current verification-status cleanup
 
