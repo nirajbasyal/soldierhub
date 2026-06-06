@@ -1,8 +1,0 @@
--- COMPLETED / DO NOT RUN
---
--- This pending migration was finalized and moved into the real migration history as:
---
---   supabase/migrations/20260606203000_stage2c_drop_profiles_status.sql
---
--- Keep this file only as a tombstone marker so nobody runs old pending SQL.
--- Production source of truth is supabase/migrations/ only.
