@@ -1,7 +1,7 @@
 import { colorFromString } from "@/lib/helpers";
 
 export function getProfileStatus(profile) {
-  return profile?.verification_status || profile?.status || "pending";
+  return profile?.verification_status || "pending";
 }
 
 export function getPostId(post = {}) {
