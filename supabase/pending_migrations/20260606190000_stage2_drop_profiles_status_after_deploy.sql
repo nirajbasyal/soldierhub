@@ -1,22 +1,14 @@
--- Stage 2B pending migration: drop legacy public.profiles.status after code deployment.
+-- Stage 2C pending migration: drop legacy public.profiles.status after Stage 2B verification.
 --
 -- IMPORTANT:
--- Do not apply this file until the deployed app no longer selects, filters, or writes
--- public.profiles.status. This file is intentionally stored outside supabase/migrations
--- so it cannot be applied by accident during a normal `supabase db push`.
+-- Do not apply this file until:
+--   1. Vercel has deployed the Stage 2A/2B app code.
+--   2. supabase/migrations/20260606200000_stage2b_remove_profiles_status_dependencies.sql
+--      has been applied successfully to production.
+--   3. Admin verify/reject/revoke, login, pending review, create post, comment,
+--      follow/unfollow, notifications, and uploads have been smoke-tested.
 --
--- Preflight checks before applying manually:
---   1. Confirm Vercel has deployed the Stage 2A app code.
---   2. Search the repo for profile status usage:
---        status, verification_status
---        profiles.status
---        .select("id, status
---        .select("id,status
---        .eq("status"
---        .in("status"
---   3. Confirm live database objects no longer depend on public.profiles.status.
---   4. Confirm this returns zero before drop:
---        SELECT COUNT(*) FROM public.profiles WHERE status IS DISTINCT FROM verification_status;
+-- This file intentionally stays outside supabase/migrations until the final drop is approved.
 
 BEGIN;
 
@@ -25,7 +17,7 @@ UPDATE public.profiles
 SET verification_status = COALESCE(verification_status, status, 'pending')
 WHERE verification_status IS NULL;
 
--- Refuse to continue if the mirror drifted after Stage 1.
+-- Refuse to continue if the compatibility columns drifted.
 DO $$
 BEGIN
   IF EXISTS (
@@ -37,9 +29,13 @@ BEGIN
   END IF;
 END $$;
 
--- Remove Stage 1 mirror trigger/function if they still exist.
-DROP TRIGGER IF EXISTS sync_profile_status_columns_before_write ON public.profiles;
-DROP FUNCTION IF EXISTS public.sync_profile_status_columns();
+-- Remove the Stage 1 compatibility mirror before dropping the old column.
+DROP TRIGGER IF EXISTS trg_sync_profile_verification_status ON public.profiles;
+DROP FUNCTION IF EXISTS public.sync_profile_verification_status();
+
+-- Defensive cleanup for any old profile-status indexes that might still exist in older environments.
+DROP INDEX IF EXISTS public.profiles_status_created_idx;
+DROP INDEX IF EXISTS public.profiles_status_created_at_idx;
 
 -- Final cleanup: verification_status becomes the only profile verification state column.
 ALTER TABLE public.profiles
