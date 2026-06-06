@@ -24,11 +24,7 @@ function createAuthedSupabaseClient(accessToken) {
 }
 
 function isVerifiedProfile(profile) {
-  const values = [profile?.status, profile?.verification_status]
-    .filter(Boolean)
-    .map((value) => String(value).trim().toLowerCase());
-
-  return values.includes("verified");
+  return String(profile?.verification_status || "").trim().toLowerCase() === "verified";
 }
 
 function cleanText(value) {
@@ -212,7 +208,7 @@ export async function POST(request) {
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("id, full_name, status, verification_status")
+    .select("id, full_name, verification_status")
     .eq("id", user.id)
     .maybeSingle();
 
