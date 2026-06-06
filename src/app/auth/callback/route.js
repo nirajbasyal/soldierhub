@@ -50,11 +50,11 @@ async function getConfirmedProfileRedirect({ supabase, next }) {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, email, personal_email, full_name, status, verification_status")
+    .select("id, email, personal_email, full_name, verification_status")
     .eq("id", user.id)
     .maybeSingle();
 
-  const status = profile?.status || profile?.verification_status || "pending";
+  const status = profile?.verification_status || "pending";
   const email = profile?.email || profile?.personal_email || user.email || "";
   const name = profile?.full_name || user.user_metadata?.full_name || user.user_metadata?.name || "";
 
