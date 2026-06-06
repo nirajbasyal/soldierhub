@@ -1,75 +1,56 @@
-# SoldierHub Supabase Database Guide
+# Soldier Hub Supabase Database Guide
 
-This folder contains database-related files for SoldierHub.
+This folder contains the database source of truth for Soldier Hub.
 
-SoldierHub is an independent, unofficial community platform and is not affiliated with, endorsed by, or operated by the U.S. Government, Department of Defense, Department of the Army, or any military installation.
+Soldier Hub is an independent, unofficial community platform and is not affiliated with, endorsed by, or operated by the U.S. Government, Department of Defense, Department of the Army, or any military installation.
 
-## Production safety rule
+## Production source of truth
 
-Do **not** run random SQL files directly in the Supabase SQL Editor just because they exist in this repository.
+`supabase/migrations/` is the only production source of truth for database structure and database changes.
 
-Some SQL files may be historical snapshots, local setup helpers, or archived emergency fixes. Running an old file against production can overwrite newer functions, views, grants, policies, or columns.
+A fresh Supabase database should be rebuilt by applying the timestamped SQL files in `supabase/migrations/` in order.
 
-## Source of truth going forward
+Do not rebuild production from old snapshots, copied SQL, archived fixes, or SQL pasted from chat history.
 
-Use this priority order:
+## Safe database workflow
 
-1. `supabase/migrations/`
-   - Preferred source of truth for database changes.
-   - New database changes should be added here as timestamped migrations.
+For every future database change:
 
-2. `supabase/schema.sql`
-   - Snapshot/reference of the database structure.
-   - Useful for review and local setup, but should not be treated as a random production patch file.
+1. Create a new migration file in `supabase/migrations/`.
+2. Put the exact SQL change in that migration.
+3. Test locally or in a Supabase branch when possible.
+4. Apply with `supabase db push` or the Supabase migration workflow.
+5. Commit and push the migration file to GitHub.
 
-3. `supabase/policies.sql`
-   - Reference for Row Level Security policies and grants.
-   - Review carefully before running against production.
+## What belongs here
 
-4. `supabase/seed.sql`
-   - Demo or starter data only.
-   - Do not run against production unless the contents are intentionally production-safe.
+- `migrations/` — production database history and rebuild source.
+- `seed.sql` — optional local/demo seed helper only. Never treat seed data as production migration history.
 
-5. `supabase/archive/`
-   - Historical SQL files only.
-   - Files here are preserved for reference.
-   - Do **not** run archived SQL without carefully reviewing the current live database and current migrations.
+## What does not belong here anymore
 
-## Before changing production database
+Do not keep active production rebuild files outside `migrations/`.
 
-Before running any SQL in production:
+Old files such as `schema.sql`, `policies.sql`, `production_rebuild/`, `pending_migrations/`, and pasted live-policy snapshots were removed or should remain out of the active source-of-truth path. They caused confusion because they could become stale while live Supabase changed.
 
-1. Confirm what the app currently expects.
-2. Confirm whether the same change already exists in `supabase/migrations/`.
-3. Test the SQL in a non-production Supabase project if possible.
-4. Make a backup or export before destructive changes.
-5. Prefer small, reversible migrations over large all-in-one fixes.
+## Before changing production
 
-## Do not run archived emergency fixes
+Before running SQL against production:
 
-Emergency fix files may include statements like:
+1. Confirm the app code expects the change.
+2. Confirm the change is represented in `supabase/migrations/`.
+3. Back up or export production if the change is destructive.
+4. Prefer small, reviewable migrations over large manual SQL edits.
+5. After deploy, smoke test login, admin, posts, comments, follows, uploads, and notifications.
 
-- `create or replace function`
-- `create or replace view`
-- `drop view`
-- `drop function`
-- `grant` / `revoke`
-- `alter table`
+## Current verification-status cleanup
 
-These can be valid at the time they were written, but dangerous later.
+`public.profiles.verification_status` is the canonical profile verification field.
 
-## Current cleanup note
-
-The old one-time file:
+The legacy `public.profiles.status` column was removed by the Stage 2C migration:
 
 ```txt
-supabase/fix-delete-post-and-report-counts.sql
+supabase/migrations/20260606203000_stage2c_drop_profiles_status.sql
 ```
 
-was moved to:
-
-```txt
-supabase/archive/fix-delete-post-and-report-counts.ARCHIVED-DO-NOT-RUN.sql
-```
-
-It should be treated as historical reference only.
+Do not reintroduce `profiles.status` in app code, functions, policies, views, or future migrations.
