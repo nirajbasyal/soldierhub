@@ -1,3 +1,0 @@
--- DEPRECATED / DO NOT RUN
--- Production source of truth is supabase/migrations/.
--- This old split rebuild SQL was retired to avoid drift and accidental production changes.
