@@ -63,9 +63,9 @@ async function runAdminAction({ supabase, action, profileId, email }) {
   if (action === "verify") {
     return supabase
       .from("profiles")
-      .update({ status: "verified", verification_status: "verified" })
+      .update({ verification_status: "verified" })
       .eq("id", profileId)
-      .select("id, full_name, email, status, verification_status")
+      .select("id, full_name, email, verification_status")
       .maybeSingle();
   }
 
