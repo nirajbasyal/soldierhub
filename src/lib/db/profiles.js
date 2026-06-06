@@ -3,10 +3,10 @@
 import { createClient } from "@/lib/supabase/client";
 
 const SELF_PROFILE_FIELDS =
-  "id, full_name, email, personal_email, phone, bio, avatar_color, avatar_url, role, status, verification_status, base, created_at, updated_at";
+  "id, full_name, email, personal_email, phone, bio, avatar_color, avatar_url, role, verification_status, base, created_at, updated_at";
 
 const ADMIN_PROFILE_FIELDS =
-  "id, full_name, email, personal_email, phone, bio, avatar_color, avatar_url, role, status, verification_status, base, created_at, updated_at";
+  "id, full_name, email, personal_email, phone, bio, avatar_color, avatar_url, role, verification_status, base, created_at, updated_at";
 
 const PUBLIC_PROFILE_SEARCH_FIELDS = "id, full_name, avatar_color, avatar_url, base";
 const DEFAULT_ADMIN_PROFILE_LIMIT = 50;
@@ -131,7 +131,7 @@ async function listAdminProfileQueue(queue, { limit = DEFAULT_ADMIN_PROFILE_LIMI
     const fallback = await supabase
       .from("profiles")
       .select(ADMIN_PROFILE_FIELDS)
-      .in("status", ["rejected", "revoked"])
+      .in("verification_status", ["rejected", "revoked"])
       .order("created_at", { ascending: false })
       .limit(safeLimit);
 
@@ -141,7 +141,7 @@ async function listAdminProfileQueue(queue, { limit = DEFAULT_ADMIN_PROFILE_LIMI
   const fallback = await supabase
     .from("profiles")
     .select(ADMIN_PROFILE_FIELDS)
-    .eq("status", queue)
+    .eq("verification_status", queue)
     .order("created_at", { ascending: false })
     .limit(safeLimit);
 
