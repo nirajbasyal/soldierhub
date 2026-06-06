@@ -33,7 +33,7 @@ const ANONYMOUS_NOTICE_MS = 4600;
 
 export default function PostComposer({ startOpen = false, pageMode = false }) {
   const router = useRouter();
-  const { currentUser, requireAuth, createPost, setCategory: setFeedCategory } = useApp();
+  const { currentUser, isVerified, requireAuth, createPost, setCategory: setFeedCategory } = useApp();
 
   const [open, setOpen] = useState(startOpen);
   const [category, setCategory] = useState("General Q&A");
@@ -356,7 +356,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     return () => window.removeEventListener(COMPOSE_SUBMIT_EVENT, handleExternalSubmit);
   }, [pageMode]);
 
-  if (!currentUser || currentUser.status !== "verified") {
+  if (!currentUser || !isVerified) {
     return (
       <button type="button" onClick={requireAuth} className="flex w-full items-center gap-3 rounded-[24px] border p-5 text-left" style={{ backgroundColor: T.card, borderColor: T.border }}>
         <div className="flex h-10 w-10 items-center justify-center rounded-full" style={{ backgroundColor: T.goldBg }}><Pencil size={16} style={{ color: T.gold }} /></div>
