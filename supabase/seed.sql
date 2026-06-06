@@ -1,42 +1,36 @@
 -- ============================================================================
--- Soldier Hub — Optional Seed Data
+-- Soldier Hub — Optional Local Seed Data
 -- ============================================================================
--- Run AFTER schema.sql and policies.sql. Useful for local development to
--- have the feed look populated. Skip this for production launch.
+-- This file is for local/demo development only.
+-- Do NOT run this against production unless you intentionally reviewed every row.
 --
--- IMPORTANT: This only inserts the post content. To create actual users,
--- sign them up through the app (which goes through Supabase Auth).
+-- Production database structure is managed only by supabase/migrations/.
 -- ============================================================================
 
--- Note: This seed file requires existing profile IDs to work. After signing up
--- a few demo accounts through the app, get their UUIDs from the profiles table
--- and use them below in place of the placeholders.
+-- This seed file requires existing profile IDs to work. After signing up demo
+-- accounts through the app, get their UUIDs from public.profiles and replace the
+-- placeholders below.
 --
 -- Example workflow:
---   1. Sign up niraj.basyal2054@gmail.com (becomes admin automatically)
---   2. Sign up demo@example.com, then verify via admin dashboard
---   3. Run: select id, email from profiles;
---   4. Replace the placeholder UUIDs below with real ones
---   5. Run this file
---
--- For convenience the script is wrapped in a transaction. If anything fails,
--- nothing is inserted.
+--   1. Sign up through the app.
+--   2. Verify the demo user through the admin dashboard.
+--   3. Run: select id, email from public.profiles;
+--   4. Replace REPLACE-WITH-VERIFIED-USER-UUID below.
+--   5. Uncomment and run this file locally.
 
 -- begin;
 --
 -- insert into public.posts (author_id, category, title, body, anonymous, status)
 -- values
 --   ('REPLACE-WITH-VERIFIED-USER-UUID', 'Housing',        'Best area near Fort Bliss for a small family?', 'Looking for a safe area with reasonable rent and not too far from post. Is Far East better, or Westside better for daily commute?', false, 'active'),
---   ('REPLACE-WITH-VERIFIED-USER-UUID', 'Gate & Traffic', 'Buffalo Soldier Gate is slow around PT time',     'If you need to be on post early, avoid 0600–0730 when possible. I usually add 20 minutes of buffer to be safe.',                false, 'active'),
+--   ('REPLACE-WITH-VERIFIED-USER-UUID', 'Gate & Traffic', 'Buffalo Soldier Gate is slow around PT time',     'If you need to be on post early, avoid 0600-0730 when possible. I usually add 20 minutes of buffer to be safe.',                false, 'active'),
 --   ('REPLACE-WITH-VERIFIED-USER-UUID', 'Local Business', 'Honest mechanic recommendation near El Paso?',    'Looking for a shop that does not overcharge. Need basic maintenance and brake inspection.',                                  false, 'active'),
 --   ('REPLACE-WITH-VERIFIED-USER-UUID', 'New Arrival',    'First PCS — what should I do in week one?',       'Reporting to Fort Bliss next month. What appointments should I book first, and what mistakes should I avoid in-processing?', true,  'active'),
 --   ('REPLACE-WITH-VERIFIED-USER-UUID', 'Warnings',       'Watch out for rental scams on Facebook Marketplace', 'Saw a listing today that asked for two months deposit before any walkthrough. Always view the property in person.',          false, 'active');
 --
 -- commit;
 
--- ============================================================================
--- For first-launch admin promotion (if signup trigger missed it)
--- ============================================================================
+-- Optional first-launch admin recovery, only if the signup/admin trigger missed it:
 -- update public.profiles
--- set role = 'admin', status = 'verified'
+-- set role = 'admin', verification_status = 'verified'
 -- where email = 'niraj.basyal2054@gmail.com';
