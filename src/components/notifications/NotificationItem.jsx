@@ -1,5 +1,6 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element */
 import { ArrowBigUp, ArrowRight, MessageCircle, UserPlus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { T } from "@/lib/theme";
@@ -51,6 +52,7 @@ function getActorId(notification) {
     notification?.comment?.author_id ||
     notification?.actor_user_id ||
     notification?.actor_id ||
+    notification?.actor_profile?.id ||
     notification?.actor?.id ||
     notification?.user_id ||
     notification?.profile_id ||
@@ -62,9 +64,21 @@ function getActorId(notification) {
 function getActorName(notification) {
   return (
     notification?.actor_name_cached ||
+    notification?.actor_profile?.full_name ||
     notification?.actor?.full_name ||
     notification?.actor_name ||
     "Someone"
+  );
+}
+
+function getActorAvatarUrl(notification) {
+  return (
+    notification?.actor_avatar_url ||
+    notification?.actor_profile?.avatar_url ||
+    notification?.actor?.avatar_url ||
+    notification?.comment?.author_avatar_url ||
+    notification?.comment?.author_avatar_url_cached ||
+    null
   );
 }
 
@@ -134,7 +148,11 @@ function uniqueActors(notifications = []) {
     const key = getActorId(notification) || getActorName(notification);
     if (!key || seen.has(key)) return;
     seen.add(key);
-    actors.push({ id: getActorId(notification), name: getActorName(notification) });
+    actors.push({
+      id: getActorId(notification),
+      name: getActorName(notification),
+      avatarUrl: getActorAvatarUrl(notification),
+    });
   });
 
   return actors;
@@ -189,7 +207,11 @@ export default function NotificationItem({ notification, group }) {
   const latestComment = commentItems[0] || null;
   const upvoteItems = notifications.filter((item) => item.type === "upvote");
   const actors = uniqueActors(notifications);
-  const firstActor = actors[0] || { id: getActorId(latest), name: getActorName(latest) };
+  const firstActor = actors[0] || {
+    id: getActorId(latest),
+    name: getActorName(latest),
+    avatarUrl: getActorAvatarUrl(latest),
+  };
   const latestTime = latest.created_at;
   const summary = isGroup ? buildSummary(group) : buildSummary({ notifications });
   const visibleActivityCount = isFollow
@@ -250,15 +272,26 @@ export default function NotificationItem({ notification, group }) {
         fallbackName={firstActorFallbackName}
         className="relative shrink-0 cursor-pointer transition hover:opacity-90 focus:outline-none"
       >
-        <div
-          className="flex h-12 w-12 items-center justify-center rounded-2xl text-sm font-extrabold md:h-[52px] md:w-[52px]"
-          style={{
-            backgroundColor: unread ? NAVY : SOFT_BLUE,
-            color: unread ? "#FFFFFF" : SLATE_BLUE,
-          }}
-        >
-          {getInitials(firstActor.name)}
-        </div>
+        {firstActor.avatarUrl ? (
+          <img
+            src={firstActor.avatarUrl}
+            alt={firstActor.name || "Profile avatar"}
+            className="h-12 w-12 rounded-2xl border object-cover md:h-[52px] md:w-[52px]"
+            style={{ borderColor: unread ? "#DDE8F2" : "#E6EEF6" }}
+            loading="lazy"
+            referrerPolicy="no-referrer"
+          />
+        ) : (
+          <div
+            className="flex h-12 w-12 items-center justify-center rounded-2xl text-sm font-extrabold md:h-[52px] md:w-[52px]"
+            style={{
+              backgroundColor: unread ? NAVY : SOFT_BLUE,
+              color: unread ? "#FFFFFF" : SLATE_BLUE,
+            }}
+          >
+            {getInitials(firstActor.name)}
+          </div>
+        )}
 
         <div
           className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2"
