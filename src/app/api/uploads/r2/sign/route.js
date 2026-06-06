@@ -59,7 +59,7 @@ export async function POST(request) {
 
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("id,status,verification_status")
+      .select("id,verification_status")
       .eq("id", user.id)
       .single();
 
@@ -67,7 +67,7 @@ export async function POST(request) {
       return NextResponse.json({ error: "Profile not found." }, { status: 403 });
     }
 
-    if (profile.status !== "verified" || profile.verification_status !== "verified") {
+    if (profile.verification_status !== "verified") {
       return NextResponse.json({ error: "Your account must be verified before uploading images." }, { status: 403 });
     }
 
