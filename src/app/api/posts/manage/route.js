@@ -35,7 +35,7 @@ function cleanText(value) {
 }
 
 function getProfileStatus(profile) {
-  return profile?.status || profile?.verification_status || "pending";
+  return profile?.verification_status || "pending";
 }
 
 function normalizePostRow(row = {}) {
@@ -75,7 +75,7 @@ async function verifyUserAndProfile({ supabase, accessToken }) {
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("id, status, verification_status")
+    .select("id, verification_status")
     .eq("id", user.id)
     .maybeSingle();
 
