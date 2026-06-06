@@ -8,12 +8,13 @@ Soldier Hub is an independent, unofficial community platform and is not affiliat
 
 `supabase/migrations/` is the only production source of truth for database structure and database changes.
 
-A fresh Supabase database should be rebuilt by applying every timestamped SQL file in `supabase/migrations/` from oldest to newest.
+For a brand-new Supabase project, rebuild the database by applying every timestamped SQL file in `supabase/migrations/` from oldest to newest.
 
-Those migration files must recreate all database objects the app needs:
+The first baseline migration creates the core database foundation. Later migrations evolve it to the current production shape.
+
+The migration chain must recreate every database object the app needs:
 
 ```txt
-schema
 extensions
 tables
 columns
@@ -30,9 +31,9 @@ RLS policies
 
 `seed.sql` is not production history. It is optional local/demo helper data only.
 
-## Clean folder structure
+## Current clean folder structure
 
-The active Supabase folder should stay simple:
+Keep the active Supabase folder simple:
 
 ```txt
 supabase/
@@ -42,23 +43,21 @@ supabase/
   migrations/
 ```
 
-Do not use deleted old snapshots or chat-pasted SQL as source of truth. The rebuild path is migrations only.
+Do not use random SQL copied from chat, dashboard history, or old local notes as the source of truth. If a database change is real, it must be represented as a timestamped migration inside `supabase/migrations/`.
 
-## Important verification note
+## Important current verification-status state
 
-A migration chain is only truly production-safe after a fresh rebuild test passes:
+`public.profiles.verification_status` is the canonical profile verification field.
 
-```bash
-supabase db reset
+The old `public.profiles.status` column was removed by:
+
+```txt
+supabase/migrations/20260606203000_stage2c_drop_profiles_status.sql
 ```
 
-or by creating a brand-new Supabase project/branch and running:
+Do not reintroduce `profiles.status` in app code, database functions, policies, views, triggers, indexes, or future migrations.
 
-```bash
-supabase db push
-```
-
-If a fresh rebuild fails because an early migration expects a table/function that does not exist yet, create an earlier timestamped baseline migration before the failing file, then test again.
+`posts.status` and `reports.status` are different concepts and should stay.
 
 ## Beginner-safe workflow for future database changes
 
@@ -88,7 +87,7 @@ If a fresh rebuild fails because an early migration expects a table/function tha
 
 ## Migration filename rule
 
-Do not rename old migration files after they have been applied.
+Do not rename existing migrations after they have been applied.
 
 Supabase migration files must keep the timestamp first:
 
@@ -202,21 +201,9 @@ Only if the CLI is not available:
 9. If one file errors, stop and fix it before continuing.
 10. Do not run `seed.sql` against production unless intentionally reviewed.
 
-## Current verification-status cleanup
+## Read-only health checks
 
-`public.profiles.verification_status` is the canonical profile verification field.
-
-The legacy `public.profiles.status` column was removed by:
-
-```txt
-supabase/migrations/20260606203000_stage2c_drop_profiles_status.sql
-```
-
-Do not reintroduce `profiles.status` in app code, functions, policies, views, triggers, indexes, or future migrations.
-
-`posts.status` and `reports.status` are different concepts and should stay.
-
-## Quick health checks
+Run these checks in Supabase SQL Editor when you want to verify that the live database matches the intended current shape.
 
 ### Confirm old profile status column is gone
 
@@ -235,14 +222,17 @@ Expected result:
 verification_status
 ```
 
-### Confirm main public tables exist
+### Confirm main public tables exist and RLS is enabled
 
 ```sql
-select table_name
-from information_schema.tables
-where table_schema = 'public'
-  and table_type = 'BASE TABLE'
-order by table_name;
+select
+  c.relname as table_name,
+  c.relrowsecurity as rls_enabled
+from pg_class c
+join pg_namespace n on n.oid = c.relnamespace
+where n.nspname = 'public'
+  and c.relkind = 'r'
+order by c.relname;
 ```
 
 Expected main tables:
@@ -258,6 +248,8 @@ resources
 upvotes
 visitor_reports
 ```
+
+Every app table above should show `rls_enabled = true`.
 
 ### Confirm profile follow policies are not duplicated
 
@@ -276,6 +268,42 @@ profile_follows_delete_own
 profile_follows_insert_own_verified
 profile_follows_select_self_only
 ```
+
+### Confirm core public views exist
+
+```sql
+select table_name
+from information_schema.views
+where table_schema = 'public'
+order by table_name;
+```
+
+Expected views:
+
+```txt
+my_posts_with_meta
+posts_with_meta
+profile_follow_counts
+public_profiles
+```
+
+### Confirm profile status dependencies are gone
+
+```sql
+select
+  d.classid::regclass::text as dependent_catalog,
+  d.objid,
+  d.deptype
+from pg_depend d
+join pg_class c on c.oid = d.refobjid
+join pg_namespace n on n.oid = c.relnamespace
+join pg_attribute a on a.attrelid = c.oid and a.attnum = d.refobjsubid
+where n.nspname = 'public'
+  and c.relname = 'profiles'
+  and a.attname = 'status';
+```
+
+Expected result: no rows, because `profiles.status` should not exist.
 
 ## Before changing production
 
