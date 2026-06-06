@@ -30,7 +30,7 @@ function createAuthedSupabaseClient(accessToken) {
 }
 
 function normalizeStatus(profile = {}) {
-  return profile.status || profile.verification_status || "pending";
+  return profile.verification_status || "pending";
 }
 
 function safeProfilePayload(profile = {}) {
@@ -111,7 +111,7 @@ export async function POST(request) {
 
   const { data: viewerProfile, error: viewerProfileError } = await supabase
     .from("profiles")
-    .select("id, status, verification_status")
+    .select("id, verification_status")
     .eq("id", user.id)
     .maybeSingle();
 
