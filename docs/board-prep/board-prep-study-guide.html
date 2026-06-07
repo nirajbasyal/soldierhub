@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SoldierHub Board Prep Study Guide</title>
+<style>
+  @page { size: Letter; margin: 22mm 18mm 20mm 18mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: Georgia, "Times New Roman", serif;
+    color: #11202f;
+    font-size: 11pt;
+    line-height: 1.5;
+    margin: 0;
+  }
+  h1, h2, h3, h4 { font-family: "Arial", "Helvetica", sans-serif; color: #071B33; }
+  a { color: #1E4E8C; }
+
+  /* Cover */
+  .cover {
+    text-align: center;
+    padding-top: 70mm;
+    page-break-after: always;
+  }
+  .cover .kicker { letter-spacing: 3px; font-size: 12pt; color: #B31942; font-family: Arial, sans-serif; font-weight: bold; }
+  .cover h1 { font-size: 34pt; margin: 8px 0 4px; }
+  .cover .sub { font-size: 14pt; color: #43556B; }
+  .cover .rule { width: 60mm; height: 3px; background: #B31942; margin: 18px auto; }
+  .cover .meta { margin-top: 26mm; font-size: 10pt; color: #7B8797; font-family: Arial, sans-serif; }
+
+  /* Sections */
+  .part-title {
+    page-break-before: always;
+    background: #071B33; color: #fff; padding: 14px 16px; border-radius: 6px;
+    font-size: 16pt; margin: 0 0 14px;
+  }
+  section.reg { page-break-before: always; }
+  .reg-head {
+    border-left: 6px solid #B31942; padding: 4px 0 4px 12px; margin-bottom: 4px;
+  }
+  .reg-head h2 { font-size: 17pt; margin: 0; }
+  .reg-head .pub { font-family: Arial, sans-serif; font-size: 10pt; color: #1E4E8C; font-weight: bold; }
+  .currency {
+    font-family: Arial, sans-serif; font-size: 8.5pt; color: #43556B;
+    background: #EAF0F8; border: 1px solid #CFDAE8; border-radius: 4px;
+    padding: 4px 8px; display: inline-block; margin: 6px 0 10px;
+  }
+
+  h3.block { font-family: Arial, sans-serif; font-size: 11pt; color: #B31942;
+    border-bottom: 1px solid #CFDAE8; padding-bottom: 3px; margin: 16px 0 8px;
+    text-transform: uppercase; letter-spacing: 1px; }
+
+  /* Q&A */
+  .qa { margin: 0 0 9px; }
+  .qa .q { font-weight: bold; }
+  .qa .a { color: #1d3a24; margin-top: 1px; }
+  .qa .a::before { content: "▸ "; color: #247151; }
+
+  /* Multiple choice */
+  .mc { margin: 0 0 11px; padding-left: 2px; }
+  .mc .stem { font-weight: bold; }
+  .mc ol { margin: 3px 0 3px 0; padding-left: 22px; }
+  .mc ol li { margin: 1px 0; list-style-type: upper-alpha; }
+  .mc .ans {
+    font-family: Arial, sans-serif; font-size: 9pt; background: #E4F3EC;
+    border: 1px solid #C7E3D4; color: #1c5238; border-radius: 4px;
+    padding: 3px 8px; margin-top: 3px; display: block;
+  }
+  .mc .ans b { color: #134227; }
+
+  /* Tables */
+  table { border-collapse: collapse; width: 100%; font-size: 9.5pt; margin: 8px 0 4px; }
+  th, td { border: 1px solid #CFDAE8; padding: 5px 8px; text-align: left; vertical-align: top; }
+  th { background: #071B33; color: #fff; font-family: Arial, sans-serif; }
+  tr:nth-child(even) td { background: #F3F6FB; }
+
+  .note { background: #FFF1D7; border: 1px solid #F2D29A; border-radius: 5px;
+    padding: 8px 12px; font-size: 9.5pt; margin: 10px 0; }
+  .disclaimer { background: #FDECF0; border: 1px solid #F2C5D0; border-radius: 6px;
+    padding: 12px 16px; font-size: 10pt; }
+  .toc-note { font-size: 9.5pt; color: #43556B; }
+  .intro h2 { color: #B31942; }
+  ul.tight { margin: 4px 0; }
+  ul.tight li { margin: 2px 0; }
+  .small { font-size: 9pt; color: #7B8797; }
+</style>
+</head>
+<body>
+
+<!-- ============================ COVER ============================ -->
+<div class="cover">
+  <div class="kicker">SOLDIER HUB &middot; CONNECT &middot; SHARE &middot; SUPPORT</div>
+  <h1>Army Promotion Board<br>Study Guide</h1>
+  <div class="rule"></div>
+  <div class="sub">NCO / Soldier of the Month &amp; Semi-Centralized Promotion Boards</div>
+  <div class="sub" style="font-size:11pt;color:#7B8797;margin-top:6px;">
+    Organized by regulation &middot; Open-ended Q&amp;A + Multiple choice
+  </div>
+  <div class="meta">
+    Compiled June 2026 &middot; Reflects current Army doctrine including the<br>
+    Army Fitness Test (AFT), AR 600-9 Waist-to-Height standard, and the<br>
+    September 2025 AR 670-1 grooming directive.
+  </div>
+</div>
+
+<!-- ============================ DISCLAIMER ============================ -->
+<section class="intro">
+  <h2>Read this first &mdash; accuracy &amp; how to use this guide</h2>
+  <div class="disclaimer">
+    <b>This is an unofficial study aid.</b> Army regulations and doctrine change
+    frequently. Every effort has been made to reflect the most current publications
+    as of <b>June 2026</b>, with citations to the governing publication. <b>Always
+    confirm answers against the official publication on
+    armypubs.army.mil and with your unit's board NCO / president of the board.</b>
+    Local boards may weight subjects differently and may use the board recorder's
+    own answer key. Where a fact could not be fully verified it is marked
+    &ldquo;<i>verify locally</i>.&rdquo;
+  </div>
+
+  <h3 class="block">How a board works</h3>
+  <ul class="tight">
+    <li><b>Appearance &amp; bearing first.</b> Reporting procedures, uniform, and
+      military bearing are graded before you answer a single knowledge question.</li>
+    <li><b>Open-ended questions.</b> Real boards are oral. Members ask a question and
+      you answer aloud &mdash; so practice <i>saying</i> the answers, not just
+      recognizing them. That is why this guide gives the open-ended Q&amp;A first.</li>
+    <li><b>Know the source.</b> Strong answers cite the publication
+      (&ldquo;Per AR 670-1&hellip;&rdquo;). The multiple-choice sections reinforce the
+      same facts for quick self-testing.</li>
+    <li><b>&ldquo;Which regulation covers&hellip;?&rdquo;</b> Board members love
+      regulation-identification questions. A dedicated section for these is at the
+      front of this guide.</li>
+  </ul>
+
+  <h3 class="block">What's inside</h3>
+  <p class="toc-note">
+    Part I &mdash; Leadership &amp; Doctrine &middot;
+    Part II &mdash; Personnel, Programs &amp; Justice &middot;
+    Part III &mdash; Fitness &amp; Health &middot;
+    Part IV &mdash; Soldier Skills &amp; Warfighting.
+    Each regulation section has: a currency header, open-ended Q&amp;A, and
+    multiple-choice questions with answers.
+  </p>
+</section>
+
+<!-- ============================ QUICK REFERENCE ============================ -->
+<section class="reg">
+  <div class="reg-head"><h2>Master Regulation Quick-Reference</h2></div>
+  <p class="small">The publication that governs each board subject. Memorize this table &mdash; it answers the most common &ldquo;which reg covers&hellip;&rdquo; questions.</p>
+  <table>
+    <tr><th>Subject area</th><th>Governing publication</th><th>Title / note</th></tr>
+    <tr><td>Army Leadership</td><td>ADP 6-22</td><td>Army Leadership and the Profession</td></tr>
+    <tr><td>Leader Development</td><td>FM 6-22</td><td>Developing Leaders</td></tr>
+    <tr><td>Mission Command</td><td>ADP 6-0</td><td>Mission Command: Command and Control of Army Forces</td></tr>
+    <tr><td>Operations / Warfighting Functions</td><td>ADP 3-0</td><td>Operations (supersedes ADRP 3-0); see also FM 3-0 (2022)</td></tr>
+    <tr><td>Training</td><td>ADP 7-0</td><td>Training</td></tr>
+    <tr><td>The Army (profession)</td><td>ADP 1</td><td>The Army</td></tr>
+    <tr><td>NCO Duties / History</td><td>TC 7-22.7</td><td>The Noncommissioned Officer Guide (current 14 Aug 2025)</td></tr>
+    <tr><td>Counseling</td><td>ATP 6-22.1</td><td>The Counseling Process</td></tr>
+    <tr><td>Wear &amp; Appearance (uniform)</td><td>AR 670-1 / DA PAM 670-1</td><td>Grooming updated by Sep 2025 directive</td></tr>
+    <tr><td>Enlisted Promotions &amp; Reductions</td><td>AR 600-8-19</td><td>21 Jun 2024 (admin rev 17 Mar 2025)</td></tr>
+    <tr><td>Flags (Suspension of Favorable Actions)</td><td>AR 600-8-2</td><td>DA Form 268</td></tr>
+    <tr><td>Military Awards</td><td>AR 600-8-22</td><td>Decorations, awards, honors</td></tr>
+    <tr><td>Evaluations (NCOER/OER)</td><td>AR 623-3 / DA PAM 623-3</td><td>Evaluation Reporting System</td></tr>
+    <tr><td>Army Training &amp; Leader Development</td><td>AR 350-1</td><td>Mandatory training; NCOPDS</td></tr>
+    <tr><td>Command Policy / EO / Chain of Command / SHARP</td><td>AR 600-20</td><td>Army Command Policy</td></tr>
+    <tr><td>Body Composition</td><td>AR 600-9</td><td>Army Body Composition Program</td></tr>
+    <tr><td>Customs &amp; Courtesies (salutes/honors)</td><td>AR 600-25</td><td>Salutes, Honors, and Visits of Courtesy</td></tr>
+    <tr><td>Military Justice</td><td>AR 27-10</td><td>UCMJ administration; Article 15</td></tr>
+    <tr><td>Maintenance</td><td>AR 750-1 / DA PAM 750-1</td><td>Army Maintenance Policy</td></tr>
+    <tr><td>Holistic Health &amp; Fitness / AFT</td><td>FM 7-22</td><td>H2F (replaced &ldquo;Physical Readiness Training&rdquo;)</td></tr>
+    <tr><td>First Aid</td><td>TC 4-02.1</td><td>First Aid</td></tr>
+    <tr><td>Field Hygiene &amp; Sanitation</td><td>TC 4-02.3</td><td>Field Hygiene and Sanitation</td></tr>
+    <tr><td>Drill &amp; Ceremonies</td><td>TC 3-21.5</td><td>Drill and Ceremonies</td></tr>
+    <tr><td>Map Reading &amp; Land Navigation</td><td>TC 3-25.26</td><td>Map Reading and Land Navigation</td></tr>
+    <tr><td>Weapons (Rifle/Carbine)</td><td>TC 3-22.9</td><td>Rifle and Carbine (M4/M16)</td></tr>
+    <tr><td>CBRN</td><td>FM 3-11</td><td>Chemical, Biological, Radiological, and Nuclear Operations</td></tr>
+    <tr><td>Law of War</td><td>FM 6-27</td><td>The Commander's Handbook on the Law of Land Warfare (replaced FM 27-10)</td></tr>
+    <tr><td>Code of Conduct</td><td>EO 10631 / DoD</td><td>Six articles &mdash; conduct of U.S. fighting forces</td></tr>
+  </table>
+  <div class="note">
+    <b>Recently changed &mdash; do not study from old guides:</b>
+    APFT &rarr; <b>ACFT</b> &rarr; <b>AFT</b> (1 Jun 2025);
+    FM 7-22 is now <b>Holistic Health and Fitness</b>, not Physical Readiness Training;
+    ADRP publications were folded into <b>ADPs</b> (2019);
+    FM 27-10 was replaced by <b>FM 6-27</b>;
+    the &ldquo;mission command&rdquo; warfighting function was renamed <b>command and control</b>.
+  </div>
+</section>
+
+<!-- ============================ REGULATION IDENTIFICATION ============================ -->
+<section class="reg">
+  <div class="reg-head"><h2>Regulation Identification Drill</h2></div>
+  <p class="small">&ldquo;What regulation / publication covers&hellip;?&rdquo; &mdash; the highest-frequency board question type.</p>
+
+  <h3 class="block">Open-ended</h3>
+  <div class="qa"><div class="q">What publication covers Army Leadership?</div><div class="a">ADP 6-22, Army Leadership and the Profession.</div></div>
+  <div class="qa"><div class="q">What publication covers Mission Command?</div><div class="a">ADP 6-0.</div></div>
+  <div class="qa"><div class="q">What regulation covers wear and appearance of the uniform?</div><div class="a">AR 670-1 (with the &ldquo;how-to&rdquo; in DA PAM 670-1).</div></div>
+  <div class="qa"><div class="q">What regulation covers enlisted promotions and reductions?</div><div class="a">AR 600-8-19.</div></div>
+  <div class="qa"><div class="q">What regulation covers suspension of favorable personnel actions (flags)?</div><div class="a">AR 600-8-2.</div></div>
+  <div class="qa"><div class="q">What regulation covers military awards?</div><div class="a">AR 600-8-22.</div></div>
+  <div class="qa"><div class="q">What regulation covers the evaluation reporting system (NCOER)?</div><div class="a">AR 623-3 (procedures in DA PAM 623-3).</div></div>
+  <div class="qa"><div class="q">What regulation covers Army Command Policy, Equal Opportunity, and SHARP?</div><div class="a">AR 600-20.</div></div>
+  <div class="qa"><div class="q">What regulation covers the Army Body Composition Program?</div><div class="a">AR 600-9.</div></div>
+  <div class="qa"><div class="q">What regulation covers salutes, honors, and customs &amp; courtesies?</div><div class="a">AR 600-25.</div></div>
+  <div class="qa"><div class="q">What regulation covers military justice / the Article 15?</div><div class="a">AR 27-10 (the punishment itself is Article 15, UCMJ).</div></div>
+  <div class="qa"><div class="q">What regulation covers Army training and leader development (mandatory training, NCO schools)?</div><div class="a">AR 350-1.</div></div>
+  <div class="qa"><div class="q">What publication covers Army counseling?</div><div class="a">ATP 6-22.1, The Counseling Process.</div></div>
+  <div class="qa"><div class="q">What publication covers the NCO guide and NCO history?</div><div class="a">TC 7-22.7.</div></div>
+  <div class="qa"><div class="q">What manual covers Holistic Health and Fitness?</div><div class="a">FM 7-22.</div></div>
+  <div class="qa"><div class="q">What publication covers drill and ceremonies?</div><div class="a">TC 3-21.5.</div></div>
+  <div class="qa"><div class="q">What publication covers map reading and land navigation?</div><div class="a">TC 3-25.26.</div></div>
+  <div class="qa"><div class="q">What publication covers the rifle and carbine?</div><div class="a">TC 3-22.9.</div></div>
+  <div class="qa"><div class="q">What manual covers CBRN operations?</div><div class="a">FM 3-11.</div></div>
+  <div class="qa"><div class="q">What manual covers the law of land warfare?</div><div class="a">FM 6-27 (replaced FM 27-10).</div></div>
+  <div class="qa"><div class="q">What publication covers maintenance?</div><div class="a">AR 750-1 (procedures in DA PAM 750-1).</div></div>
+
+  <h3 class="block">Multiple choice</h3>
+  <div class="mc">
+    <div class="stem">1. Which regulation governs the wear and appearance of Army uniforms?</div>
+    <ol><li>AR 600-20</li><li>AR 670-1</li><li>AR 350-1</li><li>AR 600-9</li></ol>
+    <span class="ans"><b>B &mdash; AR 670-1.</b> DA PAM 670-1 provides the detailed illustrations.</span>
+  </div>
+  <div class="mc">
+    <div class="stem">2. Equal Opportunity and SHARP policy are found in which regulation?</div>
+    <ol><li>AR 600-20</li><li>AR 27-10</li><li>AR 600-8-19</li><li>AR 623-3</li></ol>
+    <span class="ans"><b>A &mdash; AR 600-20</b>, Army Command Policy.</span>
+  </div>
+  <div class="mc">
+    <div class="stem">3. The Army Body Composition Program is governed by:</div>
+    <ol><li>FM 7-22</li><li>AR 350-1</li><li>AR 600-9</li><li>AR 600-8-2</li></ol>
+    <span class="ans"><b>C &mdash; AR 600-9.</b> FM 7-22 covers fitness/training, not the body-composition standard.</span>
+  </div>
+  <div class="mc">
+    <div class="stem">4. Which publication is &ldquo;The Counseling Process&rdquo;?</div>
+    <ol><li>ADP 6-22</li><li>ATP 6-22.1</li><li>TC 7-22.7</li><li>AR 623-3</li></ol>
+    <span class="ans"><b>B &mdash; ATP 6-22.1.</b></span>
+  </div>
+  <div class="mc">
+    <div class="stem">5. Nonjudicial punishment (Article 15) is administered under:</div>
+    <ol><li>AR 600-8-2</li><li>AR 27-10</li><li>AR 600-8-22</li><li>AR 600-25</li></ol>
+    <span class="ans"><b>B &mdash; AR 27-10</b>, Military Justice (Article 15 of the UCMJ).</span>
+  </div>
+</section>
+
+<!-- ============================================================= -->
+<!-- PART I -->
+<!-- ============================================================= -->
+<h1 class="part-title">PART I &middot; Leadership &amp; Doctrine</h1>
+
+<!-- ADP 6-22 -->
+<section class="reg">
+  <div class="reg-head">
+    <div class="pub">ADP 6-22</div>
+    <h2>Army Leadership and the Profession</h2>
+  </div>
+  <span class="currency">Current edition: ADP 6-22, 31 July 2019. The Army's capstone leadership doctrine.</span>
+
+  <h3 class="block">Open-ended Q&amp;A</h3>
+  <div class="qa"><div class="q">What does ADP 6-22 cover?</div><div class="a">Army Leadership and the Profession &mdash; the principles of leadership and the Army profession.</div></div>
+  <div class="qa"><div class="q">Define leadership.</div><div class="a">The activity of influencing people by providing purpose, direction, and motivation to accomplish the mission and improve the organization.</div></div>
+  <div class="qa"><div class="q">What are the three leader attributes (what a leader IS &mdash; &ldquo;Be/Know&rdquo;)?</div><div class="a">Character, Presence, Intellect.</div></div>
+  <div class="qa"><div class="q">What are the three leader competencies (what a leader DOES)?</div><div class="a">Leads, Develops, Achieves.</div></div>
+  <div class="qa"><div class="q">What makes up Character?</div><div class="a">Army Values, empathy, the Warrior Ethos and service ethos, discipline, and humility.</div></div>
+  <div class="qa"><div class="q">What makes up Presence?</div><div class="a">Military and professional bearing, fitness, confidence, and resilience.</div></div>
+  <div class="qa"><div class="q">What makes up Intellect?</div><div class="a">Mental agility, sound judgment, innovation, interpersonal tact, and expertise.</div></div>
+  <div class="qa"><div class="q">What are the three levels of leadership?</div><div class="a">Direct, Organizational, and Strategic.</div></div>
+  <div class="qa"><div class="q">What are the seven Army Values?</div><div class="a">Loyalty, Duty, Respect, Selfless Service, Honor, Integrity, Personal Courage (LDRSHIP).</div></div>
+  <div class="qa"><div class="q">Recite the Warrior Ethos.</div><div class="a">I will always place the mission first. I will never accept defeat. I will never quit. I will never leave a fallen comrade.</div></div>
+  <div class="qa"><div class="q">What are the two types of personal courage?</div><div class="a">Physical courage and moral courage.</div></div>
+  <div class="qa"><div class="q">Under &ldquo;Leads,&rdquo; what are the competencies?</div><div class="a">Leads others, builds trust, extends influence beyond the chain of command, leads by example, and communicates.</div></div>
+  <div class="qa"><div class="q">Under &ldquo;Develops,&rdquo; what are the competencies?</div><div class="a">Creates a positive environment / fosters esprit de corps, prepares self, develops others, and stewards the profession.</div></div>
+
+  <h3 class="block">Multiple choice</h3>
+  <div class="mc">
+    <div class="stem">1. The three leader attributes are:</div>
+    <ol><li>Leads, Develops, Achieves</li><li>Character, Presence, Intellect</li><li>Loyalty, Duty, Respect</li><li>Direct, Organizational, Strategic</li></ol>
+    <span class="ans"><b>B.</b> Attributes = what a leader IS. (Leads/Develops/Achieves are the competencies.)</span>
+  </div>
+  <div class="mc">
+    <div class="stem">2. Which is a core leader competency?</div>
+    <ol><li>Presence</li><li>Character</li><li>Achieves</li><li>Intellect</li></ol>
+    <span class="ans"><b>C &mdash; Achieves.</b> The others are attributes.</span>
+  </div>
+  <div class="mc">
+    <div class="stem">3. How many Army Values are there?</div>
+    <ol><li>5</li><li>6</li><li>7</li><li>8</li></ol>
+    <span class="ans"><b>C &mdash; 7</b> (LDRSHIP).</span>
+  </div>
+  <div class="mc">
+    <div class="stem">4. The three levels of leadership are direct, organizational, and:</div>
+    <ol><li>Tactical</li><li>Strategic</li><li>Operational</li><li>Executive</li></ol>
+    <span class="ans"><b>B &mdash; Strategic.</b></span>
+  </div>
+</section>
+
+<!-- FM 6-22 -->
+<section class="reg">
+  <div class="reg-head">
+    <div class="pub">FM 6-22</div>
+    <h2>Developing Leaders (Leader Development)</h2>
+  </div>
+  <span class="currency">FM 6-22, Leader Development. Companion to ADP 6-22; the &ldquo;how-to&rdquo; of developing leaders. <i>Verify edition locally.</i></span>
+
+  <h3 class="block">Open-ended Q&amp;A</h3>
+  <div class="qa"><div class="q">What does FM 6-22 cover?</div><div class="a">Leader development &mdash; how leaders develop themselves and others.</div></div>
+  <div class="qa"><div class="q">What are the three domains of leader development?</div><div class="a">Institutional, operational, and self-development.</div></div>
+  <div class="qa"><div class="q">What are the three pillars/means of developing a leader?</div><div class="a">Education, training, and experience.</div></div>
+  <div class="qa"><div class="q">What are the fundamentals of leader development?</div><div class="a">Set conditions for leadership; provide feedback, coaching, counseling, and mentoring; and create opportunities through challenging experiences.</div></div>
+  <div class="qa"><div class="q">What is mentorship?</div><div class="a">The voluntary developmental relationship between a person of greater experience and one of lesser experience, characterized by mutual trust and respect.</div></div>
+
+  <h3 class="block">Multiple choice</h3>
+  <div class="mc">
+    <div class="stem">1. The three leader-development domains are institutional, self-development, and:</div>
+    <ol><li>Operational</li><li>Strategic</li><li>Generating</li><li>Tactical</li></ol>
+    <span class="ans"><b>A &mdash; Operational.</b></span>
+  </div>
+  <div class="mc">
+    <div class="stem">2. Mentorship is best described as:</div>
+    <ol><li>A mandatory rated relationship</li><li>A voluntary relationship built on mutual trust and respect</li><li>Formal classroom instruction</li><li>A type of counseling form</li></ol>
+    <span class="ans"><b>B.</b> Mentorship is voluntary and future-focused.</span>
+  </div>
+</section>
+
+<!-- ADP 6-0 -->
+<section class="reg">
+  <div class="reg-head">
+    <div class="pub">ADP 6-0</div>
+    <h2>Mission Command: Command and Control</h2>
+  </div>
+  <span class="currency">Current edition: ADP 6-0, 31 July 2019.</span>
+
+  <h3 class="block">Open-ended Q&amp;A</h3>
+  <div class="qa"><div class="q">What does ADP 6-0 cover?</div><div class="a">Mission command &mdash; the Army's approach to command and control.</div></div>
+  <div class="qa"><div class="q">Define mission command.</div><div class="a">The Army's approach to command and control that empowers subordinate decision making and decentralized execution appropriate to the situation.</div></div>
+  <div class="qa"><div class="q">What are the seven principles of mission command?</div><div class="a">Competence, mutual trust, shared understanding, commander's intent, mission orders, disciplined initiative, and risk acceptance.</div></div>
+  <div class="qa"><div class="q">What is command and control?</div><div class="a">The exercise of authority and direction by a properly designated commander over assigned and attached forces in the accomplishment of the mission.</div></div>
+  <div class="qa"><div class="q">What is commander's intent?</div><div class="a">A clear and concise expression of the purpose of the operation and the desired military end state that supports mission command.</div></div>
+  <div class="qa"><div class="q">What is disciplined initiative?</div><div class="a">Action in the absence of orders, when existing orders no longer fit, or when unforeseen opportunities or threats arise &mdash; consistent with the commander's intent.</div></div>
+
+  <h3 class="block">Multiple choice</h3>
+  <div class="mc">
+    <div class="stem">1. How many principles of mission command are there?</div>
+    <ol><li>5</li><li>6</li><li>7</li><li>8</li></ol>
+    <span class="ans"><b>C &mdash; 7.</b></span>
+  </div>
+  <div class="mc">
+    <div class="stem">2. Which is NOT a principle of mission command?</div>
+    <ol><li>Mutual trust</li><li>Mission orders</li><li>Centralized execution</li><li>Risk acceptance</li></ol>
+    <span class="ans"><b>C.</b> Mission command emphasizes <i>decentralized</i> execution.</span>
+  </div>
+  <div class="mc">
+    <div class="stem">3. Mission command empowers subordinates through:</div>
+    <ol><li>Detailed step-by-step orders</li><li>Mission orders and commander's intent</li><li>Removing all risk</li><li>Higher-headquarters approval of every decision</li></ol>
+    <span class="ans"><b>B.</b></span>
+  </div>
+</section>
+
+<!-- ADP 3-0 -->
+<section class="reg">
+  <div class="reg-head">
+    <div class="pub">ADP 3-0</div>
+    <h2>Operations &amp; the Warfighting Functions</h2>
+  </div>
+  <span class="currency">ADP 3-0, Operations, 31 July 2019 (supersedes ADRP 3-0). See also FM 3-0, Operations (Oct 2022) for current tenets.</span>
+
+  <h3 class="block">Open-ended Q&amp;A</h3>
+  <div class="qa"><div class="q">What are the six warfighting functions?</div><div class="a">Command and control, movement and maneuver, intelligence, fires, sustainment, and protection. (&ldquo;Mission command&rdquo; was renamed <b>command and control</b> in 2019.)</div></div>
+  <div class="qa"><div class="q">What is a warfighting function?</div><div class="a">A group of tasks and systems united by a common purpose that commanders use to accomplish missions and training objectives.</div></div>
+  <div class="qa"><div class="q">What are the four elements of decisive action?</div><div class="a">Offense, defense, stability, and defense support of civil authorities (DSCA).</div></div>
+  <div class="qa"><div class="q">What are the eight elements of combat power?</div><div class="a">The six warfighting functions plus the two dynamics of <b>leadership</b> and <b>information</b>.</div></div>
+  <div class="qa"><div class="q">What are the tenets of operations in FM 3-0 (2022)?</div><div class="a">Agility, convergence, endurance, and depth.</div></div>
+
+  <h3 class="block">Multiple choice</h3>
+  <div class="mc">
+    <div class="stem">1. Which is one of the six warfighting functions?</div>
+    <ol><li>Leadership</li><li>Information</li><li>Sustainment</li><li>Training</li></ol>
+    <span class="ans"><b>C &mdash; Sustainment.</b> Leadership and information are the two dynamics of combat power, not warfighting functions.</span>
+  </div>
+  <div class="mc">
+    <div class="stem">2. The four elements of decisive action are offense, defense, stability, and:</div>
+    <ol><li>DSCA</li><li>Deterrence</li><li>Reconnaissance</li><li>Mobilization</li></ol>
+    <span class="ans"><b>A &mdash; DSCA</b> (Defense Support of Civil Authorities).</span>
+  </div>
+</section>
+
+<!-- ADP 7-0 -->
+<section class="reg">
+  <div class="reg-head">
+    <div class="pub">ADP 7-0</div>
+    <h2>Training</h2>
+  </div>
+  <span class="currency">ADP 7-0, Training, 31 July 2019.</span>
+
+  <h3 class="block">Open-ended Q&amp;A</h3>
+  <div class="qa"><div class="q">What does ADP 7-0 cover?</div><div class="a">Training units and developing leaders.</div></div>
+  <div class="qa"><div class="q">Who is responsible for training?</div><div class="a">Commanders. NCOs train individuals, crews, and small teams.</div></div>
+  <div class="qa"><div class="q">What can a commander delegate?</div><div class="a">Authority, but never responsibility.</div></div>
+  <div class="qa"><div class="q">What method does the unit training plan use?</div><div class="a">Crawl&ndash;walk&ndash;run.</div></div>
+  <div class="qa"><div class="q">What is METL?</div><div class="a">Mission-Essential Task List &mdash; the doctrinal framework of the tasks a unit must perform to accomplish its mission.</div></div>
+  <div class="qa"><div class="q">What are the three training domains?</div><div class="a">Institutional, operational, and self-development.</div></div>
+  <div class="qa"><div class="q">Name key principles of training.</div><div class="a">Train as you fight; train to standard; train to sustain; train to maintain; train to develop adaptability; commanders are responsible for training; NCOs train individuals, crews, and small teams. <i>(Verify exact list against current ADP 7-0.)</i></div></div>
+
+  <h3 class="block">Multiple choice</h3>
+  <div class="mc">
+    <div class="stem">1. The unit training plan is built using which method?</div>
+    <ol><li>Plan&ndash;prepare&ndash;execute</li><li>Crawl&ndash;walk&ndash;run</li><li>Assess&ndash;train&ndash;retest</li><li>Top&ndash;down only</li></ol>
+    <span class="ans"><b>B &mdash; Crawl&ndash;walk&ndash;run.</b></span>
+  </div>
+  <div class="mc">
+    <div class="stem">2. A commander may delegate:</div>
+    <ol><li>Responsibility</li><li>Authority</li><li>Both</li><li>Neither</li></ol>
+    <span class="ans"><b>B &mdash; Authority,</b> but not responsibility.</span>
+  </div>
+  <div class="mc">
+    <div class="stem">3. NCOs are primarily responsible for training:</div>
+    <ol><li>Brigades</li><li>Battalions</li><li>Individuals, crews, and small teams</li><li>Division staffs</li></ol>
+    <span class="ans"><b>C.</b></span>
+  </div>
+</section>
+
+<!-- ADP 1 -->
+<section class="reg">
+  <div class="reg-head">
+    <div class="pub">ADP 1</div>
+    <h2>The Army</h2>
+  </div>
+  <span class="currency">ADP 1, The Army, 31 July 2019.</span>
+
+  <h3 class="block">Open-ended Q&amp;A</h3>
+  <div class="qa"><div class="q">What does ADP 1 cover?</div><div class="a">The Army &mdash; its purpose, the profession, and how it serves the Nation.</div></div>
+  <div class="qa"><div class="q">What are the characteristics of the Army profession?</div><div class="a">Trust, military expertise, honorable service, esprit de corps, and stewardship of the profession.</div></div>
+  <div class="qa"><div class="q">What components make up the Army?</div><div class="a">One Regular Army and two reserve components &mdash; the Army National Guard and the Army Reserve (supported by Army Civilians). Established under Title 10, U.S. Code.</div></div>
+  <div class="qa"><div class="q">What is the difference between the operating force and the generating force?</div><div class="a">The operating force consists of units organized, trained, and equipped to deploy and fight; the generating force mans, trains, equips, and ensures the readiness of all Army forces.</div></div>
+  <div class="qa"><div class="q">What is the Army's greatest strategic asset?</div><div class="a">The all-volunteer force / its Soldiers.</div></div>
+
+  <h3 class="block">Multiple choice</h3>
+  <div class="mc">
+    <div class="stem">1. The Army consists of one Regular Army and how many reserve components?</div>
+    <ol><li>One</li><li>Two</li><li>Three</li><li>Four</li></ol>
+    <span class="ans"><b>B &mdash; Two</b> (Army National Guard and Army Reserve).</span>
+  </div>
+  <div class="mc">
+    <div class="stem">2. Which is a characteristic of the Army profession?</div>
+    <ol><li>Stewardship</li><li>Centralization</li><li>Bureaucracy</li><li>Seniority</li></ol>
+    <span class="ans"><b>A &mdash; Stewardship</b> (also trust, military expertise, honorable service, esprit de corps).</span>
+  </div>
+</section>
+
+<!-- TC 7-22.7 -->
+<section class="reg">
+  <div class="reg-head">
+    <div class="pub">TC 7-22.7</div>
+    <h2>The Noncommissioned Officer Guide</h2>
+  </div>
+  <span class="currency">Current as of 14 Aug 2025. Covers NCO duties, responsibilities, authority, and NCO history.</span>
+
+  <h3 class="block">Open-ended Q&amp;A</h3>
+  <div class="qa"><div class="q">What are the three types of duty?</div><div class="a">Specified, directed, and implied.</div></div>
+  <div class="qa"><div class="q">What are the two basic responsibilities of every leader?</div><div class="a">Accomplishment of the mission and the welfare of Soldiers.</div></div>
+  <div class="qa"><div class="q">What are the two types of authority?</div><div class="a">Command authority and general military authority.</div></div>
+  <div class="qa"><div class="q">What is the NCO support channel?</div><div class="a">The channel of communication and supervision that runs from the senior NCO (CSM) through subordinate NCOs; it parallels and reinforces the chain of command.</div></div>
+  <div class="qa"><div class="q">When was the U.S. Army established?</div><div class="a">14 June 1775.</div></div>
+  <div class="qa"><div class="q">Who is considered the &ldquo;Father of the NCO Corps&rdquo;?</div><div class="a">Baron Friedrich von Steuben, who wrote the &ldquo;Blue Book&rdquo; (Regulations for the Order and Discipline of the Troops of the United States, 1778).</div></div>
+  <div class="qa"><div class="q">What are the three ranks the NCO Corps is often described by?</div><div class="a">The NCO is the &ldquo;backbone of the Army.&rdquo; Corporal (E-4) is the first NCO rank; the Sergeant Major of the Army is the senior enlisted Soldier.</div></div>
+
+  <h3 class="block">Multiple choice</h3>
+  <div class="mc">
+    <div class="stem">1. The three types of duty are specified, implied, and:</div>
+    <ol><li>Directed</li><li>Assumed</li><li>Voluntary</li><li>General</li></ol>
+    <span class="ans"><b>A &mdash; Directed.</b></span>
+  </div>
+  <div class="mc">
+    <div class="stem">2. The first noncommissioned officer rank is:</div>
+    <ol><li>Specialist (E-4)</li><li>Corporal (E-4)</li><li>Sergeant (E-5)</li><li>Private First Class (E-3)</li></ol>
+    <span class="ans"><b>B &mdash; Corporal (E-4).</b> A Specialist is E-4 but is not an NCO.</span>
+  </div>
+  <div class="mc">
+    <div class="stem">3. The U.S. Army was established on:</div>
+    <ol><li>4 July 1776</li><li>14 June 1775</li><li>11 November 1918</li><li>14 June 1777</li></ol>
+    <span class="ans"><b>B &mdash; 14 June 1775.</b></span>
+  </div>
+</section>
+
+<!-- ATP 6-22.1 -->
+<section class="reg">
+  <div class="reg-head">
+    <div class="pub">ATP 6-22.1</div>
+    <h2>The Counseling Process</h2>
+  </div>
+  <span class="currency">ATP 6-22.1, The Counseling Process. Counseling form: DA Form 4856.</span>
+
+  <h3 class="block">Open-ended Q&amp;A</h3>
+  <div class="qa"><div class="q">Define counseling.</div><div class="a">The process used by leaders to review with a subordinate the subordinate's demonstrated performance and potential.</div></div>
+  <div class="qa"><div class="q">What are the three approaches to counseling?</div><div class="a">Directive, nondirective, and combined.</div></div>
+  <div class="qa"><div class="q">What are the three major categories of developmental counseling?</div><div class="a">Event counseling, performance counseling, and professional growth counseling.</div></div>
+  <div class="qa"><div class="q">What are the four stages of the counseling process?</div><div class="a">Identify the need for counseling; prepare for counseling; conduct the counseling session; follow up.</div></div>
+  <div class="qa"><div class="q">What are the qualities of an effective counselor?</div><div class="a">Purpose, flexibility, respect, communication, and support.</div></div>
+  <div class="qa"><div class="q">What form is used to document counseling?</div><div class="a">DA Form 4856, Developmental Counseling Form.</div></div>
+  <div class="qa"><div class="q">Give examples of event counseling.</div><div class="a">Reception &amp; integration, crisis, referral, promotion, transition, adverse separation, and superior/substandard performance counseling.</div></div>
+
+  <h3 class="block">Multiple choice</h3>
+  <div class="mc">
+    <div class="stem">1. The three approaches to counseling are directive, combined, and:</div>
+    <ol><li>Nondirective</li><li>Corrective</li><li>Crisis</li><li>Formal</li></ol>
+    <span class="ans"><b>A &mdash; Nondirective.</b></span>
+  </div>
+  <div class="mc">
+    <div class="stem">2. Which form documents developmental counseling?</div>
+    <ol><li>DA Form 705</li><li>DA Form 4856</li><li>DA Form 268</li><li>DA Form 2166-9</li></ol>
+    <span class="ans"><b>B &mdash; DA Form 4856.</b></span>
+  </div>
+  <div class="mc">
+    <div class="stem">3. The three categories of developmental counseling are event, performance, and:</div>
+    <ol><li>Professional growth</li><li>Crisis</li><li>Referral</li><li>Adverse</li></ol>
+    <span class="ans"><b>A &mdash; Professional growth.</b> (Crisis/referral/adverse are <i>types of event</i> counseling.)</span>
+  </div>
+</section>
+
+<!-- ============================================================= -->
+<!-- PART II -->
+<!-- ============================================================= -->
+<h1 class="part-title">PART II &middot; Personnel, Programs &amp; Justice</h1>
+
+<!-- AR 670-1 -->
+<section class="reg">
+  <div class="reg-head">
+    <div class="pub">AR 670-1 / DA PAM 670-1</div>
+    <h2>Wear and Appearance of Army Uniforms and Insignia</h2>
+  </div>
+  <span class="currency">AR 670-1 current as of 2025; grooming/appearance standards substantially revised by the Army directive signed 12 September 2025 (Soldiers had 30 days to comply). Always confirm the latest directive.</span>
+
+  <h3 class="block">Open-ended Q&amp;A</h3>
+  <div class="qa"><div class="q">What does AR 670-1 cover?</div><div class="a">The wear and appearance of Army uniforms and insignia. DA PAM 670-1 provides the detailed &ldquo;how-to&rdquo; and illustrations.</div></div>
+  <div class="qa"><div class="q">(2025 update) What are the current standards for women's ponytails/braids?</div><div class="a">No wider than two inches and must hang within six inches from the top of the collar; ponytails are authorized only in the ACU and physical fitness uniform &mdash; not in dress uniforms.</div></div>
+  <div class="qa"><div class="q">(2025 update) What are the current female nail standards?</div><div class="a">Clear polish only; length limited to &frac14; inch, in a square or rounded shape.</div></div>
+  <div class="qa"><div class="q">(2025 update) What are the female cosmetic/lip standards?</div><div class="a">No lipstick or colored nail polish; only clear or skin-toned lip gloss is authorized.</div></div>
+  <div class="qa"><div class="q">(2025 update) What are the female earring rules?</div><div class="a">One per ear &mdash; gold, silver, diamond, or pearl studs &mdash; authorized with dress and combat uniforms.</div></div>
+  <div class="qa"><div class="q">(2025 update) What are the male hair standards?</div><div class="a">Tapered or faded, evenly blended around the sides and back; maximum about two inches on top and one inch on the sides and back.</div></div>
+  <div class="qa"><div class="q">(2025 update) May male Soldiers wear nail polish?</div><div class="a">No. Male Soldiers may not wear nail polish; nails are neatly trimmed and not past the fingertip.</div></div>
+  <div class="qa"><div class="q">Who is responsible for ensuring Soldiers maintain uniform/appearance standards?</div><div class="a">Commanders and leaders at all levels &mdash; but ultimately every Soldier is responsible for their own appearance.</div></div>
+
+  <h3 class="block">Multiple choice</h3>
+  <div class="mc">
+    <div class="stem">1. Under the 2025 standards, female nail polish may be:</div>
+    <ol><li>Any conservative color</li><li>Clear only</li><li>Red or pink</li><li>French manicure</li></ol>
+    <span class="ans"><b>B &mdash; Clear only,</b> &frac14;-inch maximum length.</span>
+  </div>
+  <div class="mc">
+    <div class="stem">2. Under the 2025 standards, ponytails are authorized in which uniforms?</div>
+    <ol><li>All uniforms</li><li>Dress uniforms only</li><li>ACU and physical fitness uniform only</li><li>None</li></ol>
+    <span class="ans"><b>C.</b> Not authorized with dress uniforms.</span>
+  </div>
+  <div class="mc">
+    <div class="stem">3. The detailed illustrations for wearing the uniform are found in:</div>
+    <ol><li>AR 670-1</li><li>DA PAM 670-1</li><li>AR 600-20</li><li>TC 3-21.5</li></ol>
+    <span class="ans"><b>B &mdash; DA PAM 670-1.</b></span>
+  </div>
+</section>
+
+<!-- AR 600-8-19 -->
+<section class="reg">
+  <div class="reg-head">
+    <div class="pub">AR 600-8-19</div>
+    <h2>Enlisted Promotions and Reductions</h2>
+  </div>
+  <span class="currency">Current edition: 21 June 2024 (effective 21 July 2024); administrative revision 17 March 2025.</span>
+
+  <h3 class="block">Open-ended Q&amp;A</h3>
+  <div class="qa"><div class="q">What does AR 600-8-19 cover?</div><div class="a">Enlisted promotions and reductions.</div></div>
+  <div class="qa"><div class="q">Which promotions are semi-centralized vs. centralized?</div><div class="a">SGT (E-5) and SSG (E-6) are <b>semi-centralized</b> (point-based); SFC (E-7) through SGM (E-9) are <b>centralized</b> (HQDA board).</div></div>
+  <div class="qa"><div class="q">What is the maximum number of promotion points for SGT and SSG?</div><div class="a">800 points total for each grade.</div></div>
+  <div class="qa"><div class="q">What is the maximum for civilian education?</div><div class="a">135 points for SGT and 160 points for SSG.</div></div>
+  <div class="qa"><div class="q">What is the primary zone vs. secondary zone?</div><div class="a">The primary zone is normal eligibility; the secondary zone allows early (accelerated) consideration for high-performing Soldiers.</div></div>
+  <div class="qa"><div class="q">Who has promotion authority for SGT/SSG?</div><div class="a">The battalion (or equivalent) commander, per the HQDA point cutoff.</div></div>
+
+  <h3 class="block">Multiple choice</h3>
+  <div class="mc">
+    <div class="stem">1. Promotions to SGT and SSG are:</div>
+    <ol><li>Centralized (HQDA board)</li><li>Semi-centralized (point-based)</li><li>Automatic</li><li>Decentralized to the squad</li></ol>
+    <span class="ans"><b>B.</b> Semi-centralized via the promotion-point system.</span>
+  </div>
+  <div class="mc">
+    <div class="stem">2. The maximum promotion points for SGT/SSG is:</div>
+    <ol><li>600</li><li>700</li><li>800</li><li>1000</li></ol>
+    <span class="ans"><b>C &mdash; 800.</b></span>
+  </div>
+</section>
+
+<!-- AR 600-8-2 -->
+<section class="reg">
+  <div class="reg-head">
+    <div class="pub">AR 600-8-2</div>
+    <h2>Suspension of Favorable Personnel Actions (Flags)</h2>
+  </div>
+  <span class="currency">AR 600-8-2. Flag is initiated/removed on DA Form 268.</span>
+
+  <h3 class="block">Open-ended Q&amp;A</h3>
+  <div class="qa"><div class="q">What does AR 600-8-2 cover?</div><div class="a">Suspension of favorable personnel actions &mdash; commonly called a &ldquo;flag.&rdquo;</div></div>
+  <div class="qa"><div class="q">What form is used to flag a Soldier?</div><div class="a">DA Form 268.</div></div>
+  <div class="qa"><div class="q">What favorable actions does a flag stop?</div><div class="a">Promotion, awards, schooling, reassignment (PCS), reenlistment/extension, favorable separation, and similar favorable actions.</div></div>
+  <div class="qa"><div class="q">What is the difference between a transferable and nontransferable flag?</div><div class="a">A transferable flag (e.g., commander's investigation) moves with the Soldier on PCS; a nontransferable flag (e.g., APFT/AFT failure, adverse action) generally must be resolved before transfer.</div></div>
+  <div class="qa"><div class="q">How soon must a flag be reviewed?</div><div class="a">Flags are reviewed periodically (monthly) and removed within the prescribed time after the circumstance is resolved. <i>Verify current timelines.</i></div></div>
+
+  <h3 class="block">Multiple choice</h3>
+  <div class="mc">
+    <div class="stem">1. A flag is initiated using:</div>
+    <ol><li>DA Form 4856</li><li>DA Form 268</li><li>DA Form 705</li><li>DA Form 638</li></ol>
+    <span class="ans"><b>B &mdash; DA Form 268.</b></span>
+  </div>
+  <div class="mc">
+    <div class="stem">2. Which favorable action does a flag suspend?</div>
+    <ol><li>Promotion</li><li>Pay</li><li>Meal card</li><li>Sick call</li></ol>
+    <span class="ans"><b>A &mdash; Promotion</b> (and awards, schooling, PCS, reenlistment, etc.).</span>
+  </div>
+</section>
+
+<!-- AR 600-8-22 -->
+<section class="reg">
+  <div class="reg-head">
+    <div class="pub">AR 600-8-22</div>
+    <h2>Military Awards</h2>
+  </div>
+  <span class="currency">AR 600-8-22, Military Awards. Recommendations generally submitted within 2 years of the act/period.</span>
+
+  <h3 class="block">Open-ended Q&amp;A</h3>
+  <div class="qa"><div class="q">What does AR 600-8-22 cover?</div><div class="a">Military awards &mdash; decorations, service medals, badges, and the order of precedence.</div></div>
+  <div class="qa"><div class="q">What is the highest U.S. military award for valor?</div><div class="a">The Medal of Honor.</div></div>
+  <div class="qa"><div class="q">What is the highest Army award for valor below the Medal of Honor?</div><div class="a">The Distinguished Service Cross.</div></div>
+  <div class="qa"><div class="q">What does the &ldquo;V&rdquo; device denote?</div><div class="a">Valor &mdash; participation in acts of heroism involving conflict with an armed enemy.</div></div>
+  <div class="qa"><div class="q">What form is used to recommend an award?</div><div class="a">DA Form 638, Recommendation for Award.</div></div>
+  <div class="qa"><div class="q">What is the time limit to submit most award recommendations?</div><div class="a">Within two years of the act, achievement, or service; the award must be presented within three years.</div></div>
+
+  <h3 class="block">Multiple choice</h3>
+  <div class="mc">
+    <div class="stem">1. The highest U.S. military decoration is the:</div>
+    <ol><li>Silver Star</li><li>Distinguished Service Cross</li><li>Medal of Honor</li><li>Bronze Star</li></ol>
+    <span class="ans"><b>C &mdash; Medal of Honor.</b></span>
+  </div>
+  <div class="mc">
+    <div class="stem">2. An award is recommended using:</div>
+    <ol><li>DA Form 638</li><li>DA Form 4856</li><li>DA Form 268</li><li>DA Form 31</li></ol>
+    <span class="ans"><b>A &mdash; DA Form 638.</b></span>
+  </div>
+</section>
+
+<!-- AR 623-3 -->
+<section class="reg">
+  <div class="reg-head">
+    <div class="pub">AR 623-3 / DA PAM 623-3</div>
+    <h2>Evaluation Reporting System (NCOER / OER)</h2>
+  </div>
+  <span class="currency">AR 623-3, Evaluation Reporting System; procedures in DA PAM 623-3. NCOER uses the DA Form 2166-9 series.</span>
+
+  <h3 class="block">Open-ended Q&amp;A</h3>
+  <div class="qa"><div class="q">What does AR 623-3 cover?</div><div class="a">The Army's Evaluation Reporting System &mdash; NCOERs and OERs.</div></div>
+  <div class="qa"><div class="q">What is the purpose of the NCOER?</div><div class="a">To document an NCO's performance and potential, strengthen the NCO corps, and provide selection boards/HRC data for personnel decisions.</div></div>
+  <div class="qa"><div class="q">What forms make up the NCOER?</div><div class="a">The DA Form 2166-9 series (2166-9-1 for SGT, 2166-9-2 for SSG&ndash;1SG/MSG, 2166-9-3 for CSM/SGM).</div></div>
+  <div class="qa"><div class="q">Who is in the NCOER rating chain?</div><div class="a">The rater, the senior rater, and the reviewer (and the rated NCO).</div></div>
+  <div class="qa"><div class="q">What is a rating scheme/published rating chain?</div><div class="a">The documented designation of who rates, senior rates, and reviews each Soldier.</div></div>
+
+  <h3 class="block">Multiple choice</h3>
+  <div class="mc">
+    <div class="stem">1. The NCOER is documented on the:</div>
+    <ol><li>DA Form 705 series</li><li>DA Form 2166-9 series</li><li>DA Form 638</li><li>DA Form 4856</li></ol>
+    <span class="ans"><b>B &mdash; DA Form 2166-9 series.</b></span>
+  </div>
+  <div class="mc">
+    <div class="stem">2. The NCOER rating chain consists of the rater, the reviewer, and the:</div>
+    <ol><li>First Sergeant</li><li>Senior rater</li><li>Command Sergeant Major</li><li>S1</li></ol>
+    <span class="ans"><b>B &mdash; Senior rater.</b></span>
+  </div>
+</section>
+
+<!-- AR 350-1 -->
+<section class="reg">
+  <div class="reg-head">
+    <div class="pub">AR 350-1</div>
+    <h2>Army Training and Leader Development</h2>
+  </div>
+  <span class="currency">AR 350-1, Army Training and Leader Development. Governs mandatory training and the NCO Professional Development System.</span>
+
+  <h3 class="block">Open-ended Q&amp;A</h3>
+  <div class="qa"><div class="q">What does AR 350-1 cover?</div><div class="a">Army training and leader development &mdash; including mandatory/common military training and the NCO Professional Development System (NCOPDS).</div></div>
+  <div class="qa"><div class="q">What are the levels of the Noncommissioned Officer Professional Military Education (NCOPME)?</div><div class="a">BLC (Basic Leader Course), ALC (Advanced Leader Course), SLC (Senior Leader Course), MLC (Master Leader Course), and the SMA Academy / USASMA (Sergeants Major Course).</div></div>
+  <div class="qa"><div class="q">What course is required for promotion to Sergeant?</div><div class="a">The Basic Leader Course (BLC).</div></div>
+  <div class="qa"><div class="q">Give examples of mandatory/common military training.</div><div class="a">SHARP, EO, suicide prevention/ACE, OPSEC, information security, resilience, and similar HQDA-directed training.</div></div>
+
+  <h3 class="block">Multiple choice</h3>
+  <div class="mc">
+    <div class="stem">1. The first level of NCO professional military education is:</div>
+    <ol><li>ALC</li><li>BLC</li><li>SLC</li><li>MLC</li></ol>
+    <span class="ans"><b>B &mdash; BLC</b> (Basic Leader Course).</span>
+  </div>
+  <div class="mc">
+    <div class="stem">2. Which regulation governs mandatory training and NCO schools?</div>
+    <ol><li>AR 600-20</li><li>AR 350-1</li><li>AR 670-1</li><li>AR 623-3</li></ol>
+    <span class="ans"><b>B &mdash; AR 350-1.</b></span>
+  </div>
+</section>
+
+<!-- AR 600-20 -->
+<section class="reg">
+  <div class="reg-head">
+    <div class="pub">AR 600-20</div>
+    <h2>Army Command Policy (Chain of Command, EO, SHARP)</h2>
+  </div>
+  <span class="currency">AR 600-20, Army Command Policy. Includes the chain of command/NCO support channel, Equal Opportunity, and SHARP.</span>
+
+  <h3 class="block">Open-ended Q&amp;A</h3>
+  <div class="qa"><div class="q">What does AR 600-20 cover?</div><div class="a">Army Command Policy &mdash; command authority, the chain of command and NCO support channel, the Equal Opportunity (EO) program, SHARP, and prohibited conduct (hazing, bullying, extremism).</div></div>
+  <div class="qa"><div class="q">What is the chain of command?</div><div class="a">The succession of commanders, superior to subordinate, through which command is exercised &mdash; the &ldquo;backbone&rdquo; of military authority.</div></div>
+  <div class="qa"><div class="q">What is the NCO support channel?</div><div class="a">The channel of supervision from the CSM through the chain of NCOs that parallels and reinforces the chain of command.</div></div>
+  <div class="qa"><div class="q">What does SHARP stand for?</div><div class="a">Sexual Harassment/Assault Response and Prevention.</div></div>
+  <div class="qa"><div class="q">What are the two types of sexual-assault report?</div><div class="a">Restricted (confidential, no command/law-enforcement notification) and Unrestricted (triggers investigation and command notification).</div></div>
+  <div class="qa"><div class="q">What is the purpose of the EO program?</div><div class="a">To provide equal opportunity and fair treatment for military personnel and Family members without regard to race, color, religion, gender, or national origin, and to create a climate free of unlawful discrimination.</div></div>
+  <div class="qa"><div class="q">Define hazing and bullying.</div><div class="a">Hazing is conduct that subjects a Soldier to abuse/humiliation as a rite of passage; bullying is aggressive behavior intended to harm or intimidate. Both are prohibited.</div></div>
+
+  <h3 class="block">Multiple choice</h3>
+  <div class="mc">
+    <div class="stem">1. SHARP stands for:</div>
+    <ol><li>Soldier Harassment and Retaliation Prevention</li><li>Sexual Harassment/Assault Response and Prevention</li><li>Soldier Health and Readiness Program</li><li>Safety Hazard and Risk Prevention</li></ol>
+    <span class="ans"><b>B.</b></span>
+  </div>
+  <div class="mc">
+    <div class="stem">2. The two types of sexual-assault reporting are:</div>
+    <ol><li>Open and closed</li><li>Restricted and unrestricted</li><li>Formal and informal</li><li>Verbal and written</li></ol>
+    <span class="ans"><b>B &mdash; Restricted and unrestricted.</b></span>
+  </div>
+  <div class="mc">
+    <div class="stem">3. The NCO support channel:</div>
+    <ol><li>Replaces the chain of command</li><li>Parallels and reinforces the chain of command</li><li>Only exists in combat</li><li>Reports to no one</li></ol>
+    <span class="ans"><b>B.</b></span>
+  </div>
+</section>
+
+<!-- AR 600-25 -->
+<section class="reg">
+  <div class="reg-head">
+    <div class="pub">AR 600-25</div>
+    <h2>Salutes, Honors, and Visits of Courtesy (Customs &amp; Courtesies)</h2>
+  </div>
+  <span class="currency">AR 600-25, Salutes, Honors, and Visits of Courtesy.</span>
+
+  <h3 class="block">Open-ended Q&amp;A</h3>
+  <div class="qa"><div class="q">What does AR 600-25 cover?</div><div class="a">Military customs and courtesies &mdash; salutes, honors, and visits of courtesy.</div></div>
+  <div class="qa"><div class="q">What is the difference between a custom and a courtesy?</div><div class="a">A custom is an established practice (tradition); a courtesy is an act of politeness/respect (e.g., the salute).</div></div>
+  <div class="qa"><div class="q">Whom do you salute?</div><div class="a">Commissioned and warrant officers, the President, and recipients of the Medal of Honor; also render honors to the U.S. flag and national anthem.</div></div>
+  <div class="qa"><div class="q">When do you NOT salute?</div><div class="a">Indoors (unless reporting), when in formation (only on command), when carrying articles with both hands, in combat/tactical conditions, or when it is impractical/unsafe.</div></div>
+  <div class="qa"><div class="q">What do you do during Reveille and Retreat?</div><div class="a">Render honors to the flag &mdash; come to attention and salute (when in uniform and outdoors) during the national anthem/&ldquo;To the Color.&rdquo;</div></div>
+  <div class="qa"><div class="q">What are the three general orders... (commonly tested)?</div><div class="a">1) I will guard everything within the limits of my post and quit my post only when properly relieved. 2) I will obey my special orders and perform all my duties in a military manner. 3) I will report violations of my special orders, emergencies, and anything not covered in my instructions to the commander of the relief.</div></div>
+
+  <h3 class="block">Multiple choice</h3>
+  <div class="mc">
+    <div class="stem">1. You are required to salute all of the following EXCEPT:</div>
+    <ol><li>A commissioned officer</li><li>A warrant officer</li><li>A Medal of Honor recipient</li><li>A fellow Specialist</li></ol>
+    <span class="ans"><b>D.</b> Salutes are rendered to officers, warrant officers, and MOH recipients.</span>
+  </div>
+  <div class="mc">
+    <div class="stem">2. When are you generally NOT required to salute?</div>
+    <ol><li>Outdoors on post</li><li>Indoors, unless reporting</li><li>During the national anthem outdoors</li><li>When meeting your commander outside</li></ol>
+    <span class="ans"><b>B.</b></span>
+  </div>
+</section>
+
+<!-- AR 27-10 -->
+<section class="reg">
+  <div class="reg-head">
+    <div class="pub">AR 27-10</div>
+    <h2>Military Justice</h2>
+  </div>
+  <span class="currency">AR 27-10, Military Justice (administers the UCMJ).</span>
+
+  <h3 class="block">Open-ended Q&amp;A</h3>
+  <div class="qa"><div class="q">What does AR 27-10 cover?</div><div class="a">The administration of military justice under the Uniform Code of Military Justice (UCMJ).</div></div>
+  <div class="qa"><div class="q">What is an Article 15?</div><div class="a">Nonjudicial punishment (NJP) &mdash; a commander's tool to discipline Soldiers for minor offenses without a court-martial.</div></div>
+  <div class="qa"><div class="q">What are the three types of court-martial?</div><div class="a">Summary, Special, and General.</div></div>
+  <div class="qa"><div class="q">What are the categories/levels of Article 15?</div><div class="a">Summarized, Company-grade (field-grade in some contexts), and Field-grade &mdash; differing in the maximum punishment authorized.</div></div>
+  <div class="qa"><div class="q">May a Soldier refuse an Article 15?</div><div class="a">Yes (except aboard a vessel) &mdash; the Soldier may demand trial by court-martial instead.</div></div>
+  <div class="qa"><div class="q">What does UCMJ stand for?</div><div class="a">Uniform Code of Military Justice.</div></div>
+
+  <h3 class="block">Multiple choice</h3>
+  <div class="mc">
+    <div class="stem">1. The three types of court-martial are summary, general, and:</div>
+    <ol><li>Special</li><li>Field</li><li>Summarized</li><li>Standard</li></ol>
+    <span class="ans"><b>A &mdash; Special.</b></span>
+  </div>
+  <div class="mc">
+    <div class="stem">2. Nonjudicial punishment is also known as:</div>
+    <ol><li>A flag</li><li>An Article 15</li><li>A counseling</li><li>A reduction board</li></ol>
+    <span class="ans"><b>B &mdash; Article 15.</b></span>
+  </div>
+</section>
+
+<!-- AR 750-1 -->
+<section class="reg">
+  <div class="reg-head">
+    <div class="pub">AR 750-1 / DA PAM 750-1</div>
+    <h2>Army Maintenance</h2>
+  </div>
+  <span class="currency">AR 750-1, Army Materiel Maintenance Policy; DA PAM 750-1 (TAMMS users' manual).</span>
+
+  <h3 class="block">Open-ended Q&amp;A</h3>
+  <div class="qa"><div class="q">What does AR 750-1 cover?</div><div class="a">Army materiel maintenance policy.</div></div>
+  <div class="qa"><div class="q">What are the two levels of the Army maintenance system?</div><div class="a">Field maintenance and sustainment maintenance.</div></div>
+  <div class="qa"><div class="q">What does PMCS stand for?</div><div class="a">Preventive Maintenance Checks and Services.</div></div>
+  <div class="qa"><div class="q">When is PMCS performed?</div><div class="a">Before, during, and after operation (and weekly/monthly as required).</div></div>
+  <div class="qa"><div class="q">What form documents equipment faults / PMCS?</div><div class="a">DA Form 5988-E (or DA Form 2404) for inspection/maintenance worksheets; DA Form 2407 for maintenance requests.</div></div>
+  <div class="qa"><div class="q">What is a &ldquo;-10&rdquo; manual?</div><div class="a">The operator's technical manual (TM). A &ldquo;-20&rdquo; is the field-maintenance level manual.</div></div>
+
+  <h3 class="block">Multiple choice</h3>
+  <div class="mc">
+    <div class="stem">1. The two levels of Army maintenance are field and:</div>
+    <ol><li>Depot</li><li>Sustainment</li><li>Organizational</li><li>Direct</li></ol>
+    <span class="ans"><b>B &mdash; Sustainment.</b> (The Army moved to a two-level system.)</span>
+  </div>
+  <div class="mc">
+    <div class="stem">2. PMCS stands for:</div>
+    <ol><li>Preventive Maintenance Checks and Services</li><li>Property Management Control System</li><li>Primary Maintenance Class Schedule</li><li>Periodic Mechanical Condition Survey</li></ol>
+    <span class="ans"><b>A.</b></span>
+  </div>
+</section>
+
+<!-- ============================================================= -->
+<!-- PART III -->
+<!-- ============================================================= -->
+<h1 class="part-title">PART III &middot; Fitness &amp; Health</h1>
+
+<!-- FM 7-22 + AFT -->
+<section class="reg">
+  <div class="reg-head">
+    <div class="pub">FM 7-22 &middot; AFT</div>
+    <h2>Holistic Health and Fitness (H2F) &amp; the Army Fitness Test</h2>
+  </div>
+  <span class="currency">FM 7-22, Holistic Health and Fitness (Oct 2020) &mdash; replaced &ldquo;Army Physical Readiness Training.&rdquo; The <b>Army Fitness Test (AFT)</b> replaced the ACFT on <b>1 June 2025</b>.</span>
+
+  <h3 class="block">Open-ended Q&amp;A</h3>
+  <div class="qa"><div class="q">What does FM 7-22 cover?</div><div class="a">Holistic Health and Fitness (H2F) &mdash; the Army's system for building and sustaining Soldier readiness. <i>(Note: older guides incorrectly say &ldquo;Physical Readiness Training&rdquo; &mdash; that is outdated.)</i></div></div>
+  <div class="qa"><div class="q">What are the five domains of H2F?</div><div class="a">Physical, nutritional, mental, spiritual, and sleep readiness.</div></div>
+  <div class="qa"><div class="q">What test replaced the ACFT, and when?</div><div class="a">The Army Fitness Test (AFT), effective 1 June 2025.</div></div>
+  <div class="qa"><div class="q">What are the five AFT events?</div><div class="a">3-Repetition Maximum Deadlift (MDL), Hand-Release Push-Up (HRP), Sprint-Drag-Carry (SDC), Plank (PLK), and the 2-Mile Run (2MR).</div></div>
+  <div class="qa"><div class="q">What event was removed from the old ACFT to create the AFT?</div><div class="a">The Standing Power Throw (the medicine-ball throw).</div></div>
+  <div class="qa"><div class="q">What are the AFT scoring standards?</div><div class="a">Combat MOS: one sex-neutral, age-normed standard requiring a total of <b>350</b> with a minimum of <b>60 per event</b>. Combat-enabling MOS: sex- and age-normed, requiring a total of <b>300</b>.</div></div>
+  <div class="qa"><div class="q">How many points is each AFT event worth?</div><div class="a">Each event is scored 0&ndash;100, for a maximum of 500 points (five events).</div></div>
+  <div class="qa"><div class="q">What are the three fundamental components of physical readiness?</div><div class="a">Strength, endurance, and mobility.</div></div>
+
+  <h3 class="block">Multiple choice</h3>
+  <div class="mc">
+    <div class="stem">1. How many events are in the Army Fitness Test (AFT)?</div>
+    <ol><li>4</li><li>5</li><li>6</li><li>3</li></ol>
+    <span class="ans"><b>B &mdash; 5.</b> The standing power throw was removed from the old 6-event ACFT.</span>
+  </div>
+  <div class="mc">
+    <div class="stem">2. The minimum total AFT score for combat-MOS Soldiers is:</div>
+    <ol><li>300</li><li>350</li><li>360</li><li>400</li></ol>
+    <span class="ans"><b>B &mdash; 350</b> (with at least 60 points per event, sex-neutral/age-normed).</span>
+  </div>
+  <div class="mc">
+    <div class="stem">3. FM 7-22 currently covers:</div>
+    <ol><li>Physical Readiness Training</li><li>Holistic Health and Fitness</li><li>The Army Body Composition Program</li><li>Drill and Ceremonies</li></ol>
+    <span class="ans"><b>B &mdash; Holistic Health and Fitness.</b> &ldquo;PRT&rdquo; is the outdated title.</span>
+  </div>
+  <div class="mc">
+    <div class="stem">4. The five domains of H2F include all EXCEPT:</div>
+    <ol><li>Sleep</li><li>Nutritional</li><li>Financial</li><li>Spiritual</li></ol>
+    <span class="ans"><b>C &mdash; Financial.</b> The five are physical, nutritional, mental, spiritual, sleep.</span>
+  </div>
+</section>
+
+<!-- AR 600-9 -->
+<section class="reg">
+  <div class="reg-head">
+    <div class="pub">AR 600-9</div>
+    <h2>The Army Body Composition Program (ABCP)</h2>
+  </div>
+  <span class="currency">AR 600-9. Standards updated 2023&ndash;2026: one-site (abdominal) circumference tape and a Waist-to-Height Ratio (WHtR) standard. Confirm the current ALARACT/directive.</span>
+
+  <h3 class="block">Open-ended Q&amp;A</h3>
+  <div class="qa"><div class="q">What does AR 600-9 cover?</div><div class="a">The Army Body Composition Program &mdash; height/weight screening and body-fat standards.</div></div>
+  <div class="qa"><div class="q">What circumference method does the Army currently use?</div><div class="a">A one-site abdominal (waist) circumference tape method for both men and women (adopted 9 June 2023; sole method since 2024).</div></div>
+  <div class="qa"><div class="q">Where and how is the abdominal measurement taken?</div><div class="a">Against the skin at the navel, parallel to the floor, at the end of a normal relaxed exhalation; three measurements are averaged.</div></div>
+  <div class="qa"><div class="q">What is the new Waist-to-Height Ratio (WHtR) standard?</div><div class="a">Waist circumference (at the navel) divided by height must be less than <b>0.55</b>. <i>(Per 2025&ndash;2026 directives &mdash; verify locally.)</i></div></div>
+  <div class="qa"><div class="q">Who is exempt from the tape/body-fat assessment?</div><div class="a">Soldiers who achieve a high fitness-test score per the current directive (historically 540+ with 80+ per event on the record ACFT) &mdash; confirm the current AFT-based exemption threshold.</div></div>
+  <div class="qa"><div class="q">How often are Soldiers assessed?</div><div class="a">Active component at least every 6 months; Reserve/Guard annually or as required.</div></div>
+
+  <h3 class="block">Multiple choice</h3>
+  <div class="mc">
+    <div class="stem">1. The current Army circumference (tape) method measures:</div>
+    <ol><li>Neck and waist</li><li>One site &mdash; the abdomen (waist)</li><li>Three sites</li><li>Neck, waist, and hip</li></ol>
+    <span class="ans"><b>B.</b> The Army moved to a one-site abdominal method in 2023&ndash;2024.</span>
+  </div>
+  <div class="mc">
+    <div class="stem">2. The Waist-to-Height Ratio standard requires a ratio of less than:</div>
+    <ol><li>0.45</li><li>0.50</li><li>0.55</li><li>0.60</li></ol>
+    <span class="ans"><b>C &mdash; 0.55</b> (verify against the current directive).</span>
+  </div>
+  <div class="mc">
+    <div class="stem">3. How often is an active-duty Soldier assessed under the ABCP?</div>
+    <ol><li>Monthly</li><li>Every 6 months</li><li>Annually</li><li>Every 2 years</li></ol>
+    <span class="ans"><b>B &mdash; Every 6 months.</b></span>
+  </div>
+</section>
+
+<!-- TC 4-02.1 -->
+<section class="reg">
+  <div class="reg-head">
+    <div class="pub">TC 4-02.1</div>
+    <h2>First Aid</h2>
+  </div>
+  <span class="currency">TC 4-02.1, First Aid (aligns with Tactical Combat Casualty Care &mdash; TCCC).</span>
+
+  <h3 class="block">Open-ended Q&amp;A</h3>
+  <div class="qa"><div class="q">What does TC 4-02.1 cover?</div><div class="a">First aid &mdash; the emergency care a Soldier gives to prevent death or further injury.</div></div>
+  <div class="qa"><div class="q">What are the three phases of Tactical Combat Casualty Care (TCCC)?</div><div class="a">Care Under Fire, Tactical Field Care, and Tactical Evacuation Care.</div></div>
+  <div class="qa"><div class="q">What does the MARCH acronym stand for?</div><div class="a">Massive hemorrhage, Airway, Respiration, Circulation, Head injury/Hypothermia.</div></div>
+  <div class="qa"><div class="q">What is the #1 cause of preventable death on the battlefield?</div><div class="a">Massive hemorrhage (severe bleeding from an extremity) &mdash; treated first, often with a tourniquet.</div></div>
+  <div class="qa"><div class="q">What are the four life-saving steps / priorities of first aid?</div><div class="a">Open the airway/restore breathing, stop the bleeding, prevent/treat for shock, and dress/protect the wound.</div></div>
+  <div class="qa"><div class="q">How long can a tourniquet generally be left on, and what must you do?</div><div class="a">Apply tight enough to stop bleeding, mark the time (&ldquo;T&rdquo; and time), and never cover it; reassessment/conversion is done by medical personnel.</div></div>
+
+  <h3 class="block">Multiple choice</h3>
+  <div class="mc">
+    <div class="stem">1. The MARCH algorithm begins with treating:</div>
+    <ol><li>Airway</li><li>Massive hemorrhage</li><li>Respiration</li><li>Circulation</li></ol>
+    <span class="ans"><b>B &mdash; Massive hemorrhage.</b></span>
+  </div>
+  <div class="mc">
+    <div class="stem">2. The three phases of TCCC are Care Under Fire, Tactical Field Care, and:</div>
+    <ol><li>Tactical Evacuation Care</li><li>Hospital Care</li><li>Recovery Care</li><li>Buddy Care</li></ol>
+    <span class="ans"><b>A.</b></span>
+  </div>
+</section>
+
+<!-- TC 4-02.3 -->
+<section class="reg">
+  <div class="reg-head">
+    <div class="pub">TC 4-02.3</div>
+    <h2>Field Hygiene and Sanitation</h2>
+  </div>
+  <span class="currency">TC 4-02.3, Field Hygiene and Sanitation.</span>
+
+  <h3 class="block">Open-ended Q&amp;A</h3>
+  <div class="qa"><div class="q">What does TC 4-02.3 cover?</div><div class="a">Field hygiene and sanitation &mdash; preventive medicine measures (PMM) that keep Soldiers healthy and the force combat-ready.</div></div>
+  <div class="qa"><div class="q">What is the leading cause of casualties historically &mdash; combat or disease/non-battle injury?</div><div class="a">Disease and non-battle injury (DNBI) &mdash; which is why field sanitation matters.</div></div>
+  <div class="qa"><div class="q">What is the Field Sanitation Team (FST)?</div><div class="a">A unit-level team (minimum two trained members) that advises the commander on preventive medicine measures.</div></div>
+  <div class="qa"><div class="q">What are the five preventive medicine measures (individual)?</div><div class="a">Practice personal hygiene; protect against heat/cold injuries; protect against arthropods/insects (use repellent, treat uniforms); purify/drink safe water; avoid foodborne illness. </div></div>
+  <div class="qa"><div class="q">What is the chain of disease transmission concept?</div><div class="a">Break the chain &mdash; agent, reservoir, and means of transmission &mdash; through PMM to prevent illness.</div></div>
+
+  <h3 class="block">Multiple choice</h3>
+  <div class="mc">
+    <div class="stem">1. The Field Sanitation Team advises the:</div>
+    <ol><li>Commander</li><li>Surgeon General</li><li>Squad leader only</li><li>S1</li></ol>
+    <span class="ans"><b>A &mdash; Commander.</b></span>
+  </div>
+  <div class="mc">
+    <div class="stem">2. Historically, most casualties in military operations are caused by:</div>
+    <ol><li>Direct combat</li><li>Disease and non-battle injury</li><li>Vehicle accidents</li><li>Friendly fire</li></ol>
+    <span class="ans"><b>B &mdash; DNBI.</b></span>
+  </div>
+</section>
+
+<!-- ============================================================= -->
+<!-- PART IV -->
+<!-- ============================================================= -->
+<h1 class="part-title">PART IV &middot; Soldier Skills &amp; Warfighting</h1>
+
+<!-- TC 3-21.5 -->
+<section class="reg">
+  <div class="reg-head">
+    <div class="pub">TC 3-21.5</div>
+    <h2>Drill and Ceremonies</h2>
+  </div>
+  <span class="currency">TC 3-21.5, Drill and Ceremonies.</span>
+
+  <h3 class="block">Open-ended Q&amp;A</h3>
+  <div class="qa"><div class="q">What does TC 3-21.5 cover?</div><div class="a">Drill and ceremonies &mdash; the movements and procedures for moving and presenting units.</div></div>
+  <div class="qa"><div class="q">What are the two parts of a drill command?</div><div class="a">The preparatory command (e.g., &ldquo;Forward&rdquo;) and the command of execution (e.g., &ldquo;MARCH&rdquo;).</div></div>
+  <div class="qa"><div class="q">What is the difference between a two-part command and a combined command?</div><div class="a">A two-part command has a preparatory command and a command of execution; a combined command has them in one (e.g., &ldquo;FALL IN,&rdquo; &ldquo;AT EASE&rdquo;).</div></div>
+  <div class="qa"><div class="q">What is cadence?</div><div class="a">The uniform step and rhythm of marching &mdash; quick time is 120 steps per minute; double time is 180 steps per minute.</div></div>
+  <div class="qa"><div class="q">What is the length of a 30-inch step at quick time?</div><div class="a">The standard marching step is 30 inches at 120 steps per minute (quick time).</div></div>
+  <div class="qa"><div class="q">What is the difference between &ldquo;At Ease&rdquo; and &ldquo;Rest&rdquo;?</div><div class="a">At Ease &mdash; keep the right foot in place, may move/relax but remain silent; Rest &mdash; keep the right foot in place but may talk.</div></div>
+
+  <h3 class="block">Multiple choice</h3>
+  <div class="mc">
+    <div class="stem">1. The two parts of a drill command are the preparatory command and the:</div>
+    <ol><li>Command of execution</li><li>Combined command</li><li>Supplementary command</li><li>Directive</li></ol>
+    <span class="ans"><b>A.</b></span>
+  </div>
+  <div class="mc">
+    <div class="stem">2. Quick time cadence is:</div>
+    <ol><li>100 steps/min</li><li>120 steps/min</li><li>180 steps/min</li><li>60 steps/min</li></ol>
+    <span class="ans"><b>B &mdash; 120 steps per minute</b> (double time is 180).</span>
+  </div>
+</section>
+
+<!-- TC 3-25.26 -->
+<section class="reg">
+  <div class="reg-head">
+    <div class="pub">TC 3-25.26</div>
+    <h2>Map Reading and Land Navigation</h2>
+  </div>
+  <span class="currency">TC 3-25.26, Map Reading and Land Navigation.</span>
+
+  <h3 class="block">Open-ended Q&amp;A</h3>
+  <div class="qa"><div class="q">What does TC 3-25.26 cover?</div><div class="a">Map reading and land navigation.</div></div>
+  <div class="qa"><div class="q">What are the five major terrain features?</div><div class="a">Hill, ridge, valley, saddle, and depression.</div></div>
+  <div class="qa"><div class="q">What are the three minor terrain features?</div><div class="a">Draw, spur, and cliff.</div></div>
+  <div class="qa"><div class="q">What are the two supplementary terrain features?</div><div class="a">Cut and fill.</div></div>
+  <div class="qa"><div class="q">What are the five basic colors on a military map and what do they represent?</div><div class="a">Black (man-made), Blue (water), Green (vegetation), Brown (contours/relief), Red (major roads/boundaries). (Red-brown on some maps.)</div></div>
+  <div class="qa"><div class="q">What are the three norths?</div><div class="a">True north, magnetic north, and grid north.</div></div>
+  <div class="qa"><div class="q">How do you read a grid coordinate?</div><div class="a">Read right (easting), then up (northing) &mdash; &ldquo;right and up.&rdquo;</div></div>
+  <div class="qa"><div class="q">What is a contour line?</div><div class="a">A line on a map joining points of equal elevation; the three types are index, intermediate, and supplementary.</div></div>
+
+  <h3 class="block">Multiple choice</h3>
+  <div class="mc">
+    <div class="stem">1. How many major terrain features are there?</div>
+    <ol><li>3</li><li>5</li><li>8</li><li>10</li></ol>
+    <span class="ans"><b>B &mdash; 5</b> (hill, ridge, valley, saddle, depression).</span>
+  </div>
+  <div class="mc">
+    <div class="stem">2. On a military map, blue represents:</div>
+    <ol><li>Vegetation</li><li>Water</li><li>Man-made features</li><li>Elevation</li></ol>
+    <span class="ans"><b>B &mdash; Water.</b></span>
+  </div>
+  <div class="mc">
+    <div class="stem">3. Grid coordinates are read:</div>
+    <ol><li>Up and right</li><li>Right and up</li><li>Left and down</li><li>Down and left</li></ol>
+    <span class="ans"><b>B &mdash; Right and up.</b></span>
+  </div>
+</section>
+
+<!-- TC 3-22.9 -->
+<section class="reg">
+  <div class="reg-head">
+    <div class="pub">TC 3-22.9</div>
+    <h2>Rifle and Carbine (Weapons &mdash; M4/M16)</h2>
+  </div>
+  <span class="currency">TC 3-22.9, Rifle and Carbine.</span>
+
+  <h3 class="block">Open-ended Q&amp;A</h3>
+  <div class="qa"><div class="q">What does TC 3-22.9 cover?</div><div class="a">The rifle and carbine (M4/M16 family) &mdash; employment, marksmanship, and maintenance.</div></div>
+  <div class="qa"><div class="q">What is the maximum effective range of the M4 carbine against a point target?</div><div class="a">Approximately 500 meters (point target); about 600 meters for an area target.</div></div>
+  <div class="qa"><div class="q">What are the four fundamentals of marksmanship?</div><div class="a">Steady position, aim (sight alignment/sight picture), breathing (control), and trigger squeeze.</div></div>
+  <div class="qa"><div class="q">What is the cycle of function of the rifle (8 steps)?</div><div class="a">Feeding, chambering, locking, firing, unlocking, extracting, ejecting, and cocking.</div></div>
+  <div class="qa"><div class="q">What does SPORTS stand for (immediate action)?</div><div class="a">Slap, Pull, Observe, Release, Tap, Squeeze (Shoot).</div></div>
+  <div class="qa"><div class="q">What is the cyclic rate of fire of the M4?</div><div class="a">Approximately 700&ndash;970 rounds per minute (cyclic); sustained rate is much lower (~12&ndash;15 rpm).</div></div>
+  <div class="qa"><div class="q">What are the weapons safety rules?</div><div class="a">Treat every weapon as if loaded; never point at anything you don't intend to engage; keep your finger off the trigger until ready to fire; keep the weapon on safe until you intend to fire.</div></div>
+
+  <h3 class="block">Multiple choice</h3>
+  <div class="mc">
+    <div class="stem">1. SPORTS stands for:</div>
+    <ol><li>Slap, Pull, Observe, Release, Tap, Squeeze</li><li>Stop, Pull, Open, Reload, Tap, Shoot</li><li>Slap, Push, Observe, Reset, Tap, Squeeze</li><li>Set, Pull, Observe, Release, Test, Shoot</li></ol>
+    <span class="ans"><b>A.</b></span>
+  </div>
+  <div class="mc">
+    <div class="stem">2. How many steps are in the cycle of function?</div>
+    <ol><li>6</li><li>7</li><li>8</li><li>9</li></ol>
+    <span class="ans"><b>C &mdash; 8.</b></span>
+  </div>
+  <div class="mc">
+    <div class="stem">3. The four fundamentals of marksmanship include all EXCEPT:</div>
+    <ol><li>Steady position</li><li>Breathing</li><li>Trigger squeeze</li><li>Reloading</li></ol>
+    <span class="ans"><b>D.</b> The fourth is aim (sight picture).</span>
+  </div>
+</section>
+
+<!-- FM 3-11 -->
+<section class="reg">
+  <div class="reg-head">
+    <div class="pub">FM 3-11</div>
+    <h2>CBRN Operations</h2>
+  </div>
+  <span class="currency">FM 3-11, Chemical, Biological, Radiological, and Nuclear Operations.</span>
+
+  <h3 class="block">Open-ended Q&amp;A</h3>
+  <div class="qa"><div class="q">What does CBRN stand for?</div><div class="a">Chemical, Biological, Radiological, and Nuclear.</div></div>
+  <div class="qa"><div class="q">What are the MOPP levels?</div><div class="a">MOPP Ready, MOPP 0, MOPP 1, MOPP 2, MOPP 3, and MOPP 4 (increasing levels of protective posture).</div></div>
+  <div class="qa"><div class="q">What is worn at MOPP 4?</div><div class="a">Overgarment, overboots, mask with hood, and gloves &mdash; full protection.</div></div>
+  <div class="qa"><div class="q">What protective mask does the Army use?</div><div class="a">The M50/M53 Joint Service General Purpose Mask (JSGPM).</div></div>
+  <div class="qa"><div class="q">What are the three types of decontamination?</div><div class="a">Immediate, operational, and thorough decontamination.</div></div>
+  <div class="qa"><div class="q">What are the standard CBRN marker (NATO) colors?</div><div class="a">Yellow with red letters = Chemical (&ldquo;GAS&rdquo;); blue with red letters = Biological (&ldquo;BIO&rdquo;); white with black letters = Radiological (&ldquo;ATOM&rdquo;).</div></div>
+  <div class="qa"><div class="q">What report is used to give first warning of a CBRN attack?</div><div class="a">The CBRN 1 Report (NBC-1).</div></div>
+
+  <h3 class="block">Multiple choice</h3>
+  <div class="mc">
+    <div class="stem">1. The highest level of protective posture is:</div>
+    <ol><li>MOPP 1</li><li>MOPP 2</li><li>MOPP 3</li><li>MOPP 4</li></ol>
+    <span class="ans"><b>D &mdash; MOPP 4</b> (full ensemble).</span>
+  </div>
+  <div class="mc">
+    <div class="stem">2. The Army's general-purpose protective mask is the:</div>
+    <ol><li>M40</li><li>M50</li><li>M17</li><li>M9</li></ol>
+    <span class="ans"><b>B &mdash; M50</b> (M53 for combat-vehicle crews).</span>
+  </div>
+</section>
+
+<!-- Code of Conduct / FM 6-27 -->
+<section class="reg">
+  <div class="reg-head">
+    <div class="pub">Code of Conduct &middot; FM 6-27</div>
+    <h2>Code of Conduct &amp; the Law of Land Warfare</h2>
+  </div>
+  <span class="currency">Code of Conduct &mdash; Executive Order 10631 (six articles). Law of war: FM 6-27, The Commander's Handbook on the Law of Land Warfare (replaced FM 27-10).</span>
+
+  <h3 class="block">Open-ended Q&amp;A</h3>
+  <div class="qa"><div class="q">How many articles are in the Code of Conduct?</div><div class="a">Six.</div></div>
+  <div class="qa"><div class="q">Recite Article I of the Code of Conduct.</div><div class="a">&ldquo;I am an American, fighting in the forces which guard my country and our way of life. I am prepared to give my life in their defense.&rdquo;</div></div>
+  <div class="qa"><div class="q">What is the essence of Article II?</div><div class="a">&ldquo;I will never surrender of my own free will. If in command, I will never surrender the members of my command while they still have the means to resist.&rdquo;</div></div>
+  <div class="qa"><div class="q">If captured, what information are you required to give (Article V)?</div><div class="a">Name, rank, service number, and date of birth &mdash; and nothing else harmful to your country.</div></div>
+  <div class="qa"><div class="q">What manual covers the law of land warfare?</div><div class="a">FM 6-27 (it replaced the older FM 27-10).</div></div>
+  <div class="qa"><div class="q">What are the &ldquo;5 S's and a T&rdquo; for handling detainees/EPWs?</div><div class="a">Search, Silence, Segregate, Safeguard, Speed to the rear, and Tag.</div></div>
+  <div class="qa"><div class="q">What are the basic principles of the law of war?</div><div class="a">Military necessity, distinction (discrimination), proportionality, humanity (avoiding unnecessary suffering), and honor.</div></div>
+
+  <h3 class="block">Multiple choice</h3>
+  <div class="mc">
+    <div class="stem">1. The Code of Conduct has how many articles?</div>
+    <ol><li>4</li><li>5</li><li>6</li><li>7</li></ol>
+    <span class="ans"><b>C &mdash; 6.</b></span>
+  </div>
+  <div class="mc">
+    <div class="stem">2. The current manual on the law of land warfare is:</div>
+    <ol><li>FM 27-10</li><li>FM 6-27</li><li>FM 3-11</li><li>FM 6-22</li></ol>
+    <span class="ans"><b>B &mdash; FM 6-27.</b> FM 27-10 is superseded.</span>
+  </div>
+  <div class="mc">
+    <div class="stem">3. The &ldquo;5 S's and a T&rdquo; for handling detainees are Search, Silence, Segregate, Safeguard, Speed to the rear, and:</div>
+    <ol><li>Tag</li><li>Transport</li><li>Treat</li><li>Track</li></ol>
+    <span class="ans"><b>A &mdash; Tag.</b></span>
+  </div>
+</section>
+
+<!-- ============================ CLOSE ============================ -->
+<section class="reg">
+  <div class="reg-head"><h2>Final Notes &amp; Sources</h2></div>
+  <h3 class="block">Study tips</h3>
+  <ul class="tight">
+    <li>Practice answers <b>out loud</b> &mdash; boards are oral.</li>
+    <li>Lead with the publication: &ldquo;Per AR 670-1&hellip;&rdquo; shows you know the source.</li>
+    <li>Master the Regulation Quick-Reference table &mdash; it covers the most common questions.</li>
+    <li>Prioritize the high-change topics: <b>AFT</b>, <b>AR 600-9 (WHtR)</b>, and the <b>2025 AR 670-1 grooming standards</b>.</li>
+  </ul>
+  <h3 class="block">Primary sources</h3>
+  <p class="small">
+    Army Publishing Directorate (armypubs.army.mil) is the source of truth for every
+    answer. The fitness/standards facts in this guide were cross-checked against
+    army.mil (AFT announcement), and reputable board-study references. Confirm the
+    current edition of each publication before your board, and verify any item marked
+    &ldquo;verify locally&rdquo; with your board NCO.
+  </p>
+  <div class="disclaimer" style="margin-top:10px;">
+    <b>Unofficial study aid &mdash; not a substitute for the regulations.</b>
+    Compiled for Soldier Hub, June 2026. Regulations change; always confirm against
+    the official publication and your chain of command.
+  </div>
+</section>
+
+</body>
+</html>
