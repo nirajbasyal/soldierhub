@@ -254,7 +254,6 @@ export default function MobileMenu() {
                     ? "Official sites and trusted services"
                     : "Admin is preparing trusted resources"
                 }
-                badge={isAdmin ? undefined : "Coming Soon"}
                 disabled={!isAdmin}
                 onClick={isAdmin ? () => go("/resources") : undefined}
               />
@@ -295,7 +294,6 @@ export default function MobileMenu() {
                 icon={Activity}
                 label="AFT Score Calculator"
                 hint="Army fitness score tool"
-                badge="Coming Soon"
                 disabled
               />
             </div>
