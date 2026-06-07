@@ -21,6 +21,7 @@ import { useApp } from "@/store/AppContext";
 import Button from "@/components/ui/Button";
 import MenuItem from "@/components/ui/MenuItem";
 import SiteInfoCard from "@/components/tools/SiteInfoCard";
+import { BoardPrepStatusBadge } from "@/components/tools/BoardPrepCard";
 
 const SIDEBAR_LOGO_SRC = "/brand/soldierhub-logo-sidebar.svg";
 
@@ -109,6 +110,7 @@ export default function MobileMenu() {
     router.prefetch?.("/tools/bah");
     router.prefetch?.("/tools/gates");
     router.prefetch?.("/tools/board-prep");
+    router.prefetch?.("/tools/board-prep/study");
   }, [isAdmin, mobileMenu, router]);
 
   if (isNavigating) {
@@ -283,12 +285,18 @@ export default function MobileMenu() {
                 onClick={() => go("/tools/gates")}
               />
 
-              <MenuItem
-                icon={BookOpen}
-                label="Board Prep"
-                hint="Daily promotion board questions"
-                onClick={() => go("/tools/board-prep")}
-              />
+              <div className="flex flex-col gap-1.5">
+                <MenuItem
+                  icon={BookOpen}
+                  label="Board Prep"
+                  hint="Daily promotion board questions"
+                  onClick={() => go("/tools/board-prep")}
+                />
+                <BoardPrepStatusBadge
+                  variant="menu"
+                  onClick={() => go("/tools/board-prep")}
+                />
+              </div>
 
               <MenuItem
                 icon={Activity}
