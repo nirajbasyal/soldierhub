@@ -40,7 +40,7 @@ async function getAccessToken() {
 }
 
 export default function QuickMemoryGuide() {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const [items, setItems] = useState(FALLBACK_ITEMS);
   const [activeKey, setActiveKey] = useState(FALLBACK_ITEMS[0].memory_key);
 
@@ -94,7 +94,7 @@ export default function QuickMemoryGuide() {
                 Board basics
               </span>
             </div>
-            <p className="mt-1 text-xs leading-5" style={{ color: T.textMuted }}>Tap a topic. Read the short board-ready cue.</p>
+            <p className="mt-1 text-xs leading-5" style={{ color: T.textMuted }}>Soldier&apos;s Creed, NCO Creed, Army Song, General Orders</p>
           </div>
         </div>
         <ChevronDown size={19} className={open ? "shrink-0 rotate-180 transition" : "shrink-0 transition"} style={{ color: T.textMuted }} />
