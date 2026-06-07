@@ -3,16 +3,17 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  Award,
   BookOpen,
   CheckCircle,
+  ChevronDown,
   ChevronRight,
   Flame,
   Home,
-  Music,
   RotateCcw,
-  ScrollText,
   Send,
   Shield,
+  Target,
   Trophy,
   XCircle,
 } from "lucide-react";
@@ -26,70 +27,49 @@ const OPTION_LABELS = { a: "A", b: "B", c: "C", d: "D" };
 const TOTAL = 5;
 
 const SCORE_MESSAGE = {
-  5: "Perfect score. You are board-ready.",
-  4: "Strong performance. Keep it up.",
-  3: "Solid effort. Review what you missed.",
-  2: "Keep studying — you will get there.",
-  1: "Every expert was once a beginner.",
-  0: "Use the explanations to guide your study.",
+  5: "Perfect score. Board-ready energy.",
+  4: "Strong work. Keep your streak alive.",
+  3: "Solid reps. Review the explanation and come back tomorrow.",
+  2: "Good start. The streak matters more than one score.",
+  1: "One rep is still progress. Keep building.",
+  0: "No problem. Read the explanations and try again tomorrow.",
 };
 
-const REFERENCE_CARDS = [
+const QUICK_MEMORY = [
   {
     title: "Soldier's Creed",
-    icon: Shield,
-    note: "Practice this aloud. Boards look for confidence, bearing, and understanding of the Warrior Ethos.",
-    lines: [
-      "I am an American Soldier.",
-      "I am a warrior and a member of a team.",
-      "I serve the people of the United States and live the Army Values.",
+    summary: "Know the opening, Warrior Ethos, and meaning.",
+    points: [
+      "Opening: I am an American Soldier.",
       "Warrior Ethos: mission first, never accept defeat, never quit, never leave a fallen comrade.",
-      "Key meaning: disciplined, trained, professional, ready, and committed to the team.",
+      "Board tip: explain what the creed means, not only recite it.",
     ],
   },
   {
     title: "NCO Creed",
-    icon: ScrollText,
-    note: "Study the full creed from your board packet. The app highlights the lines most often asked in boards.",
-    lines: [
+    summary: "Know the identity, watchword, and two basic responsibilities.",
+    points: [
       "Opening: No one is more professional than I.",
-      "Identity: I am a noncommissioned officer, a leader of Soldiers.",
-      "Known as: The Backbone of the Army.",
-      "Watchword: Competence is my watchword.",
+      "Watchword: Competence.",
       "Two responsibilities: mission accomplishment and welfare of Soldiers.",
-      "Closing idea: professionals, noncommissioned officers, leaders.",
     ],
   },
   {
     title: "Army Song",
-    icon: Music,
-    note: "Official title: The Army Goes Rolling Along. Use your official board packet for exact lyrics.",
-    lines: [
-      "Know the official title: The Army Goes Rolling Along.",
-      "Know it is the official song of the U.S. Army.",
-      "Study the intro, verse, and refrain.",
-      "Board tip: practice singing or reciting it out loud with confidence.",
+    summary: "Know the official title and board confidence cue.",
+    points: [
+      "Official title: The Army Goes Rolling Along.",
+      "Know that it is the official song of the U.S. Army.",
+      "Practice intro, verse, and refrain from your official board packet.",
     ],
   },
   {
     title: "General Orders",
-    icon: BookOpen,
-    note: "Common board topic for customs, courtesies, and guard duty basics.",
-    lines: [
-      "1. Guard everything within the limits of my post and quit my post only when properly relieved.",
-      "2. Obey my special orders and perform all duties in a military manner.",
-      "3. Report violations, emergencies, and anything not covered in my instructions to the commander of the relief.",
-    ],
-  },
-  {
-    title: "High-change topics",
-    icon: Trophy,
-    note: "These are the areas most likely to confuse Soldiers using old study guides.",
-    lines: [
-      "AFT replaced ACFT for current Army fitness board prep.",
-      "FM 7-22 is Holistic Health and Fitness, not just old PRT.",
-      "AR 670-1 grooming and appearance standards were updated by Army Directive 2025-18.",
-      "FM 6-27 replaced FM 27-10 for the law of land warfare.",
+    summary: "Know all three. They are common board questions.",
+    points: [
+      "1. Guard everything within the limits of my post.",
+      "2. Obey my special orders and perform duties in a military manner.",
+      "3. Report violations, emergencies, and anything not covered in my instructions.",
     ],
   },
 ];
@@ -107,67 +87,89 @@ function getOptionText(q, key) {
 
 function Card({ children, className = "" }) {
   return (
-    <div className={`rounded-2xl border p-5 ${className}`} style={{ backgroundColor: T.card, borderColor: T.border }}>
+    <div className={`rounded-[1.75rem] border shadow-sm ${className}`} style={{ backgroundColor: T.card, borderColor: T.border }}>
       {children}
     </div>
   );
 }
 
 function Pill({ children, tone = "blue" }) {
-  const bg = tone === "red" ? T.redBg : tone === "gold" ? T.goldBg : T.blueSoft;
-  const color = tone === "red" ? T.brandRed : tone === "gold" ? T.gold : T.blue;
+  const bg = tone === "red" ? T.redBg : tone === "gold" ? T.goldBg : tone === "green" ? T.successBg : T.blueSoft;
+  const color = tone === "red" ? T.brandRed : tone === "gold" ? T.gold : tone === "green" ? T.success : T.blue;
   return <span className="inline-flex rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: bg, color }}>{children}</span>;
 }
 
 function StreakBadge({ streak }) {
-  if (!streak) return null;
-  return <Pill tone="gold"><span className="inline-flex items-center gap-1"><Flame size={14} />{streak}-day streak</span></Pill>;
+  return (
+    <div className="rounded-2xl border px-4 py-3 text-center" style={{ borderColor: T.border, backgroundColor: T.goldBg }}>
+      <div className="flex items-center justify-center gap-1 font-serif text-2xl font-bold" style={{ color: T.gold }}>
+        <Flame size={21} />{streak || 0}
+      </div>
+      <p className="mt-0.5 text-[11px] font-bold uppercase tracking-[0.18em]" style={{ color: T.textMuted }}>Day streak</p>
+    </div>
+  );
 }
 
-function ReferenceCards() {
+function ProgressDots({ current, total = TOTAL }) {
   return (
-    <div className="space-y-4">
-      <Card className="bg-gradient-to-br from-white to-slate-50">
-        <div className="flex items-start gap-3">
-          <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0" style={{ backgroundColor: T.redBg, color: T.brandRed }}>
-            <ScrollText size={22} />
+    <div className="flex items-center gap-1.5">
+      {Array.from({ length: total }).map((_, idx) => (
+        <div key={idx} className="h-2 flex-1 rounded-full" style={{ backgroundColor: idx <= current ? T.brandRed : T.borderSoft }} />
+      ))}
+    </div>
+  );
+}
+
+function MemoryPanel() {
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(null);
+
+  return (
+    <Card className="overflow-hidden">
+      <button onClick={() => setOpen((v) => !v)} className="flex w-full items-center justify-between gap-3 p-4 text-left">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl" style={{ backgroundColor: T.blueSoft, color: T.blue }}>
+            <Shield size={20} />
           </div>
           <div>
-            <h2 className="text-xl font-serif font-bold" style={{ color: T.navy }}>Creeds, song, and orders</h2>
-            <p className="text-sm mt-1" style={{ color: T.textMuted }}>Use this section for quick memorization before board practice. This is an unofficial study aid; verify exact wording with your board packet.</p>
+            <p className="font-bold" style={{ color: T.navy }}>Quick memory guide</p>
+            <p className="text-xs" style={{ color: T.textMuted }}>Creeds, Army Song, and General Orders stay collapsed unless needed.</p>
           </div>
         </div>
-      </Card>
-      {REFERENCE_CARDS.map((card) => {
-        const Icon = card.icon;
-        return (
-          <Card key={card.title}>
-            <div className="flex items-start gap-3">
-              <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0" style={{ backgroundColor: T.blueSoft, color: T.blue }}>
-                <Icon size={21} />
+        <ChevronDown size={19} className={open ? "rotate-180 transition" : "transition"} style={{ color: T.textMuted }} />
+      </button>
+
+      {open && (
+        <div className="space-y-2 border-t p-4" style={{ borderColor: T.borderSoft }}>
+          {QUICK_MEMORY.map((item) => {
+            const selected = active === item.title;
+            return (
+              <div key={item.title} className="rounded-2xl border" style={{ borderColor: selected ? T.brandRed : T.borderSoft, backgroundColor: selected ? T.redBg : T.surface }}>
+                <button onClick={() => setActive(selected ? null : item.title)} className="w-full p-3 text-left">
+                  <p className="text-sm font-bold" style={{ color: T.navy }}>{item.title}</p>
+                  <p className="mt-0.5 text-xs" style={{ color: T.textMuted }}>{item.summary}</p>
+                </button>
+                {selected && (
+                  <div className="space-y-2 px-3 pb-3">
+                    {item.points.map((point) => (
+                      <div key={point} className="rounded-xl bg-white/80 px-3 py-2 text-xs font-medium" style={{ color: T.text }}>
+                        {point}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-              <div className="min-w-0">
-                <h3 className="text-lg font-serif font-bold" style={{ color: T.navy }}>{card.title}</h3>
-                <p className="text-sm mt-1" style={{ color: T.textMuted }}>{card.note}</p>
-                <div className="mt-3 space-y-2">
-                  {card.lines.map((line) => (
-                    <div key={line} className="rounded-xl border px-3 py-2 text-sm" style={{ borderColor: T.borderSoft, color: T.text, backgroundColor: T.surface }}>
-                      {line}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </Card>
-        );
-      })}
-    </div>
+            );
+          })}
+        </div>
+      )}
+    </Card>
   );
 }
 
 function RequestCard({ currentQuestion }) {
   const [open, setOpen] = useState(false);
-  const [requestType, setRequestType] = useState("add");
+  const [requestType, setRequestType] = useState("update");
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [status, setStatus] = useState(null);
@@ -199,26 +201,46 @@ function RequestCard({ currentQuestion }) {
   }
 
   return (
-    <Card className="mt-4">
-      <button onClick={() => setOpen((v) => !v)} className="w-full flex items-center justify-between text-left">
-        <div>
-          <p className="font-semibold" style={{ color: T.navy }}>Request a question change</p>
-          <p className="text-xs" style={{ color: T.textMuted }}>Ask admin to add, update, or remove Board Prep content.</p>
-        </div>
-        <Send size={18} style={{ color: T.brandRed }} />
+    <div className="mt-4">
+      <button onClick={() => setOpen((v) => !v)} className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-bold" style={{ borderColor: T.border, color: T.textMuted, backgroundColor: T.card }}>
+        <Send size={14} /> Request question fix
       </button>
       {open && (
-        <div className="mt-4 space-y-3">
-          <div className="grid grid-cols-3 gap-2">
+        <Card className="mt-3 p-4">
+          <p className="font-semibold" style={{ color: T.navy }}>Send admin a correction</p>
+          <p className="mt-1 text-xs" style={{ color: T.textMuted }}>Use this for wrong answers, outdated questions, or a new question idea.</p>
+          <div className="mt-3 grid grid-cols-3 gap-2">
             {["add", "update", "remove"].map((type) => (
               <button key={type} onClick={() => setRequestType(type)} className="h-10 rounded-xl text-sm font-semibold capitalize" style={{ backgroundColor: requestType === type ? T.navy : T.surface, color: requestType === type ? "#fff" : T.textMuted, border: `1px solid ${T.border}` }}>{type}</button>
             ))}
           </div>
-          <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={4} className="w-full rounded-xl border p-3 text-sm outline-none" style={{ borderColor: T.border, color: T.text }} placeholder="Explain what should be added, updated, or removed." />
-          <button onClick={submitRequest} disabled={sending || !message.trim()} className="w-full h-11 rounded-xl font-semibold text-white disabled:opacity-40" style={{ backgroundColor: T.brandRed }}>{sending ? "Sending..." : "Send request"}</button>
-        </div>
+          <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={4} className="mt-3 w-full rounded-xl border p-3 text-sm outline-none" style={{ borderColor: T.border, color: T.text }} placeholder="Explain what should change." />
+          <button onClick={submitRequest} disabled={sending || !message.trim()} className="mt-3 h-11 w-full rounded-xl font-semibold text-white disabled:opacity-40" style={{ backgroundColor: T.brandRed }}>{sending ? "Sending..." : "Send request"}</button>
+        </Card>
       )}
-      {status && <p className="mt-3 text-xs" style={{ color: status.includes("sent") ? T.success : T.danger }}>{status}</p>}
+      {status && <p className="mt-2 text-xs" style={{ color: status.includes("sent") ? T.success : T.danger }}>{status}</p>}
+    </div>
+  );
+}
+
+function Hero({ streak, answeredCount = 0 }) {
+  return (
+    <Card className="overflow-hidden p-5" style={{ background: `linear-gradient(135deg, ${T.navy}, #163b63)` }}>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/70">Daily board quiz</p>
+          <h1 className="mt-2 font-serif text-3xl font-black leading-tight text-white">5 questions. One streak.</h1>
+          <p className="mt-2 max-w-sm text-sm leading-6 text-white/75">Answer today's shuffled board questions. Keep it simple: score, learn, come back tomorrow.</p>
+        </div>
+        <StreakBadge streak={streak} />
+      </div>
+      <div className="mt-5 rounded-2xl bg-white/10 p-3">
+        <div className="mb-2 flex items-center justify-between text-xs font-bold text-white/80">
+          <span>{answeredCount}/{TOTAL} answered</span>
+          <span>Daily goal</span>
+        </div>
+        <ProgressDots current={Math.max(0, answeredCount - 1)} />
+      </div>
     </Card>
   );
 }
@@ -226,83 +248,106 @@ function RequestCard({ currentQuestion }) {
 function IntroPhase({ streak, questions, onStart }) {
   const categories = [...new Set(questions.map((q) => q.category).filter(Boolean))];
   return (
-    <Card>
-      <div className="text-center py-4">
-        <div className="mx-auto w-16 h-16 rounded-2xl flex items-center justify-center" style={{ backgroundColor: T.redBg }}><BookOpen size={30} style={{ color: T.brandRed }} /></div>
-        <h2 className="mt-4 text-2xl font-serif font-bold" style={{ color: T.navy }}>Daily Board Prep</h2>
-        <p className="text-sm mt-1" style={{ color: T.textMuted }}>{TOTAL} shuffled questions per day. Build streaks, score, and board confidence.</p>
-        <div className="mt-4 flex flex-wrap justify-center gap-2">
-          <StreakBadge streak={streak} />
-          {categories.slice(0, 4).map((c) => <Pill key={c}>{c}</Pill>)}
+    <div className="space-y-4">
+      <Hero streak={streak} answeredCount={0} />
+      <Card className="p-5">
+        <div className="flex items-start gap-3">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl" style={{ backgroundColor: T.redBg, color: T.brandRed }}>
+            <Target size={23} />
+          </div>
+          <div>
+            <h2 className="text-xl font-serif font-bold" style={{ color: T.navy }}>Today's mission</h2>
+            <p className="mt-1 text-sm leading-6" style={{ color: T.textMuted }}>Complete 5 board questions. The app tracks your score and streak automatically.</p>
+          </div>
         </div>
-        <button onClick={onStart} className="mt-5 w-full h-12 rounded-xl font-semibold text-white" style={{ backgroundColor: T.brandRed }}>Start today's questions</button>
-      </div>
-    </Card>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Pill tone="red">5 questions</Pill>
+          <Pill tone="gold">Streak tracking</Pill>
+          {categories.slice(0, 3).map((c) => <Pill key={c}>{c}</Pill>)}
+        </div>
+        <button onClick={onStart} className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-2xl font-bold text-white" style={{ backgroundColor: T.brandRed }}>
+          Start quiz <ChevronRight size={18} />
+        </button>
+      </Card>
+      <MemoryPanel />
+    </div>
   );
 }
 
-function QuestionPhase({ question, questionIndex, selected, result, submitting, onSelect, onSubmit, onNext }) {
+function QuestionPhase({ question, questionIndex, selected, result, submitting, streak, onSelect, onSubmit, onNext }) {
   const answered = Boolean(result);
   return (
-    <>
-      <Card>
-        <div className="mb-5 flex items-center justify-between">
-          <span className="text-sm font-semibold" style={{ color: T.textMuted }}>Question {questionIndex + 1} of {TOTAL}</span>
-          <Pill>{question.category}</Pill>
+    <div className="space-y-4">
+      <Hero streak={streak} answeredCount={questionIndex + (answered ? 1 : 0)} />
+      <Card className="p-5">
+        <div className="mb-4">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <span className="text-sm font-bold" style={{ color: T.textMuted }}>Question {questionIndex + 1} of {TOTAL}</span>
+            <Pill>{question.category}</Pill>
+          </div>
+          <ProgressDots current={questionIndex} />
         </div>
-        {question.source_publication && <p className="text-xs mb-2" style={{ color: T.textSubtle }}>{question.source_publication}</p>}
-        <p className="text-lg font-semibold leading-snug mb-5" style={{ color: T.text }}>{question.question}</p>
+        {question.source_publication && <p className="text-xs mb-2 font-semibold uppercase tracking-[0.12em]" style={{ color: T.textSubtle }}>{question.source_publication}</p>}
+        <p className="mb-5 text-xl font-black leading-snug" style={{ color: T.navy }}>{question.question}</p>
         <div className="space-y-2.5 mb-5">
           {OPTION_KEYS.map((key) => {
             const isCorrect = result && key === result.correct_option;
             const isWrong = result && key === selected && !result.correct;
             const active = !result && key === selected;
             return (
-              <button key={key} onClick={() => !answered && onSelect(key)} disabled={answered} className="w-full rounded-xl border px-4 py-3 text-left flex gap-3 items-start" style={{ borderColor: isCorrect ? T.success : isWrong ? T.danger : active ? T.blue : T.border, backgroundColor: isCorrect ? T.successBg : isWrong ? T.dangerBg : active ? T.blueSoft : T.card }}>
-                <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0" style={{ backgroundColor: active ? T.blue : T.surface, color: active ? "#fff" : T.textMuted }}>{OPTION_LABELS[key]}</span>
-                <span className="text-sm" style={{ color: isCorrect ? T.success : isWrong ? T.danger : T.text }}>{getOptionText(question, key)}</span>
+              <button key={key} onClick={() => !answered && onSelect(key)} disabled={answered} className="w-full rounded-2xl border px-4 py-3 text-left flex gap-3 items-start transition active:scale-[0.99]" style={{ borderColor: isCorrect ? T.success : isWrong ? T.danger : active ? T.brandRed : T.border, backgroundColor: isCorrect ? T.successBg : isWrong ? T.dangerBg : active ? T.redBg : T.card }}>
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-black" style={{ backgroundColor: isCorrect ? T.success : isWrong ? T.danger : active ? T.brandRed : T.surface, color: active || isCorrect || isWrong ? "#fff" : T.textMuted }}>{OPTION_LABELS[key]}</span>
+                <span className="text-sm font-semibold leading-6" style={{ color: isCorrect ? T.success : isWrong ? T.danger : T.text }}>{getOptionText(question, key)}</span>
               </button>
             );
           })}
         </div>
         {answered && (
-          <div className="rounded-xl border p-4 mb-5" style={{ backgroundColor: result.correct ? T.successBg : T.dangerBg, borderColor: result.correct ? T.success : T.danger }}>
-            <div className="flex items-center gap-2 font-semibold" style={{ color: result.correct ? T.success : T.danger }}>{result.correct ? <CheckCircle size={16} /> : <XCircle size={16} />}{result.correct ? "Correct" : "Not quite"}</div>
-            {result.explanation && <p className="text-sm mt-1" style={{ color: T.text }}>{result.explanation}</p>}
+          <div className="rounded-2xl border p-4 mb-5" style={{ backgroundColor: result.correct ? T.successBg : T.dangerBg, borderColor: result.correct ? T.success : T.danger }}>
+            <div className="flex items-center gap-2 font-bold" style={{ color: result.correct ? T.success : T.danger }}>{result.correct ? <CheckCircle size={17} /> : <XCircle size={17} />}{result.correct ? "Correct" : "Not quite"}</div>
+            {result.explanation && <p className="text-sm mt-1 leading-6" style={{ color: T.text }}>{result.explanation}</p>}
           </div>
         )}
         {!answered ? (
-          <button onClick={onSubmit} disabled={!selected || submitting} className="w-full h-11 rounded-xl font-semibold text-white disabled:opacity-40" style={{ backgroundColor: T.brandRed }}>{submitting ? "Checking..." : "Submit answer"}</button>
+          <button onClick={onSubmit} disabled={!selected || submitting} className="w-full h-12 rounded-2xl font-bold text-white disabled:opacity-40" style={{ backgroundColor: T.brandRed }}>{submitting ? "Checking..." : "Submit answer"}</button>
         ) : (
-          <button onClick={onNext} className="w-full h-11 rounded-xl font-semibold text-white flex items-center justify-center gap-2" style={{ backgroundColor: T.navy }}>{questionIndex + 1 < TOTAL ? <>Next <ChevronRight size={16} /></> : <>See results <Trophy size={16} /></>}</button>
+          <button onClick={onNext} className="w-full h-12 rounded-2xl font-bold text-white flex items-center justify-center gap-2" style={{ backgroundColor: T.navy }}>{questionIndex + 1 < TOTAL ? <>Next question <ChevronRight size={16} /></> : <>See score <Trophy size={16} /></>}</button>
         )}
       </Card>
       <RequestCard currentQuestion={question} />
-    </>
+    </div>
   );
 }
 
-function DonePhase({ score, streak, onReturnHome }) {
+function DonePhase({ score, streak, onReturnHome, onRestart }) {
   const msg = SCORE_MESSAGE[score] || SCORE_MESSAGE[0];
   return (
-    <Card>
-      <div className="text-center py-3">
-        <div className="mx-auto w-20 h-20 rounded-full flex items-center justify-center border-4" style={{ borderColor: score >= 4 ? T.success : score >= 2 ? T.amber : T.danger, backgroundColor: score >= 4 ? T.successBg : score >= 2 ? T.amberBg : T.dangerBg }}>
-          <span className="text-2xl font-serif font-bold" style={{ color: score >= 4 ? T.success : score >= 2 ? T.amber : T.danger }}>{score}/{TOTAL}</span>
+    <div className="space-y-4">
+      <Card className="p-6 text-center">
+        <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full border-4" style={{ borderColor: score >= 4 ? T.success : score >= 2 ? T.amber : T.danger, backgroundColor: score >= 4 ? T.successBg : score >= 2 ? T.amberBg : T.dangerBg }}>
+          <span className="font-serif text-3xl font-black" style={{ color: score >= 4 ? T.success : score >= 2 ? T.amber : T.danger }}>{score}/{TOTAL}</span>
         </div>
-        <h2 className="mt-4 text-xl font-serif font-bold" style={{ color: T.navy }}>Session complete</h2>
-        <p className="text-sm mt-1" style={{ color: T.textMuted }}>{msg}</p>
-        <div className="mt-4 flex justify-center"><StreakBadge streak={streak} /></div>
-        <p className="text-xs mt-4" style={{ color: T.textSubtle }}>Come back tomorrow to keep your streak alive.</p>
-        <button onClick={onReturnHome} className="mt-5 w-full h-11 rounded-xl font-semibold text-white flex items-center justify-center gap-2" style={{ backgroundColor: T.navy }}><Home size={16} />Back to Feed</button>
-      </div>
-    </Card>
+        <h2 className="mt-4 text-2xl font-serif font-black" style={{ color: T.navy }}>Daily quiz complete</h2>
+        <p className="text-sm mt-1 leading-6" style={{ color: T.textMuted }}>{msg}</p>
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <div className="rounded-2xl border p-3" style={{ borderColor: T.border, backgroundColor: T.surface }}>
+            <div className="flex justify-center" style={{ color: T.brandRed }}><Award size={20} /></div>
+            <p className="mt-1 text-xl font-black" style={{ color: T.navy }}>{score}</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.16em]" style={{ color: T.textMuted }}>Score</p>
+          </div>
+          <StreakBadge streak={streak} />
+        </div>
+        <p className="mt-4 text-xs" style={{ color: T.textSubtle }}>Come back tomorrow for a new shuffled set of 5 questions.</p>
+        <button onClick={onReturnHome} className="mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-2xl font-bold text-white" style={{ backgroundColor: T.navy }}><Home size={16} />Back to Feed</button>
+        <button onClick={onRestart} className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-2xl border font-bold" style={{ borderColor: T.border, color: T.navy, backgroundColor: T.card }}><RotateCcw size={15} />Refresh status</button>
+      </Card>
+      <MemoryPanel />
+    </div>
   );
 }
 
 export default function BoardPrepPage() {
   const router = useRouter();
-  const [tab, setTab] = useState("quiz");
   const [phase, setPhase] = useState("loading");
   const [data, setData] = useState(null);
   const [questionIdx, setQuestionIdx] = useState(0);
@@ -326,6 +371,8 @@ export default function BoardPrepPage() {
     if (!res.ok) { setError(json.error || "Could not load Board Prep."); setPhase("error"); return; }
     setData(json);
     const answeredCount = Object.keys(json.session?.answers || {}).length;
+    setSelected(null);
+    setResult(null);
     if (json.session?.completed) setPhase("done");
     else if (answeredCount === 0) setPhase("intro");
     else { setQuestionIdx(answeredCount); setPhase("question"); }
@@ -360,19 +407,12 @@ export default function BoardPrepPage() {
   return (
     <AppShell hideNav>
       <ToolPage title="Board Prep" eyebrow="Soldier Tools" icon={BookOpen}>
-        <div className="mb-4 grid grid-cols-2 gap-2 rounded-2xl border p-1" style={{ backgroundColor: T.surface, borderColor: T.border }}>
-          <button onClick={() => setTab("quiz")} className="h-11 rounded-xl font-semibold" style={{ backgroundColor: tab === "quiz" ? T.card : "transparent", color: tab === "quiz" ? T.navy : T.textMuted }}>Daily Quiz</button>
-          <button onClick={() => setTab("study")} className="h-11 rounded-xl font-semibold" style={{ backgroundColor: tab === "study" ? T.card : "transparent", color: tab === "study" ? T.navy : T.textMuted }}>Creeds & Orders</button>
-        </div>
-
-        {tab === "study" && <ReferenceCards />}
-
-        {tab === "quiz" && phase === "loading" && <div className="py-16 text-center text-sm" style={{ color: T.textMuted }}>Loading today's questions...</div>}
-        {tab === "quiz" && phase === "auth" && <Card><div className="text-center py-6"><p className="font-semibold" style={{ color: T.navy }}>Sign in to use Board Prep</p><p className="text-sm mt-1" style={{ color: T.textMuted }}>Track your score and streak.</p><button onClick={() => router.push("/")} className="mt-5 h-10 px-6 rounded-xl font-semibold text-white" style={{ backgroundColor: T.brandRed }}>Back to Feed</button></div></Card>}
-        {tab === "quiz" && phase === "error" && <Card><div className="text-center py-6"><p className="font-semibold" style={{ color: T.danger }}>Something went wrong</p><p className="text-sm mt-1" style={{ color: T.textMuted }}>{error}</p><button onClick={fetchDaily} className="mt-5 inline-flex items-center gap-2 h-10 px-6 rounded-xl font-semibold text-white" style={{ backgroundColor: T.navy }}><RotateCcw size={15} />Retry</button></div></Card>}
-        {tab === "quiz" && phase === "intro" && <IntroPhase streak={streak} questions={questions} onStart={() => { setQuestionIdx(0); setSelected(null); setResult(null); setPhase("question"); }} />}
-        {tab === "quiz" && phase === "question" && currentQuestion && <QuestionPhase question={currentQuestion} questionIndex={questionIdx} selected={selected} result={result} submitting={submitting} onSelect={setSelected} onSubmit={handleSubmit} onNext={handleNext} />}
-        {tab === "quiz" && phase === "done" && session && <DonePhase score={session.score ?? 0} streak={streak} onReturnHome={() => router.push("/")} />}
+        {phase === "loading" && <div className="py-16 text-center text-sm" style={{ color: T.textMuted }}>Loading today's 5 questions...</div>}
+        {phase === "auth" && <Card className="p-5"><div className="text-center py-6"><p className="font-semibold" style={{ color: T.navy }}>Sign in to use Board Prep</p><p className="text-sm mt-1" style={{ color: T.textMuted }}>Track your daily score and streak.</p><button onClick={() => router.push("/")} className="mt-5 h-10 px-6 rounded-xl font-semibold text-white" style={{ backgroundColor: T.brandRed }}>Back to Feed</button></div></Card>}
+        {phase === "error" && <Card className="p-5"><div className="text-center py-6"><p className="font-semibold" style={{ color: T.danger }}>Something went wrong</p><p className="text-sm mt-1" style={{ color: T.textMuted }}>{error}</p><button onClick={fetchDaily} className="mt-5 inline-flex items-center gap-2 h-10 px-6 rounded-xl font-semibold text-white" style={{ backgroundColor: T.navy }}><RotateCcw size={15} />Retry</button></div></Card>}
+        {phase === "intro" && <IntroPhase streak={streak} questions={questions} onStart={() => { setQuestionIdx(0); setSelected(null); setResult(null); setPhase("question"); }} />}
+        {phase === "question" && currentQuestion && <QuestionPhase question={currentQuestion} questionIndex={questionIdx} selected={selected} result={result} submitting={submitting} streak={streak} onSelect={setSelected} onSubmit={handleSubmit} onNext={handleNext} />}
+        {phase === "done" && session && <DonePhase score={session.score ?? 0} streak={streak} onReturnHome={() => router.push("/")} onRestart={fetchDaily} />}
       </ToolPage>
     </AppShell>
   );
