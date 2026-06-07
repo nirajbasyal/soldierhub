@@ -115,6 +115,15 @@ function FilterChip({ active, children, onClick }) {
   );
 }
 
+function getFilterLabel(statusFilter) {
+  return {
+    all: "All",
+    known: "I knew it",
+    review: "Need review",
+    unscored: "Not scored",
+  }[statusFilter] || "All";
+}
+
 function StudyControls({
   searchQuery,
   setSearchQuery,
@@ -122,18 +131,22 @@ function StudyControls({
   setFilterOpen,
   statusFilter,
   setStatusFilter,
-  categoryFilter,
-  setCategoryFilter,
-  categories,
   showAll,
   setShowAll,
   resetScores,
 }) {
+  const filters = [
+    ["all", "All"],
+    ["known", "I knew it"],
+    ["review", "Need review"],
+    ["unscored", "Not scored"],
+  ];
+
   return (
-    <Card className="p-3">
+    <Card className="p-2.5">
       <div className="flex gap-2">
-        <div className="flex h-12 min-w-0 flex-1 items-center gap-2 rounded-2xl border px-3" style={{ borderColor: T.border, backgroundColor: T.surface }}>
-          <Search size={17} style={{ color: T.textSubtle }} />
+        <div className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-2xl border px-3" style={{ borderColor: T.border, backgroundColor: T.surface }}>
+          <Search size={16} style={{ color: T.textSubtle }} />
           <input
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
@@ -146,11 +159,12 @@ function StudyControls({
         <button
           type="button"
           onClick={() => setFilterOpen((value) => !value)}
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border"
+          className="flex h-11 shrink-0 items-center justify-center gap-2 rounded-2xl border px-3"
           style={{ borderColor: filterOpen ? T.brandRed : T.border, backgroundColor: filterOpen ? T.redBg : T.card, color: filterOpen ? T.brandRed : T.navy }}
           aria-label="Filter questions"
         >
-          <Filter size={18} />
+          <Filter size={17} />
+          <span className="max-w-[78px] truncate text-xs font-black">{getFilterLabel(statusFilter)}</span>
         </button>
       </div>
 
@@ -158,55 +172,31 @@ function StudyControls({
         <button
           type="button"
           onClick={() => setShowAll((value) => !value)}
-          className="flex h-10 items-center justify-center gap-2 rounded-2xl border text-xs font-black"
+          className="flex h-9 items-center justify-center gap-2 rounded-2xl border text-xs font-black"
           style={{ borderColor: showAll ? "rgba(49,151,84,0.28)" : T.border, backgroundColor: showAll ? "#F3FBF6" : T.card, color: showAll ? T.success : T.navy }}
         >
-          {showAll ? <EyeOff size={15} /> : <Eye size={15} />}
-          {showAll ? "Hide answers" : "See all answers"}
+          {showAll ? <EyeOff size={14} /> : <Eye size={14} />}
+          {showAll ? "Hide answers" : "See answers"}
         </button>
 
         <button
           type="button"
           onClick={resetScores}
-          className="flex h-10 items-center justify-center gap-2 rounded-2xl border text-xs font-black"
+          className="flex h-9 items-center justify-center gap-2 rounded-2xl border text-xs font-black"
           style={{ borderColor: T.border, backgroundColor: T.card, color: T.navy }}
         >
-          <RotateCcw size={15} /> Reset score
+          <RotateCcw size={14} /> Reset score
         </button>
       </div>
 
       {filterOpen && (
-        <div className="mt-3 space-y-3 border-t pt-3" style={{ borderColor: T.borderSoft }}>
-          <div>
-            <p className="mb-2 text-[11px] font-black uppercase tracking-[0.16em]" style={{ color: T.textSubtle }}>
-              Score filter
-            </p>
-            <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-              {[
-                ["all", "All"],
-                ["known", "I knew it"],
-                ["review", "Need review"],
-                ["unscored", "Not scored"],
-              ].map(([value, label]) => (
-                <FilterChip key={value} active={statusFilter === value} onClick={() => setStatusFilter(value)}>
-                  {label}
-                </FilterChip>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <p className="mb-2 text-[11px] font-black uppercase tracking-[0.16em]" style={{ color: T.textSubtle }}>
-              Category
-            </p>
-            <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-              <FilterChip active={categoryFilter === "all"} onClick={() => setCategoryFilter("all")}>All</FilterChip>
-              {categories.map((category) => (
-                <FilterChip key={category} active={categoryFilter === category} onClick={() => setCategoryFilter(category)}>
-                  {category}
-                </FilterChip>
-              ))}
-            </div>
+        <div className="mt-2 rounded-2xl border p-2" style={{ borderColor: T.borderSoft, backgroundColor: T.surface }}>
+          <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+            {filters.map(([value, label]) => (
+              <FilterChip key={value} active={statusFilter === value} onClick={() => { setStatusFilter(value); setFilterOpen(false); }}>
+                {label}
+              </FilterChip>
+            ))}
           </div>
         </div>
       )}
@@ -370,11 +360,6 @@ export default function BoardPrepStudyPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
-  const [categoryFilter, setCategoryFilter] = useState("all");
-
-  const categories = useMemo(() => {
-    return [...new Set(questions.map((q) => q.category).filter(Boolean))].sort();
-  }, [questions]);
 
   const filteredQuestions = useMemo(() => {
     const search = searchQuery.trim().toLowerCase();
@@ -384,7 +369,6 @@ export default function BoardPrepStudyPage() {
       if (statusFilter === "known" && score !== "known") return false;
       if (statusFilter === "review" && score !== "review") return false;
       if (statusFilter === "unscored" && score) return false;
-      if (categoryFilter !== "all" && question.category !== categoryFilter) return false;
 
       if (!search) return true;
       const haystack = [
@@ -397,7 +381,7 @@ export default function BoardPrepStudyPage() {
 
       return haystack.includes(search);
     });
-  }, [questions, scores, searchQuery, statusFilter, categoryFilter]);
+  }, [questions, scores, searchQuery, statusFilter]);
 
   const summary = useMemo(() => getScoreSummary(scores, questions.length), [scores, questions.length]);
 
@@ -440,8 +424,9 @@ export default function BoardPrepStudyPage() {
     <AppShell hideNav>
       <ToolPage title="Study all questions" eyebrow="Board Prep" icon={BookOpen}>
         <div className="space-y-4">
-          <div className="sticky top-0 z-20 -mx-1 space-y-3 rounded-b-[1.75rem] px-1 pb-3 pt-1" style={{ backgroundColor: T.bg }}>
-            <ScoreHero summary={summary} filteredCount={filteredQuestions.length} totalCount={questions.length} />
+          <ScoreHero summary={summary} filteredCount={filteredQuestions.length} totalCount={questions.length} />
+
+          <div className="sticky top-0 z-20 -mx-1 rounded-b-[1.5rem] px-1 pb-2 pt-1" style={{ backgroundColor: T.bg }}>
             <StudyControls
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
@@ -449,9 +434,6 @@ export default function BoardPrepStudyPage() {
               setFilterOpen={setFilterOpen}
               statusFilter={statusFilter}
               setStatusFilter={setStatusFilter}
-              categoryFilter={categoryFilter}
-              setCategoryFilter={setCategoryFilter}
-              categories={categories}
               showAll={showAll}
               setShowAll={setShowAll}
               resetScores={() => setScores({})}
@@ -477,7 +459,7 @@ export default function BoardPrepStudyPage() {
 
           {!loading && !error && questions.length > 0 && filteredQuestions.length === 0 && (
             <Card className="p-6 text-center text-sm" style={{ color: T.textMuted }}>
-              No questions match your search or filters.
+              No questions match your search or filter.
             </Card>
           )}
 
