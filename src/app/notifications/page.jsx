@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bell } from "lucide-react";
 import { T } from "@/lib/theme";
@@ -86,7 +86,7 @@ export default function NotificationsPage() {
     markNotificationsRead,
   } = useApp();
 
-  const unreadSnapshotRef = useRef(new Set());
+  const [unreadSnapshotIds, setUnreadSnapshotIds] = useState(() => new Set());
   const didMarkReadRef = useRef(false);
   const didLoadRef = useRef(false);
 
@@ -94,7 +94,7 @@ export default function NotificationsPage() {
     if (!currentUser?.id) return;
     didLoadRef.current = false;
     didMarkReadRef.current = false;
-    unreadSnapshotRef.current = new Set();
+    setUnreadSnapshotIds(new Set());
   }, [currentUser?.id]);
 
   useEffect(() => {
@@ -114,12 +114,15 @@ export default function NotificationsPage() {
   useEffect(() => {
     if (authLoading || notificationsLoading || !currentUser || didMarkReadRef.current) return;
     if (notifications.length === 0) return;
-    unreadSnapshotRef.current = new Set(notifications.filter((item) => item.read === false).map((item) => item.id));
+    setUnreadSnapshotIds(new Set(notifications.filter((item) => item.read === false).map((item) => item.id)));
     didMarkReadRef.current = true;
     markNotificationsRead();
   }, [authLoading, currentUser, markNotificationsRead, notifications, notificationsLoading]);
 
-  const groupedNotifications = useMemo(() => groupNotificationsByActivity(notifications, unreadSnapshotRef.current), [notifications]);
+  const groupedNotifications = useMemo(
+    () => groupNotificationsByActivity(notifications, unreadSnapshotIds),
+    [notifications, unreadSnapshotIds]
+  );
   const unreadGroupCount = groupedNotifications.filter((group) => group.notifications.some((item) => item.read === false)).length;
 
   if (authLoading || notificationsLoading) return <NotificationsLoadingState />;
