@@ -1,6 +1,7 @@
 import "./globals.css";
 import "./feed-polish.css";
 import "./production-polish.css";
+import "./compose-scroll-fix.css";
 import Providers from "./providers";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://soldierhub.com";
@@ -29,7 +30,7 @@ const siteSchema = {
   potentialAction: {
     "@type": "SearchAction",
     target: `${SITE_URL}/?q={search_term_string}`,
-    "query-input": "required name={search_term_string}",
+    "query-input": "required name=search_term_string",
   },
   audience: {
     "@type": "Audience",

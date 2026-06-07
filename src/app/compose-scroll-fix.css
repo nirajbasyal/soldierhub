@@ -1,0 +1,15 @@
+/* Mobile compose-only safety fixes. Keep this small and CSS-only. */
+@media (max-width: 640px) {
+  .compose-shell .soldierhub-normal-editor .ProseMirror {
+    overflow-y: hidden !important;
+    touch-action: manipulation !important;
+  }
+
+  .soldierhub-mobile-text-shell {
+    scroll-padding-bottom: 180px !important;
+  }
+
+  .soldierhub-writing-editor .ProseMirror {
+    padding-bottom: calc(env(safe-area-inset-bottom) + 180px) !important;
+  }
+}
