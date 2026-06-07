@@ -6,11 +6,13 @@ import {
   BookOpen,
   CheckCircle,
   Edit3,
+  FileJson,
   Inbox,
   RotateCcw,
   Save,
   Search,
   Trash2,
+  Upload,
   X,
 } from "lucide-react";
 import { T } from "@/lib/theme";
@@ -18,9 +20,11 @@ import { createClient } from "@/lib/supabase/client";
 
 const EMPTY_FORM = {
   id: null,
+  question_type: "multiple_choice",
   category: "Regulation ID",
   source_publication: "",
   question: "",
+  answer: "",
   option_a: "",
   option_b: "",
   option_c: "",
@@ -33,6 +37,28 @@ const EMPTY_FORM = {
 
 const REQUEST_FILTERS = ["pending", "all", "approved", "rejected", "reviewed"];
 const OPTION_KEYS = ["a", "b", "c", "d"];
+const FLASHCARD_MARKER = "__FLASHCARD__";
+const BATCH_EXAMPLE = `[
+  {
+    "type": "flashcard",
+    "category": "Leadership",
+    "source_publication": "ADP 6-22",
+    "question": "What are the Army leader attributes?",
+    "answer": "Character, presence, and intellect."
+  },
+  {
+    "type": "multiple_choice",
+    "category": "Regulation ID",
+    "source_publication": "AR 670-1",
+    "question": "What does AR 670-1 cover?",
+    "option_a": "Military justice",
+    "option_b": "Wear and appearance",
+    "option_c": "Awards",
+    "option_d": "Promotions",
+    "correct_option": "b",
+    "explanation": "AR 670-1 covers wear and appearance of Army uniforms and insignia."
+  }
+]`;
 
 async function getAccessToken() {
   const supabase = createClient();
@@ -55,6 +81,10 @@ async function apiJson(path, { method = "GET", body } = {}) {
   const json = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(json.error || "Request failed.");
   return json;
+}
+
+function isFlashcardQuestion(q) {
+  return q?.question_type === "flashcard" || (q?.option_b === FLASHCARD_MARKER && q?.option_c === FLASHCARD_MARKER && q?.option_d === FLASHCARD_MARKER);
 }
 
 function Stat({ label, value }) {
@@ -90,12 +120,7 @@ function inputClass() {
 function formatDate(value) {
   if (!value) return "";
   try {
-    return new Intl.DateTimeFormat("en", {
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    }).format(new Date(value));
+    return new Intl.DateTimeFormat("en", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(value));
   } catch {
     return "";
   }
@@ -108,9 +133,17 @@ function RequestTypePill({ type }) {
   return <span className="rounded-full px-2.5 py-1 text-[11px] font-black" style={{ backgroundColor: bg, color }}>{label}</span>;
 }
 
+function TypePill({ type }) {
+  const isFlashcard = type === "flashcard";
+  return (
+    <span className="rounded-full px-2.5 py-1 text-xs font-black" style={{ backgroundColor: isFlashcard ? T.goldBg : T.blueSoft, color: isFlashcard ? T.gold : T.blue }}>
+      {isFlashcard ? "Flashcard" : "Multiple choice"}
+    </span>
+  );
+}
+
 function DeleteConfirmModal({ target, deleting, onCancel, onConfirm }) {
   if (!target) return null;
-
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-[#0B1C2C]/45 px-4 backdrop-blur-sm">
       <div className="w-full max-w-md rounded-[2rem] border p-5 shadow-2xl" style={{ backgroundColor: T.card, borderColor: T.border }}>
@@ -120,36 +153,16 @@ function DeleteConfirmModal({ target, deleting, onCancel, onConfirm }) {
           </div>
           <div className="min-w-0">
             <h3 className="text-xl font-serif font-black" style={{ color: T.navy }}>Delete Board Prep question?</h3>
-            <p className="mt-1 text-sm leading-6" style={{ color: T.textMuted }}>
-              This removes the full question from the admin list and daily quiz pool.
-            </p>
+            <p className="mt-1 text-sm leading-6" style={{ color: T.textMuted }}>This removes the full question from the admin list and daily quiz pool.</p>
           </div>
         </div>
-
         <div className="mt-4 rounded-2xl border p-3" style={{ borderColor: T.borderSoft, backgroundColor: T.surface }}>
           <p className="line-clamp-3 text-sm font-bold leading-6" style={{ color: T.text }}>{target.question}</p>
           <p className="mt-1 text-xs font-semibold" style={{ color: T.textMuted }}>{target.category} · {target.source_publication || "No publication"}</p>
         </div>
-
         <div className="mt-5 grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={deleting}
-            className="h-11 rounded-2xl border text-sm font-black disabled:opacity-50"
-            style={{ borderColor: T.border, backgroundColor: T.card, color: T.navy }}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={deleting}
-            className="h-11 rounded-2xl text-sm font-black text-white disabled:opacity-50"
-            style={{ backgroundColor: T.brandRed }}
-          >
-            {deleting ? "Deleting..." : "Delete question"}
-          </button>
+          <button type="button" onClick={onCancel} disabled={deleting} className="h-11 rounded-2xl border text-sm font-black disabled:opacity-50" style={{ borderColor: T.border, backgroundColor: T.card, color: T.navy }}>Cancel</button>
+          <button type="button" onClick={onConfirm} disabled={deleting} className="h-11 rounded-2xl text-sm font-black text-white disabled:opacity-50" style={{ backgroundColor: T.brandRed }}>{deleting ? "Deleting..." : "Delete question"}</button>
         </div>
       </div>
     </div>
@@ -162,8 +175,10 @@ export default function BoardPrepManager({ onPendingRequestCountChange } = {}) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [query, setQuery] = useState("");
   const [requestStatus, setRequestStatus] = useState("pending");
+  const [batchJson, setBatchJson] = useState(BATCH_EXAMPLE);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [batchUploading, setBatchUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [message, setMessage] = useState(null);
@@ -173,6 +188,7 @@ export default function BoardPrepManager({ onPendingRequestCountChange } = {}) {
 
   const activeCount = useMemo(() => questions.filter((q) => q.active).length, [questions]);
   const pendingCount = useMemo(() => requests.filter((r) => r.status === "pending").length, [requests]);
+  const flashcardCount = useMemo(() => questions.filter(isFlashcardQuestion).length, [questions]);
 
   useEffect(() => {
     if (typeof onPendingRequestCountChange === "function" && (requestStatus === "pending" || requestStatus === "all")) {
@@ -210,16 +226,27 @@ export default function BoardPrepManager({ onPendingRequestCountChange } = {}) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
+  function changeQuestionType(questionType) {
+    setForm((prev) => ({
+      ...prev,
+      question_type: questionType,
+      answer: questionType === "flashcard" ? (prev.answer || prev.option_a || "") : prev.answer,
+    }));
+  }
+
   function editQuestion(q) {
+    const flashcard = isFlashcardQuestion(q);
     setForm({
       id: q.id,
+      question_type: flashcard ? "flashcard" : "multiple_choice",
       category: q.category || "General",
       source_publication: q.source_publication || "",
       question: q.question || "",
+      answer: flashcard ? q.option_a || q.answer || "" : "",
       option_a: q.option_a || "",
-      option_b: q.option_b || "",
-      option_c: q.option_c || "",
-      option_d: q.option_d || "",
+      option_b: flashcard ? "" : q.option_b || "",
+      option_c: flashcard ? "" : q.option_c || "",
+      option_d: flashcard ? "" : q.option_d || "",
       correct_option: q.correct_option || "a",
       explanation: q.explanation || "",
       difficulty: q.difficulty || "basic",
@@ -229,20 +256,21 @@ export default function BoardPrepManager({ onPendingRequestCountChange } = {}) {
     focusEditor();
   }
 
-  function startAddQuestion() {
-    setForm(EMPTY_FORM);
-    setMessage("Editor ready for a new question.");
+  function startAddQuestion(type = "multiple_choice") {
+    setForm({ ...EMPTY_FORM, question_type: type });
+    setMessage(type === "flashcard" ? "Editor ready for a new flashcard." : "Editor ready for a new multiple-choice question.");
     focusEditor();
   }
 
   function prefillFromRequest(request) {
     const linked = questions.find((q) => q.id === request.question_id);
-
     if (request.request_type === "add") {
       setForm({
         ...EMPTY_FORM,
+        question_type: request.suggested_answer ? "flashcard" : "multiple_choice",
         category: request.category || EMPTY_FORM.category,
         question: request.suggested_question || request.message || "",
+        answer: request.suggested_answer || "",
         explanation: request.suggested_answer || "",
       });
       setMessage("Request copied into the add-question form. Review it before saving.");
@@ -257,12 +285,29 @@ export default function BoardPrepManager({ onPendingRequestCountChange } = {}) {
     }
   }
 
+  function buildSaveBody() {
+    if (form.question_type === "flashcard") {
+      return {
+        id: form.id,
+        question_type: "flashcard",
+        category: form.category,
+        source_publication: form.source_publication,
+        question: form.question,
+        answer: form.answer,
+        explanation: form.explanation,
+        difficulty: form.difficulty,
+        active: form.active,
+      };
+    }
+    return form;
+  }
+
   async function saveQuestion() {
     setSaving(true);
     setMessage(null);
     try {
       const method = form.id ? "PATCH" : "POST";
-      await apiJson("/api/admin/board-prep/questions", { method, body: form });
+      await apiJson("/api/admin/board-prep/questions", { method, body: buildSaveBody() });
       setForm(EMPTY_FORM);
       setMessage(form.id ? "Question updated." : "Question added.");
       await load();
@@ -270,6 +315,23 @@ export default function BoardPrepManager({ onPendingRequestCountChange } = {}) {
       setMessage(err.message || "Could not save question.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function uploadBatch() {
+    setBatchUploading(true);
+    setMessage(null);
+    try {
+      const parsed = JSON.parse(batchJson);
+      const items = Array.isArray(parsed) ? parsed : parsed.items || parsed.questions;
+      if (!Array.isArray(items) || items.length === 0) throw new Error("JSON must be an array or an object with an items/questions array.");
+      await apiJson("/api/admin/board-prep/questions", { method: "POST", body: { items } });
+      setMessage(`${items.length} Board Prep questions uploaded.`);
+      await load();
+    } catch (err) {
+      setMessage(err.message || "Could not upload batch JSON.");
+    } finally {
+      setBatchUploading(false);
     }
   }
 
@@ -300,14 +362,11 @@ export default function BoardPrepManager({ onPendingRequestCountChange } = {}) {
     }
   }
 
+  const isFlashcard = form.question_type === "flashcard";
+
   return (
     <div className="space-y-5">
-      <DeleteConfirmModal
-        target={deleteTarget}
-        deleting={deleting}
-        onCancel={() => setDeleteTarget(null)}
-        onConfirm={confirmDeleteQuestion}
-      />
+      <DeleteConfirmModal target={deleteTarget} deleting={deleting} onCancel={() => setDeleteTarget(null)} onConfirm={confirmDeleteQuestion} />
 
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="flex items-start gap-3">
@@ -316,37 +375,24 @@ export default function BoardPrepManager({ onPendingRequestCountChange } = {}) {
           </div>
           <div>
             <h2 className="text-2xl font-serif font-bold" style={{ color: T.navy }}>Board Prep admin</h2>
-            <p className="mt-1 text-sm leading-6" style={{ color: T.textMuted }}>
-              Add, edit, delete, and review requested promotion board questions.
-            </p>
+            <p className="mt-1 text-sm leading-6" style={{ color: T.textMuted }}>Add multiple-choice questions, flashcards, JSON batches, and review user requests.</p>
           </div>
         </div>
-
-        <button
-          type="button"
-          onClick={startAddQuestion}
-          className="h-11 rounded-2xl px-4 text-sm font-black text-white shadow-sm"
-          style={{ backgroundColor: T.brandRed }}
-        >
-          Add question
-        </button>
+        <div className="grid grid-cols-2 gap-2 md:flex">
+          <button type="button" onClick={() => startAddQuestion("flashcard")} className="h-11 rounded-2xl px-4 text-sm font-black" style={{ backgroundColor: T.goldBg, color: T.gold }}>Add flashcard</button>
+          <button type="button" onClick={() => startAddQuestion("multiple_choice")} className="h-11 rounded-2xl px-4 text-sm font-black text-white shadow-sm" style={{ backgroundColor: T.brandRed }}>Add MCQ</button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Stat label="Questions" value={questions.length} />
         <Stat label="Active" value={activeCount} />
+        <Stat label="Flashcards" value={flashcardCount} />
         <Stat label="Requests" value={pendingCount} />
       </div>
 
       {message && (
-        <div
-          className="rounded-2xl border px-4 py-3 text-sm font-semibold"
-          style={{
-            borderColor: T.border,
-            backgroundColor: T.surface,
-            color: message.includes("Could") || message.includes("failed") || message.includes("No linked") ? T.danger : T.success,
-          }}
-        >
+        <div className="rounded-2xl border px-4 py-3 text-sm font-semibold" style={{ borderColor: T.border, backgroundColor: T.surface, color: message.includes("Could") || message.includes("failed") || message.includes("No linked") || message.includes("JSON") ? T.danger : T.success }}>
           {message}
         </div>
       )}
@@ -354,42 +400,21 @@ export default function BoardPrepManager({ onPendingRequestCountChange } = {}) {
       <SectionCard>
         <div className="mb-4 flex items-start justify-between gap-3">
           <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl" style={{ backgroundColor: T.redBg, color: T.brandRed }}>
-              <Inbox size={18} />
-            </div>
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl" style={{ backgroundColor: T.redBg, color: T.brandRed }}><Inbox size={18} /></div>
             <div>
               <h3 className="font-black" style={{ color: T.navy }}>User request inbox</h3>
-              <p className="mt-1 text-xs leading-5" style={{ color: T.textMuted }}>
-                User add, update, and remove requests appear here for admin review.
-              </p>
+              <p className="mt-1 text-xs leading-5" style={{ color: T.textMuted }}>User add, update, and remove requests appear here for admin review.</p>
             </div>
           </div>
-          <button onClick={load} className="inline-flex h-9 items-center gap-2 rounded-xl border px-3 text-sm font-bold" style={{ backgroundColor: T.card, color: T.navy, borderColor: T.border }}>
-            <RotateCcw size={14} />Refresh
-          </button>
+          <button onClick={load} className="inline-flex h-9 items-center gap-2 rounded-xl border px-3 text-sm font-bold" style={{ backgroundColor: T.card, color: T.navy, borderColor: T.border }}><RotateCcw size={14} />Refresh</button>
         </div>
-
         <div className="mb-3 flex gap-2 overflow-x-auto pb-2 no-scrollbar">
           {REQUEST_FILTERS.map((status) => (
-            <button
-              key={status}
-              onClick={() => setRequestStatus(status)}
-              className="h-9 rounded-full px-3 text-xs font-black capitalize whitespace-nowrap"
-              style={{ backgroundColor: requestStatus === status ? T.navy : T.card, color: requestStatus === status ? "#fff" : T.textMuted, border: `1px solid ${T.border}` }}
-            >
-              {status}
-            </button>
+            <button key={status} onClick={() => setRequestStatus(status)} className="h-9 rounded-full px-3 text-xs font-black capitalize whitespace-nowrap" style={{ backgroundColor: requestStatus === status ? T.navy : T.card, color: requestStatus === status ? "#fff" : T.textMuted, border: `1px solid ${T.border}` }}>{status}</button>
           ))}
-          <button onClick={load} className="h-9 rounded-full px-3 text-xs font-black whitespace-nowrap" style={{ backgroundColor: T.blueSoft, color: T.blue }}>
-            Apply
-          </button>
+          <button onClick={load} className="h-9 rounded-full px-3 text-xs font-black whitespace-nowrap" style={{ backgroundColor: T.blueSoft, color: T.blue }}>Apply</button>
         </div>
-
-        {loading ? (
-          <p className="text-sm" style={{ color: T.textMuted }}>Loading requests...</p>
-        ) : requests.length === 0 ? (
-          <p className="text-sm" style={{ color: T.textMuted }}>No {requestStatus === "all" ? "" : requestStatus} requests.</p>
-        ) : requests.map((r) => {
+        {loading ? <p className="text-sm" style={{ color: T.textMuted }}>Loading requests...</p> : requests.length === 0 ? <p className="text-sm" style={{ color: T.textMuted }}>No {requestStatus === "all" ? "" : requestStatus} requests.</p> : requests.map((r) => {
           const linked = questions.find((q) => q.id === r.question_id);
           return (
             <div key={r.id} className="mb-3 rounded-2xl border p-3 last:mb-0" style={{ borderColor: T.border, backgroundColor: T.card }}>
@@ -417,46 +442,62 @@ export default function BoardPrepManager({ onPendingRequestCountChange } = {}) {
         })}
       </SectionCard>
 
-      <SectionCard ref={editorRef} className="scroll-mt-6">
+      <SectionCard className="scroll-mt-6">
         <div ref={editorRef} className="mb-4 flex items-center justify-between gap-3">
           <div>
-            <p className="text-[11px] font-black uppercase tracking-[0.16em]" style={{ color: T.brandRed }}>
-              Question editor
-            </p>
-            <h3 className="mt-1 text-xl font-serif font-black" style={{ color: T.navy }}>{form.id ? "Edit question" : "Add question"}</h3>
+            <p className="text-[11px] font-black uppercase tracking-[0.16em]" style={{ color: T.brandRed }}>Question editor</p>
+            <h3 className="mt-1 text-xl font-serif font-black" style={{ color: T.navy }}>{form.id ? "Edit question" : isFlashcard ? "Add flashcard" : "Add multiple-choice question"}</h3>
           </div>
-          {form.id && (
-            <button onClick={() => setForm(EMPTY_FORM)} className="inline-flex items-center gap-1 rounded-full border px-3 py-2 text-xs font-black" style={{ borderColor: T.border, color: T.brandRed, backgroundColor: T.card }}>
-              <X size={14} />Cancel edit
-            </button>
-          )}
+          {form.id && <button onClick={() => setForm(EMPTY_FORM)} className="inline-flex items-center gap-1 rounded-full border px-3 py-2 text-xs font-black" style={{ borderColor: T.border, color: T.brandRed, backgroundColor: T.card }}><X size={14} />Cancel edit</button>}
+        </div>
+
+        <div className="mb-4 grid grid-cols-2 gap-2">
+          <button type="button" onClick={() => changeQuestionType("multiple_choice")} className="h-11 rounded-2xl border text-sm font-black" style={{ borderColor: !isFlashcard ? T.brandRed : T.border, backgroundColor: !isFlashcard ? T.redBg : T.card, color: !isFlashcard ? T.brandRed : T.textMuted }}>Multiple choice</button>
+          <button type="button" onClick={() => changeQuestionType("flashcard")} className="h-11 rounded-2xl border text-sm font-black" style={{ borderColor: isFlashcard ? T.brandRed : T.border, backgroundColor: isFlashcard ? T.redBg : T.card, color: isFlashcard ? T.brandRed : T.textMuted }}>Flashcard</button>
         </div>
 
         <div className="grid gap-3 md:grid-cols-2">
           <Field label="Category"><input className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={form.category} onChange={(e) => updateForm("category", e.target.value)} /></Field>
           <Field label="Publication"><input className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={form.source_publication} onChange={(e) => updateForm("source_publication", e.target.value)} placeholder="AR 670-1" /></Field>
         </div>
-        <div className="mt-3">
-          <Field label="Question"><textarea ref={questionInputRef} rows={3} className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={form.question} onChange={(e) => updateForm("question", e.target.value)} /></Field>
+        <div className="mt-3"><Field label="Question"><textarea ref={questionInputRef} rows={3} className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={form.question} onChange={(e) => updateForm("question", e.target.value)} /></Field></div>
+
+        {isFlashcard ? (
+          <div className="mt-3"><Field label="Answer"><textarea rows={4} className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={form.answer} onChange={(e) => updateForm("answer", e.target.value)} placeholder="Type the correct answer shown after tapping the flashcard." /></Field></div>
+        ) : (
+          <>
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              {OPTION_KEYS.map((key) => <Field key={key} label={`Option ${key.toUpperCase()}`}><input className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={form[`option_${key}`]} onChange={(e) => updateForm(`option_${key}`, e.target.value)} /></Field>)}
+            </div>
+            <div className="mt-3 grid gap-3 md:grid-cols-3">
+              <Field label="Correct"><select className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={form.correct_option} onChange={(e) => updateForm("correct_option", e.target.value)}><option value="a">A</option><option value="b">B</option><option value="c">C</option><option value="d">D</option></select></Field>
+              <Field label="Difficulty"><select className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={form.difficulty} onChange={(e) => updateForm("difficulty", e.target.value)}><option value="basic">Basic</option><option value="medium">Medium</option><option value="hard">Hard</option></select></Field>
+              <Field label="Status"><select className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={form.active ? "true" : "false"} onChange={(e) => updateForm("active", e.target.value === "true")}><option value="true">Active</option><option value="false">Inactive</option></select></Field>
+            </div>
+          </>
+        )}
+
+        {isFlashcard && (
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
+            <Field label="Difficulty"><select className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={form.difficulty} onChange={(e) => updateForm("difficulty", e.target.value)}><option value="basic">Basic</option><option value="medium">Medium</option><option value="hard">Hard</option></select></Field>
+            <Field label="Status"><select className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={form.active ? "true" : "false"} onChange={(e) => updateForm("active", e.target.value === "true")}><option value="true">Active</option><option value="false">Inactive</option></select></Field>
+          </div>
+        )}
+
+        <div className="mt-3"><Field label="Explanation / Note"><textarea rows={3} className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={form.explanation} onChange={(e) => updateForm("explanation", e.target.value)} placeholder={isFlashcard ? "Optional extra note shown below the answer." : "Optional explanation after answer submission."} /></Field></div>
+        <button onClick={saveQuestion} disabled={saving} className="mt-4 inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl font-black text-white disabled:opacity-50" style={{ backgroundColor: T.brandRed }}><Save size={16} />{saving ? "Saving..." : form.id ? "Save changes" : isFlashcard ? "Add flashcard" : "Add multiple-choice question"}</button>
+      </SectionCard>
+
+      <SectionCard>
+        <div className="mb-4 flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl" style={{ backgroundColor: T.goldBg, color: T.gold }}><FileJson size={19} /></div>
+          <div>
+            <h3 className="font-black" style={{ color: T.navy }}>Mass upload JSON</h3>
+            <p className="mt-1 text-xs leading-5" style={{ color: T.textMuted }}>Upload flashcards and multiple-choice questions together. Use <strong>type</strong>: flashcard or multiple_choice.</p>
+          </div>
         </div>
-        <div className="mt-3 grid gap-3 md:grid-cols-2">
-          {OPTION_KEYS.map((key) => (
-            <Field key={key} label={`Option ${key.toUpperCase()}`}>
-              <input className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={form[`option_${key}`]} onChange={(e) => updateForm(`option_${key}`, e.target.value)} />
-            </Field>
-          ))}
-        </div>
-        <div className="mt-3 grid gap-3 md:grid-cols-3">
-          <Field label="Correct"><select className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={form.correct_option} onChange={(e) => updateForm("correct_option", e.target.value)}><option value="a">A</option><option value="b">B</option><option value="c">C</option><option value="d">D</option></select></Field>
-          <Field label="Difficulty"><select className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={form.difficulty} onChange={(e) => updateForm("difficulty", e.target.value)}><option value="basic">Basic</option><option value="medium">Medium</option><option value="hard">Hard</option></select></Field>
-          <Field label="Status"><select className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={form.active ? "true" : "false"} onChange={(e) => updateForm("active", e.target.value === "true")}><option value="true">Active</option><option value="false">Inactive</option></select></Field>
-        </div>
-        <div className="mt-3">
-          <Field label="Explanation"><textarea rows={3} className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={form.explanation} onChange={(e) => updateForm("explanation", e.target.value)} /></Field>
-        </div>
-        <button onClick={saveQuestion} disabled={saving} className="mt-4 inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl font-black text-white disabled:opacity-50" style={{ backgroundColor: T.brandRed }}>
-          <Save size={16} />{saving ? "Saving..." : form.id ? "Save changes" : "Add question"}
-        </button>
+        <Field label="JSON batch"><textarea rows={12} className={inputClass()} style={{ borderColor: T.border, color: T.text, fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" }} value={batchJson} onChange={(e) => setBatchJson(e.target.value)} /></Field>
+        <button onClick={uploadBatch} disabled={batchUploading} className="mt-4 inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl font-black text-white disabled:opacity-50" style={{ backgroundColor: T.navy }}><Upload size={16} />{batchUploading ? "Uploading..." : "Upload JSON batch"}</button>
       </SectionCard>
 
       <SectionCard>
@@ -466,34 +507,34 @@ export default function BoardPrepManager({ onPendingRequestCountChange } = {}) {
             <p className="mt-1 text-xs leading-5" style={{ color: T.textMuted }}>Edit or delete Board Prep questions from the active admin database.</p>
           </div>
           <div className="flex gap-2 md:min-w-[340px]">
-            <div className="relative flex-1">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: T.textSubtle }}><Search size={15} /></span>
-              <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search questions..." className="h-11 w-full rounded-2xl border pl-9 pr-3 text-sm font-semibold outline-none" style={{ borderColor: T.border, color: T.text }} />
-            </div>
+            <div className="relative flex-1"><span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: T.textSubtle }}><Search size={15} /></span><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search questions..." className="h-11 w-full rounded-2xl border pl-9 pr-3 text-sm font-semibold outline-none" style={{ borderColor: T.border, color: T.text }} /></div>
             <button onClick={load} className="inline-flex h-11 items-center gap-2 rounded-2xl px-4 font-black text-white" style={{ backgroundColor: T.navy }}><RotateCcw size={15} />Load</button>
           </div>
         </div>
-
         <div className="space-y-3">
-          {loading ? <p className="text-sm" style={{ color: T.textMuted }}>Loading questions...</p> : questions.map((q) => (
-            <div key={q.id} className="rounded-2xl border p-4" style={{ borderColor: T.border, backgroundColor: T.card }}>
-              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                <div className="min-w-0">
-                  <div className="mb-2 flex flex-wrap items-center gap-2">
-                    <span className="rounded-full px-2.5 py-1 text-xs font-black" style={{ backgroundColor: T.blueSoft, color: T.blue }}>{q.category}</span>
-                    <span className="text-xs font-semibold" style={{ color: T.textSubtle }}>{q.source_publication}</span>
-                    {q.active ? <span className="text-xs font-black" style={{ color: T.success }}>Active</span> : <span className="text-xs font-black" style={{ color: T.danger }}>Inactive</span>}
+          {loading ? <p className="text-sm" style={{ color: T.textMuted }}>Loading questions...</p> : questions.map((q) => {
+            const flashcard = isFlashcardQuestion(q);
+            return (
+              <div key={q.id} className="rounded-2xl border p-4" style={{ borderColor: T.border, backgroundColor: T.card }}>
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div className="min-w-0">
+                    <div className="mb-2 flex flex-wrap items-center gap-2">
+                      <TypePill type={flashcard ? "flashcard" : "multiple_choice"} />
+                      <span className="rounded-full px-2.5 py-1 text-xs font-black" style={{ backgroundColor: T.blueSoft, color: T.blue }}>{q.category}</span>
+                      <span className="text-xs font-semibold" style={{ color: T.textSubtle }}>{q.source_publication}</span>
+                      {q.active ? <span className="text-xs font-black" style={{ color: T.success }}>Active</span> : <span className="text-xs font-black" style={{ color: T.danger }}>Inactive</span>}
+                    </div>
+                    <p className="font-bold leading-6" style={{ color: T.text }}>{q.question}</p>
+                    <p className="mt-1 text-xs font-semibold" style={{ color: T.textMuted }}>{flashcard ? `Answer: ${q.option_a || q.answer || "Not set"}` : `Correct: ${String(q.correct_option || "").toUpperCase()} · ${q.difficulty}`}</p>
                   </div>
-                  <p className="font-bold leading-6" style={{ color: T.text }}>{q.question}</p>
-                  <p className="mt-1 text-xs font-semibold" style={{ color: T.textMuted }}>Correct: {String(q.correct_option || "").toUpperCase()} · {q.difficulty}</p>
-                </div>
-                <div className="flex shrink-0 gap-2">
-                  <button onClick={() => editQuestion(q)} className="inline-flex h-10 items-center gap-1.5 rounded-xl px-3 text-xs font-black" style={{ backgroundColor: T.blueSoft, color: T.blue }}><Edit3 size={15} />Edit</button>
-                  <button onClick={() => setDeleteTarget(q)} className="inline-flex h-10 items-center gap-1.5 rounded-xl px-3 text-xs font-black" style={{ backgroundColor: T.redBg, color: T.brandRed }}><Trash2 size={15} />Delete</button>
+                  <div className="flex shrink-0 gap-2">
+                    <button onClick={() => editQuestion(q)} className="inline-flex h-10 items-center gap-1.5 rounded-xl px-3 text-xs font-black" style={{ backgroundColor: T.blueSoft, color: T.blue }}><Edit3 size={15} />Edit</button>
+                    <button onClick={() => setDeleteTarget(q)} className="inline-flex h-10 items-center gap-1.5 rounded-xl px-3 text-xs font-black" style={{ backgroundColor: T.redBg, color: T.brandRed }}><Trash2 size={15} />Delete</button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </SectionCard>
     </div>
