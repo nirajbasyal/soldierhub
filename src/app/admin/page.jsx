@@ -40,6 +40,7 @@ export default function AdminPage() {
   const [tab, setTab] = useState("pending");
   const [searchQuery, setSearchQuery] = useState("");
   const [resourceCount, setResourceCount] = useState(0);
+  const [boardRequestCount, setBoardRequestCount] = useState(0);
 
   useEffect(() => {
     if (authLoading) return;
@@ -74,7 +75,7 @@ export default function AdminPage() {
     { k: "members", label: "Members", icon: Users, count: memberCount },
     { k: "blocked", label: "Blocked", icon: UserX, count: blockedCount },
     { k: "resources", label: "Resources", icon: Link2, count: resourceCount },
-    { k: "board", label: "Board Prep", icon: BookOpen, count: "" },
+    { k: "board", label: "Board Prep", icon: BookOpen, count: boardRequestCount },
   ];
 
   return (
@@ -127,7 +128,7 @@ export default function AdminPage() {
                 >
                   <Icon size={14} />
                   {t.label}
-                  {t.count !== "" && (
+                  {t.count !== "" && Number(t.count) > 0 && (
                     <span
                       className="text-[11px] px-1.5 rounded-full tabular-nums"
                       style={{
@@ -182,7 +183,7 @@ export default function AdminPage() {
             {tab === "members" && <MembersList searchQuery={searchQuery} />}
             {tab === "blocked" && <BlockedUsersList searchQuery={searchQuery} />}
             {tab === "resources" && <ResourceManager onCountChange={setResourceCount} />}
-            {tab === "board" && <BoardPrepManager />}
+            {tab === "board" && <BoardPrepManager onPendingRequestCountChange={setBoardRequestCount} />}
           </div>
 
           <Footer />
