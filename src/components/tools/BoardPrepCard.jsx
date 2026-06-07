@@ -102,8 +102,8 @@ function getBadge(status) {
   if (status.loading) {
     return {
       icon: Target,
-      title: "Checking Board Prep",
-      detail: "Loading streak status",
+      title: "Checking status",
+      detail: "Loading streak",
       edge: "#8EA1B6",
       bg: "linear-gradient(135deg, #F7FAFD 0%, #FFFFFF 100%)",
       pillBg: "rgba(142, 161, 182, 0.14)",
@@ -114,7 +114,7 @@ function getBadge(status) {
   if (status.completed) {
     return {
       icon: CheckCircle2,
-      title: "Board Prep complete",
+      title: "Daily quiz complete",
       detail: status.score === null ? "Streak saved" : `${status.score}/5 score · ${status.streak || 1}-day streak`,
       edge: T.success,
       bg: "linear-gradient(135deg, #EAF8EF 0%, #FFFFFF 100%)",
@@ -152,17 +152,32 @@ export function BoardPrepStatusBadge({ variant = "default", className = "", onCl
   const Icon = badge.icon;
   const isMenu = variant === "menu";
 
-  const content = (
-    <div className="flex min-w-0 flex-1 items-center gap-2.5">
+  const content = isMenu ? (
+    <div className="flex min-w-0 flex-1 items-center gap-2">
       <span
-        className={`${isMenu ? "h-8 w-8" : "h-9 w-9"} flex shrink-0 items-center justify-center rounded-full`}
+        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full"
         style={{ backgroundColor: badge.pillBg, color: badge.edge }}
       >
-        <Icon size={isMenu ? 16 : 18} strokeWidth={2.5} />
+        <Icon size={13} strokeWidth={2.6} />
+      </span>
+      <span className="min-w-0 flex-1 truncate text-[11px] font-black" style={{ color: badge.edge }}>
+        {status.completed ? `${status.score ?? 0}/5 done` : badge.title}
+      </span>
+      <span className="shrink-0 text-[10px] font-black uppercase tracking-[0.12em]" style={{ color: badge.edge }}>
+        {badge.label}
+      </span>
+    </div>
+  ) : (
+    <div className="flex min-w-0 flex-1 items-center gap-2.5">
+      <span
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+        style={{ backgroundColor: badge.pillBg, color: badge.edge }}
+      >
+        <Icon size={18} strokeWidth={2.5} />
       </span>
 
       <span className="min-w-0 flex-1">
-        <span className={`${isMenu ? "text-xs" : "text-sm"} block truncate font-black`} style={{ color: T.navy }}>
+        <span className="block truncate text-sm font-black" style={{ color: T.navy }}>
           {badge.title}
         </span>
         <span className="block truncate text-[11px] font-semibold" style={{ color: T.textMuted }}>
@@ -179,8 +194,8 @@ export function BoardPrepStatusBadge({ variant = "default", className = "", onCl
     </div>
   );
 
-  const sharedClass = `${isMenu ? "min-h-[48px] rounded-2xl px-3 py-2" : "rounded-[1.35rem] px-3.5 py-3"} flex w-full items-center border text-left shadow-sm transition active:scale-[0.99] ${className}`;
-  const sharedStyle = { background: badge.bg, borderColor: `${badge.edge}42` };
+  const sharedClass = `${isMenu ? "min-h-[30px] rounded-xl px-2.5 py-1.5 shadow-none" : "rounded-[1.35rem] px-3.5 py-3 shadow-sm"} flex w-full items-center border text-left transition active:scale-[0.99] ${className}`;
+  const sharedStyle = { background: badge.bg, borderColor: `${badge.edge}36` };
 
   if (onClick) {
     return (
