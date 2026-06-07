@@ -5,6 +5,8 @@ import { checkRateLimit, rateLimitResponse } from "@/lib/server/rateLimit";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const FLASHCARD_MARKER = "__FLASHCARD__";
+
 function getBearerToken(request) {
   const header = request.headers.get("authorization") || "";
   if (!header.toLowerCase().startsWith("bearer ")) return null;
@@ -21,9 +23,22 @@ function createAuthedClient(accessToken) {
   });
 }
 
+function isFlashcardRow(row) {
+  return row?.option_b === FLASHCARD_MARKER && row?.option_c === FLASHCARD_MARKER && row?.option_d === FLASHCARD_MARKER;
+}
+
 function getCorrectAnswer(row) {
   if (!row?.correct_option) return "";
   return row[`option_${row.correct_option}`] || "";
+}
+
+function shapeQuestion(row) {
+  const isFlashcard = isFlashcardRow(row);
+  return {
+    ...row,
+    question_type: isFlashcard ? "flashcard" : "multiple_choice",
+    correct_answer: getCorrectAnswer(row),
+  };
 }
 
 export async function GET(request) {
@@ -71,10 +86,7 @@ export async function GET(request) {
     return NextResponse.json({ error: "Could not load study questions." }, { status: 500 });
   }
 
-  let rows = (data || []).map((row) => ({
-    ...row,
-    correct_answer: getCorrectAnswer(row),
-  }));
+  let rows = (data || []).map(shapeQuestion);
 
   if (shouldShuffle) rows = [...rows].sort(() => Math.random() - 0.5);
   if (Number.isFinite(limitParam) && limitParam > 0) rows = rows.slice(0, Math.min(limitParam, 50));
