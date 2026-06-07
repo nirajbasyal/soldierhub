@@ -116,13 +116,15 @@ export default function AdminPage() {
     { k: "board", label: "Board Prep", icon: BookOpen, count: boardRequestCount },
   ];
 
+  const activeTab = tabs.find((item) => item.k === tab) || tabs[0];
+
   return (
     <AppShell hideNav>
       <main
         className="min-h-screen pb-24 md:pb-12"
         style={{ backgroundColor: T.bg }}
       >
-        <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 md:py-10">
+        <div className="mx-auto max-w-6xl px-4 py-6 md:px-6 md:py-10">
           <CircularBackButton href="/" label="Back to feed" />
 
           <div className="mt-6 mb-5">
@@ -146,82 +148,101 @@ export default function AdminPage() {
 
           <AdminVerifyByEmail />
 
-          <div
-            className="flex p-1 rounded-xl mb-5 overflow-x-auto no-scrollbar"
-            style={{ backgroundColor: T.surface, border: `1px solid ${T.border}` }}
-          >
-            {tabs.map((t) => {
-              const Icon = t.icon;
-              const active = tab === t.k;
-              return (
-                <button
-                  key={t.k}
-                  onClick={() => setTab(t.k)}
-                  className="flex-1 h-10 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-all whitespace-nowrap px-3"
-                  style={{
-                    backgroundColor: active ? T.card : "transparent",
-                    color: active ? T.navy : T.textMuted,
-                    boxShadow: active ? "0 1px 2px rgba(11,28,44,0.06)" : "none",
-                  }}
-                >
-                  <Icon size={14} />
-                  {t.label}
-                  {t.count !== "" && Number(t.count) > 0 && (
-                    <span
-                      className="text-[11px] px-1.5 rounded-full tabular-nums"
-                      style={{
-                        backgroundColor: active ? T.goldBg : T.borderSoft,
-                        color: active ? T.gold : T.textSubtle,
-                      }}
-                    >
-                      {t.count}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
+          <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_230px] md:items-start md:gap-5">
+            <aside className="order-1 md:order-2">
+              <div
+                className="rounded-3xl border p-3 shadow-sm md:sticky md:top-6"
+                style={{ backgroundColor: T.card, borderColor: T.border }}
+              >
+                <div className="mb-2 px-2">
+                  <p className="text-[11px] font-black uppercase tracking-[0.18em]" style={{ color: T.textSubtle }}>
+                    Admin menu
+                  </p>
+                  <p className="mt-1 text-xs font-semibold" style={{ color: T.textMuted }}>
+                    {activeTab.label}
+                  </p>
+                </div>
 
-          {showUserSearch && (
-            <div
-              className="mb-4 rounded-2xl border p-3"
-              style={{ backgroundColor: T.card, borderColor: T.border }}
-            >
-              <div className="relative">
-                <span
-                  className="absolute left-3 top-1/2 -translate-y-1/2"
-                  style={{ color: T.textSubtle }}
-                >
-                  <Search size={16} />
-                </span>
-
-                <input
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={
-                    tab === "pending"
-                      ? "Search pending users by name, email, phone..."
-                      : tab === "members"
-                      ? "Search verified members by name, email, phone..."
-                      : "Search blocked users by name, email, phone..."
-                  }
-                  className="w-full h-11 rounded-xl border text-sm outline-none pl-10 pr-3"
-                  style={{ backgroundColor: T.surface, borderColor: T.border, color: T.text }}
-                />
+                <div className="flex flex-col gap-1.5">
+                  {tabs.map((t) => {
+                    const Icon = t.icon;
+                    const active = tab === t.k;
+                    return (
+                      <button
+                        key={t.k}
+                        onClick={() => setTab(t.k)}
+                        className="flex min-h-[44px] w-full items-center justify-between gap-3 rounded-2xl px-3 text-left text-sm font-semibold transition-all active:scale-[0.99]"
+                        style={{
+                          backgroundColor: active ? T.navy : "transparent",
+                          color: active ? "#fff" : T.textMuted,
+                          boxShadow: active ? "0 8px 22px rgba(11,28,44,0.12)" : "none",
+                        }}
+                      >
+                        <span className="flex min-w-0 items-center gap-2.5">
+                          <Icon size={16} />
+                          <span className="truncate">{t.label}</span>
+                        </span>
+                        {t.count !== "" && Number(t.count) > 0 && (
+                          <span
+                            className="flex h-6 min-w-6 items-center justify-center rounded-full px-1.5 text-[11px] font-black tabular-nums"
+                            style={{
+                              backgroundColor: active ? "rgba(255,255,255,0.16)" : T.borderSoft,
+                              color: active ? "#fff" : T.textSubtle,
+                            }}
+                          >
+                            {t.count}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          )}
+            </aside>
 
-          <div
-            className="rounded-2xl border p-4 md:p-5"
-            style={{ backgroundColor: T.card, borderColor: T.border }}
-          >
-            {tab === "pending" && <PendingUsersList searchQuery={searchQuery} />}
-            {tab === "reported" && <ReportedPostsList />}
-            {tab === "members" && <MembersList searchQuery={searchQuery} />}
-            {tab === "blocked" && <BlockedUsersList searchQuery={searchQuery} />}
-            {tab === "resources" && <ResourceManager onCountChange={setResourceCount} />}
-            {tab === "board" && <BoardPrepManager onPendingRequestCountChange={setBoardRequestCount} />}
+            <section className="order-2 min-w-0 md:order-1">
+              {showUserSearch && (
+                <div
+                  className="mb-4 rounded-2xl border p-3"
+                  style={{ backgroundColor: T.card, borderColor: T.border }}
+                >
+                  <div className="relative">
+                    <span
+                      className="absolute left-3 top-1/2 -translate-y-1/2"
+                      style={{ color: T.textSubtle }}
+                    >
+                      <Search size={16} />
+                    </span>
+
+                    <input
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder={
+                        tab === "pending"
+                          ? "Search pending users by name, email, phone..."
+                          : tab === "members"
+                          ? "Search verified members by name, email, phone..."
+                          : "Search blocked users by name, email, phone..."
+                      }
+                      className="w-full h-11 rounded-xl border text-sm outline-none pl-10 pr-3"
+                      style={{ backgroundColor: T.surface, borderColor: T.border, color: T.text }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div
+                className="rounded-2xl border p-4 md:p-5"
+                style={{ backgroundColor: T.card, borderColor: T.border }}
+              >
+                {tab === "pending" && <PendingUsersList searchQuery={searchQuery} />}
+                {tab === "reported" && <ReportedPostsList />}
+                {tab === "members" && <MembersList searchQuery={searchQuery} />}
+                {tab === "blocked" && <BlockedUsersList searchQuery={searchQuery} />}
+                {tab === "resources" && <ResourceManager onCountChange={setResourceCount} />}
+                {tab === "board" && <BoardPrepManager onPendingRequestCountChange={setBoardRequestCount} />}
+              </div>
+            </section>
           </div>
 
           <Footer />
