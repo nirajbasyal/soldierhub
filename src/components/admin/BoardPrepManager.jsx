@@ -102,10 +102,10 @@ export default function BoardPrepManager({ onPendingRequestCountChange } = {}) {
   const pendingCount = useMemo(() => requests.filter((r) => r.status === "pending").length, [requests]);
 
   useEffect(() => {
-    if (typeof onPendingRequestCountChange === "function") {
+    if (typeof onPendingRequestCountChange === "function" && (requestStatus === "pending" || requestStatus === "all")) {
       onPendingRequestCountChange(pendingCount);
     }
-  }, [pendingCount, onPendingRequestCountChange]);
+  }, [pendingCount, requestStatus, onPendingRequestCountChange]);
 
   async function load() {
     setLoading(true);
