@@ -1,212 +1,81 @@
 -- ============================================================================
--- Board Prep admin schema, requests, streak sessions, and starter question bank
+-- Board Prep RLS consolidation + current 2026 question bank expansion
 -- ============================================================================
--- Branch-only migration for Board Prep.
--- Creates:
---   - board_questions: admin-managed MCQ board questions
---   - board_sessions: five-question daily user sessions with score/streak support
---   - board_question_requests: user requests to add/update/remove questions
+-- Run after:
+--   20260606223000_board_prep_admin_requests_and_seed.sql
 --
--- The app intentionally shows 5 shuffled active questions per user per day.
+-- Purpose:
+--   1. Consolidate board_questions RLS so the active read policy and admin write
+--      policies are clear and do not create duplicate SELECT policy paths.
+--   2. Add current board-prep questions based on the SoldierHub board study guide,
+--      MOU topic list, creeds/orders, AFT/H2F, and regulation-identification drills.
 -- ============================================================================
 
 begin;
 
-create extension if not exists pgcrypto with schema extensions;
+drop policy if exists board_questions_read_active on public.board_questions;
+drop policy if exists board_questions_admin_all on public.board_questions;
+drop policy if exists board_questions_select_active_or_admin on public.board_questions;
+drop policy if exists board_questions_admin_insert on public.board_questions;
+drop policy if exists board_questions_admin_update on public.board_questions;
+drop policy if exists board_questions_admin_delete on public.board_questions;
 
-create table if not exists public.board_questions (
-  id uuid primary key default gen_random_uuid(),
-  slug text not null unique,
-  category text not null default 'General',
-  source_publication text,
-  question text not null,
-  option_a text not null,
-  option_b text not null,
-  option_c text not null,
-  option_d text not null,
-  correct_option text not null check (correct_option in ('a', 'b', 'c', 'd')),
-  explanation text,
-  difficulty text not null default 'basic' check (difficulty in ('basic', 'medium', 'hard')),
-  active boolean not null default true,
-  created_by uuid references auth.users(id) on delete set null,
-  updated_by uuid references auth.users(id) on delete set null,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  deleted_at timestamptz
-);
-
-create table if not exists public.board_sessions (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
-  session_date date not null default current_date,
-  question_ids uuid[] not null default '{}',
-  answers jsonb not null default '{}'::jsonb,
-  completed boolean not null default false,
-  score integer check (score is null or (score >= 0 and score <= 5)),
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  unique (user_id, session_date)
-);
-
-create table if not exists public.board_question_requests (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
-  request_type text not null check (request_type in ('add', 'update', 'remove')),
-  question_id uuid references public.board_questions(id) on delete set null,
-  category text,
-  message text not null,
-  suggested_question text,
-  suggested_answer text,
-  status text not null default 'pending' check (status in ('pending', 'reviewed', 'approved', 'rejected')),
-  admin_notes text,
-  reviewed_by uuid references auth.users(id) on delete set null,
-  reviewed_at timestamptz,
-  created_at timestamptz not null default now()
-);
-
-create index if not exists idx_board_questions_active_category
-  on public.board_questions (active, category, updated_at desc)
-  where deleted_at is null;
-
-create index if not exists idx_board_sessions_user_date
-  on public.board_sessions (user_id, session_date desc);
-
-create index if not exists idx_board_question_requests_status_created
-  on public.board_question_requests (status, created_at desc);
-
-create or replace function public.tg_set_board_prep_updated_at()
-returns trigger
-language plpgsql
-set search_path = public
-as $$
-begin
-  new.updated_at = now();
-  return new;
-end;
-$$;
-
-drop trigger if exists board_questions_set_updated_at on public.board_questions;
-create trigger board_questions_set_updated_at
-before update on public.board_questions
-for each row execute function public.tg_set_board_prep_updated_at();
-
-drop trigger if exists board_sessions_set_updated_at on public.board_sessions;
-create trigger board_sessions_set_updated_at
-before update on public.board_sessions
-for each row execute function public.tg_set_board_prep_updated_at();
-
-alter table public.board_questions enable row level security;
-alter table public.board_sessions enable row level security;
-alter table public.board_question_requests enable row level security;
-
--- board_questions
-drop policy if exists board_questions_read_active_or_admin on public.board_questions;
-create policy board_questions_read_active_or_admin
+create policy board_questions_select_active_or_admin
 on public.board_questions
 for select
 to authenticated
 using (
   (active = true and deleted_at is null)
   or exists (
-    select 1 from public.profiles p
+    select 1
+    from public.profiles p
     where p.id = (select auth.uid())
       and p.role = 'admin'
   )
 );
 
-drop policy if exists board_questions_admin_insert on public.board_questions;
 create policy board_questions_admin_insert
 on public.board_questions
 for insert
 to authenticated
 with check (
   exists (
-    select 1 from public.profiles p
+    select 1
+    from public.profiles p
     where p.id = (select auth.uid())
       and p.role = 'admin'
   )
 );
 
-drop policy if exists board_questions_admin_update on public.board_questions;
 create policy board_questions_admin_update
 on public.board_questions
 for update
 to authenticated
 using (
   exists (
-    select 1 from public.profiles p
+    select 1
+    from public.profiles p
     where p.id = (select auth.uid())
       and p.role = 'admin'
   )
 )
 with check (
   exists (
-    select 1 from public.profiles p
+    select 1
+    from public.profiles p
     where p.id = (select auth.uid())
       and p.role = 'admin'
   )
 );
 
--- board_sessions
-drop policy if exists board_sessions_own_select on public.board_sessions;
-create policy board_sessions_own_select
-on public.board_sessions
-for select
-to authenticated
-using (user_id = (select auth.uid()));
-
-drop policy if exists board_sessions_own_insert on public.board_sessions;
-create policy board_sessions_own_insert
-on public.board_sessions
-for insert
-to authenticated
-with check (user_id = (select auth.uid()));
-
-drop policy if exists board_sessions_own_update on public.board_sessions;
-create policy board_sessions_own_update
-on public.board_sessions
-for update
-to authenticated
-using (user_id = (select auth.uid()))
-with check (user_id = (select auth.uid()));
-
--- board_question_requests
-drop policy if exists board_question_requests_own_or_admin_select on public.board_question_requests;
-create policy board_question_requests_own_or_admin_select
-on public.board_question_requests
-for select
-to authenticated
-using (
-  user_id = (select auth.uid())
-  or exists (
-    select 1 from public.profiles p
-    where p.id = (select auth.uid())
-      and p.role = 'admin'
-  )
-);
-
-drop policy if exists board_question_requests_own_insert on public.board_question_requests;
-create policy board_question_requests_own_insert
-on public.board_question_requests
-for insert
-to authenticated
-with check (user_id = (select auth.uid()));
-
-drop policy if exists board_question_requests_admin_update on public.board_question_requests;
-create policy board_question_requests_admin_update
-on public.board_question_requests
-for update
+create policy board_questions_admin_delete
+on public.board_questions
+for delete
 to authenticated
 using (
   exists (
-    select 1 from public.profiles p
-    where p.id = (select auth.uid())
-      and p.role = 'admin'
-  )
-)
-with check (
-  exists (
-    select 1 from public.profiles p
+    select 1
+    from public.profiles p
     where p.id = (select auth.uid())
       and p.role = 'admin'
   )
@@ -229,6 +98,7 @@ values
 ('reg-counseling-atp-6-22-1','Regulation ID','ATP 6-22.1','What publication covers the Army counseling process?','ATP 6-22.1','ADP 3-0','AR 600-8-19','TC 4-02.3','a','ATP 6-22.1 covers the Counseling Process.','basic',true),
 ('reg-nco-guide-tc-7-22-7','Regulation ID','TC 7-22.7','What publication covers NCO duties, responsibilities, and NCO history?','TC 7-22.7','AR 670-1','FM 3-11','AR 600-9','a','TC 7-22.7 is the NCO Guide.','basic',true),
 ('reg-h2f-fm-7-22','Regulation ID','FM 7-22','What manual covers Holistic Health and Fitness?','FM 7-22','AR 600-20','ADP 1','AR 600-8-22','a','FM 7-22 covers Holistic Health and Fitness.','basic',true),
+('reg-drill-tc-3-21-5','Regulation ID','TC 3-21.5','What publication covers drill and ceremonies?','TC 3-21.5','TC 3-25.26','AR 623-3','FM 6-27','a','TC 3-21.5 covers drill and ceremonies.','basic',true),
 ('reg-land-nav-tc-3-25-26','Regulation ID','TC 3-25.26','What publication covers map reading and land navigation?','TC 3-25.26','TC 3-21.5','AR 350-1','FM 6-27','a','TC 3-25.26 covers map reading and land navigation.','basic',true),
 ('reg-cbrn-fm-3-11','Regulation ID','FM 3-11','What manual covers CBRN operations?','FM 3-11','FM 7-22','AR 27-10','TC 4-02.1','a','FM 3-11 covers Chemical, Biological, Radiological, and Nuclear Operations.','basic',true),
 ('reg-law-land-warfare-fm-6-27','Regulation ID','FM 6-27','What manual covers the law of land warfare?','FM 27-10','FM 6-27','AR 600-25','ADP 7-0','b','FM 6-27 replaced the older FM 27-10.','basic',true),
