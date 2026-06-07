@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { BookOpen, CheckCircle, Edit3, Plus, RotateCcw, Save, Send, Trash2, X } from "lucide-react";
+import { BookOpen, CheckCircle, Edit3, RotateCcw, Save, Trash2, X } from "lucide-react";
 import { T } from "@/lib/theme";
 import { createClient } from "@/lib/supabase/client";
 
