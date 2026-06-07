@@ -1,20 +1,51 @@
-export const ADMIN_EMAIL = "niraj.basyal2054@gmail.com";
+const DEFAULT_DEMO_ADMIN_EMAIL = "admin@soldierhub.local";
 
-// Add or rename categories here — they will appear everywhere automatically.
+// Demo/local mode only. Live admin authorization is enforced server-side with
+// SOLDIERHUB_ADMIN_EMAILS plus the profile role in protected API routes.
+export const DEMO_ADMIN_EMAIL = (
+  process.env.NEXT_PUBLIC_SOLDIERHUB_DEMO_ADMIN_EMAIL || DEFAULT_DEMO_ADMIN_EMAIL
+).trim().toLowerCase();
+
+// Backwards-compatible alias for older local-mode code paths. Prefer
+// DEMO_ADMIN_EMAIL for new code so this is not confused with live admin auth.
+export const ADMIN_EMAIL = DEMO_ADMIN_EMAIL;
+
+// Add or rename categories here and mirror the same keys in the posts_category_allowed_check migration.
+export const POST_CATEGORY_KEYS = [
+  "General Q&A",
+  "PCS / Moving",
+  "On-Base Guide",
+  "Housing",
+  "Barracks",
+  "Local Recommendations",
+  "Things to Do",
+  "Finance",
+  "Education",
+  "Family / Spouse",
+  "Resources",
+  "Events & Community",
+];
+
 export const CATEGORIES = [
-  { key: "All",                   label: "All",                   tone: "navy" },
-  { key: "General Q&A",           label: "General Q&A",           tone: "indigo" },
-  { key: "PCS / Moving",          label: "PCS / Moving",          tone: "blue" },
-  { key: "On-Base Guide",         label: "On-Base Guide",         tone: "navy" },
-  { key: "Housing",               label: "Housing",               tone: "amber" },
-  { key: "Barracks",              label: "Barracks",              tone: "violet" },
-  { key: "Local Recommendations", label: "Local Recommendations", tone: "rose" },
-  { key: "Things to Do",          label: "Things to Do",          tone: "teal" },
-  { key: "Finance",               label: "Finance",               tone: "amber" },
-  { key: "Education",             label: "Education",             tone: "blue" },
-  { key: "Family / Spouse",       label: "Family / Spouse",       tone: "violet" },
-  { key: "Resources",             label: "Resources",             tone: "rose" },
-  { key: "Events & Community",    label: "Events & Community",    tone: "blue" },
+  { key: "All", label: "All", tone: "navy" },
+  ...POST_CATEGORY_KEYS.map((key) => ({
+    key,
+    label: key,
+    tone: {
+      "General Q&A": "indigo",
+      "PCS / Moving": "blue",
+      "On-Base Guide": "navy",
+      Housing: "amber",
+      Barracks: "violet",
+      "Local Recommendations": "rose",
+      "Things to Do": "teal",
+      Finance: "amber",
+      Education: "blue",
+      "Family / Spouse": "violet",
+      Resources: "rose",
+      "Events & Community": "blue",
+    }[key],
+  })),
 ];
 
 export const GATES = [

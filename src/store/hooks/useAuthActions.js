@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { ADMIN_EMAIL } from "@/lib/constants";
+import { DEMO_ADMIN_EMAIL } from "@/lib/constants";
 import { colorFromString, uid } from "@/lib/helpers";
 import * as Auth from "@/lib/supabase/auth";
 import * as ProfilesDB from "@/lib/db/profiles";
@@ -114,15 +114,14 @@ export function useAuthActions({
         phone: cleanPhone || null,
         bio: cleanBio,
         password,
-        role: cleanEmail === ADMIN_EMAIL ? "admin" : "user",
-        status: cleanEmail === ADMIN_EMAIL ? "verified" : "pending",
-        verification_status: cleanEmail === ADMIN_EMAIL ? "verified" : "pending",
+        role: cleanEmail === DEMO_ADMIN_EMAIL ? "admin" : "user",
+        verification_status: cleanEmail === DEMO_ADMIN_EMAIL ? "verified" : "pending",
         avatar_color: colorFromString(cleanName),
         base: "Fort Bliss",
         created_at: new Date().toISOString(),
       };
 
-      if (cleanEmail === ADMIN_EMAIL) {
+      if (cleanEmail === DEMO_ADMIN_EMAIL) {
         setUsers((u) => [...u, newUser]);
         setCurrentUser(newUser);
         setAuthModal(null);

@@ -43,7 +43,7 @@ function saveUnreadCache(userId, count) {
 }
 
 function getProfileStatus(user) {
-  return user?.status || user?.verification_status || "pending";
+  return user?.verification_status || "pending";
 }
 
 export default function useUnreadNotificationCount(currentUser) {

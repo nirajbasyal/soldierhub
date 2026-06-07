@@ -18,7 +18,6 @@ function userMatchesSearch(user, searchQuery) {
     user.email,
     user.personal_email,
     user.phone,
-    user.status,
     user.verification_status,
     user.bio,
   ]

@@ -10,7 +10,7 @@ An unofficial Fort Bliss community platform for housing tips, gate updates, PCS 
 
 ### 1. Local mode (no setup, runs in 2 minutes)
 
-No database, no auth provider, no env vars. The app starts empty — sign up the admin email through the UI to get going.
+No database, no auth provider, no env vars. The app starts empty — sign up with the local demo admin email through the UI to get going.
 
 ```bash
 npm install
@@ -19,8 +19,8 @@ npm run dev
 
 Open http://localhost:3000.
 
-- Click **Create account** with email `niraj.basyal2054@gmail.com` (or whatever `ADMIN_EMAIL` is set to in `src/lib/constants.js`).
-- This email is auto-promoted to admin and verified.
+- Click **Create account** with email `admin@soldierhub.local` (or set `NEXT_PUBLIC_SOLDIERHUB_DEMO_ADMIN_EMAIL` for a different local-only demo admin).
+- This demo email is auto-promoted to admin and verified only when the app is running without Supabase.
 - Other emails go to a pending queue — sign in as admin and verify them from the admin dashboard.
 
 This local mode is for previewing the UI. It's not persistent: refresh the page and your data is gone. Move to live mode for anything real.
@@ -69,7 +69,7 @@ src/
 │
 ├── lib/
 │   ├── theme.js                  Color tokens (change to reskin everything)
-│   ├── constants.js              Categories, gates, BAH rates, ADMIN_EMAIL
+│   ├── constants.js              Categories, gates, BAH rates, demo admin email
 │   ├── helpers.js                uid, timeAgo, getInitials, shareOrCopy, …
 │   ├── moderation.js             Local content filter rules
 │   ├── seed.js                   Demo-mode users + posts
@@ -103,7 +103,7 @@ supabase/
 | Categories                              | `src/lib/constants.js` → `CATEGORIES`           |
 | Fort Bliss gate hours                   | `src/lib/constants.js` → `GATES`                |
 | BAH reference rates                     | `src/lib/constants.js` → `BAH_RATES`            |
-| Admin email                             | `src/lib/constants.js` → `ADMIN_EMAIL`          |
+| Local demo admin email                  | `NEXT_PUBLIC_SOLDIERHUB_DEMO_ADMIN_EMAIL` or `src/lib/constants.js` fallback |
 | Resources page links                    | `src/lib/resources.js`                          |
 | Seed data shape (kept empty for fresh launch) | `src/lib/seed.js`                       |
 | Banned phrases                          | `src/lib/moderation.js`                         |
@@ -125,6 +125,11 @@ supabase/
 3. Wrap in `<AppShell>` (or `<AppShell hideNav>` for full-screen pages).
 4. Add a `<MenuItem>` entry in `MobileMenu.jsx` if it should appear in the drawer.
 
+## Admin configuration
+
+- **Local/demo mode:** the browser-only demo store auto-promotes `NEXT_PUBLIC_SOLDIERHUB_DEMO_ADMIN_EMAIL`, falling back to `admin@soldierhub.local`, so you can preview admin flows without a database.
+- **Live/Supabase mode:** do not rely on the public demo admin email. Promote admins in Supabase and set private `SOLDIERHUB_ADMIN_EMAILS` on the server so protected admin API routes can verify both role and expected email.
+
 ## Why two modes?
 
 The app runs in **local mode** without any backend — useful for previewing UI changes and showing designs to others before launch. Without Supabase env vars, it starts empty and forgets data on refresh.
@@ -145,7 +150,7 @@ A few things that matter for a community app — already wired into this codebas
 - **Authors cannot bypass moderation via direct API calls.** The RLS UPDATE policy on `posts` prevents authors from changing `status`, `author_id`, `anonymous`, or the cached author fields — even if they bypass the UI and call Supabase directly.
 - **`security_invoker = true`** on `posts_with_meta` and `my_posts_with_meta` — prevents the views from bypassing RLS on the underlying tables.
 - **No service role key in the browser.** The service role bypasses RLS entirely; it should only be used in server routes when truly needed. By default, this app does not use it at all — it's not in `.env.example` for that reason.
-- **Admin "remove member" is a soft disable** (sets `status='rejected'`). The auth account stays, but they can't post. Reversible by re-verifying.
+- **Admin "remove member" is a soft disable** (sets `verification_status='rejected'`). The auth account stays, but they can't post. Reversible by re-verifying.
 - **Moderation runs via `/api/moderate`** for every post, comment, and edit. Local rules run first; if `MODERATION_API_KEY` is set, OpenAI moderation runs after. Falls back to local-only if the network is flaky.
 
 ## Tech

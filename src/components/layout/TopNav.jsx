@@ -52,7 +52,7 @@ export default function TopNav() {
   const displayEmail = safeUser?.email || safeUser?.personal_email || "";
   const firstName = displayName.split(" ")[0] || "Profile";
   const userAvatarUrl = getUserAvatarUrl(safeUser);
-  const userStatus = safeUser?.status || safeUser?.verification_status || "pending";
+  const userStatus = safeUser?.verification_status || "pending";
   const notificationCount = Math.max(0, Number(unreadCount) || 0);
   const showNotificationBadge =
     Boolean(safeUser) && userStatus === "verified" && notificationCount > 0;

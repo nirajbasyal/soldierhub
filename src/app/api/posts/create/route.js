@@ -2,16 +2,18 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { checkRateLimit, rateLimitResponse } from "@/lib/server/rateLimit";
 import { checkContentSafety } from "@/lib/server/contentSafety";
+import { POST_CATEGORY_KEYS } from "@/lib/constants";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const POST_SELECT =
-  "id, author_id, author_name_cached, author_color_cached, category, body, anonymous, status, edited, created_at, updated_at, image_url, image_key, image_width, image_height, image_size, image_thumbnail_url, image_thumbnail_key, image_thumbnail_width, image_thumbnail_height, image_thumbnail_size";
+  "id, author_id, author_name_cached, author_color_cached, category, body, anonymous, status, edited, created_at, updated_at, image_url, image_key, image_width, image_height, image_size, image_thumbnail_url, image_thumbnail_key, image_thumbnail_width, image_thumbnail_height, image_thumbnail_size, moderation_status, moderation_reason, moderation_checked_at";
 
 const MAX_BODY_LENGTH = 5000;
 const MAX_POST_IMAGE_BYTES = 1250 * 1024;
 const MAX_POST_THUMBNAIL_BYTES = 400 * 1024;
+const VALID_POST_CATEGORIES = new Set(POST_CATEGORY_KEYS);
 
 function getBearerToken(request) {
   const header = request.headers.get("authorization") || "";
@@ -44,6 +46,84 @@ function safeNumber(value) {
   const numberValue = Number(value);
   if (!Number.isFinite(numberValue) || numberValue <= 0) return null;
   return Math.round(numberValue);
+}
+
+function cleanPublicUrl(value = "") {
+  return String(value || "").replace(/\/+$/, "");
+}
+
+function hasSafeObjectKeyShape(key) {
+  return Boolean(key && !key.startsWith("/") && !key.includes("..") && /^[a-zA-Z0-9/_=-]+\.(jpe?g|png|webp)$/i.test(key));
+}
+
+function isUserPostImageKey(key, userId) {
+  if (!hasSafeObjectKeyShape(key) || !userId) return false;
+  if (key.startsWith(`posts/${userId}/`)) return true;
+
+  const parts = key.split("/");
+  return (
+    parts.length >= 5 &&
+    parts[0] === "posts" &&
+    /^\d{4}$/.test(parts[1]) &&
+    /^\d{2}$/.test(parts[2]) &&
+    parts[3] === userId
+  );
+}
+
+function isExpectedPublicUrl(url, key) {
+  const publicBaseUrl = cleanPublicUrl(process.env.R2_PUBLIC_URL);
+  if (!publicBaseUrl || !url || !key) return false;
+
+  try {
+    const parsedUrl = new URL(url);
+    const parsedBase = new URL(publicBaseUrl);
+    const normalizedPath = decodeURIComponent(parsedUrl.pathname.replace(/^\/+/, ""));
+
+    return parsedUrl.origin === parsedBase.origin && normalizedPath === key;
+  } catch {
+    return false;
+  }
+}
+
+function validateImageOwnership(image, userId) {
+  if (!image) return null;
+
+  if (!isUserPostImageKey(image.image_key, userId) || !isExpectedPublicUrl(image.image_url, image.image_key)) {
+    return "Post image must be uploaded through SoldierHub before posting.";
+  }
+
+  if (image.image_thumbnail_key || image.image_thumbnail_url) {
+    if (
+      !isUserPostImageKey(image.image_thumbnail_key, userId) ||
+      !isExpectedPublicUrl(image.image_thumbnail_url, image.image_thumbnail_key)
+    ) {
+      return "Post image thumbnail must be uploaded through SoldierHub before posting.";
+    }
+  }
+
+  return null;
+}
+
+function cleanPostCategory(value) {
+  const category = cleanText(value, "General Q&A") || "General Q&A";
+  return VALID_POST_CATEGORIES.has(category) ? category : null;
+}
+
+function getModerationFields(safety) {
+  const checkedAt = new Date().toISOString();
+  if (safety?.degraded) {
+    return {
+      moderation_status: "degraded",
+      moderation_reason: safety.degradedReason || safety.blockedBy || "moderation_degraded",
+      moderation_checked_at: checkedAt,
+    };
+  }
+
+  return {
+    moderation_status: "approved",
+    moderation_reason: safety?.blockedBy || null,
+    moderation_checked_at: checkedAt,
+  };
 }
 
 function cleanThumbnailMetadata(value = {}) {
@@ -96,9 +176,10 @@ function cleanImageMetadata(value = {}) {
   };
 }
 
-function validatePostInput({ body, image }) {
+function validatePostInput({ body, image, category }) {
   if (!body && !image?.image_url) return "Please write something or add an image before posting.";
   if (body.length > MAX_BODY_LENGTH) return `Post body must be ${MAX_BODY_LENGTH} characters or less.`;
+  if (!category) return "Please choose a valid post category.";
   return null;
 }
 
@@ -180,14 +261,23 @@ export async function POST(request) {
   }
 
   const body = cleanText(bodyJson?.body);
-  const category = cleanText(bodyJson?.category, "General Q&A") || "General Q&A";
+  const category = cleanPostCategory(bodyJson?.category);
   const anonymous = Boolean(bodyJson?.anonymous);
 
-  const validationError = validatePostInput({ body, image });
+  const validationError = validatePostInput({ body, image, category });
 
   if (validationError) {
     return NextResponse.json(
       { error: validationError },
+      { status: 400, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
+    );
+  }
+
+  const imageValidationError = validateImageOwnership(image, user.id);
+
+  if (imageValidationError) {
+    return NextResponse.json(
+      { error: imageValidationError },
       { status: 400, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
     );
   }
@@ -231,6 +321,7 @@ export async function POST(request) {
     anonymous,
     status: "active",
     edited: false,
+    ...getModerationFields(safety),
     ...(image || {}),
   };
 

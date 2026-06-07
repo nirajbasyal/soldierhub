@@ -165,6 +165,7 @@ Before clicking Deploy, expand **Environment Variables** and add these. **All th
 | `NEXT_PUBLIC_SUPABASE_URL`        | (from Supabase → Settings → API)       |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY`   | (from Supabase → Settings → API)       |
 | `NEXT_PUBLIC_SITE_URL`            | `https://soldierhub.com`               |
+| `NWS_USER_AGENT`                   | Weather API contact string, e.g. `SoldierHub/1.0 (https://soldierhub.com)` |
 | `MODERATION_API_KEY`              | (optional — your OpenAI key)           |
 | `UPSTASH_REDIS_REST_URL`          | (from Upstash Redis / Vercel KV)       |
 | `UPSTASH_REDIS_REST_TOKEN`        | (from Upstash Redis / Vercel KV)       |
@@ -173,6 +174,8 @@ Before clicking Deploy, expand **Environment Variables** and add these. **All th
 | `R2_SECRET_ACCESS_KEY`            | (from Cloudflare R2)                   |
 | `R2_BUCKET_NAME`                  | (from Cloudflare R2)                   |
 | `NEXT_PUBLIC_R2_PUBLIC_BASE_URL`  | (public R2/custom-domain image URL)    |
+| `SOLDIERHUB_ADMIN_EMAILS`         | Comma-separated private allow-list for admin API actions |
+| `NEXT_PUBLIC_SOLDIERHUB_DEMO_ADMIN_EMAIL` | Optional local/demo admin email only; do not use for live authorization |
 | `NEXT_PUBLIC_SENTRY_DSN`          | (from Sentry, if enabled)              |
 | `SENTRY_DSN`                      | (from Sentry, if enabled)              |
 
@@ -192,7 +195,7 @@ Before pointing your domain at it, verify these work on the Vercel URL:
 - [ ] Home page loads with hero + feed
 - [ ] Resources page renders with all link sections
 - [ ] BAH calculator works
-- [ ] Sign up with **your real email** (not the admin one yet) — you should get a confirmation email
+- [ ] Sign up with **your real email** — you should get a confirmation email
 - [ ] Click the confirmation link → it should redirect back to your site, signed in
 - [ ] You should see the "pending review" page — that's correct, you're not verified yet
 
@@ -202,11 +205,11 @@ In Supabase **SQL Editor**, run:
 
 ```sql
 update public.profiles
-set role = 'admin', status = 'verified'
-where id = 'YOUR_USER_ID';
+set role = 'admin', verification_status = 'verified'
+where email = 'YOUR_ADMIN_EMAIL@example.com';
 ```
 
-After signing in as admin, refresh — you'll see the **Admin** button in the top nav. Click it to verify the test account you signed up earlier.
+Set `SOLDIERHUB_ADMIN_EMAILS` in Vercel to the same admin email, then sign back in and refresh — you'll see the **Admin** button in the top nav. Click it to verify test accounts.
 
 ---
 
@@ -275,7 +278,7 @@ Check the build log. Most common causes:
 - Syntax error in code you committed → fix and push again.
 
 ### Posts not appearing for new users
-The user's profile has `status='pending'`. Sign in as admin, go to `/admin`, verify them.
+The user's profile has `verification_status='pending'`. Sign in as admin, go to `/admin`, verify them.
 
 ### "permission denied for table posts"
 Stop and review your migrations/RLS setup. Do not blindly re-run stale `supabase/policies.sql` on production after newer hardening migrations.

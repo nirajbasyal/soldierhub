@@ -123,7 +123,7 @@ function normalizeProfile(row = {}, fallbackPost = null, fallbackName = "", fall
       colorFromString(name),
     avatar_url: row?.avatar_url || fallbackPost?.author_avatar_url || fallbackPost?.author_avatar_url_cached || null,
     base: row?.base || "Fort Bliss",
-    status: row?.status || row?.verification_status || "verified",
+    verification_status: row?.verification_status || "verified",
   };
 }
 
@@ -140,7 +140,7 @@ function makeFallbackProfile(profileId, fallbackName = "") {
     avatar_color: colorFromString(safeName),
     avatar_url: null,
     base: "Fort Bliss",
-    status: "verified",
+    verification_status: "verified",
   };
 }
 
@@ -210,7 +210,7 @@ async function resolveProfileIdFromLookup(rawLookup) {
       avatar_color: data.avatar_color || "#314A66",
       avatar_url: data.avatar_url || null,
       base: data.base || "Fort Bliss",
-      status: "verified",
+      verification_status: "verified",
     },
   };
 }
