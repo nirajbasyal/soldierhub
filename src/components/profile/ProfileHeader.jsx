@@ -65,7 +65,7 @@ export default function ProfileHeader() {
   const displayEmail = safeUser.email || safeUser.personal_email || "Verified email";
   const displayBio = safeUser.bio || "";
   const displayColor = safeUser.avatar_color || "#1E4E8C";
-  const userStatus = safeUser.status || safeUser.verification_status || "pending";
+  const userStatus = safeUser.verification_status || "pending";
   const isVerified = userStatus === "verified";
 
   const [editing, setEditing] = useState(false);

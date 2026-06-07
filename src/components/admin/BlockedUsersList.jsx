@@ -15,7 +15,6 @@ function userMatchesSearch(user, searchQuery) {
     user.email,
     user.personal_email,
     user.phone,
-    user.status,
     user.verification_status,
     user.bio,
   ]
@@ -67,7 +66,7 @@ export default function BlockedUsersList({ searchQuery = "" }) {
     <div className="grid gap-3">
       {visibleUsers.map((user) => {
         const email = user.email || user.personal_email || "No email";
-        const status = user.status || user.verification_status;
+        const status = user.verification_status;
 
         return (
           <article
