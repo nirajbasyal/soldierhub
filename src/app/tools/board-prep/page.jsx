@@ -87,11 +87,11 @@ function Pill({ children, tone = "blue" }) {
 
 function StreakBadge({ streak }) {
   return (
-    <div className="rounded-2xl border px-4 py-3 text-center" style={{ borderColor: T.border, backgroundColor: T.goldBg }}>
-      <div className="flex items-center justify-center gap-1 font-serif text-2xl font-bold" style={{ color: T.gold }}>
-        <Flame size={21} />{streak || 0}
+    <div className="rounded-2xl border px-3 py-2 text-center" style={{ borderColor: T.border, backgroundColor: T.goldBg }}>
+      <div className="flex items-center justify-center gap-1 font-serif text-xl font-bold" style={{ color: T.gold }}>
+        <Flame size={18} />{streak || 0}
       </div>
-      <p className="mt-0.5 text-[11px] font-bold uppercase tracking-[0.18em]" style={{ color: T.textMuted }}>Day streak</p>
+      <p className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.16em]" style={{ color: T.textMuted }}>Day streak</p>
     </div>
   );
 }
@@ -215,19 +215,19 @@ function RequestCard({ currentQuestion }) {
 
 function Hero({ streak, answeredCount = 0, practice = false }) {
   return (
-    <Card className="overflow-hidden p-5" style={{ background: `linear-gradient(135deg, ${T.navy}, #163b63)`, borderColor: "rgba(255,255,255,0.12)" }}>
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/70">{practice ? "Practice redo" : "Daily board quiz"}</p>
-          <h1 className="mt-2 font-serif text-3xl font-black leading-tight text-white">{practice ? "Practice again." : "5 questions. One streak."}</h1>
-          <p className="mt-2 max-w-sm text-sm leading-6 text-white/75">
-            {practice ? "Redo questions for memory only. This practice score does not change your daily streak." : "Answer today's shuffled board questions. Keep it simple: score, learn, come back tomorrow."}
+    <Card className="overflow-hidden p-4" style={{ background: `linear-gradient(135deg, ${T.navy}, #163b63)`, borderColor: "rgba(255,255,255,0.12)" }}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/70">{practice ? "Practice redo" : "Daily board quiz"}</p>
+          <h1 className="mt-1.5 font-serif text-2xl font-black leading-tight text-white">{practice ? "Practice again" : "5 questions. One streak."}</h1>
+          <p className="mt-1.5 max-w-sm text-xs leading-5 text-white/75">
+            {practice ? "Redo for memory. Streak unchanged." : "Answer today's shuffled board questions. Score, learn, come back tomorrow."}
           </p>
         </div>
         <StreakBadge streak={streak} />
       </div>
-      <div className="mt-5 rounded-2xl bg-white/10 p-3">
-        <div className="mb-2 flex items-center justify-between text-xs font-bold text-white/80">
+      <div className="mt-4 rounded-2xl bg-white/10 p-2.5">
+        <div className="mb-2 flex items-center justify-between text-[11px] font-bold text-white/80">
           <span>{answeredCount}/{TOTAL} answered</span>
           <span>{practice ? "Memory reps" : "Daily goal"}</span>
         </div>
