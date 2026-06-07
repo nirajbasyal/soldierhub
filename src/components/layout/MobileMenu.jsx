@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Activity,
   BookMarked,
+  BookOpen,
   Calculator,
   Compass,
   Loader2,
@@ -107,6 +108,7 @@ export default function MobileMenu() {
 
     router.prefetch?.("/tools/bah");
     router.prefetch?.("/tools/gates");
+    router.prefetch?.("/tools/board-prep");
   }, [isAdmin, mobileMenu, router]);
 
   if (isNavigating) {
@@ -280,6 +282,13 @@ export default function MobileMenu() {
                 label="Gate Hours"
                 hint="Fort Bliss gate schedule"
                 onClick={() => go("/tools/gates")}
+              />
+
+              <MenuItem
+                icon={BookOpen}
+                label="Board Prep"
+                hint="Daily promotion board questions"
+                onClick={() => go("/tools/board-prep")}
               />
 
               <MenuItem
