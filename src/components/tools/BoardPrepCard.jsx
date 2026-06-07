@@ -98,63 +98,119 @@ function useBoardPrepStatus() {
   return status;
 }
 
+function getBadge(status) {
+  if (status.loading) {
+    return {
+      icon: Target,
+      title: "Checking Board Prep",
+      detail: "Loading streak status",
+      edge: "#8EA1B6",
+      bg: "linear-gradient(135deg, #F7FAFD 0%, #FFFFFF 100%)",
+      pillBg: "rgba(142, 161, 182, 0.14)",
+      label: "...",
+    };
+  }
+
+  if (status.completed) {
+    return {
+      icon: CheckCircle2,
+      title: "Board Prep complete",
+      detail: status.score === null ? "Streak saved" : `${status.score}/5 score · ${status.streak || 1}-day streak`,
+      edge: T.success,
+      bg: "linear-gradient(135deg, #EAF8EF 0%, #FFFFFF 100%)",
+      pillBg: "rgba(49, 151, 84, 0.13)",
+      label: "DONE",
+    };
+  }
+
+  if (status.signedIn && status.streak > 0) {
+    return {
+      icon: Flame,
+      title: `${status.streak}-day streak active`,
+      detail: "Finish today’s 5 questions",
+      edge: T.amber,
+      bg: "linear-gradient(135deg, #FFF8EA 0%, #FFFFFF 100%)",
+      pillBg: "rgba(204, 129, 24, 0.14)",
+      label: "TODAY",
+    };
+  }
+
+  return {
+    icon: Target,
+    title: "Today’s board reps",
+    detail: "5 questions · ~5 minutes",
+    edge: T.brandRed,
+    bg: "linear-gradient(135deg, #FDECF2 0%, #FFFFFF 100%)",
+    pillBg: "rgba(179, 25, 66, 0.11)",
+    label: "START",
+  };
+}
+
+export function BoardPrepStatusBadge({ variant = "default", className = "", onClick }) {
+  const status = useBoardPrepStatus();
+  const badge = useMemo(() => getBadge(status), [status]);
+  const Icon = badge.icon;
+  const isMenu = variant === "menu";
+
+  const content = (
+    <div className="flex min-w-0 flex-1 items-center gap-2.5">
+      <span
+        className={`${isMenu ? "h-8 w-8" : "h-9 w-9"} flex shrink-0 items-center justify-center rounded-full`}
+        style={{ backgroundColor: badge.pillBg, color: badge.edge }}
+      >
+        <Icon size={isMenu ? 16 : 18} strokeWidth={2.5} />
+      </span>
+
+      <span className="min-w-0 flex-1">
+        <span className={`${isMenu ? "text-xs" : "text-sm"} block truncate font-black`} style={{ color: T.navy }}>
+          {badge.title}
+        </span>
+        <span className="block truncate text-[11px] font-semibold" style={{ color: T.textMuted }}>
+          {badge.detail}
+        </span>
+      </span>
+
+      <span
+        className="shrink-0 rounded-full px-2 py-1 text-[10px] font-black tracking-[0.12em]"
+        style={{ backgroundColor: badge.pillBg, color: badge.edge }}
+      >
+        {badge.label}
+      </span>
+    </div>
+  );
+
+  const sharedClass = `${isMenu ? "min-h-[48px] rounded-2xl px-3 py-2" : "rounded-[1.35rem] px-3.5 py-3"} flex w-full items-center border text-left shadow-sm transition active:scale-[0.99] ${className}`;
+  const sharedStyle = { background: badge.bg, borderColor: `${badge.edge}42` };
+
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} className={sharedClass} style={sharedStyle}>
+        {content}
+      </button>
+    );
+  }
+
+  return <div className={sharedClass} style={sharedStyle}>{content}</div>;
+}
+
 /**
  * Sidebar/mobile card promoting the daily Board Prep quiz.
  * The status query is read-only and does not create a daily session.
  */
 export default function BoardPrepCard({ variant = "sidebar", className = "" }) {
   const router = useRouter();
-  const status = useBoardPrepStatus();
   const compact = variant === "mobile";
-
-  const badge = useMemo(() => {
-    if (status.completed) {
-      return {
-        icon: CheckCircle2,
-        title: "Daily quiz complete",
-        detail: status.score === null ? "Streak saved" : `${status.score}/5 score · streak saved`,
-        bg: "linear-gradient(135deg, #EAF8EF 0%, #F7FFFA 100%)",
-        border: "rgba(49, 151, 84, 0.30)",
-        color: T.success,
-        iconBg: "rgba(49, 151, 84, 0.12)",
-      };
-    }
-
-    if (status.signedIn && status.streak > 0) {
-      return {
-        icon: Flame,
-        title: `${status.streak}-day streak active`,
-        detail: "Finish today’s 5 questions",
-        bg: "linear-gradient(135deg, #FFF7E8 0%, #FFFFFF 100%)",
-        border: "rgba(204, 129, 24, 0.30)",
-        color: T.amber,
-        iconBg: "rgba(204, 129, 24, 0.13)",
-      };
-    }
-
-    return {
-      icon: Target,
-      title: "Today’s board reps",
-      detail: "5 questions · about 5 minutes",
-      bg: "linear-gradient(135deg, #FDECF2 0%, #FFFFFF 100%)",
-      border: "rgba(179, 25, 66, 0.24)",
-      color: T.brandRed,
-      iconBg: "rgba(179, 25, 66, 0.10)",
-    };
-  }, [status.completed, status.score, status.signedIn, status.streak]);
-
-  const BadgeIcon = badge.icon;
 
   return (
     <button
       type="button"
       onClick={() => router.push("/tools/board-prep")}
-      className={`w-full rounded-2xl border text-left transition-all hover:-translate-y-0.5 hover:shadow-md ${compact ? "p-3" : "p-4"} ${className}`}
+      className={`w-full rounded-3xl border text-left transition-all hover:-translate-y-0.5 hover:shadow-md ${compact ? "p-3" : "p-4"} ${className}`}
       style={{ backgroundColor: T.card, borderColor: T.border }}
     >
       <div className="flex items-start gap-3">
         <div
-          className={`${compact ? "h-10 w-10" : "h-11 w-11"} flex shrink-0 items-center justify-center rounded-full`}
+          className={`${compact ? "h-10 w-10" : "h-11 w-11"} flex shrink-0 items-center justify-center rounded-2xl`}
           style={{ backgroundColor: T.redBg }}
         >
           <BookOpen size={compact ? 18 : 20} style={{ color: T.brandRed }} strokeWidth={2.2} />
@@ -169,37 +225,13 @@ export default function BoardPrepCard({ variant = "sidebar", className = "" }) {
           </div>
 
           <p className={`${compact ? "mt-1 text-[12px]" : "mt-1.5 text-xs"} leading-relaxed`} style={{ color: T.textMuted }}>
-            5 promotion board questions a day. Build your streak.
+            Daily board quiz, streaks, and study cards.
           </p>
         </div>
       </div>
 
-      <div
-        className={`${compact ? "mt-2.5 px-3 py-2" : "mt-3 px-3 py-2.5"} flex items-center justify-between gap-3 rounded-2xl border`}
-        style={{ background: badge.bg, borderColor: badge.border }}
-      >
-        <div className="flex min-w-0 items-center gap-2.5">
-          <span
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
-            style={{ backgroundColor: badge.iconBg, color: badge.color }}
-          >
-            <BadgeIcon size={18} strokeWidth={2.4} />
-          </span>
-          <span className="min-w-0">
-            <span className="block truncate text-sm font-black" style={{ color: badge.color }}>
-              {status.loading ? "Checking daily streak..." : badge.title}
-            </span>
-            <span className="block truncate text-[11px] font-semibold" style={{ color: T.textMuted }}>
-              {status.loading ? "One moment" : badge.detail}
-            </span>
-          </span>
-        </div>
-
-        {status.completed ? (
-          <span className="rounded-full px-2 py-1 text-[11px] font-black" style={{ backgroundColor: "rgba(49, 151, 84, 0.12)", color: T.success }}>
-            DONE
-          </span>
-        ) : null}
+      <div className={compact ? "mt-2.5" : "mt-3"}>
+        <BoardPrepStatusBadge />
       </div>
     </button>
   );
