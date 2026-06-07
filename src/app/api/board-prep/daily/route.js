@@ -48,6 +48,28 @@ function computeStreak(history) {
   return streak;
 }
 
+function getCorrectAnswer(row) {
+  if (!row?.correct_option) return "";
+  return row[`option_${row.correct_option}`] || "";
+}
+
+function exhaustedResponse({ session = null, history = [], questions = [], message }) {
+  const streak = computeStreak(history);
+  return NextResponse.json(
+    {
+      session,
+      questions,
+      streak,
+      history,
+      totalAnswered: Object.keys(session?.answers || {}).length,
+      totalQuestions: questions.length || QUESTIONS_PER_SESSION,
+      exhausted: true,
+      message: message || "You finished all available Board Prep questions. Restart the quiz to keep practicing.",
+    },
+    { status: 200, headers: { "Cache-Control": "no-store" } }
+  );
+}
+
 export async function GET(request) {
   const rateLimit = await checkRateLimit(request, {
     keyPrefix: "board-prep:daily",
@@ -92,17 +114,26 @@ export async function GET(request) {
       .order("session_date", { ascending: false }),
   ]);
 
+  const history = historyResult.data || [];
   let session = sessionResult.data;
 
   if (!session) {
-    const { data: allIds } = await supabase
+    const { data: allIds, error: idsError } = await supabase
       .from("board_questions")
       .select("id")
       .eq("active", true)
       .is("deleted_at", null);
 
+    if (idsError) {
+      console.error("board_questions daily id load failed:", idsError);
+      return NextResponse.json({ error: "Could not load Board Prep questions." }, { status: 500 });
+    }
+
     if (!allIds?.length) {
-      return NextResponse.json({ error: "No questions available." }, { status: 503 });
+      return exhaustedResponse({
+        history,
+        message: "No active Board Prep questions are available right now. Add or approve questions in the admin dashboard, then restart the quiz.",
+      });
     }
 
     const shuffled = [...allIds].sort(() => Math.random() - 0.5);
@@ -128,21 +159,35 @@ export async function GET(request) {
     session = newSession;
   }
 
-  const { data: questionRows } = await supabase
+  const { data: questionRows, error: questionError } = await supabase
     .from("board_questions")
     .select("id, question, option_a, option_b, option_c, option_d, correct_option, explanation, category, source_publication, difficulty")
-    .in("id", session.question_ids);
+    .in("id", session.question_ids || []);
+
+  if (questionError) {
+    console.error("board_questions daily load failed:", questionError);
+    return NextResponse.json({ error: "Could not load Board Prep questions." }, { status: 500 });
+  }
 
   const questions = (session.question_ids || [])
     .map((qid) => questionRows?.find((q) => q.id === qid))
-    .filter(Boolean);
+    .filter(Boolean)
+    .map((row) => ({ ...row, correct_answer: getCorrectAnswer(row) }));
 
-  const history = historyResult.data || [];
+  if (!session.completed && questions.length === 0) {
+    return exhaustedResponse({
+      session,
+      history,
+      questions,
+      message: "You finished all available Board Prep questions. Restart the quiz to keep practicing.",
+    });
+  }
+
   const streak = computeStreak(history);
   const totalAnswered = Object.keys(session.answers || {}).length;
 
   return NextResponse.json(
-    { session, questions, streak, history, totalAnswered, totalQuestions: QUESTIONS_PER_SESSION },
+    { session, questions, streak, history, totalAnswered, totalQuestions: questions.length || QUESTIONS_PER_SESSION, exhausted: false },
     { status: 200, headers: { "Cache-Control": "no-store" } }
   );
 }
