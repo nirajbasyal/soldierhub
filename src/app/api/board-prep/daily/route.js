@@ -80,7 +80,6 @@ export async function GET(request) {
 
   const today = new Date().toISOString().slice(0, 10);
 
-  // Load today's session + recent history for streak in parallel
   const [sessionResult, historyResult] = await Promise.all([
     supabase
       .from("board_sessions")
@@ -90,7 +89,7 @@ export async function GET(request) {
       .maybeSingle(),
     supabase
       .from("board_sessions")
-      .select("session_date, completed")
+      .select("session_date, completed, score")
       .eq("user_id", user.id)
       .gte("session_date", new Date(Date.now() - HISTORY_DAYS * 86_400_000).toISOString().slice(0, 10))
       .order("session_date", { ascending: false }),
@@ -99,11 +98,11 @@ export async function GET(request) {
   let session = sessionResult.data;
 
   if (!session) {
-    // Pick 5 random active questions
     const { data: allIds } = await supabase
       .from("board_questions")
       .select("id")
-      .eq("active", true);
+      .eq("active", true)
+      .is("deleted_at", null);
 
     if (!allIds?.length) {
       return NextResponse.json({ error: "No questions available." }, { status: 503 });
@@ -132,10 +131,9 @@ export async function GET(request) {
     session = newSession;
   }
 
-  // Fetch the questions in session order
   const { data: questionRows } = await supabase
     .from("board_questions")
-    .select("id, question, option_a, option_b, option_c, option_d, correct_option, explanation, category, difficulty")
+    .select("id, question, option_a, option_b, option_c, option_d, category, source_publication, difficulty")
     .in("id", session.question_ids);
 
   const questions = (session.question_ids || [])
@@ -144,9 +142,10 @@ export async function GET(request) {
 
   const history = historyResult.data || [];
   const streak = computeStreak(history);
+  const totalAnswered = Object.keys(session.answers || {}).length;
 
   return NextResponse.json(
-    { session, questions, streak, history },
+    { session, questions, streak, history, totalAnswered, totalQuestions: QUESTIONS_PER_SESSION },
     { status: 200, headers: { "Cache-Control": "no-store" } }
   );
 }
