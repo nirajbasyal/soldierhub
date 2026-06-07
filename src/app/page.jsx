@@ -16,6 +16,8 @@ import EmptyState from "@/components/ui/EmptyState";
 import MobileWeatherStrip from "@/components/tools/MobileWeatherStrip";
 import BAHCard from "@/components/tools/BAHCard";
 import GateHoursCard from "@/components/tools/GateHoursCard";
+import BoardPrepCard from "@/components/tools/BoardPrepCard";
+import AFTScoreCard from "@/components/tools/AFTScoreCard";
 import SiteInfoCard from "@/components/tools/SiteInfoCard";
 
 const PostComposer = dynamic(() => import("@/components/feed/composer/PostComposer"), {
@@ -467,6 +469,10 @@ export default function HomePage() {
               <FeedHero currentUser={currentUser} postCount={feedPosts.length} />
             </div>
 
+            <div className="block lg:hidden">
+              <BoardPrepCard variant="mobile" />
+            </div>
+
             <div className="hidden md:block">
               <PostComposer />
             </div>
@@ -563,8 +569,10 @@ export default function HomePage() {
           <aside className="hidden self-start lg:block">
             <div className="sticky top-[88px] flex flex-col gap-3">
               <MobileWeatherStrip />
+              <BoardPrepCard />
               <BAHCard />
               <GateHoursCard />
+              <AFTScoreCard />
               <SiteInfoCard />
             </div>
           </aside>
