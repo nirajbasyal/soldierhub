@@ -104,61 +104,60 @@ export default function AdminPage() {
   const memberCount = users.filter((u) => u.role !== "admin").length;
   const blockedCount = blockedUsers?.length || 0;
 
-  const showUserSearch =
-    tab === "pending" || tab === "members" || tab === "blocked";
+  const showUserSearch = tab === "pending" || tab === "members" || tab === "blocked";
 
   const tabs = [
     { k: "pending", label: "Pending", icon: UserCheck, count: pendingUsers.length },
-    { k: "reported", label: "Reported", icon: Flag, count: reportedCount },
     { k: "members", label: "Members", icon: Users, count: memberCount },
     { k: "blocked", label: "Blocked", icon: UserX, count: blockedCount },
-    { k: "resources", label: "Resources", icon: Link2, count: resourceCount },
+    { k: "reported", label: "Reported", icon: Flag, count: reportedCount },
     { k: "board", label: "Board Prep", icon: BookOpen, count: boardRequestCount },
+    { k: "resources", label: "Resources", icon: Link2, count: resourceCount },
   ];
 
   const activeTab = tabs.find((item) => item.k === tab) || tabs[0];
 
   return (
     <AppShell hideNav>
-      <main
-        className="min-h-screen pb-24 md:pb-12"
-        style={{ backgroundColor: T.bg }}
-      >
-        <div className="mx-auto max-w-6xl px-4 py-6 md:px-6 md:py-10">
+      <main className="min-h-screen pb-16 md:pb-12" style={{ backgroundColor: T.bg }}>
+        <div className="mx-auto max-w-7xl px-4 py-6 md:px-8 md:py-10 lg:px-10">
           <CircularBackButton href="/" label="Back to feed" />
 
-          <div className="mt-6 mb-5">
+          <div className="mt-6 mb-6 rounded-[2rem] border p-5 shadow-sm md:p-6" style={{ backgroundColor: T.card, borderColor: T.border }}>
             <div className="flex items-center gap-2 mb-1">
               <Shield size={16} style={{ color: T.gold }} />
-              <span
-                className="text-xs font-medium uppercase tracking-wider"
-                style={{ color: T.gold }}
-              >
+              <span className="text-xs font-medium uppercase tracking-wider" style={{ color: T.gold }}>
                 Administration
               </span>
             </div>
 
-            <h1
-              className="text-3xl md:text-4xl leading-tight font-serif"
-              style={{ color: T.navy }}
-            >
-              Admin dashboard
-            </h1>
+            <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+              <div>
+                <h1 className="text-3xl md:text-4xl leading-tight font-serif" style={{ color: T.navy }}>
+                  Admin dashboard
+                </h1>
+                <p className="mt-1 text-sm leading-6" style={{ color: T.textMuted }}>
+                  Review users, reports, resources, and Board Prep content from one safe admin panel.
+                </p>
+              </div>
+              <span className="w-fit rounded-full px-3 py-1 text-xs font-black uppercase tracking-[0.14em]" style={{ backgroundColor: T.blueSoft, color: T.blue }}>
+                {activeTab.label}
+              </span>
+            </div>
           </div>
 
-          <AdminVerifyByEmail />
+          <div className="mb-5">
+            <AdminVerifyByEmail />
+          </div>
 
-          <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_230px] md:items-start md:gap-5">
-            <aside className="order-1 md:order-2">
-              <div
-                className="rounded-3xl border p-3 shadow-sm md:sticky md:top-6"
-                style={{ backgroundColor: T.card, borderColor: T.border }}
-              >
-                <div className="mb-2 px-2">
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_260px] lg:items-start lg:gap-6">
+            <aside className="order-1 lg:order-2">
+              <div className="rounded-[2rem] border p-3 shadow-sm lg:sticky lg:top-6" style={{ backgroundColor: T.card, borderColor: T.border }}>
+                <div className="mb-3 rounded-2xl px-3 py-2" style={{ backgroundColor: T.surface }}>
                   <p className="text-[11px] font-black uppercase tracking-[0.18em]" style={{ color: T.textSubtle }}>
-                    Admin menu
+                    Sidebar
                   </p>
-                  <p className="mt-1 text-xs font-semibold" style={{ color: T.textMuted }}>
+                  <p className="mt-1 text-sm font-black" style={{ color: T.navy }}>
                     {activeTab.label}
                   </p>
                 </div>
@@ -171,22 +170,22 @@ export default function AdminPage() {
                       <button
                         key={t.k}
                         onClick={() => setTab(t.k)}
-                        className="flex min-h-[44px] w-full items-center justify-between gap-3 rounded-2xl px-3 text-left text-sm font-semibold transition-all active:scale-[0.99]"
+                        className="flex min-h-[48px] w-full items-center justify-between gap-3 rounded-2xl px-3 text-left text-sm font-bold transition-all active:scale-[0.99]"
                         style={{
                           backgroundColor: active ? T.navy : "transparent",
                           color: active ? "#fff" : T.textMuted,
-                          boxShadow: active ? "0 8px 22px rgba(11,28,44,0.12)" : "none",
+                          boxShadow: active ? "0 10px 24px rgba(11,28,44,0.14)" : "none",
                         }}
                       >
                         <span className="flex min-w-0 items-center gap-2.5">
-                          <Icon size={16} />
+                          <Icon size={17} />
                           <span className="truncate">{t.label}</span>
                         </span>
-                        {t.count !== "" && Number(t.count) > 0 && (
+                        {Number(t.count) > 0 && (
                           <span
                             className="flex h-6 min-w-6 items-center justify-center rounded-full px-1.5 text-[11px] font-black tabular-nums"
                             style={{
-                              backgroundColor: active ? "rgba(255,255,255,0.16)" : T.borderSoft,
+                              backgroundColor: active ? "rgba(255,255,255,0.17)" : T.borderSoft,
                               color: active ? "#fff" : T.textSubtle,
                             }}
                           >
@@ -200,17 +199,11 @@ export default function AdminPage() {
               </div>
             </aside>
 
-            <section className="order-2 min-w-0 md:order-1">
+            <section className="order-2 min-w-0 lg:order-1">
               {showUserSearch && (
-                <div
-                  className="mb-4 rounded-2xl border p-3"
-                  style={{ backgroundColor: T.card, borderColor: T.border }}
-                >
+                <div className="mb-4 rounded-[1.5rem] border p-3 shadow-sm" style={{ backgroundColor: T.card, borderColor: T.border }}>
                   <div className="relative">
-                    <span
-                      className="absolute left-3 top-1/2 -translate-y-1/2"
-                      style={{ color: T.textSubtle }}
-                    >
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: T.textSubtle }}>
                       <Search size={16} />
                     </span>
 
@@ -224,23 +217,20 @@ export default function AdminPage() {
                           ? "Search verified members by name, email, phone..."
                           : "Search blocked users by name, email, phone..."
                       }
-                      className="w-full h-11 rounded-xl border text-sm outline-none pl-10 pr-3"
+                      className="w-full h-11 rounded-2xl border text-sm outline-none pl-10 pr-3"
                       style={{ backgroundColor: T.surface, borderColor: T.border, color: T.text }}
                     />
                   </div>
                 </div>
               )}
 
-              <div
-                className="rounded-2xl border p-4 md:p-5"
-                style={{ backgroundColor: T.card, borderColor: T.border }}
-              >
+              <div className="rounded-[2rem] border p-4 shadow-sm md:p-6" style={{ backgroundColor: T.card, borderColor: T.border }}>
                 {tab === "pending" && <PendingUsersList searchQuery={searchQuery} />}
-                {tab === "reported" && <ReportedPostsList />}
                 {tab === "members" && <MembersList searchQuery={searchQuery} />}
                 {tab === "blocked" && <BlockedUsersList searchQuery={searchQuery} />}
-                {tab === "resources" && <ResourceManager onCountChange={setResourceCount} />}
+                {tab === "reported" && <ReportedPostsList />}
                 {tab === "board" && <BoardPrepManager onPendingRequestCountChange={setBoardRequestCount} />}
+                {tab === "resources" && <ResourceManager onCountChange={setResourceCount} />}
               </div>
             </section>
           </div>
