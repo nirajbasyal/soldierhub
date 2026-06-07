@@ -209,43 +209,45 @@ export function BoardPrepStatusBadge({ variant = "default", className = "", onCl
 }
 
 /**
- * Sidebar/mobile card promoting the daily Board Prep quiz.
- * The status query is read-only and does not create a daily session.
+ * Sidebar card promoting the daily Board Prep quiz.
+ * The mobile feed version intentionally renders nothing because Board Prep lives in the hamburger menu.
  */
 export default function BoardPrepCard({ variant = "sidebar", className = "" }) {
   const router = useRouter();
   const compact = variant === "mobile";
 
+  if (compact) return null;
+
   return (
     <button
       type="button"
       onClick={() => router.push("/tools/board-prep")}
-      className={`w-full rounded-3xl border text-left transition-all hover:-translate-y-0.5 hover:shadow-md ${compact ? "p-3" : "p-4"} ${className}`}
+      className={`w-full rounded-3xl border text-left transition-all hover:-translate-y-0.5 hover:shadow-md p-4 ${className}`}
       style={{ backgroundColor: T.card, borderColor: T.border }}
     >
       <div className="flex items-start gap-3">
         <div
-          className={`${compact ? "h-10 w-10" : "h-11 w-11"} flex shrink-0 items-center justify-center rounded-2xl`}
+          className="h-11 w-11 flex shrink-0 items-center justify-center rounded-2xl"
           style={{ backgroundColor: T.redBg }}
         >
-          <BookOpen size={compact ? 18 : 20} style={{ color: T.brandRed }} strokeWidth={2.2} />
+          <BookOpen size={20} style={{ color: T.brandRed }} strokeWidth={2.2} />
         </div>
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
-            <h3 className={`${compact ? "text-base" : "text-lg"} font-semibold leading-none`} style={{ color: T.navy }}>
+            <h3 className="text-lg font-semibold leading-none" style={{ color: T.navy }}>
               Board Prep
             </h3>
             <ChevronRight size={18} style={{ color: T.textSubtle }} />
           </div>
 
-          <p className={`${compact ? "mt-1 text-[12px]" : "mt-1.5 text-xs"} leading-relaxed`} style={{ color: T.textMuted }}>
+          <p className="mt-1.5 text-xs leading-relaxed" style={{ color: T.textMuted }}>
             Daily board quiz, streaks, and study cards.
           </p>
         </div>
       </div>
 
-      <div className={compact ? "mt-2.5" : "mt-3"}>
+      <div className="mt-3">
         <BoardPrepStatusBadge />
       </div>
     </button>
