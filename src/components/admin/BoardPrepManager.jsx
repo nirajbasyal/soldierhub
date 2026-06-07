@@ -185,6 +185,7 @@ function DeleteConfirmModal({ target, deleting, onCancel, onConfirm, mode = "que
 export default function BoardPrepManager({ onPendingRequestCountChange } = {}) {
   const [questions, setQuestions] = useState([]);
   const [requests, setRequests] = useState([]);
+  const [memoryItems, setMemoryItems] = useState([]);
   const [form, setForm] = useState(EMPTY_FORM);
   const [query, setQuery] = useState("");
   const [requestStatus, setRequestStatus] = useState("pending");
@@ -192,6 +193,7 @@ export default function BoardPrepManager({ onPendingRequestCountChange } = {}) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [batchUploading, setBatchUploading] = useState(false);
+  const [memorySavingId, setMemorySavingId] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deletingRequest, setDeletingRequest] = useState(false);
@@ -215,12 +217,14 @@ export default function BoardPrepManager({ onPendingRequestCountChange } = {}) {
     setLoading(true);
     setMessage(null);
     try {
-      const [questionJson, requestJson] = await Promise.all([
+      const [questionJson, requestJson, memoryJson] = await Promise.all([
         apiJson(`/api/admin/board-prep/questions?active=all&q=${encodeURIComponent(query)}`),
         apiJson(`/api/admin/board-prep/requests?status=${encodeURIComponent(requestStatus)}`),
+        apiJson("/api/admin/board-prep/memory"),
       ]);
       setQuestions(questionJson.data || []);
       setRequests(requestJson.data || []);
+      setMemoryItems(memoryJson.data || []);
     } catch (err) {
       setMessage(err.message || "Could not load Board Prep admin data.");
     } finally {
@@ -239,6 +243,10 @@ export default function BoardPrepManager({ onPendingRequestCountChange } = {}) {
 
   function updateForm(key, value) {
     setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function updateMemoryItem(id, key, value) {
+    setMemoryItems((current) => current.map((item) => item.id === id ? { ...item, [key]: value } : item));
   }
 
   function changeQuestionType(questionType) {
@@ -333,6 +341,20 @@ export default function BoardPrepManager({ onPendingRequestCountChange } = {}) {
     }
   }
 
+  async function saveMemoryItem(item) {
+    setMemorySavingId(item.id);
+    setMessage(null);
+    try {
+      const json = await apiJson("/api/admin/board-prep/memory", { method: "PATCH", body: item });
+      setMemoryItems((current) => current.map((row) => row.id === item.id ? json.data : row));
+      setMessage("Quick memory guide updated.");
+    } catch (err) {
+      setMessage(err.message || "Could not update quick memory guide.");
+    } finally {
+      setMemorySavingId(null);
+    }
+  }
+
   async function uploadBatch() {
     setBatchUploading(true);
     setMessage(null);
@@ -408,7 +430,7 @@ export default function BoardPrepManager({ onPendingRequestCountChange } = {}) {
           </div>
           <div>
             <h2 className="text-2xl font-serif font-bold" style={{ color: T.navy }}>Board Prep admin</h2>
-            <p className="mt-1 text-sm leading-6" style={{ color: T.textMuted }}>Add multiple-choice questions, flashcards, JSON batches, and review user requests.</p>
+            <p className="mt-1 text-sm leading-6" style={{ color: T.textMuted }}>Add questions, edit flashcards, manage memory guide text, and review user requests.</p>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2 md:flex">
@@ -417,10 +439,11 @@ export default function BoardPrepManager({ onPendingRequestCountChange } = {}) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         <Stat label="Questions" value={questions.length} />
         <Stat label="Active" value={activeCount} />
         <Stat label="Flashcards" value={flashcardCount} />
+        <Stat label="Memory" value={memoryItems.length} />
         <Stat label="Requests" value={pendingCount} />
       </div>
 
@@ -429,6 +452,37 @@ export default function BoardPrepManager({ onPendingRequestCountChange } = {}) {
           {message}
         </div>
       )}
+
+      <SectionCard>
+        <div className="mb-4 flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl" style={{ backgroundColor: T.blueSoft, color: T.blue }}><BookOpen size={19} /></div>
+          <div>
+            <h3 className="font-black" style={{ color: T.navy }}>Quick memory guide editor</h3>
+            <p className="mt-1 text-xs leading-5" style={{ color: T.textMuted }}>Edit the title, short label, and full body shown at the top of Board Prep.</p>
+          </div>
+        </div>
+
+        {loading ? (
+          <p className="text-sm" style={{ color: T.textMuted }}>Loading memory guide...</p>
+        ) : memoryItems.length === 0 ? (
+          <p className="text-sm" style={{ color: T.textMuted }}>No memory guide items found.</p>
+        ) : (
+          <div className="space-y-3">
+            {memoryItems.map((item) => (
+              <div key={item.id} className="rounded-2xl border p-3" style={{ borderColor: T.border, backgroundColor: T.card }}>
+                <div className="grid gap-3 md:grid-cols-[1fr_1.5fr_110px_110px]">
+                  <Field label="Title"><input className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={item.title || ""} onChange={(e) => updateMemoryItem(item.id, "title", e.target.value)} /></Field>
+                  <Field label="Short label"><input className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={item.summary || ""} onChange={(e) => updateMemoryItem(item.id, "summary", e.target.value)} /></Field>
+                  <Field label="Order"><input type="number" className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={item.display_order ?? 0} onChange={(e) => updateMemoryItem(item.id, "display_order", Number(e.target.value))} /></Field>
+                  <Field label="Status"><select className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={item.active ? "true" : "false"} onChange={(e) => updateMemoryItem(item.id, "active", e.target.value === "true")}><option value="true">Active</option><option value="false">Inactive</option></select></Field>
+                </div>
+                <div className="mt-3"><Field label="Body"><textarea rows={5} className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={item.body || ""} onChange={(e) => updateMemoryItem(item.id, "body", e.target.value)} /></Field></div>
+                <button type="button" onClick={() => saveMemoryItem(item)} disabled={memorySavingId === item.id} className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-2xl font-black text-white disabled:opacity-50" style={{ backgroundColor: T.navy }}><Save size={15} />{memorySavingId === item.id ? "Saving..." : "Save memory item"}</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </SectionCard>
 
       <SectionCard>
         <div className="mb-4 flex items-start justify-between gap-3">
