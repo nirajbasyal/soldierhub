@@ -35,42 +35,26 @@ const SCORE_MESSAGE = {
   0: "No problem. Read the explanations and try again tomorrow.",
 };
 
-const QUICK_MEMORY = [
+const MEMORY_ITEMS = [
   {
     title: "Soldier's Creed",
-    summary: "Know the opening, Warrior Ethos, and meaning.",
-    points: [
-      "Opening: I am an American Soldier.",
-      "Warrior Ethos: mission first, never accept defeat, never quit, never leave a fallen comrade.",
-      "Board tip: explain what the creed means, not only recite it.",
-    ],
+    summary: "Full-text practice from your official board packet.",
+    body: "Study the full Soldier's Creed exactly from your board packet. Know the opening, the Warrior Ethos, Army Values, readiness, professionalism, and the final line: I am an American Soldier.",
   },
   {
     title: "NCO Creed",
-    summary: "Know the identity, watchword, and two basic responsibilities.",
-    points: [
-      "Opening: No one is more professional than I.",
-      "Watchword: Competence.",
-      "Two responsibilities: mission accomplishment and welfare of Soldiers.",
-    ],
+    summary: "Identity, competence, mission, and welfare of Soldiers.",
+    body: "Study the full Creed of the Noncommissioned Officer from your board packet. Know: No one is more professional than I; Competence is my watchword; mission accomplishment and welfare of Soldiers; and NCOs are professionals, noncommissioned officers, leaders.",
   },
   {
     title: "Army Song",
-    summary: "Know the official title and board confidence cue.",
-    points: [
-      "Official title: The Army Goes Rolling Along.",
-      "Know that it is the official song of the U.S. Army.",
-      "Practice intro, verse, and refrain from your official board packet.",
-    ],
+    summary: "Official title and confidence cue.",
+    body: "Official title: The Army Goes Rolling Along. Practice the intro, verse, and refrain from your official board packet so you can recite or sing it confidently if asked.",
   },
   {
     title: "General Orders",
-    summary: "Know all three. They are common board questions.",
-    points: [
-      "1. Guard everything within the limits of my post.",
-      "2. Obey my special orders and perform duties in a military manner.",
-      "3. Report violations, emergencies, and anything not covered in my instructions.",
-    ],
+    summary: "Three common board questions.",
+    body: "1. I will guard everything within the limits of my post and quit my post only when properly relieved.\n\n2. I will obey my special orders and perform all my duties in a military manner.\n\n3. I will report violations of my special orders, emergencies, and anything not covered in my instructions to the commander of the relief.",
   },
 ];
 
@@ -85,9 +69,12 @@ function getOptionText(q, key) {
   return q?.[`option_${key}`] || "";
 }
 
-function Card({ children, className = "" }) {
+function Card({ children, className = "", style = {} }) {
   return (
-    <div className={`rounded-[1.75rem] border shadow-sm ${className}`} style={{ backgroundColor: T.card, borderColor: T.border }}>
+    <div
+      className={`rounded-[1.75rem] border shadow-sm ${className}`}
+      style={{ backgroundColor: T.card, borderColor: T.border, ...style }}
+    >
       {children}
     </div>
   );
@@ -110,11 +97,11 @@ function StreakBadge({ streak }) {
   );
 }
 
-function ProgressDots({ current, total = TOTAL }) {
+function ProgressDots({ filled = 0, total = TOTAL }) {
   return (
     <div className="flex items-center gap-1.5">
       {Array.from({ length: total }).map((_, idx) => (
-        <div key={idx} className="h-2 flex-1 rounded-full" style={{ backgroundColor: idx <= current ? T.brandRed : T.borderSoft }} />
+        <div key={idx} className="h-2 flex-1 rounded-full" style={{ backgroundColor: idx < filled ? T.brandRed : T.borderSoft }} />
       ))}
     </div>
   );
@@ -123,44 +110,53 @@ function ProgressDots({ current, total = TOTAL }) {
 function MemoryPanel() {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(null);
+  const activeItem = MEMORY_ITEMS.find((item) => item.title === active);
 
   return (
     <Card className="overflow-hidden">
-      <button onClick={() => setOpen((v) => !v)} className="flex w-full items-center justify-between gap-3 p-4 text-left">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl" style={{ backgroundColor: T.blueSoft, color: T.blue }}>
-            <Shield size={20} />
+      <button onClick={() => setOpen((v) => !v)} className="flex w-full items-center justify-between gap-3 p-3 text-left">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl" style={{ backgroundColor: T.blueSoft, color: T.blue }}>
+            <Shield size={18} />
           </div>
-          <div>
-            <p className="font-bold" style={{ color: T.navy }}>Quick memory guide</p>
-            <p className="text-xs" style={{ color: T.textMuted }}>Creeds, Army Song, and General Orders stay collapsed unless needed.</p>
+          <div className="min-w-0">
+            <p className="font-bold leading-tight" style={{ color: T.navy }}>Quick memory guide</p>
+            <p className="mt-0.5 text-xs leading-5" style={{ color: T.textMuted }}>Creeds, Army Song, and General Orders.</p>
           </div>
         </div>
-        <ChevronDown size={19} className={open ? "rotate-180 transition" : "transition"} style={{ color: T.textMuted }} />
+        <ChevronDown size={18} className={open ? "shrink-0 rotate-180 transition" : "shrink-0 transition"} style={{ color: T.textMuted }} />
       </button>
 
       {open && (
-        <div className="space-y-2 border-t p-4" style={{ borderColor: T.borderSoft }}>
-          {QUICK_MEMORY.map((item) => {
-            const selected = active === item.title;
-            return (
-              <div key={item.title} className="rounded-2xl border" style={{ borderColor: selected ? T.brandRed : T.borderSoft, backgroundColor: selected ? T.redBg : T.surface }}>
-                <button onClick={() => setActive(selected ? null : item.title)} className="w-full p-3 text-left">
-                  <p className="text-sm font-bold" style={{ color: T.navy }}>{item.title}</p>
-                  <p className="mt-0.5 text-xs" style={{ color: T.textMuted }}>{item.summary}</p>
+        <div className="border-t p-3" style={{ borderColor: T.borderSoft }}>
+          <div className="grid grid-cols-2 gap-2">
+            {MEMORY_ITEMS.map((item) => {
+              const selected = active === item.title;
+              return (
+                <button
+                  key={item.title}
+                  onClick={() => setActive(selected ? null : item.title)}
+                  className="rounded-2xl border p-3 text-left transition active:scale-[0.99]"
+                  style={{
+                    borderColor: selected ? T.brandRed : T.borderSoft,
+                    backgroundColor: T.card,
+                  }}
+                >
+                  <p className="text-sm font-bold leading-tight" style={{ color: T.navy }}>{item.title}</p>
+                  <p className="mt-1 text-[11px] leading-4" style={{ color: T.textMuted }}>{item.summary}</p>
                 </button>
-                {selected && (
-                  <div className="space-y-2 px-3 pb-3">
-                    {item.points.map((point) => (
-                      <div key={point} className="rounded-xl bg-white/80 px-3 py-2 text-xs font-medium" style={{ color: T.text }}>
-                        {point}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+
+          {activeItem && (
+            <div className="mt-3 rounded-2xl border p-4" style={{ borderColor: T.borderSoft, backgroundColor: T.card }}>
+              <p className="text-sm font-bold" style={{ color: T.navy }}>{activeItem.title}</p>
+              <p className="mt-2 whitespace-pre-line text-sm leading-7" style={{ color: T.text }}>
+                {activeItem.body}
+              </p>
+            </div>
+          )}
         </div>
       )}
     </Card>
@@ -225,7 +221,7 @@ function RequestCard({ currentQuestion }) {
 
 function Hero({ streak, answeredCount = 0 }) {
   return (
-    <Card className="overflow-hidden p-5" style={{ background: `linear-gradient(135deg, ${T.navy}, #163b63)` }}>
+    <Card className="overflow-hidden p-5" style={{ background: `linear-gradient(135deg, ${T.navy}, #163b63)`, borderColor: "rgba(255,255,255,0.12)" }}>
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/70">Daily board quiz</p>
@@ -239,7 +235,7 @@ function Hero({ streak, answeredCount = 0 }) {
           <span>{answeredCount}/{TOTAL} answered</span>
           <span>Daily goal</span>
         </div>
-        <ProgressDots current={Math.max(0, answeredCount - 1)} />
+        <ProgressDots filled={answeredCount} />
       </div>
     </Card>
   );
@@ -276,16 +272,18 @@ function IntroPhase({ streak, questions, onStart }) {
 
 function QuestionPhase({ question, questionIndex, selected, result, submitting, streak, onSelect, onSubmit, onNext }) {
   const answered = Boolean(result);
+  const answeredCount = questionIndex + (answered ? 1 : 0);
+
   return (
     <div className="space-y-4">
-      <Hero streak={streak} answeredCount={questionIndex + (answered ? 1 : 0)} />
+      <Hero streak={streak} answeredCount={answeredCount} />
       <Card className="p-5">
         <div className="mb-4">
           <div className="mb-3 flex items-center justify-between gap-3">
             <span className="text-sm font-bold" style={{ color: T.textMuted }}>Question {questionIndex + 1} of {TOTAL}</span>
             <Pill>{question.category}</Pill>
           </div>
-          <ProgressDots current={questionIndex} />
+          <ProgressDots filled={answeredCount} />
         </div>
         {question.source_publication && <p className="text-xs mb-2 font-semibold uppercase tracking-[0.12em]" style={{ color: T.textSubtle }}>{question.source_publication}</p>}
         <p className="mb-5 text-xl font-black leading-snug" style={{ color: T.navy }}>{question.question}</p>
