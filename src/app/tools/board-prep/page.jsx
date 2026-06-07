@@ -9,7 +9,6 @@ import {
   ChevronDown,
   ChevronRight,
   Flame,
-  Home,
   RotateCcw,
   Send,
   Shield,
@@ -32,19 +31,19 @@ const SCORE_MESSAGE = {
   3: "Solid reps. Review the explanation and come back tomorrow.",
   2: "Good start. The streak matters more than one score.",
   1: "One rep is still progress. Keep building.",
-  0: "No problem. Read the explanations and try again tomorrow.",
+  0: "No problem. Read the explanations and keep practicing.",
 };
 
 const MEMORY_ITEMS = [
   {
     title: "Soldier's Creed",
-    summary: "Full-text practice from your official board packet.",
-    body: "Study the full Soldier's Creed exactly from your board packet. Know the opening, the Warrior Ethos, Army Values, readiness, professionalism, and the final line: I am an American Soldier.",
+    summary: "Opening, Warrior Ethos, Army Values, readiness.",
+    body: "Study the full Soldier's Creed from your board packet. Know the opening, the Warrior Ethos, Army Values, readiness, professionalism, and the final line.",
   },
   {
     title: "NCO Creed",
-    summary: "Identity, competence, mission, and welfare of Soldiers.",
-    body: "Study the full Creed of the Noncommissioned Officer from your board packet. Know: No one is more professional than I; Competence is my watchword; mission accomplishment and welfare of Soldiers; and NCOs are professionals, noncommissioned officers, leaders.",
+    summary: "Professionalism, competence, mission, Soldiers.",
+    body: "Study the full Creed of the Noncommissioned Officer. Know the opening, the watchword, the two basic responsibilities, and the closing identity of NCOs as professionals and leaders.",
   },
   {
     title: "Army Song",
@@ -54,7 +53,7 @@ const MEMORY_ITEMS = [
   {
     title: "General Orders",
     summary: "Three common board questions.",
-    body: "1. I will guard everything within the limits of my post and quit my post only when properly relieved.\n\n2. I will obey my special orders and perform all my duties in a military manner.\n\n3. I will report violations of my special orders, emergencies, and anything not covered in my instructions to the commander of the relief.",
+    body: "1. Guard everything within the limits of my post and quit my post only when properly relieved.\n\n2. Obey my special orders and perform all my duties in a military manner.\n\n3. Report violations of my special orders, emergencies, and anything not covered in my instructions to the commander of the relief.",
   },
 ];
 
@@ -137,10 +136,7 @@ function MemoryPanel() {
                   key={item.title}
                   onClick={() => setActive(selected ? null : item.title)}
                   className="rounded-2xl border p-3 text-left transition active:scale-[0.99]"
-                  style={{
-                    borderColor: selected ? T.brandRed : T.borderSoft,
-                    backgroundColor: T.card,
-                  }}
+                  style={{ borderColor: selected ? T.brandRed : T.borderSoft, backgroundColor: T.card }}
                 >
                   <p className="text-sm font-bold leading-tight" style={{ color: T.navy }}>{item.title}</p>
                   <p className="mt-1 text-[11px] leading-4" style={{ color: T.textMuted }}>{item.summary}</p>
@@ -152,9 +148,7 @@ function MemoryPanel() {
           {activeItem && (
             <div className="mt-3 rounded-2xl border p-4" style={{ borderColor: T.borderSoft, backgroundColor: T.card }}>
               <p className="text-sm font-bold" style={{ color: T.navy }}>{activeItem.title}</p>
-              <p className="mt-2 whitespace-pre-line text-sm leading-7" style={{ color: T.text }}>
-                {activeItem.body}
-              </p>
+              <p className="mt-2 whitespace-pre-line text-sm leading-7" style={{ color: T.text }}>{activeItem.body}</p>
             </div>
           )}
         </div>
@@ -219,21 +213,23 @@ function RequestCard({ currentQuestion }) {
   );
 }
 
-function Hero({ streak, answeredCount = 0 }) {
+function Hero({ streak, answeredCount = 0, practice = false }) {
   return (
     <Card className="overflow-hidden p-5" style={{ background: `linear-gradient(135deg, ${T.navy}, #163b63)`, borderColor: "rgba(255,255,255,0.12)" }}>
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/70">Daily board quiz</p>
-          <h1 className="mt-2 font-serif text-3xl font-black leading-tight text-white">5 questions. One streak.</h1>
-          <p className="mt-2 max-w-sm text-sm leading-6 text-white/75">Answer today's shuffled board questions. Keep it simple: score, learn, come back tomorrow.</p>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/70">{practice ? "Practice redo" : "Daily board quiz"}</p>
+          <h1 className="mt-2 font-serif text-3xl font-black leading-tight text-white">{practice ? "Practice again." : "5 questions. One streak."}</h1>
+          <p className="mt-2 max-w-sm text-sm leading-6 text-white/75">
+            {practice ? "Redo questions for memory only. This practice score does not change your daily streak." : "Answer today's shuffled board questions. Keep it simple: score, learn, come back tomorrow."}
+          </p>
         </div>
         <StreakBadge streak={streak} />
       </div>
       <div className="mt-5 rounded-2xl bg-white/10 p-3">
         <div className="mb-2 flex items-center justify-between text-xs font-bold text-white/80">
           <span>{answeredCount}/{TOTAL} answered</span>
-          <span>Daily goal</span>
+          <span>{practice ? "Memory reps" : "Daily goal"}</span>
         </div>
         <ProgressDots filled={answeredCount} />
       </div>
@@ -241,10 +237,11 @@ function Hero({ streak, answeredCount = 0 }) {
   );
 }
 
-function IntroPhase({ streak, questions, onStart }) {
+function IntroPhase({ streak, questions, onStart, onStudy }) {
   const categories = [...new Set(questions.map((q) => q.category).filter(Boolean))];
   return (
     <div className="space-y-4">
+      <MemoryPanel />
       <Hero streak={streak} answeredCount={0} />
       <Card className="p-5">
         <div className="flex items-start gap-3">
@@ -264,24 +261,26 @@ function IntroPhase({ streak, questions, onStart }) {
         <button onClick={onStart} className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-2xl font-bold text-white" style={{ backgroundColor: T.brandRed }}>
           Start quiz <ChevronRight size={18} />
         </button>
+        <button onClick={onStudy} className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-2xl border font-bold" style={{ borderColor: T.border, color: T.navy, backgroundColor: T.card }}>
+          <BookOpen size={17} /> Study all questions
+        </button>
       </Card>
-      <MemoryPanel />
     </div>
   );
 }
 
-function QuestionPhase({ question, questionIndex, selected, result, submitting, streak, onSelect, onSubmit, onNext }) {
+function QuestionPhase({ question, questionIndex, selected, result, submitting, streak, practice, onSelect, onSubmit, onNext }) {
   const answered = Boolean(result);
   const answeredCount = questionIndex + (answered ? 1 : 0);
 
   return (
     <div className="space-y-4">
-      <Hero streak={streak} answeredCount={answeredCount} />
+      <Hero streak={streak} answeredCount={answeredCount} practice={practice} />
       <Card className="p-5">
         <div className="mb-4">
           <div className="mb-3 flex items-center justify-between gap-3">
             <span className="text-sm font-bold" style={{ color: T.textMuted }}>Question {questionIndex + 1} of {TOTAL}</span>
-            <Pill>{question.category}</Pill>
+            <Pill tone={practice ? "gold" : "blue"}>{practice ? "Practice" : question.category}</Pill>
           </div>
           <ProgressDots filled={answeredCount} />
         </div>
@@ -307,7 +306,7 @@ function QuestionPhase({ question, questionIndex, selected, result, submitting, 
           </div>
         )}
         {!answered ? (
-          <button onClick={onSubmit} disabled={!selected || submitting} className="w-full h-12 rounded-2xl font-bold text-white disabled:opacity-40" style={{ backgroundColor: T.brandRed }}>{submitting ? "Checking..." : "Submit answer"}</button>
+          <button onClick={onSubmit} disabled={!selected || submitting} className="w-full h-12 rounded-2xl font-bold text-white disabled:opacity-40" style={{ backgroundColor: T.brandRed }}>{submitting ? "Checking..." : practice ? "Check practice answer" : "Submit answer"}</button>
         ) : (
           <button onClick={onNext} className="w-full h-12 rounded-2xl font-bold text-white flex items-center justify-center gap-2" style={{ backgroundColor: T.navy }}>{questionIndex + 1 < TOTAL ? <>Next question <ChevronRight size={16} /></> : <>See score <Trophy size={16} /></>}</button>
         )}
@@ -317,16 +316,17 @@ function QuestionPhase({ question, questionIndex, selected, result, submitting, 
   );
 }
 
-function DonePhase({ score, streak, onReturnHome, onRestart }) {
+function DonePhase({ score, streak, practice, onRefresh, onRedo, onStudy }) {
   const msg = SCORE_MESSAGE[score] || SCORE_MESSAGE[0];
   return (
     <div className="space-y-4">
+      <MemoryPanel />
       <Card className="p-6 text-center">
         <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full border-4" style={{ borderColor: score >= 4 ? T.success : score >= 2 ? T.amber : T.danger, backgroundColor: score >= 4 ? T.successBg : score >= 2 ? T.amberBg : T.dangerBg }}>
           <span className="font-serif text-3xl font-black" style={{ color: score >= 4 ? T.success : score >= 2 ? T.amber : T.danger }}>{score}/{TOTAL}</span>
         </div>
-        <h2 className="mt-4 text-2xl font-serif font-black" style={{ color: T.navy }}>Daily quiz complete</h2>
-        <p className="text-sm mt-1 leading-6" style={{ color: T.textMuted }}>{msg}</p>
+        <h2 className="mt-4 text-2xl font-serif font-black" style={{ color: T.navy }}>{practice ? "Practice quiz complete" : "Daily quiz complete"}</h2>
+        <p className="text-sm mt-1 leading-6" style={{ color: T.textMuted }}>{practice ? "Practice does not change your daily streak." : msg}</p>
         <div className="mt-5 grid grid-cols-2 gap-3">
           <div className="rounded-2xl border p-3" style={{ borderColor: T.border, backgroundColor: T.surface }}>
             <div className="flex justify-center" style={{ color: T.brandRed }}><Award size={20} /></div>
@@ -335,11 +335,11 @@ function DonePhase({ score, streak, onReturnHome, onRestart }) {
           </div>
           <StreakBadge streak={streak} />
         </div>
-        <p className="mt-4 text-xs" style={{ color: T.textSubtle }}>Come back tomorrow for a new shuffled set of 5 questions.</p>
-        <button onClick={onReturnHome} className="mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-2xl font-bold text-white" style={{ backgroundColor: T.navy }}><Home size={16} />Back to Feed</button>
-        <button onClick={onRestart} className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-2xl border font-bold" style={{ borderColor: T.border, color: T.navy, backgroundColor: T.card }}><RotateCcw size={15} />Refresh status</button>
+        <p className="mt-4 text-xs" style={{ color: T.textSubtle }}>{practice ? "Redo again anytime for memorization." : "Come back tomorrow for a new streak-counting set of 5 questions."}</p>
+        <button onClick={onRefresh} className="mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-2xl border font-bold" style={{ borderColor: T.border, color: T.navy, backgroundColor: T.card }}><RotateCcw size={15} />Refresh status</button>
+        <button onClick={onRedo} className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-2xl font-bold text-white" style={{ backgroundColor: T.navy }}><RotateCcw size={15} />Redo practice quiz</button>
+        <button onClick={onStudy} className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-2xl border font-bold" style={{ borderColor: T.border, color: T.navy, backgroundColor: T.card }}><BookOpen size={16} />Study all questions</button>
       </Card>
-      <MemoryPanel />
     </div>
   );
 }
@@ -353,6 +353,8 @@ export default function BoardPrepPage() {
   const [result, setResult] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [practiceMode, setPracticeMode] = useState(false);
+  const [practiceScore, setPracticeScore] = useState(0);
 
   const session = data?.session;
   const questions = data?.questions || [];
@@ -362,6 +364,8 @@ export default function BoardPrepPage() {
   const fetchDaily = useCallback(async () => {
     setPhase("loading");
     setError(null);
+    setPracticeMode(false);
+    setPracticeScore(0);
     const token = await getAccessToken();
     if (!token) { setPhase("auth"); return; }
     const res = await fetch("/api/board-prep/daily", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
@@ -376,10 +380,36 @@ export default function BoardPrepPage() {
     else { setQuestionIdx(answeredCount); setPhase("question"); }
   }, []);
 
+  const startPracticeRedo = useCallback(async () => {
+    setPhase("loading");
+    setError(null);
+    const token = await getAccessToken();
+    if (!token) { setPhase("auth"); return; }
+    const res = await fetch("/api/board-prep/questions?limit=5&shuffle=1", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || !json.data?.length) { setError(json.error || "Could not load practice questions."); setPhase("error"); return; }
+    setData((prev) => ({ ...(prev || {}), questions: json.data.slice(0, TOTAL) }));
+    setPracticeMode(true);
+    setPracticeScore(0);
+    setQuestionIdx(0);
+    setSelected(null);
+    setResult(null);
+    setPhase("question");
+  }, []);
+
   useEffect(() => { fetchDaily(); }, [fetchDaily]);
 
   async function handleSubmit() {
-    if (!selected || !currentQuestion || !session) return;
+    if (!selected || !currentQuestion) return;
+
+    if (practiceMode) {
+      const correct = selected === currentQuestion.correct_option;
+      setResult({ correct, correct_option: currentQuestion.correct_option, explanation: currentQuestion.explanation });
+      if (correct) setPracticeScore((score) => score + 1);
+      return;
+    }
+
+    if (!session) return;
     setSubmitting(true);
     const token = await getAccessToken();
     const res = await fetch("/api/board-prep/answer", {
@@ -396,7 +426,11 @@ export default function BoardPrepPage() {
 
   function handleNext() {
     const nextIdx = questionIdx + 1;
-    if (nextIdx >= TOTAL) { fetchDaily().then(() => setPhase("done")); return; }
+    if (nextIdx >= TOTAL) {
+      if (practiceMode) setPhase("done");
+      else fetchDaily().then(() => setPhase("done"));
+      return;
+    }
     setQuestionIdx(nextIdx);
     setSelected(null);
     setResult(null);
@@ -405,12 +439,12 @@ export default function BoardPrepPage() {
   return (
     <AppShell hideNav>
       <ToolPage title="Board Prep" eyebrow="Soldier Tools" icon={BookOpen}>
-        {phase === "loading" && <div className="py-16 text-center text-sm" style={{ color: T.textMuted }}>Loading today's 5 questions...</div>}
+        {phase === "loading" && <div className="py-16 text-center text-sm" style={{ color: T.textMuted }}>Loading Board Prep...</div>}
         {phase === "auth" && <Card className="p-5"><div className="text-center py-6"><p className="font-semibold" style={{ color: T.navy }}>Sign in to use Board Prep</p><p className="text-sm mt-1" style={{ color: T.textMuted }}>Track your daily score and streak.</p><button onClick={() => router.push("/")} className="mt-5 h-10 px-6 rounded-xl font-semibold text-white" style={{ backgroundColor: T.brandRed }}>Back to Feed</button></div></Card>}
         {phase === "error" && <Card className="p-5"><div className="text-center py-6"><p className="font-semibold" style={{ color: T.danger }}>Something went wrong</p><p className="text-sm mt-1" style={{ color: T.textMuted }}>{error}</p><button onClick={fetchDaily} className="mt-5 inline-flex items-center gap-2 h-10 px-6 rounded-xl font-semibold text-white" style={{ backgroundColor: T.navy }}><RotateCcw size={15} />Retry</button></div></Card>}
-        {phase === "intro" && <IntroPhase streak={streak} questions={questions} onStart={() => { setQuestionIdx(0); setSelected(null); setResult(null); setPhase("question"); }} />}
-        {phase === "question" && currentQuestion && <QuestionPhase question={currentQuestion} questionIndex={questionIdx} selected={selected} result={result} submitting={submitting} streak={streak} onSelect={setSelected} onSubmit={handleSubmit} onNext={handleNext} />}
-        {phase === "done" && session && <DonePhase score={session.score ?? 0} streak={streak} onReturnHome={() => router.push("/")} onRestart={fetchDaily} />}
+        {phase === "intro" && <IntroPhase streak={streak} questions={questions} onStart={() => { setQuestionIdx(0); setSelected(null); setResult(null); setPracticeMode(false); setPhase("question"); }} onStudy={() => router.push("/tools/board-prep/study")} />}
+        {phase === "question" && currentQuestion && <QuestionPhase question={currentQuestion} questionIndex={questionIdx} selected={selected} result={result} submitting={submitting} streak={streak} practice={practiceMode} onSelect={setSelected} onSubmit={handleSubmit} onNext={handleNext} />}
+        {phase === "done" && <DonePhase score={practiceMode ? practiceScore : (session?.score ?? 0)} streak={streak} practice={practiceMode} onRefresh={fetchDaily} onRedo={startPracticeRedo} onStudy={() => router.push("/tools/board-prep/study")} />}
       </ToolPage>
     </AppShell>
   );
