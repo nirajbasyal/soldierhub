@@ -190,6 +190,7 @@ export async function POST(request) {
     Bucket: bucket,
     Key: key,
     ContentType: contentType,
+    ContentLength: size,
     CacheControl: "public, max-age=31536000, immutable",
   });
 
@@ -200,6 +201,8 @@ export async function POST(request) {
       uploadUrl,
       key,
       publicUrl: `${publicBaseUrl}/${key}`,
+      maxBytes,
+      expectedSize: size,
     },
     { status: 200, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
   );
