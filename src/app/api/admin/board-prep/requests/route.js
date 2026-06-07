@@ -91,3 +91,26 @@ export async function PATCH(request) {
 
   return NextResponse.json({ data }, { headers: { ...ctx.headers, "Cache-Control": "no-store" } });
 }
+
+export async function DELETE(request) {
+  const ctx = await adminContext(request, "admin-board-requests-delete");
+  if (ctx.response) return ctx.response;
+
+  const { searchParams } = new URL(request.url);
+  const id = cleanText(searchParams.get("id"), 80);
+
+  if (!id) return NextResponse.json({ error: "Request id is required." }, { status: 400 });
+
+  const { data, error } = await ctx.supabase
+    .from("board_question_requests")
+    .delete()
+    .eq("id", id)
+    .select("id")
+    .single();
+
+  if (error) {
+    return NextResponse.json({ error: error.message || "Could not delete request." }, { status: 500 });
+  }
+
+  return NextResponse.json({ data }, { headers: { ...ctx.headers, "Cache-Control": "no-store" } });
+}
