@@ -13,7 +13,7 @@ const WEATHER_CACHE_TTL_MS = 60 * 1000;
 const GRIDPOINT_HOURLY_URL = `${NWS_BASE}/gridpoints/EPZ/120,71/forecast/hourly`;
 
 const USER_AGENT =
-  process.env.NWS_USER_AGENT || "SoldierHub/1.0 (niraj.basyal2054@gmail.com)";
+  process.env.NWS_USER_AGENT || "SoldierHub/1.0 (https://soldierhub.com)";
 
 let weatherCache = {
   data: null,

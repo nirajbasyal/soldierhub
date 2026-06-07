@@ -2,15 +2,16 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { checkRateLimit, rateLimitResponse } from "@/lib/server/rateLimit";
 import { checkContentSafety } from "@/lib/server/contentSafety";
+import { CATEGORIES } from "@/lib/constants";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const POST_SELECT =
-  "id, author_id, author_name_cached, author_color_cached, category, body, anonymous, status, edited, created_at, updated_at";
+  "id, author_id, author_name_cached, author_color_cached, category, body, anonymous, status, edited, created_at, updated_at, moderation_status, moderation_reason, moderation_checked_at";
 
 const MAX_BODY_LENGTH = 5000;
-const MAX_CATEGORY_LENGTH = 80;
+const VALID_POST_CATEGORIES = new Set(CATEGORIES.filter((category) => category.key !== "All").map((category) => category.key));
 
 function getBearerToken(request) {
   const header = request.headers.get("authorization") || "";
@@ -48,15 +49,37 @@ function normalizePostRow(row = {}) {
   };
 }
 
+function cleanPostCategory(value) {
+  const category = cleanText(value);
+  return VALID_POST_CATEGORIES.has(category) ? category : null;
+}
+
 function validateUpdateInput({ body, category }) {
   if (body !== undefined && !cleanText(body)) return "Post body is required.";
   if (body !== undefined && cleanText(body).length > MAX_BODY_LENGTH) {
     return `Post body must be ${MAX_BODY_LENGTH} characters or less.`;
   }
-  if (category !== undefined && cleanText(category).length > MAX_CATEGORY_LENGTH) {
-    return `Post category must be ${MAX_CATEGORY_LENGTH} characters or less.`;
+  if (category !== undefined && !cleanPostCategory(category)) {
+    return "Please choose a valid post category.";
   }
   return null;
+}
+
+function getModerationFields(safety) {
+  const checkedAt = new Date().toISOString();
+  if (safety?.degraded) {
+    return {
+      moderation_status: "degraded",
+      moderation_reason: safety.degradedReason || safety.blockedBy || "moderation_degraded",
+      moderation_checked_at: checkedAt,
+    };
+  }
+
+  return {
+    moderation_status: "approved",
+    moderation_reason: safety?.blockedBy || null,
+    moderation_checked_at: checkedAt,
+  };
 }
 
 async function verifyUserAndProfile({ supabase, accessToken }) {
@@ -124,11 +147,12 @@ async function getOwnedPost({ supabase, postId, userId }) {
   return { data, error: null, status: 200 };
 }
 
-async function updatePost({ supabase, postId, updates }) {
+async function updatePost({ supabase, postId, updates, moderationFields = {} }) {
   const allowed = {
     body: updates.body !== undefined ? cleanText(updates.body) : undefined,
-    category: updates.category !== undefined ? cleanText(updates.category) : undefined,
+    category: updates.category !== undefined ? cleanPostCategory(updates.category) : undefined,
     edited: true,
+    ...moderationFields,
   };
 
   Object.keys(allowed).forEach((key) => {
@@ -251,6 +275,8 @@ export async function POST(request) {
       );
     }
 
+    let moderationFields = {};
+
     if (updates.body !== undefined) {
       const safety = await checkContentSafety(cleanText(updates.body));
       if (!safety.allowed) {
@@ -259,9 +285,10 @@ export async function POST(request) {
           { status: 400, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
         );
       }
+      moderationFields = getModerationFields(safety);
     }
 
-    const { data, error } = await updatePost({ supabase, postId, updates });
+    const { data, error } = await updatePost({ supabase, postId, updates, moderationFields });
 
     if (error || !data) {
       return NextResponse.json(

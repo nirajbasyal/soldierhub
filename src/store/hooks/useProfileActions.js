@@ -229,7 +229,6 @@ export function useProfileActions({
       const { profile } = await Auth.getCurrentUser();
       const updated = profile || {
         ...currentUser,
-        status: "pending",
         verification_status: "pending",
         phone: cleanPhone || currentUser.phone,
       };
@@ -251,7 +250,6 @@ export function useProfileActions({
 
     const updated = {
       ...currentUser,
-      status: "pending",
       verification_status: "pending",
       phone: cleanPhone || currentUser.phone,
     };

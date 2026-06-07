@@ -74,6 +74,9 @@ create table if not exists public.posts (
   image_thumbnail_width integer,
   image_thumbnail_height integer,
   image_thumbnail_size integer,
+  moderation_status text not null default 'unreviewed' check (moderation_status in ('unreviewed', 'approved', 'degraded')),
+  moderation_reason text,
+  moderation_checked_at timestamptz,
   upvote_count integer not null default 0 check (upvote_count >= 0),
   comment_count integer not null default 0 check (comment_count >= 0),
   report_count integer not null default 0 check (report_count >= 0)

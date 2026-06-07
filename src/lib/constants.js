@@ -1,4 +1,14 @@
-export const ADMIN_EMAIL = "niraj.basyal2054@gmail.com";
+const DEFAULT_DEMO_ADMIN_EMAIL = "admin@soldierhub.local";
+
+// Demo/local mode only. Live admin authorization is enforced server-side with
+// SOLDIERHUB_ADMIN_EMAILS plus the profile role in protected API routes.
+export const DEMO_ADMIN_EMAIL = (
+  process.env.NEXT_PUBLIC_SOLDIERHUB_DEMO_ADMIN_EMAIL || DEFAULT_DEMO_ADMIN_EMAIL
+).trim().toLowerCase();
+
+// Backwards-compatible alias for older local-mode code paths. Prefer
+// DEMO_ADMIN_EMAIL for new code so this is not confused with live admin auth.
+export const ADMIN_EMAIL = DEMO_ADMIN_EMAIL;
 
 // Add or rename categories here — they will appear everywhere automatically.
 export const CATEGORIES = [

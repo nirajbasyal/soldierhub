@@ -38,7 +38,7 @@ export function useAdminActions({
       blockedUsers.find((x) => x.id === profileId);
     if (!u) return;
 
-    const verified = { ...u, status: "verified", verification_status: "verified" };
+    const verified = { ...u, verification_status: "verified" };
     setUsers((l) => [...l, verified]);
     setPendingUsers((l) => l.filter((x) => x.id !== profileId));
     setBlockedUsers((l) => l.filter((x) => x.id !== profileId));
@@ -75,7 +75,7 @@ export function useAdminActions({
       return { ok: false, error: "No profile found with that email." };
     }
 
-    const verified = { ...target, status: "verified", verification_status: "verified" };
+    const verified = { ...target, verification_status: "verified" };
     setPendingUsers((l) => l.filter((u) => !byEmail(u)));
     setBlockedUsers((l) => l.filter((u) => !byEmail(u)));
     setUsers((l) => {
@@ -116,7 +116,7 @@ export function useAdminActions({
       return { ok: false, error: "No non-admin profile found with that email." };
     }
 
-    const revoked = { ...target, status: "revoked", verification_status: "revoked" };
+    const revoked = { ...target, verification_status: "revoked" };
     setPendingUsers((l) => l.filter((u) => !byEmail(u)));
     setUsers((l) => l.filter((u) => !byEmail(u)));
     setBlockedUsers((l) => {
@@ -139,7 +139,7 @@ export function useAdminActions({
 
     const u = pendingUsers.find((x) => x.id === profileId);
     if (!u) return;
-    const rejected = { ...u, status: "rejected", verification_status: "rejected" };
+    const rejected = { ...u, verification_status: "rejected" };
     setPendingUsers((l) => l.filter((x) => x.id !== profileId));
     setBlockedUsers((l) => [rejected, ...l]);
     pushToast("Profile rejected", "info");
@@ -157,7 +157,7 @@ export function useAdminActions({
 
     const u = users.find((x) => x.id === profileId);
     if (!u) return;
-    const revoked = { ...u, status: "revoked", verification_status: "revoked" };
+    const revoked = { ...u, verification_status: "revoked" };
     setUsers((l) => l.filter((x) => x.id !== profileId));
     setBlockedUsers((l) => [revoked, ...l]);
     pushToast("Member access revoked", "info");

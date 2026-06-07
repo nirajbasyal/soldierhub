@@ -32,7 +32,7 @@ export function normalizeProfilePreview(profile = {}, fallback = {}) {
       "#314A66",
     avatar_url: profile.avatar_url || fallback.avatar_url || null,
     base: profile.base || fallback.base || "Fort Bliss",
-    status: profile.status || profile.verification_status || fallback.status || "verified",
+    verification_status: profile.verification_status || fallback.verification_status || "verified",
   };
 }
 

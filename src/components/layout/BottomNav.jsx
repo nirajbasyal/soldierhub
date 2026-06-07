@@ -10,10 +10,10 @@ const POST_ACTION_COLOR = "#B31942";
 export default function BottomNav() {
   const router = useRouter();
   const pathname = usePathname();
+  const app = useApp() || {};
 
   if (pathname === "/compose") return null;
 
-  const app = useApp() || {};
   const {
     currentUser,
     setAuthModal = () => {},
@@ -22,7 +22,7 @@ export default function BottomNav() {
   const safeUser = currentUser || null;
   const displayName = safeUser?.full_name || safeUser?.email || "SoldierHub user";
   const displayEmail = safeUser?.email || safeUser?.personal_email || "";
-  const userStatus = safeUser?.status || safeUser?.verification_status || "pending";
+  const userStatus = safeUser?.verification_status || "pending";
 
   const goProfile = () => {
     if (!safeUser) {
