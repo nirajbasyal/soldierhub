@@ -8,9 +8,10 @@ import AuthModal from "@/components/auth/AuthModal";
 import ToastHost from "@/components/ui/ToastHost";
 
 /**
- * AppShell renders the persistent chrome (top nav, bottom nav, drawer, modals)
- * around any page content. Pass `hideNav` for pages that render their own
- * back-button-style navigation (e.g. profile, notifications, tool pages).
+ * AppShell renders the persistent chrome around page content.
+ * Pass `hideNav` for focused full-screen flows such as Board Prep, compose,
+ * profile, notifications, and tool pages. The drawer, toasts, auth modal,
+ * and scroll helper still stay available.
  */
 export default function AppShell({ children, hideNav = false }) {
   const { authModal } = useApp();
@@ -19,7 +20,7 @@ export default function AppShell({ children, hideNav = false }) {
     <>
       {!hideNav && <TopNav />}
       {children}
-      <BottomNav />
+      {!hideNav && <BottomNav />}
       <MobileMenu />
       <ScrollToTop />
       <ToastHost />
