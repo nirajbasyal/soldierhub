@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { T } from "@/lib/theme";
 import { createClient } from "@/lib/supabase/client";
+import { useApp } from "@/store/AppContext";
 import AppShell from "@/components/layout/AppShell";
 import ToolPage from "@/components/ui/ToolPage";
 
@@ -346,6 +347,7 @@ function DonePhase({ score, streak, practice, onRefresh, onRedo, onStudy }) {
 
 export default function BoardPrepPage() {
   const router = useRouter();
+  const { setMobileMenu } = useApp();
   const [phase, setPhase] = useState("loading");
   const [data, setData] = useState(null);
   const [questionIdx, setQuestionIdx] = useState(0);
@@ -438,7 +440,13 @@ export default function BoardPrepPage() {
 
   return (
     <AppShell hideNav>
-      <ToolPage title="Board Prep" eyebrow="Soldier Tools" icon={BookOpen}>
+      <ToolPage
+        title="Board Prep"
+        eyebrow="Soldier Tools"
+        icon={BookOpen}
+        onBack={() => setMobileMenu(true)}
+        backLabel="Open menu"
+      >
         {phase === "loading" && <div className="py-16 text-center text-sm" style={{ color: T.textMuted }}>Loading Board Prep...</div>}
         {phase === "auth" && <Card className="p-5"><div className="text-center py-6"><p className="font-semibold" style={{ color: T.navy }}>Sign in to use Board Prep</p><p className="text-sm mt-1" style={{ color: T.textMuted }}>Track your daily score and streak.</p><button onClick={() => router.push("/")} className="mt-5 h-10 px-6 rounded-xl font-semibold text-white" style={{ backgroundColor: T.brandRed }}>Back to Feed</button></div></Card>}
         {phase === "error" && <Card className="p-5"><div className="text-center py-6"><p className="font-semibold" style={{ color: T.danger }}>Something went wrong</p><p className="text-sm mt-1" style={{ color: T.textMuted }}>{error}</p><button onClick={fetchDaily} className="mt-5 inline-flex items-center gap-2 h-10 px-6 rounded-xl font-semibold text-white" style={{ backgroundColor: T.navy }}><RotateCcw size={15} />Retry</button></div></Card>}
