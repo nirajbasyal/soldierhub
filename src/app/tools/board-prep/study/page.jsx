@@ -8,8 +8,9 @@ import {
   ChevronDown,
   Eye,
   EyeOff,
+  Filter,
   RotateCcw,
-  Trophy,
+  Search,
   XCircle,
 } from "lucide-react";
 import { T } from "@/lib/theme";
@@ -48,29 +49,38 @@ function getScoreSummary(scores, total) {
   return { known, review, attempted, total, percent };
 }
 
-function ScoreBar({ summary }) {
+function ScoreHero({ summary, filteredCount, totalCount }) {
   const progress = summary.total ? Math.round((summary.attempted / summary.total) * 100) : 0;
 
   return (
-    <Card className="p-4">
+    <Card
+      className="overflow-hidden p-4"
+      style={{
+        background: "linear-gradient(135deg, #FFFFFF 0%, #F7FBFF 48%, #EEF6FF 100%)",
+        borderColor: "#D9E5F2",
+      }}
+    >
       <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-xs font-black uppercase tracking-[0.16em]" style={{ color: T.textSubtle }}>
+        <div className="min-w-0">
+          <p className="text-[11px] font-black uppercase tracking-[0.18em]" style={{ color: T.brandRed }}>
             Study score
           </p>
-          <h2 className="mt-1 text-2xl font-black" style={{ color: T.navy }}>
+          <h2 className="mt-1 text-2xl font-black leading-tight" style={{ color: T.navy }}>
             {summary.known}/{summary.attempted || 0} known
           </h2>
           <p className="mt-1 text-xs font-semibold" style={{ color: T.textMuted }}>
             {summary.review} need review · {summary.total - summary.attempted} not scored
+          </p>
+          <p className="mt-1 text-[11px] font-semibold" style={{ color: T.textSubtle }}>
+            Showing {filteredCount} of {totalCount} questions
           </p>
         </div>
 
         <div
           className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-4"
           style={{
-            borderColor: summary.percent >= 80 ? T.success : summary.percent >= 50 ? T.amber : T.border,
-            backgroundColor: summary.percent >= 80 ? "#F3FBF6" : summary.percent >= 50 ? T.goldBg : T.surface,
+            borderColor: summary.percent >= 80 ? T.success : summary.percent >= 50 ? T.amber : "#D9E5F2",
+            backgroundColor: summary.percent >= 80 ? "#F3FBF6" : summary.percent >= 50 ? T.goldBg : "#FFFFFF",
             color: summary.percent >= 80 ? T.success : summary.percent >= 50 ? T.amber : T.textMuted,
           }}
         >
@@ -84,6 +94,122 @@ function ScoreBar({ summary }) {
           style={{ width: `${progress}%`, backgroundColor: T.brandRed }}
         />
       </div>
+    </Card>
+  );
+}
+
+function FilterChip({ active, children, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="shrink-0 rounded-full border px-3 py-2 text-xs font-black transition active:scale-[0.98]"
+      style={{
+        borderColor: active ? T.brandRed : T.border,
+        backgroundColor: active ? T.redBg : T.card,
+        color: active ? T.brandRed : T.textMuted,
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function StudyControls({
+  searchQuery,
+  setSearchQuery,
+  filterOpen,
+  setFilterOpen,
+  statusFilter,
+  setStatusFilter,
+  categoryFilter,
+  setCategoryFilter,
+  categories,
+  showAll,
+  setShowAll,
+  resetScores,
+}) {
+  return (
+    <Card className="p-3">
+      <div className="flex gap-2">
+        <div className="flex h-12 min-w-0 flex-1 items-center gap-2 rounded-2xl border px-3" style={{ borderColor: T.border, backgroundColor: T.surface }}>
+          <Search size={17} style={{ color: T.textSubtle }} />
+          <input
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Search questions"
+            className="min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none placeholder:font-semibold"
+            style={{ color: T.text }}
+          />
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setFilterOpen((value) => !value)}
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border"
+          style={{ borderColor: filterOpen ? T.brandRed : T.border, backgroundColor: filterOpen ? T.redBg : T.card, color: filterOpen ? T.brandRed : T.navy }}
+          aria-label="Filter questions"
+        >
+          <Filter size={18} />
+        </button>
+      </div>
+
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={() => setShowAll((value) => !value)}
+          className="flex h-10 items-center justify-center gap-2 rounded-2xl border text-xs font-black"
+          style={{ borderColor: showAll ? "rgba(49,151,84,0.28)" : T.border, backgroundColor: showAll ? "#F3FBF6" : T.card, color: showAll ? T.success : T.navy }}
+        >
+          {showAll ? <EyeOff size={15} /> : <Eye size={15} />}
+          {showAll ? "Hide answers" : "See all answers"}
+        </button>
+
+        <button
+          type="button"
+          onClick={resetScores}
+          className="flex h-10 items-center justify-center gap-2 rounded-2xl border text-xs font-black"
+          style={{ borderColor: T.border, backgroundColor: T.card, color: T.navy }}
+        >
+          <RotateCcw size={15} /> Reset score
+        </button>
+      </div>
+
+      {filterOpen && (
+        <div className="mt-3 space-y-3 border-t pt-3" style={{ borderColor: T.borderSoft }}>
+          <div>
+            <p className="mb-2 text-[11px] font-black uppercase tracking-[0.16em]" style={{ color: T.textSubtle }}>
+              Score filter
+            </p>
+            <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+              {[
+                ["all", "All"],
+                ["known", "I knew it"],
+                ["review", "Need review"],
+                ["unscored", "Not scored"],
+              ].map(([value, label]) => (
+                <FilterChip key={value} active={statusFilter === value} onClick={() => setStatusFilter(value)}>
+                  {label}
+                </FilterChip>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="mb-2 text-[11px] font-black uppercase tracking-[0.16em]" style={{ color: T.textSubtle }}>
+              Category
+            </p>
+            <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+              <FilterChip active={categoryFilter === "all"} onClick={() => setCategoryFilter("all")}>All</FilterChip>
+              {categories.map((category) => (
+                <FilterChip key={category} active={categoryFilter === category} onClick={() => setCategoryFilter(category)}>
+                  {category}
+                </FilterChip>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </Card>
   );
 }
@@ -167,7 +293,14 @@ function FlashCard({ question, index, showAll, score, onScore }) {
         </p>
 
         {visible ? (
-          <div className="mt-2 rounded-2xl border p-3" style={{ borderColor: "rgba(49,151,84,0.24)", backgroundColor: "#F3FBF6" }}>
+          <button
+            type="button"
+            onClick={() => {
+              if (!showAll) setOpen(false);
+            }}
+            className="mt-2 w-full rounded-2xl border p-3 text-left transition active:scale-[0.99]"
+            style={{ borderColor: "rgba(49,151,84,0.24)", backgroundColor: "#F3FBF6" }}
+          >
             <p className="text-base font-black leading-6" style={{ color: T.success }}>
               {answer}
             </p>
@@ -176,12 +309,17 @@ function FlashCard({ question, index, showAll, score, onScore }) {
                 {question.explanation}
               </p>
             )}
-          </div>
+            {!showAll && (
+              <p className="mt-2 text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: T.textSubtle }}>
+                Tap again to hide answer
+              </p>
+            )}
+          </button>
         ) : (
           <button
             type="button"
             onClick={() => setOpen(true)}
-            className="mt-2 w-full rounded-2xl border border-dashed p-3 text-center"
+            className="mt-2 w-full rounded-2xl border border-dashed p-3 text-center transition active:scale-[0.99]"
             style={{ borderColor: T.border, backgroundColor: T.surface }}
           >
             <p className="text-sm font-bold" style={{ color: T.textMuted }}>
@@ -229,10 +367,37 @@ export default function BoardPrepStudyPage() {
   const [error, setError] = useState(null);
   const [showAll, setShowAll] = useState(false);
   const [scores, setScores] = useState({});
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
 
-  const groupedCategories = useMemo(() => {
-    return [...new Set(questions.map((q) => q.category).filter(Boolean))].slice(0, 5);
+  const categories = useMemo(() => {
+    return [...new Set(questions.map((q) => q.category).filter(Boolean))].sort();
   }, [questions]);
+
+  const filteredQuestions = useMemo(() => {
+    const search = searchQuery.trim().toLowerCase();
+
+    return questions.filter((question) => {
+      const score = scores[question.id];
+      if (statusFilter === "known" && score !== "known") return false;
+      if (statusFilter === "review" && score !== "review") return false;
+      if (statusFilter === "unscored" && score) return false;
+      if (categoryFilter !== "all" && question.category !== categoryFilter) return false;
+
+      if (!search) return true;
+      const haystack = [
+        question.question,
+        question.category,
+        question.source_publication,
+        question.explanation,
+        getAnswerText(question),
+      ].filter(Boolean).join(" ").toLowerCase();
+
+      return haystack.includes(search);
+    });
+  }, [questions, scores, searchQuery, statusFilter, categoryFilter]);
 
   const summary = useMemo(() => getScoreSummary(scores, questions.length), [scores, questions.length]);
 
@@ -275,53 +440,23 @@ export default function BoardPrepStudyPage() {
     <AppShell hideNav>
       <ToolPage title="Study all questions" eyebrow="Board Prep" icon={BookOpen}>
         <div className="space-y-4">
-          <Card className="p-4" style={{ background: `linear-gradient(135deg, ${T.navy}, #163b63)`, borderColor: "rgba(255,255,255,0.10)" }}>
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-white/70">Flash cards</p>
-            <h1 className="mt-1 font-serif text-3xl font-black leading-tight text-white">Study in flash cards</h1>
-            <p className="mt-2 text-sm leading-6 text-white/75">
-              No multiple choice here. Tap each question to reveal the correct answer, then score yourself.
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <span className="rounded-full bg-white/12 px-3 py-1 text-xs font-bold text-white/85">{questions.length || 0} questions</span>
-              {groupedCategories.map((category) => (
-                <span key={category} className="rounded-full bg-white/12 px-3 py-1 text-xs font-bold text-white/85">{category}</span>
-              ))}
-            </div>
-          </Card>
-
-          <ScoreBar summary={summary} />
-
-          <div className="grid grid-cols-3 gap-2">
-            <button
-              type="button"
-              onClick={() => setShowAll((value) => !value)}
-              className="col-span-2 flex h-12 items-center justify-center gap-2 rounded-2xl border font-black"
-              style={{ borderColor: showAll ? "rgba(49,151,84,0.28)" : T.border, backgroundColor: showAll ? "#F3FBF6" : T.card, color: showAll ? T.success : T.navy }}
-            >
-              {showAll ? <EyeOff size={17} /> : <Eye size={17} />}
-              {showAll ? "Hide answers" : "See all answers"}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setScores({})}
-              className="flex h-12 items-center justify-center gap-2 rounded-2xl border font-black"
-              style={{ borderColor: T.border, backgroundColor: T.card, color: T.navy }}
-            >
-              <RotateCcw size={16} />
-              Score
-            </button>
+          <div className="sticky top-0 z-20 -mx-1 space-y-3 rounded-b-[1.75rem] px-1 pb-3 pt-1" style={{ backgroundColor: T.bg }}>
+            <ScoreHero summary={summary} filteredCount={filteredQuestions.length} totalCount={questions.length} />
+            <StudyControls
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              filterOpen={filterOpen}
+              setFilterOpen={setFilterOpen}
+              statusFilter={statusFilter}
+              setStatusFilter={setStatusFilter}
+              categoryFilter={categoryFilter}
+              setCategoryFilter={setCategoryFilter}
+              categories={categories}
+              showAll={showAll}
+              setShowAll={setShowAll}
+              resetScores={() => setScores({})}
+            />
           </div>
-
-          <button
-            type="button"
-            onClick={loadQuestions}
-            className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl border font-black"
-            style={{ borderColor: T.border, backgroundColor: T.card, color: T.navy }}
-          >
-            <Trophy size={16} />
-            Reload all questions
-          </button>
 
           {loading && <Card className="p-6 text-center text-sm" style={{ color: T.textMuted }}>Loading flash cards...</Card>}
 
@@ -340,16 +475,24 @@ export default function BoardPrepStudyPage() {
             </Card>
           )}
 
-          {!loading && !error && questions.map((question, index) => (
-            <FlashCard
-              key={question.id}
-              question={question}
-              index={index}
-              showAll={showAll}
-              score={scores[question.id]}
-              onScore={handleScore}
-            />
-          ))}
+          {!loading && !error && questions.length > 0 && filteredQuestions.length === 0 && (
+            <Card className="p-6 text-center text-sm" style={{ color: T.textMuted }}>
+              No questions match your search or filters.
+            </Card>
+          )}
+
+          <div className="space-y-4 pb-8">
+            {!loading && !error && filteredQuestions.map((question, index) => (
+              <FlashCard
+                key={question.id}
+                question={question}
+                index={index}
+                showAll={showAll}
+                score={scores[question.id]}
+                onScore={handleScore}
+              />
+            ))}
+          </div>
         </div>
       </ToolPage>
     </AppShell>
