@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { T } from "@/lib/theme";
 import { useApp } from "@/store/AppContext";
+import { createClient } from "@/lib/supabase/client";
 import AppShell from "@/components/layout/AppShell";
 import Footer from "@/components/layout/Footer";
 import CircularBackButton from "@/components/ui/CircularBackButton";
@@ -24,6 +25,13 @@ import BlockedUsersList from "@/components/admin/BlockedUsersList";
 import AdminVerifyByEmail from "@/components/admin/AdminVerifyByEmail";
 import ResourceManager from "@/components/admin/ResourceManager";
 import BoardPrepManager from "@/components/admin/BoardPrepManager";
+
+async function getAccessToken() {
+  const supabase = createClient();
+  if (!supabase) return null;
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.access_token || null;
+}
 
 export default function AdminPage() {
   const router = useRouter();
@@ -58,6 +66,36 @@ export default function AdminPage() {
   useEffect(() => {
     setSearchQuery("");
   }, [tab]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadBoardRequestCount() {
+      if (authLoading || currentUser?.role !== "admin") return;
+
+      try {
+        const token = await getAccessToken();
+        if (!token) return;
+
+        const res = await fetch("/api/admin/board-prep/requests?status=pending", {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!cancelled && res.ok) {
+          setBoardRequestCount((json.data || []).length);
+        }
+      } catch {
+        // Keep the admin dashboard usable even if the badge count cannot load.
+      }
+    }
+
+    loadBoardRequestCount();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authLoading, currentUser?.role]);
 
   if (authLoading) return null;
   if (!currentUser || currentUser.role !== "admin") return null;
