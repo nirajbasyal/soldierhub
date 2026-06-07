@@ -42,11 +42,8 @@ function computeStreak(history) {
   for (let i = 1; i < completed.length; i++) {
     const a = new Date(completed[i - 1]);
     const b = new Date(completed[i]);
-    if ((a - b) / 86_400_000 === 1) {
-      streak++;
-    } else {
-      break;
-    }
+    if ((a - b) / 86_400_000 === 1) streak++;
+    else break;
   }
   return streak;
 }
@@ -133,7 +130,7 @@ export async function GET(request) {
 
   const { data: questionRows } = await supabase
     .from("board_questions")
-    .select("id, question, option_a, option_b, option_c, option_d, category, source_publication, difficulty")
+    .select("id, question, option_a, option_b, option_c, option_d, correct_option, explanation, category, source_publication, difficulty")
     .in("id", session.question_ids);
 
   const questions = (session.question_ids || [])
