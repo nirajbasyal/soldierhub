@@ -102,8 +102,8 @@ function getBadge(status) {
   if (status.loading) {
     return {
       icon: Target,
-      title: "Checking status",
-      detail: "Loading streak",
+      title: "Daily Streak",
+      detail: "Checking status",
       edge: "#8EA1B6",
       bg: "linear-gradient(135deg, #F7FAFD 0%, #FFFFFF 100%)",
       pillBg: "rgba(142, 161, 182, 0.14)",
@@ -114,8 +114,8 @@ function getBadge(status) {
   if (status.completed) {
     return {
       icon: CheckCircle2,
-      title: "Daily quiz complete",
-      detail: status.score === null ? "Streak saved" : `${status.score}/5 score · ${status.streak || 1}-day streak`,
+      title: "Daily Streak complete",
+      detail: status.score === null ? `${status.streak || 1}-day streak saved` : `${status.score}/5 score · ${status.streak || 1}-day streak`,
       edge: T.success,
       bg: "linear-gradient(135deg, #EAF8EF 0%, #FFFFFF 100%)",
       pillBg: "rgba(49, 151, 84, 0.13)",
@@ -126,8 +126,8 @@ function getBadge(status) {
   if (status.signedIn && status.streak > 0) {
     return {
       icon: Flame,
-      title: `${status.streak}-day streak active`,
-      detail: "Finish today’s 5 questions",
+      title: "Daily Streak",
+      detail: `${status.streak}-day streak active · finish today`,
       edge: T.amber,
       bg: "linear-gradient(135deg, #FFF8EA 0%, #FFFFFF 100%)",
       pillBg: "rgba(204, 129, 24, 0.14)",
@@ -137,7 +137,7 @@ function getBadge(status) {
 
   return {
     icon: Target,
-    title: "Today’s board reps",
+    title: "Daily Streak",
     detail: "5 questions · ~5 minutes",
     edge: T.brandRed,
     bg: "linear-gradient(135deg, #FDECF2 0%, #FFFFFF 100%)",
