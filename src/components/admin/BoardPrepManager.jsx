@@ -142,8 +142,21 @@ function TypePill({ type }) {
   );
 }
 
-function DeleteConfirmModal({ target, deleting, onCancel, onConfirm }) {
+function DeleteConfirmModal({ target, deleting, onCancel, onConfirm, mode = "question" }) {
   if (!target) return null;
+
+  const isRequest = mode === "request";
+  const title = isRequest ? "Remove user request?" : "Delete Board Prep question?";
+  const description = isRequest
+    ? "This removes the request from the admin inbox only. It does not delete any Board Prep question."
+    : "This removes the full question from the admin list and daily quiz pool.";
+  const preview = isRequest ? target.message : target.question;
+  const meta = isRequest
+    ? `${String(target.request_type || "request").toUpperCase()} · ${target.status || "unknown"}`
+    : `${target.category} · ${target.source_publication || "No publication"}`;
+  const confirmText = isRequest ? "Remove request" : "Delete question";
+  const loadingText = isRequest ? "Removing..." : "Deleting...";
+
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-[#0B1C2C]/45 px-4 backdrop-blur-sm">
       <div className="w-full max-w-md rounded-[2rem] border p-5 shadow-2xl" style={{ backgroundColor: T.card, borderColor: T.border }}>
@@ -152,17 +165,17 @@ function DeleteConfirmModal({ target, deleting, onCancel, onConfirm }) {
             <AlertTriangle size={24} />
           </div>
           <div className="min-w-0">
-            <h3 className="text-xl font-serif font-black" style={{ color: T.navy }}>Delete Board Prep question?</h3>
-            <p className="mt-1 text-sm leading-6" style={{ color: T.textMuted }}>This removes the full question from the admin list and daily quiz pool.</p>
+            <h3 className="text-xl font-serif font-black" style={{ color: T.navy }}>{title}</h3>
+            <p className="mt-1 text-sm leading-6" style={{ color: T.textMuted }}>{description}</p>
           </div>
         </div>
         <div className="mt-4 rounded-2xl border p-3" style={{ borderColor: T.borderSoft, backgroundColor: T.surface }}>
-          <p className="line-clamp-3 text-sm font-bold leading-6" style={{ color: T.text }}>{target.question}</p>
-          <p className="mt-1 text-xs font-semibold" style={{ color: T.textMuted }}>{target.category} · {target.source_publication || "No publication"}</p>
+          <p className="line-clamp-4 text-sm font-bold leading-6" style={{ color: T.text }}>{preview}</p>
+          <p className="mt-1 text-xs font-semibold" style={{ color: T.textMuted }}>{meta}</p>
         </div>
         <div className="mt-5 grid grid-cols-2 gap-2">
           <button type="button" onClick={onCancel} disabled={deleting} className="h-11 rounded-2xl border text-sm font-black disabled:opacity-50" style={{ borderColor: T.border, backgroundColor: T.card, color: T.navy }}>Cancel</button>
-          <button type="button" onClick={onConfirm} disabled={deleting} className="h-11 rounded-2xl text-sm font-black text-white disabled:opacity-50" style={{ backgroundColor: T.brandRed }}>{deleting ? "Deleting..." : "Delete question"}</button>
+          <button type="button" onClick={onConfirm} disabled={deleting} className="h-11 rounded-2xl text-sm font-black text-white disabled:opacity-50" style={{ backgroundColor: T.brandRed }}>{deleting ? loadingText : confirmText}</button>
         </div>
       </div>
     </div>
@@ -181,6 +194,8 @@ export default function BoardPrepManager({ onPendingRequestCountChange } = {}) {
   const [batchUploading, setBatchUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deletingRequest, setDeletingRequest] = useState(false);
+  const [requestDeleteTarget, setRequestDeleteTarget] = useState(null);
   const [message, setMessage] = useState(null);
 
   const editorRef = useRef(null);
@@ -353,6 +368,22 @@ export default function BoardPrepManager({ onPendingRequestCountChange } = {}) {
     }
   }
 
+  async function confirmDeleteRequest() {
+    if (!requestDeleteTarget?.id) return;
+    setDeletingRequest(true);
+    setMessage(null);
+    try {
+      await apiJson(`/api/admin/board-prep/requests?id=${encodeURIComponent(requestDeleteTarget.id)}`, { method: "DELETE" });
+      setRequestDeleteTarget(null);
+      setMessage("Request removed from the admin inbox.");
+      await load();
+    } catch (err) {
+      setMessage(err.message || "Could not remove request.");
+    } finally {
+      setDeletingRequest(false);
+    }
+  }
+
   async function updateRequestStatus(id, status) {
     try {
       await apiJson("/api/admin/board-prep/requests", { method: "PATCH", body: { id, status } });
@@ -368,6 +399,7 @@ export default function BoardPrepManager({ onPendingRequestCountChange } = {}) {
   return (
     <div className="space-y-5">
       <DeleteConfirmModal target={deleteTarget} deleting={deleting} onCancel={() => setDeleteTarget(null)} onConfirm={confirmDeleteQuestion} />
+      <DeleteConfirmModal target={requestDeleteTarget} deleting={deletingRequest} onCancel={() => setRequestDeleteTarget(null)} onConfirm={confirmDeleteRequest} mode="request" />
 
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="flex items-start gap-3">
@@ -432,10 +464,11 @@ export default function BoardPrepManager({ onPendingRequestCountChange } = {}) {
                   {r.suggested_question && <p className="mt-2 text-xs leading-5" style={{ color: T.textMuted }}>Suggested question: {r.suggested_question}</p>}
                   {r.suggested_answer && <p className="mt-1 text-xs leading-5" style={{ color: T.textMuted }}>Suggested answer: {r.suggested_answer}</p>}
                 </div>
-                <div className="flex shrink-0 gap-2">
+                <div className="flex shrink-0 flex-wrap gap-2">
                   <button title="Copy into editor" onClick={() => prefillFromRequest(r)} className="flex h-9 items-center gap-1 rounded-xl px-3 text-xs font-black" style={{ backgroundColor: T.blueSoft, color: T.blue }}><Edit3 size={15} />Edit</button>
                   {r.status === "pending" && <button title="Approve request" onClick={() => updateRequestStatus(r.id, "approved")} className="flex h-9 items-center gap-1 rounded-xl px-3 text-xs font-black" style={{ backgroundColor: T.successBg, color: T.success }}><CheckCircle size={15} />Approve</button>}
                   {r.status === "pending" && <button title="Reject request" onClick={() => updateRequestStatus(r.id, "rejected")} className="flex h-9 items-center gap-1 rounded-xl px-3 text-xs font-black" style={{ backgroundColor: T.redBg, color: T.brandRed }}><X size={15} />Reject</button>}
+                  <button title="Remove request" onClick={() => setRequestDeleteTarget(r)} className="flex h-9 items-center gap-1 rounded-xl px-3 text-xs font-black" style={{ backgroundColor: T.redBg, color: T.brandRed }}><Trash2 size={15} />Remove</button>
                 </div>
               </div>
             </div>
