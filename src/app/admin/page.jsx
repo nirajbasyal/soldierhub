@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  BookOpen,
   Flag,
   Link2,
   Search,
@@ -22,6 +23,7 @@ import MembersList from "@/components/admin/MembersList";
 import BlockedUsersList from "@/components/admin/BlockedUsersList";
 import AdminVerifyByEmail from "@/components/admin/AdminVerifyByEmail";
 import ResourceManager from "@/components/admin/ResourceManager";
+import BoardPrepManager from "@/components/admin/BoardPrepManager";
 
 export default function AdminPage() {
   const router = useRouter();
@@ -39,7 +41,6 @@ export default function AdminPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [resourceCount, setResourceCount] = useState(0);
 
-  // Guard: only admins
   useEffect(() => {
     if (authLoading) return;
 
@@ -53,7 +54,6 @@ export default function AdminPage() {
     }
   }, [authLoading, currentUser, router]);
 
-  // Clear search when switching tabs
   useEffect(() => {
     setSearchQuery("");
   }, [tab]);
@@ -69,36 +69,12 @@ export default function AdminPage() {
     tab === "pending" || tab === "members" || tab === "blocked";
 
   const tabs = [
-    {
-      k: "pending",
-      label: "Pending",
-      icon: UserCheck,
-      count: pendingUsers.length,
-    },
-    {
-      k: "reported",
-      label: "Reported",
-      icon: Flag,
-      count: reportedCount,
-    },
-    {
-      k: "members",
-      label: "Members",
-      icon: Users,
-      count: memberCount,
-    },
-    {
-      k: "blocked",
-      label: "Blocked",
-      icon: UserX,
-      count: blockedCount,
-    },
-    {
-      k: "resources",
-      label: "Resources",
-      icon: Link2,
-      count: resourceCount,
-    },
+    { k: "pending", label: "Pending", icon: UserCheck, count: pendingUsers.length },
+    { k: "reported", label: "Reported", icon: Flag, count: reportedCount },
+    { k: "members", label: "Members", icon: Users, count: memberCount },
+    { k: "blocked", label: "Blocked", icon: UserX, count: blockedCount },
+    { k: "resources", label: "Resources", icon: Link2, count: resourceCount },
+    { k: "board", label: "Board Prep", icon: BookOpen, count: "" },
   ];
 
   return (
@@ -131,18 +107,13 @@ export default function AdminPage() {
 
           <AdminVerifyByEmail />
 
-          {/* Tab bar */}
           <div
             className="flex p-1 rounded-xl mb-5 overflow-x-auto no-scrollbar"
-            style={{
-              backgroundColor: T.surface,
-              border: `1px solid ${T.border}`,
-            }}
+            style={{ backgroundColor: T.surface, border: `1px solid ${T.border}` }}
           >
             {tabs.map((t) => {
               const Icon = t.icon;
               const active = tab === t.k;
-
               return (
                 <button
                   key={t.k}
@@ -151,36 +122,31 @@ export default function AdminPage() {
                   style={{
                     backgroundColor: active ? T.card : "transparent",
                     color: active ? T.navy : T.textMuted,
-                    boxShadow: active
-                      ? "0 1px 2px rgba(11,28,44,0.06)"
-                      : "none",
+                    boxShadow: active ? "0 1px 2px rgba(11,28,44,0.06)" : "none",
                   }}
                 >
                   <Icon size={14} />
                   {t.label}
-
-                  <span
-                    className="text-[11px] px-1.5 rounded-full tabular-nums"
-                    style={{
-                      backgroundColor: active ? T.goldBg : T.borderSoft,
-                      color: active ? T.gold : T.textSubtle,
-                    }}
-                  >
-                    {t.count}
-                  </span>
+                  {t.count !== "" && (
+                    <span
+                      className="text-[11px] px-1.5 rounded-full tabular-nums"
+                      style={{
+                        backgroundColor: active ? T.goldBg : T.borderSoft,
+                        color: active ? T.gold : T.textSubtle,
+                      }}
+                    >
+                      {t.count}
+                    </span>
+                  )}
                 </button>
               );
             })}
           </div>
 
-          {/* Search bar only for user tabs */}
           {showUserSearch && (
             <div
               className="mb-4 rounded-2xl border p-3"
-              style={{
-                backgroundColor: T.card,
-                borderColor: T.border,
-              }}
+              style={{ backgroundColor: T.card, borderColor: T.border }}
             >
               <div className="relative">
                 <span
@@ -201,11 +167,7 @@ export default function AdminPage() {
                       : "Search blocked users by name, email, phone..."
                   }
                   className="w-full h-11 rounded-xl border text-sm outline-none pl-10 pr-3"
-                  style={{
-                    backgroundColor: T.surface,
-                    borderColor: T.border,
-                    color: T.text,
-                  }}
+                  style={{ backgroundColor: T.surface, borderColor: T.border, color: T.text }}
                 />
               </div>
             </div>
@@ -215,21 +177,12 @@ export default function AdminPage() {
             className="rounded-2xl border p-4 md:p-5"
             style={{ backgroundColor: T.card, borderColor: T.border }}
           >
-            {tab === "pending" && (
-              <PendingUsersList searchQuery={searchQuery} />
-            )}
-
+            {tab === "pending" && <PendingUsersList searchQuery={searchQuery} />}
             {tab === "reported" && <ReportedPostsList />}
-
             {tab === "members" && <MembersList searchQuery={searchQuery} />}
-
-            {tab === "blocked" && (
-              <BlockedUsersList searchQuery={searchQuery} />
-            )}
-
-            {tab === "resources" && (
-              <ResourceManager onCountChange={setResourceCount} />
-            )}
+            {tab === "blocked" && <BlockedUsersList searchQuery={searchQuery} />}
+            {tab === "resources" && <ResourceManager onCountChange={setResourceCount} />}
+            {tab === "board" && <BoardPrepManager />}
           </div>
 
           <Footer />
