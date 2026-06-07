@@ -8,6 +8,7 @@ import {
   BookMarked,
   BookOpen,
   Calculator,
+  ChevronRight,
   Compass,
   Loader2,
   LogIn,
@@ -62,6 +63,42 @@ function PageLoadingScreen() {
         </p>
       </div>
     </div>
+  );
+}
+
+function BoardPrepMenuCard({ onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full rounded-xl border p-3.5 text-left transition-shadow hover:shadow-sm"
+      style={{ backgroundColor: T.card, borderColor: T.border }}
+    >
+      <div className="flex items-center gap-3">
+        <div
+          className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+          style={{ backgroundColor: T.surface }}
+        >
+          <BookOpen size={16} strokeWidth={2.25} style={{ color: T.text }} />
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="text-sm font-semibold truncate" style={{ color: T.text }}>
+              Board Prep
+            </div>
+          </div>
+          <div className="text-xs mt-0.5" style={{ color: T.textSubtle }}>
+            Daily promotion board questions
+          </div>
+          <div className="mt-2">
+            <BoardPrepStatusBadge variant="menu" />
+          </div>
+        </div>
+
+        <ChevronRight size={16} style={{ color: T.textSubtle }} className="shrink-0" />
+      </div>
+    </button>
   );
 }
 
@@ -285,18 +322,7 @@ export default function MobileMenu() {
                 onClick={() => go("/tools/gates")}
               />
 
-              <div className="flex flex-col gap-1.5">
-                <MenuItem
-                  icon={BookOpen}
-                  label="Board Prep"
-                  hint="Daily promotion board questions"
-                  onClick={() => go("/tools/board-prep")}
-                />
-                <BoardPrepStatusBadge
-                  variant="menu"
-                  onClick={() => go("/tools/board-prep")}
-                />
-              </div>
+              <BoardPrepMenuCard onClick={() => go("/tools/board-prep")} />
 
               <MenuItem
                 icon={Activity}
