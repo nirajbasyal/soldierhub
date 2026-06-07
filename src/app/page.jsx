@@ -17,6 +17,7 @@ import MobileWeatherStrip from "@/components/tools/MobileWeatherStrip";
 import BAHCard from "@/components/tools/BAHCard";
 import GateHoursCard from "@/components/tools/GateHoursCard";
 import BoardPrepCard from "@/components/tools/BoardPrepCard";
+import AFTScoreCard from "@/components/tools/AFTScoreCard";
 import SiteInfoCard from "@/components/tools/SiteInfoCard";
 
 const PostComposer = dynamic(() => import("@/components/feed/composer/PostComposer"), {
@@ -567,6 +568,7 @@ export default function HomePage() {
               <BoardPrepCard />
               <BAHCard />
               <GateHoursCard />
+              <AFTScoreCard />
               <SiteInfoCard />
             </div>
           </aside>
