@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Award,
@@ -24,6 +24,7 @@ import ToolPage from "@/components/ui/ToolPage";
 const OPTION_KEYS = ["a", "b", "c", "d"];
 const OPTION_LABELS = { a: "A", b: "B", c: "C", d: "D" };
 const DAILY_TARGET = 5;
+const FLASHCARD_MARKER = "__FLASHCARD__";
 
 const SCORE_MESSAGE = {
   5: "Perfect score. Board-ready energy.",
@@ -35,37 +36,21 @@ const SCORE_MESSAGE = {
   "-1": "Some flashcards need review. That is useful practice.",
   "-2": "Review the flashcards and try again for memory.",
   "-3": "Today exposed weak spots. That is exactly what practice is for.",
+  "-4": "Review mode will help lock the answers in.",
+  "-5": "This is a review day. Study the cards and try again.",
 };
 
 const MEMORY_ITEMS = [
-  {
-    title: "Soldier's Creed",
-    summary: "Opening, Warrior Ethos, Army Values, readiness.",
-    body: "Study the full Soldier's Creed from your board packet. Know the opening, the Warrior Ethos, Army Values, readiness, professionalism, and the final line.",
-  },
-  {
-    title: "NCO Creed",
-    summary: "Professionalism, competence, mission, Soldiers.",
-    body: "Study the full Creed of the Noncommissioned Officer. Know the opening, the watchword, the two basic responsibilities, and the closing identity of NCOs as professionals and leaders.",
-  },
-  {
-    title: "Army Song",
-    summary: "Official title and confidence cue.",
-    body: "Official title: The Army Goes Rolling Along. Practice the intro, verse, and refrain from your official board packet.",
-  },
-  {
-    title: "General Orders",
-    summary: "Three common board questions.",
-    body: "1. Guard everything within the limits of my post and quit my post only when properly relieved.\n\n2. Obey my special orders and perform all my duties in a military manner.\n\n3. Report violations of my special orders, emergencies, and anything not covered in my instructions to the commander of the relief.",
-  },
+  { title: "Soldier's Creed", summary: "Opening, Warrior Ethos, Army Values, readiness.", body: "Study the full Soldier's Creed from your board packet. Know the opening, Warrior Ethos, Army Values, readiness, professionalism, and the final line." },
+  { title: "NCO Creed", summary: "Professionalism, competence, mission, Soldiers.", body: "Study the full Creed of the Noncommissioned Officer. Know the opening, the watchword, the two basic responsibilities, and the closing identity of NCOs as professionals and leaders." },
+  { title: "Army Song", summary: "Official title and confidence cue.", body: "Official title: The Army Goes Rolling Along. Practice the intro, verse, and refrain from your official board packet." },
+  { title: "General Orders", summary: "Three common board questions.", body: "1. Guard everything within the limits of my post and quit my post only when properly relieved.\n\n2. Obey my special orders and perform all my duties in a military manner.\n\n3. Report violations of my special orders, emergencies, and anything not covered in my instructions to the commander of the relief." },
 ];
 
 async function getAccessToken() {
   const supabase = createClient();
   if (!supabase) return null;
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  const { data: { session } } = await supabase.auth.getSession();
   return session?.access_token || null;
 }
 
@@ -73,110 +58,53 @@ function getOptionText(question, key) {
   return question?.[`option_${key}`] || "";
 }
 
+function isFlashcardQuestion(question) {
+  return question?.question_type === "flashcard" || (
+    question?.option_b === FLASHCARD_MARKER &&
+    question?.option_c === FLASHCARD_MARKER &&
+    question?.option_d === FLASHCARD_MARKER
+  );
+}
+
 function getCorrectAnswerText(question) {
   return question?.correct_answer || getOptionText(question, question?.correct_option) || "Answer not available.";
 }
 
-function isFlashcardQuestion(questionIndex) {
-  return questionIndex === 0 || questionIndex === 2 || questionIndex === 4;
-}
-
 function Card({ children, className = "", style = {} }) {
-  return (
-    <div
-      className={`rounded-[1.75rem] border shadow-sm ${className}`}
-      style={{ backgroundColor: T.card, borderColor: T.border, ...style }}
-    >
-      {children}
-    </div>
-  );
+  return <div className={`rounded-[1.75rem] border shadow-sm ${className}`} style={{ backgroundColor: T.card, borderColor: T.border, ...style }}>{children}</div>;
 }
 
 function Pill({ children, tone = "blue" }) {
   const bg = tone === "red" ? T.redBg : tone === "gold" ? T.goldBg : tone === "green" ? T.successBg : T.blueSoft;
   const color = tone === "red" ? T.brandRed : tone === "gold" ? T.gold : tone === "green" ? T.success : T.blue;
-  return (
-    <span className="inline-flex rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: bg, color }}>
-      {children}
-    </span>
-  );
+  return <span className="inline-flex rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: bg, color }}>{children}</span>;
 }
 
 function StreakBadge({ streak }) {
   return (
-    <div
-      className="flex min-h-[86px] flex-col items-center justify-center rounded-2xl border px-4 py-3 text-center"
-      style={{ borderColor: "rgba(179,25,66,0.22)", backgroundColor: T.redBg }}
-    >
-      <div className="flex items-center justify-center gap-1.5 font-serif text-2xl font-bold leading-none" style={{ color: T.brandRed }}>
-        <Flame size={21} />
-        <span>{streak || 0}</span>
-      </div>
-      <p className="mt-2 text-[11px] font-black uppercase tracking-[0.18em]" style={{ color: T.textMuted }}>
-        Day streak
-      </p>
+    <div className="flex min-h-[86px] flex-col items-center justify-center rounded-2xl border px-4 py-3 text-center" style={{ borderColor: "rgba(179,25,66,0.22)", backgroundColor: T.redBg }}>
+      <div className="flex items-center justify-center gap-1.5 font-serif text-2xl font-bold leading-none" style={{ color: T.brandRed }}><Flame size={21} /><span>{streak || 0}</span></div>
+      <p className="mt-2 text-[11px] font-black uppercase tracking-[0.18em]" style={{ color: T.textMuted }}>Day streak</p>
     </div>
   );
 }
 
 function ProgressDots({ filled = 0, total = DAILY_TARGET }) {
   const safeTotal = Math.max(total || DAILY_TARGET, 1);
-  return (
-    <div className="flex items-center gap-1.5">
-      {Array.from({ length: safeTotal }).map((_, idx) => (
-        <div key={idx} className="h-2 flex-1 rounded-full" style={{ backgroundColor: idx < filled ? T.brandRed : T.borderSoft }} />
-      ))}
-    </div>
-  );
+  return <div className="flex items-center gap-1.5">{Array.from({ length: safeTotal }).map((_, idx) => <div key={idx} className="h-2 flex-1 rounded-full" style={{ backgroundColor: idx < filled ? T.brandRed : T.borderSoft }} />)}</div>;
 }
 
 function MemoryPanel() {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(null);
   const activeItem = MEMORY_ITEMS.find((item) => item.title === active);
-
   return (
     <Card className="overflow-hidden">
       <button onClick={() => setOpen((v) => !v)} className="flex w-full items-center justify-between gap-3 p-3 text-left">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl" style={{ backgroundColor: T.blueSoft, color: T.blue }}>
-            <Shield size={18} />
-          </div>
-          <div className="min-w-0">
-            <p className="font-bold leading-tight" style={{ color: T.navy }}>Quick memory guide</p>
-            <p className="mt-0.5 text-xs leading-5" style={{ color: T.textMuted }}>Creeds, Army Song, and General Orders.</p>
-          </div>
-        </div>
+        <div className="flex min-w-0 items-center gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl" style={{ backgroundColor: T.blueSoft, color: T.blue }}><Shield size={18} /></div><div className="min-w-0"><p className="font-bold leading-tight" style={{ color: T.navy }}>Quick memory guide</p><p className="mt-0.5 text-xs leading-5" style={{ color: T.textMuted }}>Creeds, Army Song, and General Orders.</p></div></div>
         <ChevronDown size={18} className={open ? "shrink-0 rotate-180 transition" : "shrink-0 transition"} style={{ color: T.textMuted }} />
       </button>
-
-      {open && (
-        <div className="border-t p-3" style={{ borderColor: T.borderSoft }}>
-          <div className="grid grid-cols-2 gap-2">
-            {MEMORY_ITEMS.map((item) => {
-              const selected = active === item.title;
-              return (
-                <button
-                  key={item.title}
-                  onClick={() => setActive(selected ? null : item.title)}
-                  className="rounded-2xl border p-3 text-left transition active:scale-[0.99]"
-                  style={{ borderColor: selected ? T.brandRed : T.borderSoft, backgroundColor: T.card }}
-                >
-                  <p className="text-sm font-bold leading-tight" style={{ color: T.navy }}>{item.title}</p>
-                  <p className="mt-1 text-[11px] leading-4" style={{ color: T.textMuted }}>{item.summary}</p>
-                </button>
-              );
-            })}
-          </div>
-
-          {activeItem && (
-            <div className="mt-3 rounded-2xl border p-4" style={{ borderColor: T.borderSoft, backgroundColor: T.card }}>
-              <p className="text-sm font-bold" style={{ color: T.navy }}>{activeItem.title}</p>
-              <p className="mt-2 whitespace-pre-line text-sm leading-7" style={{ color: T.text }}>{activeItem.body}</p>
-            </div>
-          )}
-        </div>
-      )}
+      {open && <div className="border-t p-3" style={{ borderColor: T.borderSoft }}><div className="grid grid-cols-2 gap-2">{MEMORY_ITEMS.map((item) => { const selected = active === item.title; return <button key={item.title} onClick={() => setActive(selected ? null : item.title)} className="rounded-2xl border p-3 text-left transition active:scale-[0.99]" style={{ borderColor: selected ? T.brandRed : T.borderSoft, backgroundColor: T.card }}><p className="text-sm font-bold leading-tight" style={{ color: T.navy }}>{item.title}</p><p className="mt-1 text-[11px] leading-4" style={{ color: T.textMuted }}>{item.summary}</p></button>; })}</div>{activeItem && <div className="mt-3 rounded-2xl border p-4" style={{ borderColor: T.borderSoft, backgroundColor: T.card }}><p className="text-sm font-bold" style={{ color: T.navy }}>{activeItem.title}</p><p className="mt-2 whitespace-pre-line text-sm leading-7" style={{ color: T.text }}>{activeItem.body}</p></div>}</div>}
     </Card>
   );
 }
@@ -195,20 +123,11 @@ function RequestCard({ currentQuestion }) {
     const res = await fetch("/api/board-prep/request", {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        request_type: requestType,
-        question_id: requestType === "add" ? null : currentQuestion?.id,
-        category: currentQuestion?.category || null,
-        message,
-        suggested_question: requestType === "add" ? message : null,
-      }),
+      body: JSON.stringify({ request_type: requestType, question_id: requestType === "add" ? null : currentQuestion?.id, category: currentQuestion?.category || null, message, suggested_question: requestType === "add" ? message : null }),
     });
     const json = await res.json().catch(() => ({}));
     setSending(false);
-    if (!res.ok) {
-      setStatus(json.error || "Could not send request.");
-      return;
-    }
+    if (!res.ok) { setStatus(json.error || "Could not send request."); return; }
     setMessage("");
     setOpen(false);
     setStatus("Request sent to admin.");
@@ -216,22 +135,8 @@ function RequestCard({ currentQuestion }) {
 
   return (
     <div className="mt-4">
-      <button onClick={() => setOpen((v) => !v)} className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-bold" style={{ borderColor: T.border, color: T.textMuted, backgroundColor: T.card }}>
-        <Send size={14} /> Request question fix
-      </button>
-      {open && (
-        <Card className="mt-3 p-4">
-          <p className="font-semibold" style={{ color: T.navy }}>Send admin a correction</p>
-          <p className="mt-1 text-xs" style={{ color: T.textMuted }}>Use this for wrong answers, outdated questions, or a new question idea.</p>
-          <div className="mt-3 grid grid-cols-3 gap-2">
-            {["add", "update", "remove"].map((type) => (
-              <button key={type} onClick={() => setRequestType(type)} className="h-10 rounded-xl text-sm font-semibold capitalize" style={{ backgroundColor: requestType === type ? T.navy : T.surface, color: requestType === type ? "#fff" : T.textMuted, border: `1px solid ${T.border}` }}>{type}</button>
-            ))}
-          </div>
-          <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={4} className="mt-3 w-full rounded-xl border p-3 text-sm outline-none" style={{ borderColor: T.border, color: T.text }} placeholder="Explain what should change." />
-          <button onClick={submitRequest} disabled={sending || !message.trim()} className="mt-3 h-11 w-full rounded-xl font-semibold text-white disabled:opacity-40" style={{ backgroundColor: T.brandRed }}>{sending ? "Sending..." : "Send request"}</button>
-        </Card>
-      )}
+      <button onClick={() => setOpen((v) => !v)} className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-bold" style={{ borderColor: T.border, color: T.textMuted, backgroundColor: T.card }}><Send size={14} /> Request question fix</button>
+      {open && <Card className="mt-3 p-4"><p className="font-semibold" style={{ color: T.navy }}>Send admin a correction</p><p className="mt-1 text-xs" style={{ color: T.textMuted }}>Use this for wrong answers, outdated questions, or a new question idea.</p><div className="mt-3 grid grid-cols-3 gap-2">{["add", "update", "remove"].map((type) => <button key={type} onClick={() => setRequestType(type)} className="h-10 rounded-xl text-sm font-semibold capitalize" style={{ backgroundColor: requestType === type ? T.navy : T.surface, color: requestType === type ? "#fff" : T.textMuted, border: `1px solid ${T.border}` }}>{type}</button>)}</div><textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={4} className="mt-3 w-full rounded-xl border p-3 text-sm outline-none" style={{ borderColor: T.border, color: T.text }} placeholder="Explain what should change." /><button onClick={submitRequest} disabled={sending || !message.trim()} className="mt-3 h-11 w-full rounded-xl font-semibold text-white disabled:opacity-40" style={{ backgroundColor: T.brandRed }}>{sending ? "Sending..." : "Send request"}</button></Card>}
       {status && <p className="mt-2 text-xs" style={{ color: status.includes("sent") ? T.success : T.danger }}>{status}</p>}
     </div>
   );
@@ -240,85 +145,27 @@ function RequestCard({ currentQuestion }) {
 function Hero({ streak, answeredCount = 0, practice = false, totalQuestions = DAILY_TARGET }) {
   return (
     <Card className="overflow-hidden p-4" style={{ background: `linear-gradient(135deg, ${T.navy}, #163b63)`, borderColor: "rgba(255,255,255,0.12)" }}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/70">{practice ? "Review quiz" : "Daily board quiz"}</p>
-          <h1 className="mt-1.5 font-serif text-2xl font-black leading-tight text-white">{practice ? "Review again" : "Flashcard, choice, repeat."}</h1>
-          <p className="mt-1.5 max-w-sm text-xs leading-5 text-white/75">
-            {practice ? "Practice for memory. Streak unchanged." : "Order: flashcard, multiple choice, flashcard, multiple choice, flashcard."}
-          </p>
-        </div>
-        <StreakBadge streak={streak} />
-      </div>
-      <div className="mt-4 rounded-2xl bg-white/10 p-2.5">
-        <div className="mb-2 flex items-center justify-between text-[11px] font-bold text-white/80">
-          <span>{answeredCount}/{totalQuestions} answered</span>
-          <span>{practice ? "Review reps" : "Daily goal"}</span>
-        </div>
-        <ProgressDots filled={answeredCount} total={totalQuestions} />
-      </div>
+      <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/70">{practice ? "Review quiz" : "Daily board quiz"}</p><h1 className="mt-1.5 font-serif text-2xl font-black leading-tight text-white">{practice ? "Review again" : "Daily Board Prep"}</h1><p className="mt-1.5 max-w-sm text-xs leading-5 text-white/75">{practice ? "Practice for memory. Streak unchanged." : "Mix of multiple-choice and flashcards. If multiple-choice runs low, flashcards keep the quiz moving."}</p></div><StreakBadge streak={streak} /></div>
+      <div className="mt-4 rounded-2xl bg-white/10 p-2.5"><div className="mb-2 flex items-center justify-between text-[11px] font-bold text-white/80"><span>{answeredCount}/{totalQuestions} answered</span><span>{practice ? "Review reps" : "Daily goal"}</span></div><ProgressDots filled={answeredCount} total={totalQuestions} /></div>
     </Card>
   );
 }
 
 function IntroPhase({ streak, questions, onStart, onStudy }) {
   const categories = [...new Set(questions.map((q) => q.category).filter(Boolean))];
+  const flashcards = questions.filter(isFlashcardQuestion).length;
+  const mcq = questions.length - flashcards;
   return (
     <div className="space-y-4">
       <MemoryPanel />
       <Hero streak={streak} answeredCount={0} totalQuestions={questions.length || DAILY_TARGET} />
-      <Card className="p-5">
-        <div className="flex items-start gap-3">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl" style={{ backgroundColor: T.redBg, color: T.brandRed }}>
-            <Target size={23} />
-          </div>
-          <div>
-            <h2 className="text-xl font-serif font-bold" style={{ color: T.navy }}>Today's mission</h2>
-            <p className="mt-1 text-sm leading-6" style={{ color: T.textMuted }}>
-              Complete 3 flashcards and 2 multiple-choice questions. Flashcards: I knew it is +1, Need review is -1.
-            </p>
-          </div>
-        </div>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Pill tone="red">3 flashcards</Pill>
-          <Pill tone="gold">2 choices</Pill>
-          {categories.slice(0, 3).map((c) => <Pill key={c}>{c}</Pill>)}
-        </div>
-        <button onClick={onStart} className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-2xl font-bold text-white" style={{ backgroundColor: T.brandRed }}>
-          Start quiz <ChevronRight size={18} />
-        </button>
-        <button onClick={onStudy} className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-2xl border font-bold" style={{ borderColor: T.border, color: T.navy, backgroundColor: T.card }}>
-          <BookOpen size={17} /> Study all questions
-        </button>
-      </Card>
+      <Card className="p-5"><div className="flex items-start gap-3"><div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl" style={{ backgroundColor: T.redBg, color: T.brandRed }}><Target size={23} /></div><div><h2 className="text-xl font-serif font-bold" style={{ color: T.navy }}>Today's mission</h2><p className="mt-1 text-sm leading-6" style={{ color: T.textMuted }}>Complete today's available questions. Flashcards are self-graded: I knew it is +1, Need review is -1.</p></div></div><div className="mt-4 flex flex-wrap gap-2"><Pill tone="red">{questions.length || DAILY_TARGET} questions</Pill><Pill tone="gold">{flashcards} flashcard{flashcards === 1 ? "" : "s"}</Pill><Pill>{mcq} multiple choice</Pill>{categories.slice(0, 2).map((c) => <Pill key={c}>{c}</Pill>)}</div><button onClick={onStart} className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-2xl font-bold text-white" style={{ backgroundColor: T.brandRed }}>Start quiz <ChevronRight size={18} /></button><button onClick={onStudy} className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-2xl border font-bold" style={{ borderColor: T.border, color: T.navy, backgroundColor: T.card }}><BookOpen size={17} /> Study all questions</button></Card>
     </div>
   );
 }
 
 function ExhaustedPhase({ message, onRestart, onStudy, onBack }) {
-  return (
-    <div className="space-y-4">
-      <MemoryPanel />
-      <Card className="p-6 text-center">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl" style={{ backgroundColor: T.goldBg, color: T.gold }}>
-          <Trophy size={30} />
-        </div>
-        <h2 className="mt-4 text-2xl font-serif font-black" style={{ color: T.navy }}>You finished all board questions</h2>
-        <p className="mt-2 text-sm leading-6" style={{ color: T.textMuted }}>
-          {message || "You have finished all available Board Prep questions. Restart the quiz to keep practicing and memorizing."}
-        </p>
-        <button onClick={onRestart} className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-2xl font-bold text-white" style={{ backgroundColor: T.brandRed }}>
-          <RotateCcw size={16} /> Restart quiz
-        </button>
-        <button onClick={onStudy} className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-2xl border font-bold" style={{ borderColor: T.border, color: T.navy, backgroundColor: T.card }}>
-          <BookOpen size={17} /> Study all questions
-        </button>
-        <button onClick={onBack} className="mt-3 flex h-11 w-full items-center justify-center rounded-2xl border font-bold" style={{ borderColor: T.border, color: T.textMuted, backgroundColor: T.surface }}>
-          Back to feed
-        </button>
-      </Card>
-    </div>
-  );
+  return <div className="space-y-4"><MemoryPanel /><Card className="p-6 text-center"><div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl" style={{ backgroundColor: T.goldBg, color: T.gold }}><Trophy size={30} /></div><h2 className="mt-4 text-2xl font-serif font-black" style={{ color: T.navy }}>You finished all board questions</h2><p className="mt-2 text-sm leading-6" style={{ color: T.textMuted }}>{message || "You have finished all available Board Prep questions. Restart the quiz to keep practicing and memorizing."}</p><button onClick={onRestart} className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-2xl font-bold text-white" style={{ backgroundColor: T.brandRed }}><RotateCcw size={16} /> Restart quiz</button><button onClick={onStudy} className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-2xl border font-bold" style={{ borderColor: T.border, color: T.navy, backgroundColor: T.card }}><BookOpen size={17} /> Study all questions</button><button onClick={onBack} className="mt-3 flex h-11 w-full items-center justify-center rounded-2xl border font-bold" style={{ borderColor: T.border, color: T.textMuted, backgroundColor: T.surface }}>Back to feed</button></Card></div>;
 }
 
 function QuestionPhase({ question, questionIndex, selected, result, submitting, streak, practice, isFlashcard, totalQuestions, onSelect, onSubmit, onNext }) {
@@ -326,104 +173,14 @@ function QuestionPhase({ question, questionIndex, selected, result, submitting, 
   const answered = Boolean(result);
   const answeredCount = questionIndex + (answered ? 1 : 0);
   const answerText = getCorrectAnswerText(question);
-
   useEffect(() => { setAnswerOpen(false); }, [question?.id, isFlashcard]);
 
   return (
     <div className="space-y-4">
       <Hero streak={streak} answeredCount={answeredCount} practice={practice} totalQuestions={totalQuestions} />
-      <Card className="p-5">
-        <div className="mb-4">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <span className="text-sm font-bold" style={{ color: T.textMuted }}>Question {questionIndex + 1} of {totalQuestions}</span>
-            <Pill tone={isFlashcard ? "gold" : practice ? "gold" : "blue"}>{isFlashcard ? "Flashcard" : practice ? "Practice" : "Multiple choice"}</Pill>
-          </div>
-          <ProgressDots filled={answeredCount} total={totalQuestions} />
-        </div>
-
-        {question.source_publication && <p className="text-xs mb-2 font-semibold uppercase tracking-[0.12em]" style={{ color: T.textSubtle }}>{question.source_publication}</p>}
-        <p className="mb-5 text-xl font-black leading-snug" style={{ color: T.navy }}>{question.question}</p>
-
-        {isFlashcard ? (
-          <div className="space-y-3">
-            <button
-              type="button"
-              onClick={() => !answered && setAnswerOpen((value) => !value)}
-              disabled={answered}
-              className="w-full rounded-2xl border border-dashed p-4 text-left transition active:scale-[0.99] disabled:cursor-default"
-              style={{ borderColor: answerOpen || answered ? "rgba(49,151,84,0.26)" : T.border, backgroundColor: answerOpen || answered ? "#F3FBF6" : T.surface }}
-            >
-              <p className="text-[11px] font-black uppercase tracking-[0.16em]" style={{ color: T.textMuted }}>Correct answer</p>
-              {answerOpen || answered ? (
-                <>
-                  <p className="mt-2 text-base font-black leading-6" style={{ color: T.success }}>{answerText}</p>
-                  {question.explanation && <p className="mt-2 text-sm leading-6" style={{ color: T.textMuted }}>{question.explanation}</p>}
-                </>
-              ) : (
-                <p className="mt-2 text-sm font-bold" style={{ color: T.textMuted }}>**** tap or click to see the answer ****</p>
-              )}
-            </button>
-
-            {answered && (
-              <div className="rounded-2xl border p-4" style={{ backgroundColor: result.points > 0 ? T.successBg : T.dangerBg, borderColor: result.points > 0 ? T.success : T.danger }}>
-                <div className="flex items-center gap-2 font-bold" style={{ color: result.points > 0 ? T.success : T.danger }}>
-                  {result.points > 0 ? <CheckCircle size={17} /> : <XCircle size={17} />}
-                  {result.points > 0 ? "I knew it · +1 point" : "Need review · -1 point"}
-                </div>
-                <p className="mt-1 text-sm leading-6" style={{ color: T.text }}>Flashcards are self-graded for memory confidence.</p>
-              </div>
-            )}
-
-            {!answered ? (
-              <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={() => onSubmit("known")} disabled={!answerOpen || submitting} className="flex h-12 items-center justify-center gap-2 rounded-2xl border text-sm font-black disabled:opacity-45" style={{ borderColor: "rgba(49,151,84,0.32)", backgroundColor: "#F3FBF6", color: T.success }}><CheckCircle size={17} /> I knew it +1</button>
-                <button type="button" onClick={() => onSubmit("review")} disabled={!answerOpen || submitting} className="flex h-12 items-center justify-center gap-2 rounded-2xl border text-sm font-black disabled:opacity-45" style={{ borderColor: "rgba(185,28,28,0.30)", backgroundColor: T.dangerBg, color: T.danger }}><XCircle size={17} /> Need review -1</button>
-              </div>
-            ) : (
-              <button onClick={onNext} className="w-full h-12 rounded-2xl font-bold text-white flex items-center justify-center gap-2" style={{ backgroundColor: T.navy }}>
-                {questionIndex + 1 < totalQuestions ? <>Next question <ChevronRight size={16} /></> : <>See score <Trophy size={16} /></>}
-              </button>
-            )}
-          </div>
-        ) : (
-          <>
-            <div className="space-y-2.5 mb-5">
-              {OPTION_KEYS.map((key) => {
-                const isCorrect = result && key === result.correct_option;
-                const isWrong = result && key === selected && !result.correct;
-                const active = !result && key === selected;
-                return (
-                  <button key={key} onClick={() => !answered && onSelect(key)} disabled={answered} className="w-full rounded-2xl border px-4 py-3 text-left flex gap-3 items-start transition active:scale-[0.99]" style={{ borderColor: isCorrect ? T.success : isWrong ? T.danger : active ? T.brandRed : T.border, backgroundColor: isCorrect ? T.successBg : isWrong ? T.dangerBg : active ? T.redBg : T.card }}>
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-black" style={{ backgroundColor: isCorrect ? T.success : isWrong ? T.danger : active ? T.brandRed : T.surface, color: active || isCorrect || isWrong ? "#fff" : T.textMuted }}>{OPTION_LABELS[key]}</span>
-                    <span className="text-sm font-semibold leading-6" style={{ color: isCorrect ? T.success : isWrong ? T.danger : T.text }}>{getOptionText(question, key)}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {answered && (
-              <div className="rounded-2xl border p-4 mb-5" style={{ backgroundColor: result.correct ? T.successBg : T.dangerBg, borderColor: result.correct ? T.success : T.danger }}>
-                <div className="flex items-center gap-2 font-bold" style={{ color: result.correct ? T.success : T.danger }}>
-                  {result.correct ? <CheckCircle size={17} /> : <XCircle size={17} />}
-                  {result.correct ? "Correct · +1 point" : "Not quite · 0 points"}
-                </div>
-                {result.explanation && <p className="text-sm mt-1 leading-6" style={{ color: T.text }}>{result.explanation}</p>}
-              </div>
-            )}
-
-            {!answered ? (
-              <button onClick={() => onSubmit()} disabled={!selected || submitting} className="w-full h-12 rounded-2xl font-bold text-white disabled:opacity-40" style={{ backgroundColor: T.brandRed }}>
-                {submitting ? "Checking..." : practice ? "Check practice answer" : "Submit answer"}
-              </button>
-            ) : (
-              <button onClick={onNext} className="w-full h-12 rounded-2xl font-bold text-white flex items-center justify-center gap-2" style={{ backgroundColor: T.navy }}>
-                {questionIndex + 1 < totalQuestions ? <>Next question <ChevronRight size={16} /></> : <>See score <Trophy size={16} /></>}
-              </button>
-            )}
-          </>
-        )}
-      </Card>
-      <RequestCard currentQuestion={question} />
+      <Card className="p-5"><div className="mb-4"><div className="mb-3 flex items-center justify-between gap-3"><span className="text-sm font-bold" style={{ color: T.textMuted }}>Question {questionIndex + 1} of {totalQuestions}</span><Pill tone={isFlashcard ? "gold" : practice ? "gold" : "blue"}>{isFlashcard ? "Flashcard" : practice ? "Practice" : "Multiple choice"}</Pill></div><ProgressDots filled={answeredCount} total={totalQuestions} /></div>{question.source_publication && <p className="text-xs mb-2 font-semibold uppercase tracking-[0.12em]" style={{ color: T.textSubtle }}>{question.source_publication}</p>}<p className="mb-5 text-xl font-black leading-snug" style={{ color: T.navy }}>{question.question}</p>
+        {isFlashcard ? <div className="space-y-3"><button type="button" onClick={() => !answered && setAnswerOpen((value) => !value)} disabled={answered} className="w-full rounded-2xl border border-dashed p-4 text-left transition active:scale-[0.99] disabled:cursor-default" style={{ borderColor: answerOpen || answered ? "rgba(49,151,84,0.26)" : T.border, backgroundColor: answerOpen || answered ? "#F3FBF6" : T.surface }}><p className="text-[11px] font-black uppercase tracking-[0.16em]" style={{ color: T.textMuted }}>Correct answer</p>{answerOpen || answered ? <><p className="mt-2 text-base font-black leading-6" style={{ color: T.success }}>{answerText}</p>{question.explanation && <p className="mt-2 text-sm leading-6" style={{ color: T.textMuted }}>{question.explanation}</p>}</> : <p className="mt-2 text-sm font-bold" style={{ color: T.textMuted }}>**** tap or click to see the answer ****</p>}</button>{answered && <div className="rounded-2xl border p-4" style={{ backgroundColor: result.points > 0 ? T.successBg : T.dangerBg, borderColor: result.points > 0 ? T.success : T.danger }}><div className="flex items-center gap-2 font-bold" style={{ color: result.points > 0 ? T.success : T.danger }}>{result.points > 0 ? <CheckCircle size={17} /> : <XCircle size={17} />}{result.points > 0 ? "I knew it · +1 point" : "Need review · -1 point"}</div><p className="mt-1 text-sm leading-6" style={{ color: T.text }}>Flashcards are self-graded for memory confidence.</p></div>}{!answered ? <div className="grid grid-cols-2 gap-2"><button type="button" onClick={() => onSubmit("known")} disabled={!answerOpen || submitting} className="flex h-12 items-center justify-center gap-2 rounded-2xl border text-sm font-black disabled:opacity-45" style={{ borderColor: "rgba(49,151,84,0.32)", backgroundColor: "#F3FBF6", color: T.success }}><CheckCircle size={17} /> I knew it +1</button><button type="button" onClick={() => onSubmit("review")} disabled={!answerOpen || submitting} className="flex h-12 items-center justify-center gap-2 rounded-2xl border text-sm font-black disabled:opacity-45" style={{ borderColor: "rgba(185,28,28,0.30)", backgroundColor: T.dangerBg, color: T.danger }}><XCircle size={17} /> Need review -1</button></div> : <button onClick={onNext} className="w-full h-12 rounded-2xl font-bold text-white flex items-center justify-center gap-2" style={{ backgroundColor: T.navy }}>{questionIndex + 1 < totalQuestions ? <>Next question <ChevronRight size={16} /></> : <>See score <Trophy size={16} /></>}</button>}</div> : <><div className="space-y-2.5 mb-5">{OPTION_KEYS.map((key) => { const isCorrect = result && key === result.correct_option; const isWrong = result && key === selected && !result.correct; const active = !result && key === selected; return <button key={key} onClick={() => !answered && onSelect(key)} disabled={answered} className="w-full rounded-2xl border px-4 py-3 text-left flex gap-3 items-start transition active:scale-[0.99]" style={{ borderColor: isCorrect ? T.success : isWrong ? T.danger : active ? T.brandRed : T.border, backgroundColor: isCorrect ? T.successBg : isWrong ? T.dangerBg : active ? T.redBg : T.card }}><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-black" style={{ backgroundColor: isCorrect ? T.success : isWrong ? T.danger : active ? T.brandRed : T.surface, color: active || isCorrect || isWrong ? "#fff" : T.textMuted }}>{OPTION_LABELS[key]}</span><span className="text-sm font-semibold leading-6" style={{ color: isCorrect ? T.success : isWrong ? T.danger : T.text }}>{getOptionText(question, key)}</span></button>; })}</div>{answered && <div className="rounded-2xl border p-4 mb-5" style={{ backgroundColor: result.correct ? T.successBg : T.dangerBg, borderColor: result.correct ? T.success : T.danger }}><div className="flex items-center gap-2 font-bold" style={{ color: result.correct ? T.success : T.danger }}>{result.correct ? <CheckCircle size={17} /> : <XCircle size={17} />}{result.correct ? "Correct · +1 point" : "Not quite · 0 points"}</div>{result.explanation && <p className="text-sm mt-1 leading-6" style={{ color: T.text }}>{result.explanation}</p>}</div>}{!answered ? <button onClick={() => onSubmit()} disabled={!selected || submitting} className="w-full h-12 rounded-2xl font-bold text-white disabled:opacity-40" style={{ backgroundColor: T.brandRed }}>{submitting ? "Checking..." : practice ? "Check practice answer" : "Submit answer"}</button> : <button onClick={onNext} className="w-full h-12 rounded-2xl font-bold text-white flex items-center justify-center gap-2" style={{ backgroundColor: T.navy }}>{questionIndex + 1 < totalQuestions ? <>Next question <ChevronRight size={16} /></> : <>See score <Trophy size={16} /></>}</button>}</>}
+      </Card><RequestCard currentQuestion={question} />
     </div>
   );
 }
@@ -432,30 +189,7 @@ function DonePhase({ score, streak, practice, totalQuestions, onReview, onStudy 
   const msg = SCORE_MESSAGE[String(score)] || SCORE_MESSAGE[0];
   const toneColor = score >= 4 ? T.success : score >= 2 ? T.amber : T.danger;
   const toneBg = score >= 4 ? T.successBg : score >= 2 ? T.amberBg : T.dangerBg;
-
-  return (
-    <div className="space-y-4">
-      <MemoryPanel />
-      <Card className="p-6 text-center">
-        <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full border-4" style={{ borderColor: toneColor, backgroundColor: toneBg }}>
-          <span className="font-serif text-3xl font-black" style={{ color: toneColor }}>{score}/{totalQuestions || DAILY_TARGET}</span>
-        </div>
-        <h2 className="mt-4 text-2xl font-serif font-black" style={{ color: T.navy }}>{practice ? "Review quiz complete" : "Daily quiz complete"}</h2>
-        <p className="text-sm mt-1 leading-6" style={{ color: T.textMuted }}>{practice ? "Review practice does not change your daily streak." : msg}</p>
-        <div className="mt-5 grid grid-cols-2 gap-3">
-          <div className="flex min-h-[86px] flex-col items-center justify-center rounded-2xl border p-3" style={{ borderColor: T.border, backgroundColor: T.surface }}>
-            <div className="flex justify-center" style={{ color: T.brandRed }}><Award size={20} /></div>
-            <p className="mt-1 text-xl font-black" style={{ color: T.navy }}>{score}</p>
-            <p className="text-[11px] font-bold uppercase tracking-[0.16em]" style={{ color: T.textMuted }}>Score</p>
-          </div>
-          <StreakBadge streak={streak} />
-        </div>
-        <p className="mt-4 text-xs" style={{ color: T.textSubtle }}>{practice ? "Review again anytime for memorization." : "Come back tomorrow for a new streak-counting set of questions."}</p>
-        <button onClick={onReview} className="mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-2xl font-bold text-white" style={{ backgroundColor: T.navy }}><RotateCcw size={15} />Review quiz</button>
-        <button onClick={onStudy} className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-2xl border font-bold" style={{ borderColor: T.border, color: T.navy, backgroundColor: T.card }}><BookOpen size={16} />Study all questions</button>
-      </Card>
-    </div>
-  );
+  return <div className="space-y-4"><MemoryPanel /><Card className="p-6 text-center"><div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full border-4" style={{ borderColor: toneColor, backgroundColor: toneBg }}><span className="font-serif text-3xl font-black" style={{ color: toneColor }}>{score}/{totalQuestions || DAILY_TARGET}</span></div><h2 className="mt-4 text-2xl font-serif font-black" style={{ color: T.navy }}>{practice ? "Review quiz complete" : "Daily quiz complete"}</h2><p className="text-sm mt-1 leading-6" style={{ color: T.textMuted }}>{practice ? "Review practice does not change your daily streak." : msg}</p><div className="mt-5 grid grid-cols-2 gap-3"><div className="flex min-h-[86px] flex-col items-center justify-center rounded-2xl border p-3" style={{ borderColor: T.border, backgroundColor: T.surface }}><div className="flex justify-center" style={{ color: T.brandRed }}><Award size={20} /></div><p className="mt-1 text-xl font-black" style={{ color: T.navy }}>{score}</p><p className="text-[11px] font-bold uppercase tracking-[0.16em]" style={{ color: T.textMuted }}>Score</p></div><StreakBadge streak={streak} /></div><p className="mt-4 text-xs" style={{ color: T.textSubtle }}>{practice ? "Review again anytime for memorization." : "Come back tomorrow for a new streak-counting set of questions."}</p><button onClick={onReview} className="mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-2xl font-bold text-white" style={{ backgroundColor: T.navy }}><RotateCcw size={15} />Review quiz</button><button onClick={onStudy} className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-2xl border font-bold" style={{ borderColor: T.border, color: T.navy, backgroundColor: T.card }}><BookOpen size={16} />Study all questions</button></Card></div>;
 }
 
 export default function BoardPrepPage() {
@@ -476,45 +210,20 @@ export default function BoardPrepPage() {
   const totalQuestions = questions.length || DAILY_TARGET;
   const streak = data?.streak || 0;
   const currentQuestion = questions[questionIdx] || null;
-  const currentIsFlashcard = isFlashcardQuestion(questionIdx);
-
-  const handleBack = useCallback(() => {
-    router.push("/");
-  }, [router]);
+  const currentIsFlashcard = useMemo(() => isFlashcardQuestion(currentQuestion), [currentQuestion]);
+  const handleBack = useCallback(() => { router.push("/"); }, [router]);
 
   const fetchDaily = useCallback(async () => {
-    setPhase("loading");
-    setError(null);
-    setExhaustedMessage(null);
-    setPracticeMode(false);
-    setPracticeScore(0);
-
+    setPhase("loading"); setError(null); setExhaustedMessage(null); setPracticeMode(false); setPracticeScore(0);
     const token = await getAccessToken();
     if (!token) { setPhase("auth"); return; }
-
     const res = await fetch("/api/board-prep/daily", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
     const json = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      setError(json.error || "Could not load Board Prep.");
-      setPhase("error");
-      return;
-    }
-
+    if (!res.ok) { setError(json.error || "Could not load Board Prep."); setPhase("error"); return; }
     const nextQuestions = json.questions || [];
     const answeredCount = Object.keys(json.session?.answers || {}).length;
-
-    setData(json);
-    setSelected(null);
-    setResult(null);
-    setQuestionIdx(Math.min(answeredCount, Math.max(nextQuestions.length - 1, 0)));
-
-    if (json.exhausted || (!json.session?.completed && nextQuestions.length === 0)) {
-      setExhaustedMessage(json.message || "You finished all available Board Prep questions. Restart the quiz to keep practicing.");
-      setPhase("exhausted");
-      return;
-    }
-
+    setData(json); setSelected(null); setResult(null); setQuestionIdx(Math.min(answeredCount, Math.max(nextQuestions.length - 1, 0)));
+    if (json.exhausted || (!json.session?.completed && nextQuestions.length === 0)) { setExhaustedMessage(json.message || "You finished all available Board Prep questions. Restart the quiz to keep practicing."); setPhase("exhausted"); return; }
     if (json.session?.completed) setPhase("done");
     else if (answeredCount === 0) setPhase("intro");
     else if (answeredCount >= nextQuestions.length) setPhase("exhausted");
@@ -522,72 +231,32 @@ export default function BoardPrepPage() {
   }, []);
 
   const startReviewQuiz = useCallback(async () => {
-    setPhase("loading");
-    setError(null);
-    setExhaustedMessage(null);
-
+    setPhase("loading"); setError(null); setExhaustedMessage(null);
     const token = await getAccessToken();
     if (!token) { setPhase("auth"); return; }
-
     const res = await fetch("/api/board-prep/questions?limit=5&shuffle=1", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
     const json = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      setError(json.error || "Could not restart the quiz.");
-      setPhase("error");
-      return;
-    }
-
+    if (!res.ok) { setError(json.error || "Could not restart the quiz."); setPhase("error"); return; }
     const reviewQuestions = (json.data || []).slice(0, DAILY_TARGET);
-    if (!reviewQuestions.length) {
-      setExhaustedMessage("No active Board Prep questions are available right now. Add or approve questions in the admin dashboard, then restart the quiz.");
-      setData((prev) => ({ ...(prev || {}), questions: [] }));
-      setPhase("exhausted");
-      return;
-    }
-
-    setData((prev) => ({ ...(prev || {}), questions: reviewQuestions }));
-    setPracticeMode(true);
-    setPracticeScore(0);
-    setQuestionIdx(0);
-    setSelected(null);
-    setResult(null);
-    setPhase("question");
+    if (!reviewQuestions.length) { setExhaustedMessage("No active Board Prep questions are available right now. Add or approve questions in the admin dashboard, then restart the quiz."); setData((prev) => ({ ...(prev || {}), questions: [] })); setPhase("exhausted"); return; }
+    setData((prev) => ({ ...(prev || {}), questions: reviewQuestions })); setPracticeMode(true); setPracticeScore(0); setQuestionIdx(0); setSelected(null); setResult(null); setPhase("question");
   }, []);
 
   useEffect(() => { fetchDaily(); }, [fetchDaily]);
 
   async function handleSubmit(valueOverride) {
-    if (!currentQuestion) {
-      setPhase("exhausted");
-      return;
-    }
-
+    if (!currentQuestion) { setPhase("exhausted"); return; }
     const answerMode = currentIsFlashcard ? "flashcard" : "multiple_choice";
     const answerValue = currentIsFlashcard ? valueOverride : selected;
     if (!answerValue) return;
-
     if (practiceMode) {
-      if (currentIsFlashcard) {
-        const points = answerValue === "known" ? 1 : -1;
-        setResult({ correct: points > 0, points, answer_mode: answerMode, correct_option: currentQuestion.correct_option, explanation: currentQuestion.explanation });
-        setPracticeScore((score) => score + points);
-        return;
-      }
-      const correct = answerValue === currentQuestion.correct_option;
-      setResult({ correct, points: correct ? 1 : 0, answer_mode: answerMode, correct_option: currentQuestion.correct_option, explanation: currentQuestion.explanation });
-      if (correct) setPracticeScore((score) => score + 1);
-      return;
+      if (currentIsFlashcard) { const points = answerValue === "known" ? 1 : -1; setResult({ correct: points > 0, points, answer_mode: answerMode, correct_option: currentQuestion.correct_option, explanation: currentQuestion.explanation }); setPracticeScore((score) => score + points); return; }
+      const correct = answerValue === currentQuestion.correct_option; setResult({ correct, points: correct ? 1 : 0, answer_mode: answerMode, correct_option: currentQuestion.correct_option, explanation: currentQuestion.explanation }); if (correct) setPracticeScore((score) => score + 1); return;
     }
-
     if (!session) return;
     setSubmitting(true);
     const token = await getAccessToken();
-    const res = await fetch("/api/board-prep/answer", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ session_id: session.id, question_id: currentQuestion.id, selected_option: answerValue, answer_mode: answerMode }),
-    });
+    const res = await fetch("/api/board-prep/answer", { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ session_id: session.id, question_id: currentQuestion.id, selected_option: answerValue, answer_mode: answerMode }) });
     const json = await res.json().catch(() => ({}));
     setSubmitting(false);
     if (!res.ok) { setError(json.error || "Could not submit answer."); return; }
@@ -597,14 +266,8 @@ export default function BoardPrepPage() {
 
   function handleNext() {
     const nextIdx = questionIdx + 1;
-    if (nextIdx >= totalQuestions) {
-      if (practiceMode) setPhase("done");
-      else fetchDaily();
-      return;
-    }
-    setQuestionIdx(nextIdx);
-    setSelected(null);
-    setResult(null);
+    if (nextIdx >= totalQuestions) { if (practiceMode) setPhase("done"); else fetchDaily(); return; }
+    setQuestionIdx(nextIdx); setSelected(null); setResult(null);
   }
 
   return (
