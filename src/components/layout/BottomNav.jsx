@@ -10,10 +10,10 @@ const POST_ACTION_COLOR = "#B31942";
 export default function BottomNav() {
   const router = useRouter();
   const pathname = usePathname();
+  const app = useApp() || {};
 
   if (pathname === "/compose") return null;
 
-  const app = useApp() || {};
   const {
     currentUser,
     setAuthModal = () => {},

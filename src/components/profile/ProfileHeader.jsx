@@ -59,6 +59,7 @@ export default function ProfileHeader() {
     pushToast,
   } = app;
 
+  const currentUserId = currentUser?.id || "";
   const safeUser = currentUser || {};
   const displayName = safeUser.full_name || safeUser.email || "SoldierHub user";
   const displayEmail = safeUser.email || safeUser.personal_email || "Verified email";
@@ -108,10 +109,10 @@ export default function ProfileHeader() {
 
   const loadFollowSummary = useCallback(
     async ({ silent = false, skipCache = false } = {}) => {
-      if (!currentUser?.id) return;
+      if (!currentUserId) return;
 
       if (!silent) {
-        const cachedSummary = Follows.getCachedFollowSummary?.(currentUser.id, currentUser.id);
+        const cachedSummary = Follows.getCachedFollowSummary?.(currentUserId, currentUserId);
         if (cachedSummary) {
           setFollowSummary(cachedSummary);
         } else {
@@ -119,7 +120,7 @@ export default function ProfileHeader() {
         }
       }
 
-      const { data, error } = await Follows.getFollowSummary(currentUser.id, currentUser.id, {
+      const { data, error } = await Follows.getFollowSummary(currentUserId, currentUserId, {
         skipCache,
       });
 
@@ -132,19 +133,19 @@ export default function ProfileHeader() {
 
       setFollowSummary(data);
     },
-    [currentUser?.id]
+    [currentUserId]
   );
 
   useEffect(() => {
-    if (!currentUser?.id) return;
+    if (!currentUserId) return;
 
-    const cachedSummary = Follows.getCachedFollowSummary?.(currentUser.id, currentUser.id);
+    const cachedSummary = Follows.getCachedFollowSummary?.(currentUserId, currentUserId);
     loadFollowSummary({ silent: Boolean(cachedSummary), skipCache: false });
 
     if (cachedSummary) {
       loadFollowSummary({ silent: true, skipCache: true });
     }
-  }, [currentUser?.id, loadFollowSummary]);
+  }, [currentUserId, loadFollowSummary]);
 
   const visiblePosts = useMemo(() => {
     if (!currentUser?.id) return [];

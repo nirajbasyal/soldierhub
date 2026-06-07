@@ -37,6 +37,7 @@ function ConnectionsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { currentUser, authLoading, setAuthModal, pushToast } = useApp();
+  const currentUserId = currentUser?.id || "";
   const initialTab = searchParams.get("tab") === "following" ? "following" : "followers";
   const [activeTab, setActiveTab] = useState(initialTab);
   const [query, setQuery] = useState("");
@@ -65,10 +66,10 @@ function ConnectionsContent() {
 
   const loadList = useCallback(
     async (tab, { append = false, forceFresh = false, offsetOverride = 0 } = {}) => {
-      if (!currentUser?.id) return;
+      if (!currentUserId) return;
 
       const offset = append ? Math.max(0, Number(offsetOverride) || 0) : 0;
-      const cachedItems = !append && !forceFresh ? Follows.getCachedFollowConnections?.(tab, currentUser.id) : null;
+      const cachedItems = !append && !forceFresh ? Follows.getCachedFollowConnections?.(tab, currentUserId) : null;
 
       setError("");
 
@@ -85,7 +86,7 @@ function ConnectionsContent() {
       }
 
       const { data, error: listError, hasMore: moreAvailable, nextOffset: next, totalCount: total } =
-        await Follows.listFollowConnections(tab, currentUser.id, {
+        await Follows.listFollowConnections(tab, currentUserId, {
           limit: PAGE_SIZE,
           offset,
           skipCache: forceFresh || append || Boolean(cachedItems?.length),
@@ -119,7 +120,7 @@ function ConnectionsContent() {
       setNextOffset((previous) => ({ ...previous, [tab]: Number(next) || offset + (data?.length || 0) }));
       setTotalCount((previous) => ({ ...previous, [tab]: total ?? previous[tab] }));
     },
-    [currentUser?.id]
+    [currentUserId]
   );
 
   useEffect(() => {

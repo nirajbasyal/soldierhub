@@ -32,6 +32,7 @@ export default function useComposerDraft({
   setAnonymous,
   setStructured,
 }) {
+  const currentUserId = currentUser?.id || "";
   const [draftStatus, setDraftStatus] = useState("");
   const [draftSaved, setDraftSaved] = useState(false);
   const hasLoadedDraftRef = useRef(false);
@@ -67,7 +68,7 @@ export default function useComposerDraft({
 
   const persistDraft = useCallback(
     ({ silent = false } = {}) => {
-      if (typeof window === "undefined" || !currentUser?.id || submitting || imageProcessing) return false;
+      if (typeof window === "undefined" || !currentUserId || submitting || imageProcessing) return false;
 
       const { draftBody, draftText } = getCurrentDraftValues();
 
@@ -79,7 +80,7 @@ export default function useComposerDraft({
         window.localStorage.setItem(
           COMPOSER_DRAFT_KEY,
           JSON.stringify({
-            userId: currentUser.id,
+            userId: currentUserId,
             body: draftBody,
             plainText: draftText,
             category: categoryValueRef.current || "General Q&A",
@@ -100,7 +101,7 @@ export default function useComposerDraft({
     [
       anonymousValueRef,
       categoryValueRef,
-      currentUser?.id,
+      currentUserId,
       getCurrentDraftValues,
       imageProcessing,
       removeSavedDraft,
@@ -110,10 +111,10 @@ export default function useComposerDraft({
   );
 
   useEffect(() => {
-    if (!open || hasLoadedDraftRef.current || !currentUser?.id) return;
+    if (!open || hasLoadedDraftRef.current || !currentUserId) return;
 
     hasLoadedDraftRef.current = true;
-    const savedDraft = readSavedDraft(currentUser.id, COMPOSER_DRAFT_KEY);
+    const savedDraft = readSavedDraft(currentUserId, COMPOSER_DRAFT_KEY);
     if (!savedDraft) return;
 
     const savedBody = sanitizeComposerHtml(savedDraft.body || "");
@@ -144,7 +145,7 @@ export default function useComposerDraft({
     anonymousValueRef,
     bodyValueRef,
     categoryValueRef,
-    currentUser?.id,
+    currentUserId,
     editorRef,
     open,
     plainTextValueRef,
@@ -156,7 +157,7 @@ export default function useComposerDraft({
   ]);
 
   useEffect(() => {
-    if (!open || typeof window === "undefined" || !currentUser?.id || submitting || imageProcessing) return undefined;
+    if (!open || typeof window === "undefined" || !currentUserId || submitting || imageProcessing) return undefined;
 
     const autoSaveTimer = window.setTimeout(() => {
       persistDraft({ silent: true });
@@ -166,7 +167,7 @@ export default function useComposerDraft({
       window.clearTimeout(autoSaveTimer);
       persistDraft({ silent: true });
     };
-  }, [open, currentUser?.id, submitting, imageProcessing, structured, draftVersion, persistDraft]);
+  }, [open, currentUserId, submitting, imageProcessing, structured, draftVersion, persistDraft]);
 
   useEffect(() => {
     if (!open || typeof window === "undefined") return undefined;
