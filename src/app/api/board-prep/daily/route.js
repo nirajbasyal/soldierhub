@@ -53,6 +53,16 @@ function getCorrectAnswer(row) {
   return row[`option_${row.correct_option}`] || "";
 }
 
+function getSeenQuestionIds(sessions) {
+  const seen = new Set();
+  (sessions || []).forEach((session) => {
+    (session.question_ids || []).forEach((questionId) => {
+      if (questionId) seen.add(questionId);
+    });
+  });
+  return seen;
+}
+
 function exhaustedResponse({ session = null, history = [], questions = [], message }) {
   const streak = computeStreak(history);
   return NextResponse.json(
@@ -118,15 +128,28 @@ export async function GET(request) {
   let session = sessionResult.data;
 
   if (!session) {
-    const { data: allIds, error: idsError } = await supabase
-      .from("board_questions")
-      .select("id")
-      .eq("active", true)
-      .is("deleted_at", null);
+    const [{ data: allIds, error: idsError }, { data: previousSessions, error: previousError }] = await Promise.all([
+      supabase
+        .from("board_questions")
+        .select("id")
+        .eq("active", true)
+        .is("deleted_at", null),
+      supabase
+        .from("board_sessions")
+        .select("question_ids")
+        .eq("user_id", user.id)
+        .order("session_date", { ascending: false })
+        .limit(500),
+    ]);
 
     if (idsError) {
       console.error("board_questions daily id load failed:", idsError);
       return NextResponse.json({ error: "Could not load Board Prep questions." }, { status: 500 });
+    }
+
+    if (previousError) {
+      console.error("board_sessions previous question load failed:", previousError);
+      return NextResponse.json({ error: "Could not load Board Prep progress." }, { status: 500 });
     }
 
     if (!allIds?.length) {
@@ -136,7 +159,17 @@ export async function GET(request) {
       });
     }
 
-    const shuffled = [...allIds].sort(() => Math.random() - 0.5);
+    const seenQuestionIds = getSeenQuestionIds(previousSessions);
+    const unseenIds = allIds.filter((row) => !seenQuestionIds.has(row.id));
+
+    if (!unseenIds.length) {
+      return exhaustedResponse({
+        history,
+        message: "You have finished every Board Prep question in the database. Restart the quiz to review, or add more questions from the admin dashboard.",
+      });
+    }
+
+    const shuffled = [...unseenIds].sort(() => Math.random() - 0.5);
     const pickedIds = shuffled.slice(0, QUESTIONS_PER_SESSION).map((r) => r.id);
 
     const { data: newSession, error: insertError } = await supabase
