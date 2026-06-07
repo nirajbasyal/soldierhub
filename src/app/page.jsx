@@ -469,6 +469,10 @@ export default function HomePage() {
               <FeedHero currentUser={currentUser} postCount={feedPosts.length} />
             </div>
 
+            <div className="block lg:hidden">
+              <BoardPrepCard variant="mobile" />
+            </div>
+
             <div className="hidden md:block">
               <PostComposer />
             </div>
