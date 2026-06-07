@@ -175,7 +175,7 @@ export default function BoardPrepManager({ onPendingRequestCountChange } = {}) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [query, setQuery] = useState("");
   const [requestStatus, setRequestStatus] = useState("pending");
-  const [batchJson, setBatchJson] = useState(BATCH_EXAMPLE);
+  const [batchJson, setBatchJson] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [batchUploading, setBatchUploading] = useState(false);
@@ -327,6 +327,7 @@ export default function BoardPrepManager({ onPendingRequestCountChange } = {}) {
       if (!Array.isArray(items) || items.length === 0) throw new Error("JSON must be an array or an object with an items/questions array.");
       await apiJson("/api/admin/board-prep/questions", { method: "POST", body: { items } });
       setMessage(`${items.length} Board Prep questions uploaded.`);
+      setBatchJson("");
       await load();
     } catch (err) {
       setMessage(err.message || "Could not upload batch JSON.");
@@ -496,7 +497,7 @@ export default function BoardPrepManager({ onPendingRequestCountChange } = {}) {
             <p className="mt-1 text-xs leading-5" style={{ color: T.textMuted }}>Upload flashcards and multiple-choice questions together. Use <strong>type</strong>: flashcard or multiple_choice.</p>
           </div>
         </div>
-        <Field label="JSON batch"><textarea rows={12} className={inputClass()} style={{ borderColor: T.border, color: T.text, fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" }} value={batchJson} onChange={(e) => setBatchJson(e.target.value)} /></Field>
+        <Field label="JSON batch"><textarea rows={12} className={`${inputClass()} placeholder:font-normal`} style={{ borderColor: T.border, color: T.text, fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" }} value={batchJson} onChange={(e) => setBatchJson(e.target.value)} placeholder={BATCH_EXAMPLE} /></Field>
         <button onClick={uploadBatch} disabled={batchUploading} className="mt-4 inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl font-black text-white disabled:opacity-50" style={{ backgroundColor: T.navy }}><Upload size={16} />{batchUploading ? "Uploading..." : "Upload JSON batch"}</button>
       </SectionCard>
 
