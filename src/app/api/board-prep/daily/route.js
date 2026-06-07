@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
 
 const QUESTIONS_PER_SESSION = 5;
 const HISTORY_DAYS = 14;
+const FLASHCARD_MARKER = "__FLASHCARD__";
 
 function getBearerToken(request) {
   const header = request.headers.get("authorization") || "";
@@ -48,9 +49,22 @@ function computeStreak(history) {
   return streak;
 }
 
+function isFlashcardRow(row) {
+  return row?.option_b === FLASHCARD_MARKER && row?.option_c === FLASHCARD_MARKER && row?.option_d === FLASHCARD_MARKER;
+}
+
 function getCorrectAnswer(row) {
   if (!row?.correct_option) return "";
   return row[`option_${row.correct_option}`] || "";
+}
+
+function shapeQuestion(row) {
+  const isFlashcard = isFlashcardRow(row);
+  return {
+    ...row,
+    question_type: isFlashcard ? "flashcard" : "multiple_choice",
+    correct_answer: getCorrectAnswer(row),
+  };
 }
 
 function getSeenQuestionIds(sessions) {
@@ -61,6 +75,35 @@ function getSeenQuestionIds(sessions) {
     });
   });
   return seen;
+}
+
+function shuffle(rows) {
+  return [...rows].sort(() => Math.random() - 0.5);
+}
+
+function pickDailyQuestions(unseenRows) {
+  const flashcards = shuffle(unseenRows.filter(isFlashcardRow));
+  const multipleChoice = shuffle(unseenRows.filter((row) => !isFlashcardRow(row)));
+
+  if (!multipleChoice.length && flashcards.length) {
+    return flashcards.slice(0, QUESTIONS_PER_SESSION);
+  }
+
+  if (multipleChoice.length < 2 && flashcards.length) {
+    return flashcards.slice(0, QUESTIONS_PER_SESSION);
+  }
+
+  const picked = [];
+  picked.push(...multipleChoice.slice(0, 2));
+  picked.push(...flashcards.slice(0, QUESTIONS_PER_SESSION - picked.length));
+
+  if (picked.length < QUESTIONS_PER_SESSION) {
+    const used = new Set(picked.map((row) => row.id));
+    const fallback = shuffle(unseenRows.filter((row) => !used.has(row.id)));
+    picked.push(...fallback.slice(0, QUESTIONS_PER_SESSION - picked.length));
+  }
+
+  return shuffle(picked).slice(0, QUESTIONS_PER_SESSION);
 }
 
 function exhaustedResponse({ session = null, history = [], questions = [], message }) {
@@ -128,10 +171,10 @@ export async function GET(request) {
   let session = sessionResult.data;
 
   if (!session) {
-    const [{ data: allIds, error: idsError }, { data: previousSessions, error: previousError }] = await Promise.all([
+    const [{ data: allRows, error: rowsError }, { data: previousSessions, error: previousError }] = await Promise.all([
       supabase
         .from("board_questions")
-        .select("id")
+        .select("id, option_b, option_c, option_d")
         .eq("active", true)
         .is("deleted_at", null),
       supabase
@@ -142,8 +185,8 @@ export async function GET(request) {
         .limit(500),
     ]);
 
-    if (idsError) {
-      console.error("board_questions daily id load failed:", idsError);
+    if (rowsError) {
+      console.error("board_questions daily id load failed:", rowsError);
       return NextResponse.json({ error: "Could not load Board Prep questions." }, { status: 500 });
     }
 
@@ -152,7 +195,7 @@ export async function GET(request) {
       return NextResponse.json({ error: "Could not load Board Prep progress." }, { status: 500 });
     }
 
-    if (!allIds?.length) {
+    if (!allRows?.length) {
       return exhaustedResponse({
         history,
         message: "No active Board Prep questions are available right now. Add or approve questions in the admin dashboard, then restart the quiz.",
@@ -160,17 +203,16 @@ export async function GET(request) {
     }
 
     const seenQuestionIds = getSeenQuestionIds(previousSessions);
-    const unseenIds = allIds.filter((row) => !seenQuestionIds.has(row.id));
+    const unseenRows = allRows.filter((row) => !seenQuestionIds.has(row.id));
 
-    if (!unseenIds.length) {
+    if (!unseenRows.length) {
       return exhaustedResponse({
         history,
         message: "You have finished every Board Prep question in the database. Restart the quiz to review, or add more questions from the admin dashboard.",
       });
     }
 
-    const shuffled = [...unseenIds].sort(() => Math.random() - 0.5);
-    const pickedIds = shuffled.slice(0, QUESTIONS_PER_SESSION).map((r) => r.id);
+    const pickedIds = pickDailyQuestions(unseenRows).map((row) => row.id);
 
     const { data: newSession, error: insertError } = await supabase
       .from("board_sessions")
@@ -205,7 +247,7 @@ export async function GET(request) {
   const questions = (session.question_ids || [])
     .map((qid) => questionRows?.find((q) => q.id === qid))
     .filter(Boolean)
-    .map((row) => ({ ...row, correct_answer: getCorrectAnswer(row) }));
+    .map(shapeQuestion);
 
   if (!session.completed && questions.length === 0) {
     return exhaustedResponse({
