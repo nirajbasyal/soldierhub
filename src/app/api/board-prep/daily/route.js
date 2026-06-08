@@ -19,7 +19,7 @@ function createAuthedClient(accessToken) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) return null;
-  return createClient(url, key, {
+  return createClient(url, {
     auth: { autoRefreshToken: false, persistSession: false },
     global: { headers: { Authorization: `Bearer ${accessToken}` } },
   });
@@ -81,29 +81,50 @@ function shuffle(rows) {
   return [...rows].sort(() => Math.random() - 0.5);
 }
 
-function pickDailyQuestions(unseenRows) {
-  const flashcards = shuffle(unseenRows.filter(isFlashcardRow));
-  const multipleChoice = shuffle(unseenRows.filter((row) => !isFlashcardRow(row)));
-
-  if (!multipleChoice.length && flashcards.length) {
-    return flashcards.slice(0, QUESTIONS_PER_SESSION);
-  }
-
-  if (multipleChoice.length < 2 && flashcards.length) {
-    return flashcards.slice(0, QUESTIONS_PER_SESSION);
-  }
-
+function pickDailyQuestions(allRows = [], previousSessions = [], existingIds = []) {
+  const byId = new Map(allRows.map((row) => [row.id, row]));
   const picked = [];
-  picked.push(...multipleChoice.slice(0, 2));
-  picked.push(...flashcards.slice(0, QUESTIONS_PER_SESSION - picked.length));
+  const used = new Set();
 
-  if (picked.length < QUESTIONS_PER_SESSION) {
-    const used = new Set(picked.map((row) => row.id));
-    const fallback = shuffle(unseenRows.filter((row) => !used.has(row.id)));
-    picked.push(...fallback.slice(0, QUESTIONS_PER_SESSION - picked.length));
-  }
+  (existingIds || []).forEach((id) => {
+    const row = byId.get(id);
+    if (row && !used.has(id) && picked.length < QUESTIONS_PER_SESSION) {
+      picked.push(row);
+      used.add(id);
+    }
+  });
 
-  return shuffle(picked).slice(0, QUESTIONS_PER_SESSION);
+  const seenQuestionIds = getSeenQuestionIds(previousSessions);
+  const remainingRows = allRows.filter((row) => !used.has(row.id));
+  const unseenRows = shuffle(remainingRows.filter((row) => !seenQuestionIds.has(row.id)));
+  const reviewRows = shuffle(remainingRows.filter((row) => seenQuestionIds.has(row.id)));
+
+  [...unseenRows, ...reviewRows].forEach((row) => {
+    if (picked.length < QUESTIONS_PER_SESSION && !used.has(row.id)) {
+      picked.push(row);
+      used.add(row.id);
+    }
+  });
+
+  return picked.slice(0, QUESTIONS_PER_SESSION);
+}
+
+async function loadActiveQuestionRefs(supabase) {
+  return supabase
+    .from("board_questions")
+    .select("id, option_b, option_c, option_d")
+    .eq("active", true)
+    .is("deleted_at", null)
+    .limit(500);
+}
+
+async function loadPreviousSessionRefs(supabase, userId) {
+  return supabase
+    .from("board_sessions")
+    .select("question_ids")
+    .eq("user_id", userId)
+    .order("session_date", { ascending: false })
+    .limit(500);
 }
 
 function exhaustedResponse({ session = null, history = [], questions = [], message }) {
@@ -121,6 +142,80 @@ function exhaustedResponse({ session = null, history = [], questions = [], messa
     },
     { status: 200, headers: { "Cache-Control": "no-store" } }
   );
+}
+
+async function createOrTopUpSession({ supabase, userId, today, history, session }) {
+  const [{ data: allRows, error: rowsError }, { data: previousSessions, error: previousError }] = await Promise.all([
+    loadActiveQuestionRefs(supabase),
+    loadPreviousSessionRefs(supabase, userId),
+  ]);
+
+  if (rowsError) {
+    console.error("board_questions daily id load failed:", rowsError);
+    return { response: NextResponse.json({ error: "Could not load Board Prep questions." }, { status: 500 }) };
+  }
+
+  if (previousError) {
+    console.error("board_sessions previous question load failed:", previousError);
+    return { response: NextResponse.json({ error: "Could not load Board Prep progress." }, { status: 500 }) };
+  }
+
+  if (!allRows?.length) {
+    return {
+      response: exhaustedResponse({
+        session,
+        history,
+        message: "No active Board Prep questions are available right now. Add or approve questions in the admin dashboard, then restart the quiz.",
+      }),
+    };
+  }
+
+  const existingIds = session?.question_ids || [];
+  const pickedIds = pickDailyQuestions(allRows, previousSessions, existingIds).map((row) => row.id);
+
+  if (!session) {
+    const { data: newSession, error: insertError } = await supabase
+      .from("board_sessions")
+      .insert({
+        user_id: userId,
+        session_date: today,
+        question_ids: pickedIds,
+        answers: {},
+        completed: false,
+      })
+      .select("id, session_date, question_ids, answers, completed, score")
+      .single();
+
+    if (insertError) {
+      console.error("board_sessions insert failed:", insertError);
+      return { response: NextResponse.json({ error: "Could not start session." }, { status: 500 }) };
+    }
+
+    return { session: newSession };
+  }
+
+  const needsTopUp = pickedIds.length > existingIds.length;
+  if (!needsTopUp) return { session };
+
+  const updatePayload = { question_ids: pickedIds };
+  if (session.completed && Object.keys(session.answers || {}).length < pickedIds.length) {
+    updatePayload.completed = false;
+    updatePayload.score = null;
+  }
+
+  const { data: updatedSession, error: updateError } = await supabase
+    .from("board_sessions")
+    .update(updatePayload)
+    .eq("id", session.id)
+    .select("id, session_date, question_ids, answers, completed, score")
+    .single();
+
+  if (updateError) {
+    console.error("board_sessions daily top-up failed:", updateError);
+    return { response: NextResponse.json({ error: "Could not prepare today's Board Prep quiz." }, { status: 500 }) };
+  }
+
+  return { session: updatedSession };
 }
 
 export async function GET(request) {
@@ -170,68 +265,10 @@ export async function GET(request) {
   const history = historyResult.data || [];
   let session = sessionResult.data;
 
-  if (!session) {
-    const [{ data: allRows, error: rowsError }, { data: previousSessions, error: previousError }] = await Promise.all([
-      supabase
-        .from("board_questions")
-        .select("id, option_b, option_c, option_d")
-        .eq("active", true)
-        .is("deleted_at", null),
-      supabase
-        .from("board_sessions")
-        .select("question_ids")
-        .eq("user_id", user.id)
-        .order("session_date", { ascending: false })
-        .limit(500),
-    ]);
-
-    if (rowsError) {
-      console.error("board_questions daily id load failed:", rowsError);
-      return NextResponse.json({ error: "Could not load Board Prep questions." }, { status: 500 });
-    }
-
-    if (previousError) {
-      console.error("board_sessions previous question load failed:", previousError);
-      return NextResponse.json({ error: "Could not load Board Prep progress." }, { status: 500 });
-    }
-
-    if (!allRows?.length) {
-      return exhaustedResponse({
-        history,
-        message: "No active Board Prep questions are available right now. Add or approve questions in the admin dashboard, then restart the quiz.",
-      });
-    }
-
-    const seenQuestionIds = getSeenQuestionIds(previousSessions);
-    const unseenRows = allRows.filter((row) => !seenQuestionIds.has(row.id));
-
-    if (!unseenRows.length) {
-      return exhaustedResponse({
-        history,
-        message: "You have finished every Board Prep question in the database. Restart the quiz to review, or add more questions from the admin dashboard.",
-      });
-    }
-
-    const pickedIds = pickDailyQuestions(unseenRows).map((row) => row.id);
-
-    const { data: newSession, error: insertError } = await supabase
-      .from("board_sessions")
-      .insert({
-        user_id: user.id,
-        session_date: today,
-        question_ids: pickedIds,
-        answers: {},
-        completed: false,
-      })
-      .select("id, session_date, question_ids, answers, completed, score")
-      .single();
-
-    if (insertError) {
-      console.error("board_sessions insert failed:", insertError);
-      return NextResponse.json({ error: "Could not start session." }, { status: 500 });
-    }
-
-    session = newSession;
+  if (!session || (session.question_ids || []).length < QUESTIONS_PER_SESSION) {
+    const result = await createOrTopUpSession({ supabase, userId: user.id, today, history, session });
+    if (result.response) return result.response;
+    session = result.session;
   }
 
   const { data: questionRows, error: questionError } = await supabase
@@ -254,7 +291,7 @@ export async function GET(request) {
       session,
       history,
       questions,
-      message: "You finished all available Board Prep questions. Restart the quiz to keep practicing.",
+      message: "No active Board Prep questions are available right now. Add or approve questions in the admin dashboard, then restart the quiz.",
     });
   }
 
