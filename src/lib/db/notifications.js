@@ -300,21 +300,26 @@ export async function hydrateNotificationRows(rows = []) {
 
   if (!Array.isArray(rows) || rows.length === 0) return rows || [];
 
-  const notificationIds = uniqueValues(rows.map((row) => row?.id));
+  try {
+    const notificationIds = uniqueValues(rows.map((row) => row?.id));
 
-  if (notificationIds.length > 0) {
-    const { data, error } = await listHydratedNotificationsFromRpc(supabase, {
-      limit: notificationIds.length,
-      notificationIds,
-    });
+    if (notificationIds.length > 0) {
+      const { data, error } = await listHydratedNotificationsFromRpc(supabase, {
+        limit: notificationIds.length,
+        notificationIds,
+      });
 
-    if (!error && data?.length) {
-      const hydratedById = new Map(data.map((row) => [row.id, row]));
-      return rows.map((row) => hydratedById.get(row.id) || normalizeNotificationRow(row));
+      if (!error && data?.length) {
+        const hydratedById = new Map(data.map((row) => [row.id, row]));
+        return rows.map((row) => hydratedById.get(row.id) || normalizeNotificationRow(row));
+      }
     }
-  }
 
-  return hydrateNotifications(supabase, rows);
+    return hydrateNotifications(supabase, rows);
+  } catch (error) {
+    console.error("Notification hydration failed:", error);
+    return rows.map(normalizeNotificationRow);
+  }
 }
 
 async function hydrateNotifications(supabase, rows = []) {
