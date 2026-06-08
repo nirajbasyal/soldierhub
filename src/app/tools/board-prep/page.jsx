@@ -40,14 +40,55 @@ const SCORE_MESSAGE = {
 };
 
 function authHeader(token) {
-  return `${"Bear"}er ${token}`;
+  return `Bearer ${token}`;
 }
 
-async function getAccessToken() {
+async function getAccessToken({ forceRefresh = false } = {}) {
   const supabase = createClient();
   if (!supabase) return null;
-  const { data: { session } } = await supabase.auth.getSession();
-  return session?.access_token || null;
+
+  if (forceRefresh) {
+    const {
+      data: { session: refreshedSession },
+    } = await supabase.auth.refreshSession();
+    if (refreshedSession?.access_token) return refreshedSession.access_token;
+  }
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (session?.access_token) return session.access_token;
+
+  const {
+    data: { session: refreshedSession },
+  } = await supabase.auth.refreshSession();
+  return refreshedSession?.access_token || null;
+}
+
+async function authedFetch(path, options = {}, retryOnAuth = true) {
+  let token = await getAccessToken();
+  if (!token) return { missingAuth: true, res: null, json: null };
+
+  const fetchOptions = (accessToken) => ({
+    ...options,
+    headers: {
+      ...(options.headers || {}),
+      Authorization: authHeader(accessToken),
+    },
+  });
+
+  let res = await fetch(path, fetchOptions(token));
+  let json = await res.json().catch(() => ({}));
+
+  if (retryOnAuth && res.status === 401) {
+    token = await getAccessToken({ forceRefresh: true });
+    if (token) {
+      res = await fetch(path, fetchOptions(token));
+      json = await res.json().catch(() => ({}));
+    }
+  }
+
+  return { missingAuth: false, res, json };
 }
 
 function getOptionText(question, key) {
@@ -113,14 +154,22 @@ function RequestCard({ currentQuestion }) {
   async function submitRequest() {
     setSending(true);
     setStatus(null);
-    const token = await getAccessToken();
-    const res = await fetch("/api/board-prep/request", {
+    const { missingAuth, res, json } = await authedFetch("/api/board-prep/request", {
       method: "POST",
-      headers: { Authorization: authHeader(token), "Content-Type": "application/json" },
-      body: JSON.stringify({ request_type: requestType, question_id: requestType === "add" ? null : currentQuestion?.id, category: currentQuestion?.category || null, message, suggested_question: requestType === "add" ? message : null }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        request_type: requestType,
+        question_id: requestType === "add" ? null : currentQuestion?.id,
+        category: currentQuestion?.category || null,
+        message,
+        suggested_question: requestType === "add" ? message : null,
+      }),
     });
-    const json = await res.json().catch(() => ({}));
     setSending(false);
+    if (missingAuth) {
+      setStatus("Sign in to send a request.");
+      return;
+    }
     if (!res.ok) {
       setStatus(json.error || "Could not send request.");
       return;
@@ -318,10 +367,8 @@ export default function BoardPrepPage() {
 
   const fetchDaily = useCallback(async () => {
     setPhase("loading"); setError(null); setExhaustedMessage(null); setPracticeMode(false); setPracticeScore(0);
-    const token = await getAccessToken();
-    if (!token) { setPhase("auth"); return; }
-    const res = await fetch("/api/board-prep/daily", { headers: { Authorization: authHeader(token) }, cache: "no-store" });
-    const json = await res.json().catch(() => ({}));
+    const { missingAuth, res, json } = await authedFetch("/api/board-prep/daily", { cache: "no-store" });
+    if (missingAuth) { setPhase("auth"); return; }
     if (!res.ok) { setError(json.error || "Could not load Board Prep."); setPhase("error"); return; }
     const nextQuestions = json.questions || [];
     const answeredCount = Object.keys(json.session?.answers || {}).length;
@@ -335,10 +382,8 @@ export default function BoardPrepPage() {
 
   const startReviewQuiz = useCallback(async () => {
     setPhase("loading"); setError(null); setExhaustedMessage(null);
-    const token = await getAccessToken();
-    if (!token) { setPhase("auth"); return; }
-    const res = await fetch("/api/board-prep/questions?limit=5&shuffle=1", { headers: { Authorization: authHeader(token) }, cache: "no-store" });
-    const json = await res.json().catch(() => ({}));
+    const { missingAuth, res, json } = await authedFetch("/api/board-prep/questions?limit=5&shuffle=1", { cache: "no-store" });
+    if (missingAuth) { setPhase("auth"); return; }
     if (!res.ok) { setError(json.error || "Could not restart the quiz."); setPhase("error"); return; }
     const reviewQuestions = (json.data || []).slice(0, DAILY_TARGET);
     if (!reviewQuestions.length) { setExhaustedMessage("No active Board Prep questions are available right now. Add or approve questions in the admin dashboard, then restart the quiz."); setData((prev) => ({ ...(prev || {}), questions: [] })); setPhase("exhausted"); return; }
@@ -358,10 +403,9 @@ export default function BoardPrepPage() {
     }
     if (!session) return;
     setSubmitting(true);
-    const token = await getAccessToken();
-    const res = await fetch("/api/board-prep/answer", { method: "POST", headers: { Authorization: authHeader(token), "Content-Type": "application/json" }, body: JSON.stringify({ session_id: session.id, question_id: currentQuestion.id, selected_option: answerValue, answer_mode: answerMode }) });
-    const json = await res.json().catch(() => ({}));
+    const { missingAuth, res, json } = await authedFetch("/api/board-prep/answer", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ session_id: session.id, question_id: currentQuestion.id, selected_option: answerValue, answer_mode: answerMode }) });
     setSubmitting(false);
+    if (missingAuth) { setPhase("auth"); return; }
     if (!res.ok) { setError(json.error || "Could not submit answer."); return; }
     setResult({ correct: json.correct, points: json.points, answer_mode: json.answer_mode, correct_option: json.correct_option, explanation: json.explanation });
     setData((prev) => ({ ...prev, session: json.session }));
