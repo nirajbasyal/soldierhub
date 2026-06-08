@@ -140,7 +140,6 @@ export default function MobileMenu() {
     if (!mobileMenu) return;
 
     if (isAdmin) {
-      router.prefetch?.("/resources");
       router.prefetch?.("/admin");
     }
 
@@ -288,13 +287,9 @@ export default function MobileMenu() {
               <MenuItem
                 icon={BookMarked}
                 label="Resources"
-                hint={
-                  isAdmin
-                    ? "Official sites and trusted services"
-                    : "Admin is preparing trusted resources"
-                }
-                disabled={!isAdmin}
-                onClick={isAdmin ? () => go("/resources") : undefined}
+                hint="Temporarily unavailable"
+                badge="Soon"
+                disabled
               />
             </div>
           </div>
@@ -327,7 +322,8 @@ export default function MobileMenu() {
               <MenuItem
                 icon={Activity}
                 label="AFT Score Calculator"
-                hint="Army fitness score tool"
+                hint="Temporarily unavailable"
+                badge="Soon"
                 disabled
               />
             </div>
