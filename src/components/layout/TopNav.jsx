@@ -104,6 +104,14 @@ export default function TopNav() {
     boxShadow: active || alert ? "0 8px 18px rgba(179,25,66,0.08)" : "0 8px 18px rgba(7,27,51,0.045)",
   });
 
+  const disabledResourceStyle = {
+    color: T.textSubtle,
+    backgroundColor: "rgba(234,240,248,0.76)",
+    border: "1px solid rgba(207,218,232,0.78)",
+    cursor: "not-allowed",
+    opacity: 0.72,
+  };
+
   const searchForm = () => (
     <form onSubmit={handleSearchSubmit} className="hidden min-w-0 flex-1 md:flex">
       <div className="relative w-full">
@@ -257,16 +265,15 @@ export default function TopNav() {
               )}
             </button>
 
-            {isAdmin && (
-              <Link
-                href="/resources"
-                className="flex h-11 items-center gap-1.5 rounded-full px-3 text-sm font-semibold transition hover:bg-white/60"
-                style={{ color: T.navy }}
-              >
-                <BookMarked size={16} />
-                Resources
-              </Link>
-            )}
+            <span
+              className="flex h-11 select-none items-center gap-1.5 rounded-full px-3 text-sm font-semibold"
+              style={disabledResourceStyle}
+              aria-disabled="true"
+              title="Resources are temporarily unavailable"
+            >
+              <BookMarked size={16} />
+              Resources
+            </span>
 
             {safeUser?.role === "admin" && (
               <Button
