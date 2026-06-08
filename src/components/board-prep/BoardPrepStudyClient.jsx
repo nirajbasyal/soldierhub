@@ -127,6 +127,35 @@ function TextArea({ label, value, onChange, rows, placeholder, className = "" })
   );
 }
 
+function SectionChoiceCard({ active, tone = "red", icon, title, description, onClick, children }) {
+  const activeBorder = tone === "blue" ? "rgba(37,99,145,0.34)" : "rgba(179,25,66,0.34)";
+  const activeBg = tone === "blue" ? "rgba(238,246,255,0.92)" : "rgba(253,236,240,0.92)";
+  const iconBg = tone === "blue" ? T.blueSoft : T.redBg;
+  const iconColor = tone === "blue" ? T.blue : T.brandRed;
+
+  return (
+    <div
+      className="rounded-[1.4rem] border p-3 transition"
+      style={{
+        backgroundColor: active ? activeBg : T.surface,
+        borderColor: active ? activeBorder : T.borderSoft,
+      }}
+    >
+      <button type="button" onClick={onClick} className="flex w-full items-start gap-3 text-left">
+        <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl" style={{ backgroundColor: iconBg, color: iconColor }}>
+          {icon}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-base font-black leading-tight" style={{ color: T.navy }}>{title}</span>
+          <span className="mt-1 block text-xs font-semibold leading-5" style={{ color: T.textMuted }}>{description}</span>
+        </span>
+        <ChevronRight size={18} className={active ? "mt-2 shrink-0 rotate-90 transition" : "mt-2 shrink-0 transition"} style={{ color: T.textSubtle }} />
+      </button>
+      {active && <div className="mt-3 border-t pt-3" style={{ borderColor: T.borderSoft }}>{children}</div>}
+    </div>
+  );
+}
+
 function RequestPanel() {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState("add");
@@ -216,51 +245,72 @@ function RequestPanel() {
         <div className="flex min-w-0 items-center gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl" style={{ backgroundColor: T.redBg, color: T.brandRed }}><PlusCircle size={19} /></span>
           <div className="min-w-0">
-            <p className="font-black leading-tight" style={{ color: T.navy }}>Help Soldier Hub to update, remove, or add more questions.</p>
-            <p className="mt-0.5 text-xs leading-5" style={{ color: T.textMuted }}>Send your request to admin for review.</p>
+            <p className="font-black leading-tight" style={{ color: T.navy }}>Help Soldier Hub improve Board Prep.</p>
+            <p className="mt-0.5 text-xs leading-5" style={{ color: T.textMuted }}>Add new questions or suggest updates/removal for admin review.</p>
           </div>
         </div>
         <ChevronDown size={18} className={open ? "shrink-0 rotate-180 transition" : "shrink-0 transition"} style={{ color: T.textMuted }} />
       </button>
 
       {open && (
-        <div className="border-t p-3" style={{ borderColor: T.borderSoft }}>
-          <div className="grid grid-cols-2 gap-2">
-            <button type="button" onClick={() => setMode("add")} className="h-10 rounded-2xl border text-sm font-black" style={{ borderColor: mode === "add" ? T.brandRed : T.border, backgroundColor: mode === "add" ? T.redBg : T.card, color: mode === "add" ? T.brandRed : T.textMuted }}>Add question</button>
-            <button type="button" onClick={() => setMode("update_delete")} className="h-10 rounded-2xl border text-sm font-black" style={{ borderColor: mode === "update_delete" ? T.brandRed : T.border, backgroundColor: mode === "update_delete" ? T.redBg : T.card, color: mode === "update_delete" ? T.brandRed : T.textMuted }}>Update or delete</button>
-          </div>
-
-          {mode === "add" ? (
-            <>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <button type="button" onClick={() => setAddMode("single")} className="h-10 rounded-2xl border text-sm font-black" style={{ borderColor: addMode === "single" ? T.navy : T.border, backgroundColor: addMode === "single" ? T.navy : T.card, color: addMode === "single" ? "#fff" : T.textMuted }}>Single</button>
-                <button type="button" onClick={() => setAddMode("multiple")} className="h-10 rounded-2xl border text-sm font-black" style={{ borderColor: addMode === "multiple" ? T.navy : T.border, backgroundColor: addMode === "multiple" ? T.navy : T.card, color: addMode === "multiple" ? "#fff" : T.textMuted }}>Multiple</button>
+        <div className="space-y-3 border-t p-3" style={{ borderColor: T.borderSoft }}>
+          <SectionChoiceCard
+            active={mode === "add"}
+            tone="red"
+            icon={<PlusCircle size={18} />}
+            title="Add new questions"
+            description="Submit a brand-new board question. Single and multiple options belong here only."
+            onClick={() => setMode("add")}
+          >
+            <div className="rounded-[1.15rem] border bg-white/70 p-2" style={{ borderColor: T.borderSoft }}>
+              <p className="px-1 pb-2 text-[11px] font-black uppercase tracking-[0.16em]" style={{ color: T.textSubtle }}>
+                Choose add format
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => setAddMode("single")} className="h-10 rounded-2xl border text-sm font-black" style={{ borderColor: addMode === "single" ? T.navy : T.border, backgroundColor: addMode === "single" ? T.navy : T.card, color: addMode === "single" ? "#fff" : T.textMuted }}>Single question</button>
+                <button type="button" onClick={() => setAddMode("multiple")} className="h-10 rounded-2xl border text-sm font-black" style={{ borderColor: addMode === "multiple" ? T.navy : T.border, backgroundColor: addMode === "multiple" ? T.navy : T.card, color: addMode === "multiple" ? "#fff" : T.textMuted }}>Multiple questions</button>
               </div>
-              {addMode === "single" ? (
-                <div className="mt-3 space-y-3">
-                  <TextArea label="Question input" value={question} onChange={setQuestion} rows={3} placeholder="Type the board question." />
-                  <TextArea label="Answer" value={answer} onChange={setAnswer} rows={3} placeholder="Type the correct answer." />
-                </div>
-              ) : (
-                <TextArea label="Multiple questions" value={bulkText} onChange={setBulkText} rows={7} className="mt-3" placeholder={"Enter multiple questions and answers here.\n\nExample:\nQ: What does AR 670-1 cover?\nA: Wear and appearance of Army uniforms and insignia."} />
-              )}
-            </>
-          ) : (
-            <div className="mt-3 space-y-3">
+            </div>
+
+            {addMode === "single" ? (
+              <div className="mt-3 space-y-3">
+                <TextArea label="Question input" value={question} onChange={setQuestion} rows={3} placeholder="Type the board question." />
+                <TextArea label="Answer" value={answer} onChange={setAnswer} rows={3} placeholder="Type the correct answer." />
+              </div>
+            ) : (
+              <TextArea label="Multiple questions" value={bulkText} onChange={setBulkText} rows={7} className="mt-3" placeholder={"Enter multiple questions and answers here.\n\nExample:\nQ: What does AR 670-1 cover?\nA: Wear and appearance of Army uniforms and insignia."} />
+            )}
+          </SectionChoiceCard>
+
+          <SectionChoiceCard
+            active={mode === "update_delete"}
+            tone="blue"
+            icon={<Search size={18} />}
+            title="Update or remove existing questions"
+            description="Use this only when a current question is wrong, outdated, duplicated, or should be removed."
+            onClick={() => setMode("update_delete")}
+          >
+            <div className="rounded-[1.15rem] border bg-white/70 p-2" style={{ borderColor: T.borderSoft }}>
+              <p className="px-1 pb-2 text-[11px] font-black uppercase tracking-[0.16em]" style={{ color: T.textSubtle }}>
+                Request type
+              </p>
               <div className="grid grid-cols-2 gap-2">
                 <button type="button" onClick={() => setAction("update")} className="h-10 rounded-2xl border text-sm font-black" style={{ borderColor: action === "update" ? T.navy : T.border, backgroundColor: action === "update" ? T.navy : T.card, color: action === "update" ? "#fff" : T.textMuted }}>Update</button>
                 <button type="button" onClick={() => setAction("delete")} className="h-10 rounded-2xl border text-sm font-black" style={{ borderColor: action === "delete" ? T.brandRed : T.border, backgroundColor: action === "delete" ? T.redBg : T.card, color: action === "delete" ? T.brandRed : T.textMuted }}>Delete</button>
               </div>
+            </div>
+
+            <div className="mt-3 space-y-3">
               <TextInput label="Question number" value={questionNumber} onChange={setQuestionNumber} placeholder="Example: 12" />
               <TextInput label="Category" value={category} onChange={setCategory} placeholder="Example: Leadership" />
               <TextArea label="Explanation" value={explanation} onChange={setExplanation} rows={4} placeholder="Explain what should be updated or why it should be deleted." />
             </div>
-          )}
+          </SectionChoiceCard>
 
-          <button type="button" onClick={submitRequest} disabled={sending} className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-2xl font-black text-white disabled:opacity-50" style={{ backgroundColor: T.brandRed }}>
-            <Send size={15} /> {sending ? "Submitting..." : "Submit for review"}
+          <button type="button" onClick={submitRequest} disabled={sending} className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl font-black text-white disabled:opacity-50" style={{ backgroundColor: T.brandRed }}>
+            <Send size={15} /> {sending ? "Submitting..." : mode === "add" ? "Submit new question" : "Submit update/removal request"}
           </button>
-          {status && <p className="mt-2 text-xs font-semibold" style={{ color: status.type === "success" ? T.success : T.danger }}>{status.text}</p>}
+          {status && <p className="text-xs font-semibold" style={{ color: status.type === "success" ? T.success : T.danger }}>{status.text}</p>}
         </div>
       )}
     </Card>
