@@ -28,16 +28,24 @@ export function useNotificationActions({
     : localUnreadCount;
 
   const markNotificationsRead = useCallback(async () => {
-    if (!currentUser) return;
-    if (getProfileStatus(currentUser) !== "verified") return;
+    if (!currentUser) return { ok: false, error: "No signed-in user." };
+    if (getProfileStatus(currentUser) !== "verified") {
+      return { ok: false, error: "User is not verified." };
+    }
 
     if (SUPA) {
       const { error } = await NotificationsDB.markAllNotificationsRead();
-      if (error) return;
+      if (error) {
+        console.error("markAllNotificationsRead failed:", error);
+        return {
+          ok: false,
+          error: error.message || "Could not mark notifications as read.",
+        };
+      }
 
       setUnreadCount(0);
       setNotifications((arr) => arr.map((n) => ({ ...n, read: true })));
-      return;
+      return { ok: true };
     }
 
     setNotifications((arr) =>
@@ -45,6 +53,7 @@ export function useNotificationActions({
         n.recipient_user_id === currentUser.id ? { ...n, read: true } : n
       )
     );
+    return { ok: true };
   }, [SUPA, currentUser, setNotifications, setUnreadCount]);
 
   return {
