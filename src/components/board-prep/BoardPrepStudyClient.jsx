@@ -28,12 +28,21 @@ const ALL_DECK_KEY = "__all__";
 async function getAccessToken() {
   const supabase = createClient();
   if (!supabase) return null;
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   return session?.access_token || null;
 }
 
 function Card({ children, className = "", style = {} }) {
-  return <div className={`rounded-[1.65rem] border shadow-sm ${className}`} style={{ backgroundColor: T.card, borderColor: T.border, ...style }}>{children}</div>;
+  return (
+    <div
+      className={`rounded-[1.65rem] border shadow-sm ${className}`}
+      style={{ backgroundColor: T.card, borderColor: T.border, ...style }}
+    >
+      {children}
+    </div>
+  );
 }
 
 function getAnswerText(question) {
@@ -46,7 +55,9 @@ function getCategoryLabel(question) {
 
 function getScoreSummary(scores, questions = []) {
   const ids = new Set(questions.map((question) => question.id));
-  const values = Object.entries(scores || {}).filter(([id]) => ids.has(id)).map(([, value]) => value);
+  const values = Object.entries(scores || {})
+    .filter(([id]) => ids.has(id))
+    .map(([, value]) => value);
   const known = values.filter((value) => value === "known").length;
   const review = values.filter((value) => value === "review").length;
   const attempted = known + review;
@@ -60,7 +71,9 @@ function loadDraftScores(validIds = []) {
   try {
     const parsed = JSON.parse(localStorage.getItem(SCORE_DRAFT_KEY) || "{}");
     const valid = new Set(validIds);
-    return Object.fromEntries(Object.entries(parsed || {}).filter(([id, value]) => valid.has(id) && ["known", "review"].includes(value)));
+    return Object.fromEntries(
+      Object.entries(parsed || {}).filter(([id, value]) => valid.has(id) && ["known", "review"].includes(value))
+    );
   } catch {
     return {};
   }
@@ -93,6 +106,24 @@ function ScoreHero({ summary, filteredCount, totalCount, title, subtitle }) {
         <div className="h-full rounded-full transition-all" style={{ width: `${progress}%`, backgroundColor: T.brandRed }} />
       </div>
     </Card>
+  );
+}
+
+function TextInput({ label, value, onChange, placeholder }) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-[11px] font-black uppercase tracking-[0.15em]" style={{ color: T.textSubtle }}>{label}</span>
+      <input value={value} onChange={(event) => onChange(event.target.value)} className="h-11 w-full rounded-2xl border px-3 text-sm font-semibold outline-none" style={{ borderColor: T.border, color: T.text }} placeholder={placeholder} />
+    </label>
+  );
+}
+
+function TextArea({ label, value, onChange, rows, placeholder, className = "" }) {
+  return (
+    <label className={`block ${className}`}>
+      <span className="mb-1 block text-[11px] font-black uppercase tracking-[0.15em]" style={{ color: T.textSubtle }}>{label}</span>
+      <textarea value={value} onChange={(event) => onChange(event.target.value)} rows={rows} className="w-full rounded-2xl border p-3 text-sm font-semibold outline-none" style={{ borderColor: T.border, color: T.text }} placeholder={placeholder} />
+    </label>
   );
 }
 
@@ -236,21 +267,12 @@ function RequestPanel() {
   );
 }
 
-function TextInput({ label, value, onChange, placeholder }) {
+function MiniStat({ label, value, bg, color }) {
   return (
-    <label className="block">
-      <span className="mb-1 block text-[11px] font-black uppercase tracking-[0.15em]" style={{ color: T.textSubtle }}>{label}</span>
-      <input value={value} onChange={(event) => onChange(event.target.value)} className="h-11 w-full rounded-2xl border px-3 text-sm font-semibold outline-none" style={{ borderColor: T.border, color: T.text }} placeholder={placeholder} />
-    </label>
-  );
-}
-
-function TextArea({ label, value, onChange, rows, placeholder, className = "" }) {
-  return (
-    <label className={`block ${className}`}>
-      <span className="mb-1 block text-[11px] font-black uppercase tracking-[0.15em]" style={{ color: T.textSubtle }}>{label}</span>
-      <textarea value={value} onChange={(event) => onChange(event.target.value)} rows={rows} className="w-full rounded-2xl border p-3 text-sm font-semibold outline-none" style={{ borderColor: T.border, color: T.text }} placeholder={placeholder} />
-    </label>
+    <div className="rounded-2xl p-2 text-center" style={{ backgroundColor: bg }}>
+      <p className="text-base font-black" style={{ color }}>{value}</p>
+      <p className="text-[10px] font-black uppercase tracking-[0.12em]" style={{ color: T.textMuted }}>{label}</p>
+    </div>
   );
 }
 
@@ -278,15 +300,6 @@ function DeckCard({ deck, onSelect }) {
         <div className="h-full rounded-full" style={{ width: `${progress}%`, backgroundColor: isAll ? T.brandRed : T.blue }} />
       </div>
     </button>
-  );
-}
-
-function MiniStat({ label, value, bg, color }) {
-  return (
-    <div className="rounded-2xl p-2 text-center" style={{ backgroundColor: bg }}>
-      <p className="text-base font-black" style={{ color }}>{value}</p>
-      <p className="text-[10px] font-black uppercase tracking-[0.12em]" style={{ color: T.textMuted }}>{label}</p>
-    </div>
   );
 }
 
@@ -431,7 +444,9 @@ export default function BoardPrepStudyClient() {
       if (!byCategory.has(label)) byCategory.set(label, []);
       byCategory.get(label).push(question);
     });
-    const categoryDecks = [...byCategory.entries()].map(([label, deckQuestions]) => ({ key: label, label, questions: deckQuestions, total: deckQuestions.length, summary: getScoreSummary(scores, deckQuestions) })).sort((a, b) => a.label.localeCompare(b.label));
+    const categoryDecks = [...byCategory.entries()]
+      .map(([label, deckQuestions]) => ({ key: label, label, questions: deckQuestions, total: deckQuestions.length, summary: getScoreSummary(scores, deckQuestions) }))
+      .sort((a, b) => a.label.localeCompare(b.label));
     return [{ key: ALL_DECK_KEY, label: "All questions", questions, total: questions.length, summary: getScoreSummary(scores, questions) }, ...categoryDecks];
   }, [questions, scores]);
 
@@ -507,9 +522,12 @@ export default function BoardPrepStudyClient() {
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  const handleTopBack = selectedDeck ? backToDecks : () => router.push("/tools/board-prep");
+  const backLabel = selectedDeck ? "Back to category decks" : "Back to Board Prep";
+
   return (
     <AppShell hideNav>
-      <ToolPage title="Study all questions" eyebrow="Board Prep" icon={BookOpen} onBack={() => router.push("/tools/board-prep")} backLabel="Back to Board Prep">
+      <ToolPage title="Study all questions" eyebrow="Board Prep" icon={BookOpen} onBack={handleTopBack} backLabel={backLabel}>
         <div className="space-y-4">
           {loading && <Card className="p-6 text-center text-sm" style={{ color: T.textMuted }}>Loading study decks...</Card>}
           {!loading && error && <Card className="p-5 text-center"><p className="font-bold" style={{ color: T.danger }}>{error}</p><button onClick={() => router.push("/tools/board-prep")} className="mt-4 rounded-2xl px-5 py-2 font-bold text-white" style={{ backgroundColor: T.navy }}>Back to Board Prep</button></Card>}
@@ -526,7 +544,6 @@ export default function BoardPrepStudyClient() {
           {!loading && !error && questions.length > 0 && selectedDeck && (
             <>
               <ScoreHero summary={selectedSummary} filteredCount={filteredQuestions.length} totalCount={deckQuestions.length} title={`${selectedDeck.label} deck`} subtitle="draft saved" />
-              <button type="button" onClick={backToDecks} className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl border text-sm font-black" style={{ borderColor: T.border, backgroundColor: T.card, color: T.navy }}><Layers size={16} /> Back to category decks</button>
               <SelectedDeckHeading deck={selectedDeck} />
               <div className="sticky top-0 z-20 -mx-1 rounded-b-[1.5rem] px-1 pb-2 pt-1" style={{ backgroundColor: T.bg }}>
                 <StudyControls searchQuery={searchQuery} setSearchQuery={setSearchQuery} filterOpen={filterOpen} setFilterOpen={setFilterOpen} statusFilter={statusFilter} setStatusFilter={setStatusFilter} showAll={showAll} setShowAll={setShowAll} resetScores={resetScores} />
