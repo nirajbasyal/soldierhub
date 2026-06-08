@@ -1,11 +1,22 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { checkRateLimit, rateLimitResponse } from "@/lib/server/rateLimit";
+import { createClient as createServerSupabaseClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const FLASHCARD_MARKER = "__FLASHCARD__";
+const MAX_STUDY_QUESTIONS = 250;
+const MAX_REVIEW_QUESTIONS = 50;
+
+function noStoreHeaders(extra = {}) {
+  return { "Cache-Control": "no-store", Vary: "Authorization, Cookie", ...extra };
+}
+
+function jsonNoStore(body, init = {}) {
+  return NextResponse.json(body, { ...init, headers: noStoreHeaders(init.headers || {}) });
+}
 
 function getBearerToken(request) {
   const header = request.headers.get("authorization") || "";
@@ -16,11 +27,39 @@ function getBearerToken(request) {
 function createAuthedClient(accessToken) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) return null;
-  return createClient(url, key, {
+  if (!url || !key || !accessToken) return null;
+  return createSupabaseClient(url, key, {
     auth: { autoRefreshToken: false, persistSession: false },
     global: { headers: { Authorization: `Bearer ${accessToken}` } },
   });
+}
+
+async function getRequestUserContext(request) {
+  const accessToken = getBearerToken(request);
+
+  if (accessToken) {
+    const bearerSupabase = createAuthedClient(accessToken);
+    if (bearerSupabase) {
+      const {
+        data: { user },
+        error,
+      } = await bearerSupabase.auth.getUser(accessToken);
+
+      if (!error && user) return { supabase: bearerSupabase, user };
+    }
+  }
+
+  const cookieSupabase = await createServerSupabaseClient();
+  if (cookieSupabase) {
+    const {
+      data: { user },
+      error,
+    } = await cookieSupabase.auth.getUser();
+
+    if (!error && user) return { supabase: cookieSupabase, user };
+  }
+
+  return { supabase: null, user: null };
 }
 
 function isFlashcardRow(row) {
@@ -49,28 +88,15 @@ export async function GET(request) {
   });
   if (!rateLimit.allowed) return rateLimitResponse(rateLimit);
 
-  const accessToken = getBearerToken(request);
-  if (!accessToken) {
-    return NextResponse.json({ error: "Sign in to study Board Prep questions." }, { status: 401 });
-  }
-
-  const supabase = createAuthedClient(accessToken);
-  if (!supabase) {
-    return NextResponse.json({ error: "Service unavailable." }, { status: 503 });
-  }
-
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser(accessToken);
-
-  if (userError || !user) {
-    return NextResponse.json({ error: "Sign in to study Board Prep questions." }, { status: 401 });
+  const { supabase, user } = await getRequestUserContext(request);
+  if (!supabase || !user) {
+    return jsonNoStore({ error: "Sign in to study Board Prep questions." }, { status: 401 });
   }
 
   const url = new URL(request.url);
   const limitParam = Number(url.searchParams.get("limit") || 0);
   const shouldShuffle = url.searchParams.get("shuffle") === "1" || url.searchParams.get("shuffle") === "true";
+  const dbLimit = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(MAX_REVIEW_QUESTIONS, Math.max(limitParam * 8, limitParam)) : MAX_STUDY_QUESTIONS;
 
   const { data, error } = await supabase
     .from("board_questions")
@@ -79,20 +105,20 @@ export async function GET(request) {
     .is("deleted_at", null)
     .order("category", { ascending: true })
     .order("question", { ascending: true })
-    .limit(250);
+    .limit(dbLimit);
 
   if (error) {
     console.error("board_questions study load failed:", error);
-    return NextResponse.json({ error: "Could not load study questions." }, { status: 500 });
+    return jsonNoStore({ error: "Could not load study questions." }, { status: 500 });
   }
 
   let rows = (data || []).map(shapeQuestion);
 
   if (shouldShuffle) rows = [...rows].sort(() => Math.random() - 0.5);
-  if (Number.isFinite(limitParam) && limitParam > 0) rows = rows.slice(0, Math.min(limitParam, 50));
+  if (Number.isFinite(limitParam) && limitParam > 0) rows = rows.slice(0, Math.min(limitParam, MAX_REVIEW_QUESTIONS));
 
-  return NextResponse.json(
+  return jsonNoStore(
     { data: rows, count: rows.length },
-    { status: 200, headers: { "Cache-Control": "no-store" } }
+    { status: 200, headers: rateLimit.headers }
   );
 }
