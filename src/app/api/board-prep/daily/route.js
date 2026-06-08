@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { checkRateLimit, rateLimitResponse } from "@/lib/server/rateLimit";
+import { createClient as createServerSupabaseClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,18 +12,53 @@ const FLASHCARD_MARKER = "__FLASHCARD__";
 
 function getAuthParts(request) {
   const authorization = request.headers.get("authorization") || "";
-  const token = authorization.split(/\s+/)[1] || null;
+  const token = authorization.toLowerCase().startsWith("bearer ") ? authorization.slice(7).trim() : null;
   return { authorization, token };
 }
 
-function createAuthedClient(authorization) {
+function createAuthedClient(accessToken) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key || !authorization) return null;
-  return createClient(url, key, {
+  if (!url || !key || !accessToken) return null;
+  return createSupabaseClient(url, key, {
     auth: { autoRefreshToken: false, persistSession: false },
-    global: { headers: { authorization } },
+    global: { headers: { Authorization: `Bearer ${accessToken}` } },
   });
+}
+
+async function getRequestUserContext(request) {
+  const { token } = getAuthParts(request);
+
+  if (token) {
+    const bearerSupabase = createAuthedClient(token);
+    if (bearerSupabase) {
+      const {
+        data: { user },
+        error,
+      } = await bearerSupabase.auth.getUser(token);
+
+      if (!error && user) {
+        return { supabase: bearerSupabase, user };
+      }
+    }
+  }
+
+  // Fallback for mobile browsers where the bearer token can become stale but the
+  // Supabase SSR cookies are still valid. This keeps Board Prep from falsely
+  // showing "Sign in" when the app session exists.
+  const cookieSupabase = await createServerSupabaseClient();
+  if (cookieSupabase) {
+    const {
+      data: { user },
+      error,
+    } = await cookieSupabase.auth.getUser();
+
+    if (!error && user) {
+      return { supabase: cookieSupabase, user };
+    }
+  }
+
+  return { supabase: null, user: null };
 }
 
 function computeStreak(history) {
@@ -84,7 +120,10 @@ function pickDailyQuestions(allRows = [], previousSessions = [], existingIds = [
 
   const seen = getSeenQuestionIds(previousSessions);
   const remaining = allRows.filter((row) => !used.has(row.id));
-  const ordered = [...shuffle(remaining.filter((row) => !seen.has(row.id))), ...shuffle(remaining.filter((row) => seen.has(row.id)))];
+  const ordered = [
+    ...shuffle(remaining.filter((row) => !seen.has(row.id))),
+    ...shuffle(remaining.filter((row) => seen.has(row.id))),
+  ];
 
   ordered.forEach((row) => {
     if (picked.length < QUESTIONS_PER_SESSION && !used.has(row.id)) {
@@ -159,20 +198,17 @@ export async function GET(request) {
   const rateLimit = await checkRateLimit(request, { keyPrefix: "board-prep:daily", limit: 30, windowMs: 60 * 1000 });
   if (!rateLimit.allowed) return rateLimitResponse(rateLimit);
 
-  const { authorization, token } = getAuthParts(request);
-  if (!token) return NextResponse.json({ error: "Sign in to access Board Prep." }, { status: 401 });
-
-  const supabase = createAuthedClient(authorization);
-  if (!supabase) return NextResponse.json({ error: "Service unavailable." }, { status: 503 });
-
-  const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-  if (userError || !user) return NextResponse.json({ error: "Sign in to access Board Prep." }, { status: 401 });
+  const { supabase, user } = await getRequestUserContext(request);
+  if (!supabase || !user) return NextResponse.json({ error: "Sign in to access Board Prep." }, { status: 401 });
 
   const today = new Date().toISOString().slice(0, 10);
   const [sessionResult, historyResult] = await Promise.all([
     supabase.from("board_sessions").select("id, session_date, question_ids, answers, completed, score").eq("user_id", user.id).eq("session_date", today).maybeSingle(),
     supabase.from("board_sessions").select("session_date, completed, score").eq("user_id", user.id).gte("session_date", new Date(Date.now() - HISTORY_DAYS * 86_400_000).toISOString().slice(0, 10)).order("session_date", { ascending: false }),
   ]);
+
+  if (sessionResult.error) return NextResponse.json({ error: "Could not load today's Board Prep session." }, { status: 500 });
+  if (historyResult.error) return NextResponse.json({ error: "Could not load Board Prep history." }, { status: 500 });
 
   const history = historyResult.data || [];
   let session = sessionResult.data;
@@ -198,6 +234,6 @@ export async function GET(request) {
   const totalAnswered = Object.keys(session.answers || {}).length;
   return NextResponse.json(
     { session, questions, streak, history, totalAnswered, totalQuestions: questions.length || QUESTIONS_PER_SESSION, exhausted: false },
-    { status: 200, headers: { "Cache-Control": "no-store" } }
+    { status: 200, headers: { ...rateLimit.headers, "Cache-Control": "no-store" } }
   );
 }
