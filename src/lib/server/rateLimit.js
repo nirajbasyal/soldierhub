@@ -3,6 +3,7 @@ import { createHash } from "crypto";
 const DEFAULT_WINDOW_MS = 60 * 1000;
 const DEFAULT_LIMIT = 60;
 const MAX_TRACKED_KEYS = 5000;
+const SHARED_RATE_LIMIT_TIMEOUT_MS = Number(process.env.RATE_LIMIT_SHARED_TIMEOUT_MS || 700);
 
 function getStore() {
   if (!globalThis.__soldierhubRateLimitStore) {
@@ -130,32 +131,40 @@ async function runUpstashPipeline(commands) {
   const config = getUpstashConfig();
   if (!config) return null;
 
-  const response = await fetch(`${config.url}/pipeline`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${config.token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(commands),
-    cache: "no-store",
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), SHARED_RATE_LIMIT_TIMEOUT_MS);
 
-  if (!response.ok) {
-    throw new Error(`Rate limit store returned ${response.status}`);
+  try {
+    const response = await fetch(`${config.url}/pipeline`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(commands),
+      cache: "no-store",
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Rate limit store returned ${response.status}`);
+    }
+
+    const payload = await response.json();
+
+    if (!Array.isArray(payload)) {
+      throw new Error("Rate limit store returned an invalid response.");
+    }
+
+    const commandError = payload.find((entry) => entry?.error);
+    if (commandError) {
+      throw new Error(commandError.error || "Rate limit store command failed.");
+    }
+
+    return payload.map((entry) => entry?.result);
+  } finally {
+    clearTimeout(timeout);
   }
-
-  const payload = await response.json();
-
-  if (!Array.isArray(payload)) {
-    throw new Error("Rate limit store returned an invalid response.");
-  }
-
-  const commandError = payload.find((entry) => entry?.error);
-  if (commandError) {
-    throw new Error(commandError.error || "Rate limit store command failed.");
-  }
-
-  return payload.map((entry) => entry?.result);
 }
 
 async function checkSharedRateLimit(
