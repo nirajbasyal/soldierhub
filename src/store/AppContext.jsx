@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -12,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { CATEGORIES } from "@/lib/constants";
 import { SEED_PENDING, SEED_POSTS, SEED_USERS } from "@/lib/seed";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
+import { subscribeToPosts } from "@/lib/db/realtime";
 
 import { useAdminActions } from "./hooks/useAdminActions";
 import { useAuthActions } from "./hooks/useAuthActions";
@@ -100,6 +102,17 @@ export function AppProvider({ children }) {
   const [hasNewFeedItems, setHasNewFeedItems] = useState(false);
 
   const { toasts, pushToast, dismissToast } = useToasts();
+
+  useEffect(() => {
+    if (!SUPA) return undefined;
+
+    const unsubscribe = subscribeToPosts((payload) => {
+      const eventType = String(payload?.eventType || "").toUpperCase();
+      if (eventType === "INSERT") setHasNewFeedItems(true);
+    });
+
+    return () => unsubscribe?.();
+  }, []);
 
   const sendToPendingReview = useCallback(({ email = "", name = "", found = 1, status = "pending", replace = false }) => {
     const url = `/pending-review?email=${encodeURIComponent(email)}&name=${encodeURIComponent(name || "")}&found=${found}&status=${encodeURIComponent(status)}`;
