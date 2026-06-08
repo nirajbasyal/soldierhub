@@ -6,9 +6,11 @@ import {
   BookOpen,
   CheckCircle2,
   ChevronDown,
+  ChevronRight,
   Eye,
   EyeOff,
   Filter,
+  Layers,
   PlusCircle,
   RotateCcw,
   Search,
@@ -22,6 +24,7 @@ import ToolPage from "@/components/ui/ToolPage";
 
 const SCORE_DRAFT_KEY = "soldierhub:board-prep-study-scores:v1";
 const FLASHCARD_MARKER = "__FLASHCARD__";
+const ALL_DECK_KEY = "__all__";
 
 async function getAccessToken() {
   const supabase = createClient();
@@ -60,11 +63,15 @@ function getCategoryLabel(question) {
   return question?.category?.trim() || "General";
 }
 
-function getScoreSummary(scores, total) {
-  const values = Object.values(scores || {});
+function getQuestionScoreSummary(scores, questions = []) {
+  const ids = new Set(questions.map((question) => question.id));
+  const values = Object.entries(scores || {})
+    .filter(([id]) => ids.has(id))
+    .map(([, value]) => value);
   const known = values.filter((value) => value === "known").length;
   const review = values.filter((value) => value === "review").length;
   const attempted = known + review;
+  const total = questions.length;
   const percent = attempted ? Math.round((known / attempted) * 100) : 0;
   return { known, review, attempted, total, percent };
 }
@@ -89,7 +96,7 @@ function saveDraftScores(scores) {
   localStorage.setItem(SCORE_DRAFT_KEY, JSON.stringify(scores || {}));
 }
 
-function ScoreHero({ summary, filteredCount, totalCount }) {
+function ScoreHero({ summary, filteredCount, totalCount, title = "Study score", subtitle = "draft saved" }) {
   const progress = summary.total ? Math.round((summary.attempted / summary.total) * 100) : 0;
 
   return (
@@ -103,7 +110,7 @@ function ScoreHero({ summary, filteredCount, totalCount }) {
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[11px] font-black uppercase tracking-[0.18em]" style={{ color: T.brandRed }}>
-            Study score
+            {title}
           </p>
           <h2 className="mt-1 text-2xl font-black leading-tight" style={{ color: T.navy }}>
             {summary.known}/{summary.attempted || 0} known
@@ -112,7 +119,7 @@ function ScoreHero({ summary, filteredCount, totalCount }) {
             {summary.review} need review · {summary.total - summary.attempted} not scored
           </p>
           <p className="mt-1 text-[11px] font-semibold" style={{ color: T.textSubtle }}>
-            Showing {filteredCount} of {totalCount} questions · draft saved
+            Showing {filteredCount} of {totalCount} questions · {subtitle}
           </p>
         </div>
         <div
@@ -183,7 +190,7 @@ function StudyControls({
           <input
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder="Search questions"
+            placeholder="Search this deck"
             className="min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none placeholder:font-semibold"
             style={{ color: T.text }}
           />
@@ -381,6 +388,101 @@ function AddQuestionRequestPanel() {
   );
 }
 
+function DeckCard({ deck, onSelect }) {
+  const notScored = Math.max(deck.total - deck.summary.attempted, 0);
+  const progress = deck.total ? Math.round((deck.summary.attempted / deck.total) * 100) : 0;
+  const isAll = deck.key === ALL_DECK_KEY;
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(deck)}
+      className="group rounded-[1.65rem] border p-4 text-left shadow-sm transition active:scale-[0.99]"
+      style={{
+        backgroundColor: T.card,
+        borderColor: isAll ? "rgba(179,25,66,0.30)" : T.border,
+        boxShadow: isAll ? "0 12px 26px rgba(179,25,66,0.08)" : undefined,
+      }}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl" style={{ backgroundColor: isAll ? T.redBg : T.blueSoft, color: isAll ? T.brandRed : T.blue }}>
+            <Layers size={20} />
+          </div>
+          <h3 className="line-clamp-2 text-lg font-black leading-snug" style={{ color: T.navy }}>{deck.label}</h3>
+          <p className="mt-1 text-xs font-semibold" style={{ color: T.textMuted }}>{deck.total} question{deck.total === 1 ? "" : "s"}</p>
+        </div>
+        <ChevronRight size={20} className="mt-1 shrink-0 transition group-hover:translate-x-0.5" style={{ color: T.textSubtle }} />
+      </div>
+
+      <div className="mt-4 grid grid-cols-3 gap-2">
+        <div className="rounded-2xl p-2 text-center" style={{ backgroundColor: "#F3FBF6" }}>
+          <p className="text-base font-black" style={{ color: T.success }}>{deck.summary.known}</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.12em]" style={{ color: T.textMuted }}>Known</p>
+        </div>
+        <div className="rounded-2xl p-2 text-center" style={{ backgroundColor: T.dangerBg }}>
+          <p className="text-base font-black" style={{ color: T.danger }}>{deck.summary.review}</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.12em]" style={{ color: T.textMuted }}>Review</p>
+        </div>
+        <div className="rounded-2xl p-2 text-center" style={{ backgroundColor: T.surface }}>
+          <p className="text-base font-black" style={{ color: T.navy }}>{notScored}</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.12em]" style={{ color: T.textMuted }}>New</p>
+        </div>
+      </div>
+
+      <div className="mt-4 h-2 overflow-hidden rounded-full" style={{ backgroundColor: T.borderSoft }}>
+        <div className="h-full rounded-full" style={{ width: `${progress}%`, backgroundColor: isAll ? T.brandRed : T.blue }} />
+      </div>
+    </button>
+  );
+}
+
+function DeckSelection({ decks, deckQuery, setDeckQuery, onSelect }) {
+  const filteredDecks = useMemo(() => {
+    const search = deckQuery.trim().toLowerCase();
+    if (!search) return decks;
+    return decks.filter((deck) => deck.label.toLowerCase().includes(search));
+  }, [decks, deckQuery]);
+
+  return (
+    <div className="space-y-4">
+      <Card className="p-4" style={{ background: `linear-gradient(135deg, ${T.navy}, #163b63)`, borderColor: "rgba(255,255,255,0.12)" }}>
+        <div className="flex items-start gap-3">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-white">
+            <Layers size={22} />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-white/65">Study decks</p>
+            <h2 className="mt-1 text-2xl font-serif font-black text-white">Choose a category</h2>
+            <p className="mt-1 text-xs font-semibold text-white/70">Pick one deck so you do not have to scroll every question.</p>
+          </div>
+        </div>
+      </Card>
+
+      <Card className="p-2.5">
+        <div className="flex h-11 items-center gap-2 rounded-2xl border px-3" style={{ borderColor: T.border, backgroundColor: T.surface }}>
+          <Search size={16} style={{ color: T.textSubtle }} />
+          <input
+            value={deckQuery}
+            onChange={(event) => setDeckQuery(event.target.value)}
+            placeholder="Search category decks"
+            className="min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none placeholder:font-semibold"
+            style={{ color: T.text }}
+          />
+        </div>
+      </Card>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        {filteredDecks.map((deck) => (
+          <DeckCard key={deck.key} deck={deck} onSelect={onSelect} />
+        ))}
+      </div>
+
+      {filteredDecks.length === 0 && <Card className="p-6 text-center text-sm" style={{ color: T.textMuted }}>No category deck matches your search.</Card>}
+    </div>
+  );
+}
+
 function FlashCard({ question, index, showAll, score, onScore }) {
   const [open, setOpen] = useState(false);
   const visible = showAll || open;
@@ -467,12 +569,55 @@ export default function BoardPrepStudyPage() {
   const [showAll, setShowAll] = useState(false);
   const [scores, setScores] = useState({});
   const [searchQuery, setSearchQuery] = useState("");
+  const [deckQuery, setDeckQuery] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [selectedDeckKey, setSelectedDeckKey] = useState(null);
+
+  const decks = useMemo(() => {
+    const byCategory = new Map();
+    questions.forEach((question) => {
+      const label = getCategoryLabel(question);
+      if (!byCategory.has(label)) byCategory.set(label, []);
+      byCategory.get(label).push(question);
+    });
+
+    const categoryDecks = [...byCategory.entries()]
+      .map(([label, deckQuestions]) => ({
+        key: label,
+        label,
+        questions: deckQuestions,
+        total: deckQuestions.length,
+        summary: getQuestionScoreSummary(scores, deckQuestions),
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+
+    return [
+      {
+        key: ALL_DECK_KEY,
+        label: "All questions",
+        questions,
+        total: questions.length,
+        summary: getQuestionScoreSummary(scores, questions),
+      },
+      ...categoryDecks,
+    ];
+  }, [questions, scores]);
+
+  const selectedDeck = useMemo(() => {
+    if (!selectedDeckKey) return null;
+    return decks.find((deck) => deck.key === selectedDeckKey) || null;
+  }, [decks, selectedDeckKey]);
+
+  useEffect(() => {
+    if (selectedDeckKey && !selectedDeck) setSelectedDeckKey(null);
+  }, [selectedDeckKey, selectedDeck]);
+
+  const deckQuestions = selectedDeck?.questions || [];
 
   const filteredQuestions = useMemo(() => {
     const search = searchQuery.trim().toLowerCase();
-    return questions.filter((question) => {
+    return deckQuestions.filter((question) => {
       const score = scores[question.id];
       if (statusFilter === "known" && score !== "known") return false;
       if (statusFilter === "review" && score !== "review") return false;
@@ -493,9 +638,10 @@ export default function BoardPrepStudyPage() {
 
       return haystack.includes(search);
     });
-  }, [questions, scores, searchQuery, statusFilter]);
+  }, [deckQuestions, scores, searchQuery, statusFilter]);
 
-  const summary = useMemo(() => getScoreSummary(scores, questions.length), [scores, questions.length]);
+  const allSummary = useMemo(() => getQuestionScoreSummary(scores, questions), [scores, questions]);
+  const selectedSummary = useMemo(() => getQuestionScoreSummary(scores, deckQuestions), [scores, deckQuestions]);
 
   const loadQuestions = useCallback(async () => {
     setLoading(true);
@@ -542,28 +688,28 @@ export default function BoardPrepStudyPage() {
     saveDraftScores({});
   }
 
+  function selectDeck(deck) {
+    setSelectedDeckKey(deck.key);
+    setSearchQuery("");
+    setStatusFilter("all");
+    setFilterOpen(false);
+    setShowAll(false);
+    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function backToDecks() {
+    setSelectedDeckKey(null);
+    setSearchQuery("");
+    setFilterOpen(false);
+    setShowAll(false);
+    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   return (
     <AppShell hideNav>
       <ToolPage title="Study all questions" eyebrow="Board Prep" icon={BookOpen} onBack={() => router.push("/tools/board-prep")} backLabel="Back to Board Prep">
         <div className="space-y-4">
-          <ScoreHero summary={summary} filteredCount={filteredQuestions.length} totalCount={questions.length} />
-          <div className="sticky top-0 z-20 -mx-1 rounded-b-[1.5rem] px-1 pb-2 pt-1" style={{ backgroundColor: T.bg }}>
-            <StudyControls
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-              filterOpen={filterOpen}
-              setFilterOpen={setFilterOpen}
-              statusFilter={statusFilter}
-              setStatusFilter={setStatusFilter}
-              showAll={showAll}
-              setShowAll={setShowAll}
-              resetScores={resetScores}
-            />
-          </div>
-
-          <AddQuestionRequestPanel />
-
-          {loading && <Card className="p-6 text-center text-sm" style={{ color: T.textMuted }}>Loading flash cards...</Card>}
+          {loading && <Card className="p-6 text-center text-sm" style={{ color: T.textMuted }}>Loading study decks...</Card>}
           {!loading && error && (
             <Card className="p-5 text-center">
               <p className="font-bold" style={{ color: T.danger }}>{error}</p>
@@ -573,15 +719,52 @@ export default function BoardPrepStudyPage() {
             </Card>
           )}
           {!loading && !error && questions.length === 0 && <Card className="p-6 text-center text-sm" style={{ color: T.textMuted }}>No questions available yet.</Card>}
-          {!loading && !error && questions.length > 0 && filteredQuestions.length === 0 && <Card className="p-6 text-center text-sm" style={{ color: T.textMuted }}>No questions match your search or filter.</Card>}
 
-          <div className="space-y-4 pb-8">
-            {!loading &&
-              !error &&
-              filteredQuestions.map((question, index) => (
-                <FlashCard key={question.id} question={question} index={index} showAll={showAll} score={scores[question.id]} onScore={handleScore} />
-              ))}
-          </div>
+          {!loading && !error && questions.length > 0 && !selectedDeck && (
+            <>
+              <ScoreHero summary={allSummary} filteredCount={questions.length} totalCount={questions.length} title="Overall study score" subtitle="all decks" />
+              <DeckSelection decks={decks} deckQuery={deckQuery} setDeckQuery={setDeckQuery} onSelect={selectDeck} />
+              <AddQuestionRequestPanel />
+            </>
+          )}
+
+          {!loading && !error && questions.length > 0 && selectedDeck && (
+            <>
+              <ScoreHero summary={selectedSummary} filteredCount={filteredQuestions.length} totalCount={deckQuestions.length} title={`${selectedDeck.label} deck`} subtitle="draft saved" />
+              <button
+                type="button"
+                onClick={backToDecks}
+                className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl border text-sm font-black"
+                style={{ borderColor: T.border, backgroundColor: T.card, color: T.navy }}
+              >
+                <Layers size={16} /> Back to category decks
+              </button>
+
+              <div className="sticky top-0 z-20 -mx-1 rounded-b-[1.5rem] px-1 pb-2 pt-1" style={{ backgroundColor: T.bg }}>
+                <StudyControls
+                  searchQuery={searchQuery}
+                  setSearchQuery={setSearchQuery}
+                  filterOpen={filterOpen}
+                  setFilterOpen={setFilterOpen}
+                  statusFilter={statusFilter}
+                  setStatusFilter={setStatusFilter}
+                  showAll={showAll}
+                  setShowAll={setShowAll}
+                  resetScores={resetScores}
+                />
+              </div>
+
+              <AddQuestionRequestPanel />
+
+              {filteredQuestions.length === 0 && <Card className="p-6 text-center text-sm" style={{ color: T.textMuted }}>No questions match your search or filter in this deck.</Card>}
+
+              <div className="space-y-4 pb-8">
+                {filteredQuestions.map((question, index) => (
+                  <FlashCard key={question.id} question={question} index={index} showAll={showAll} score={scores[question.id]} onScore={handleScore} />
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </ToolPage>
     </AppShell>
