@@ -8,7 +8,17 @@ export const dynamic = "force-dynamic";
 
 const QUESTIONS_PER_SESSION = 5;
 const HISTORY_DAYS = 14;
+const ACTIVE_QUESTION_LIMIT = 300;
+const PREVIOUS_SESSION_LIMIT = 60;
 const FLASHCARD_MARKER = "__FLASHCARD__";
+
+function noStoreHeaders(extra = {}) {
+  return { "Cache-Control": "no-store", Vary: "Authorization, Cookie", ...extra };
+}
+
+function jsonNoStore(body, init = {}) {
+  return NextResponse.json(body, { ...init, headers: noStoreHeaders(init.headers || {}) });
+}
 
 function getAuthParts(request) {
   const authorization = request.headers.get("authorization") || "";
@@ -37,15 +47,10 @@ async function getRequestUserContext(request) {
         error,
       } = await bearerSupabase.auth.getUser(token);
 
-      if (!error && user) {
-        return { supabase: bearerSupabase, user };
-      }
+      if (!error && user) return { supabase: bearerSupabase, user };
     }
   }
 
-  // Fallback for mobile browsers where the bearer token can become stale but the
-  // Supabase SSR cookies are still valid. This keeps Board Prep from falsely
-  // showing "Sign in" when the app session exists.
   const cookieSupabase = await createServerSupabaseClient();
   if (cookieSupabase) {
     const {
@@ -53,9 +58,7 @@ async function getRequestUserContext(request) {
       error,
     } = await cookieSupabase.auth.getUser();
 
-    if (!error && user) {
-      return { supabase: cookieSupabase, user };
-    }
+    if (!error && user) return { supabase: cookieSupabase, user };
   }
 
   return { supabase: null, user: null };
@@ -137,29 +140,36 @@ function pickDailyQuestions(allRows = [], previousSessions = [], existingIds = [
 
 function exhaustedResponse({ session = null, history = [], questions = [], message }) {
   const streak = computeStreak(history);
-  return NextResponse.json(
-    {
-      session,
-      questions,
-      streak,
-      history,
-      totalAnswered: Object.keys(session?.answers || {}).length,
-      totalQuestions: questions.length || QUESTIONS_PER_SESSION,
-      exhausted: true,
-      message: message || "You finished all available Board Prep questions. Restart the quiz to keep practicing.",
-    },
-    { status: 200, headers: { "Cache-Control": "no-store" } }
-  );
+  return jsonNoStore({
+    session,
+    questions,
+    streak,
+    history,
+    totalAnswered: Object.keys(session?.answers || {}).length,
+    totalQuestions: questions.length || QUESTIONS_PER_SESSION,
+    exhausted: true,
+    message: message || "You finished all available Board Prep questions. Restart the quiz to keep practicing.",
+  });
 }
 
 async function createOrTopUpSession({ supabase, userId, today, history, session }) {
   const [{ data: allRows, error: rowsError }, { data: previousSessions, error: previousError }] = await Promise.all([
-    supabase.from("board_questions").select("id, option_b, option_c, option_d").eq("active", true).is("deleted_at", null).limit(500),
-    supabase.from("board_sessions").select("question_ids").eq("user_id", userId).order("session_date", { ascending: false }).limit(500),
+    supabase
+      .from("board_questions")
+      .select("id, option_b, option_c, option_d")
+      .eq("active", true)
+      .is("deleted_at", null)
+      .limit(ACTIVE_QUESTION_LIMIT),
+    supabase
+      .from("board_sessions")
+      .select("question_ids")
+      .eq("user_id", userId)
+      .order("session_date", { ascending: false })
+      .limit(PREVIOUS_SESSION_LIMIT),
   ]);
 
-  if (rowsError) return { response: NextResponse.json({ error: "Could not load Board Prep questions." }, { status: 500 }) };
-  if (previousError) return { response: NextResponse.json({ error: "Could not load Board Prep progress." }, { status: 500 }) };
+  if (rowsError) return { response: jsonNoStore({ error: "Could not load Board Prep questions." }, { status: 500 }) };
+  if (previousError) return { response: jsonNoStore({ error: "Could not load Board Prep progress." }, { status: 500 }) };
   if (!allRows?.length) {
     return { response: exhaustedResponse({ session, history, message: "No active Board Prep questions are available right now. Add or approve questions in the admin dashboard, then restart the quiz." }) };
   }
@@ -172,7 +182,7 @@ async function createOrTopUpSession({ supabase, userId, today, history, session 
       .insert({ user_id: userId, session_date: today, question_ids: pickedIds, answers: {}, completed: false })
       .select("id, session_date, question_ids, answers, completed, score")
       .single();
-    if (insertError) return { response: NextResponse.json({ error: "Could not start session." }, { status: 500 }) };
+    if (insertError) return { response: jsonNoStore({ error: "Could not start session." }, { status: 500 }) };
     return { session: newSession };
   }
 
@@ -190,7 +200,7 @@ async function createOrTopUpSession({ supabase, userId, today, history, session 
     .eq("id", session.id)
     .select("id, session_date, question_ids, answers, completed, score")
     .single();
-  if (updateError) return { response: NextResponse.json({ error: "Could not prepare today's Board Prep quiz." }, { status: 500 }) };
+  if (updateError) return { response: jsonNoStore({ error: "Could not prepare today's Board Prep quiz." }, { status: 500 }) };
   return { session: updatedSession };
 }
 
@@ -199,16 +209,28 @@ export async function GET(request) {
   if (!rateLimit.allowed) return rateLimitResponse(rateLimit);
 
   const { supabase, user } = await getRequestUserContext(request);
-  if (!supabase || !user) return NextResponse.json({ error: "Sign in to access Board Prep." }, { status: 401 });
+  if (!supabase || !user) return jsonNoStore({ error: "Sign in to access Board Prep." }, { status: 401 });
 
   const today = new Date().toISOString().slice(0, 10);
+  const historyStart = new Date(Date.now() - HISTORY_DAYS * 86_400_000).toISOString().slice(0, 10);
   const [sessionResult, historyResult] = await Promise.all([
-    supabase.from("board_sessions").select("id, session_date, question_ids, answers, completed, score").eq("user_id", user.id).eq("session_date", today).maybeSingle(),
-    supabase.from("board_sessions").select("session_date, completed, score").eq("user_id", user.id).gte("session_date", new Date(Date.now() - HISTORY_DAYS * 86_400_000).toISOString().slice(0, 10)).order("session_date", { ascending: false }),
+    supabase
+      .from("board_sessions")
+      .select("id, session_date, question_ids, answers, completed, score")
+      .eq("user_id", user.id)
+      .eq("session_date", today)
+      .maybeSingle(),
+    supabase
+      .from("board_sessions")
+      .select("session_date, completed, score")
+      .eq("user_id", user.id)
+      .gte("session_date", historyStart)
+      .order("session_date", { ascending: false })
+      .limit(HISTORY_DAYS + 2),
   ]);
 
-  if (sessionResult.error) return NextResponse.json({ error: "Could not load today's Board Prep session." }, { status: 500 });
-  if (historyResult.error) return NextResponse.json({ error: "Could not load Board Prep history." }, { status: 500 });
+  if (sessionResult.error) return jsonNoStore({ error: "Could not load today's Board Prep session." }, { status: 500 });
+  if (historyResult.error) return jsonNoStore({ error: "Could not load Board Prep history." }, { status: 500 });
 
   const history = historyResult.data || [];
   let session = sessionResult.data;
@@ -223,7 +245,7 @@ export async function GET(request) {
     .from("board_questions")
     .select("id, question, option_a, option_b, option_c, option_d, correct_option, explanation, category, source_publication, difficulty")
     .in("id", session.question_ids || []);
-  if (questionError) return NextResponse.json({ error: "Could not load Board Prep questions." }, { status: 500 });
+  if (questionError) return jsonNoStore({ error: "Could not load Board Prep questions." }, { status: 500 });
 
   const questions = (session.question_ids || []).map((qid) => questionRows?.find((q) => q.id === qid)).filter(Boolean).map(shapeQuestion);
   if (!session.completed && questions.length === 0) {
@@ -232,8 +254,8 @@ export async function GET(request) {
 
   const streak = computeStreak(history);
   const totalAnswered = Object.keys(session.answers || {}).length;
-  return NextResponse.json(
+  return jsonNoStore(
     { session, questions, streak, history, totalAnswered, totalQuestions: questions.length || QUESTIONS_PER_SESSION, exhausted: false },
-    { status: 200, headers: { ...rateLimit.headers, "Cache-Control": "no-store" } }
+    { status: 200, headers: rateLimit.headers }
   );
 }
