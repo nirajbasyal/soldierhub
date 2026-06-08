@@ -96,7 +96,11 @@ export async function GET(request) {
   const url = new URL(request.url);
   const limitParam = Number(url.searchParams.get("limit") || 0);
   const shouldShuffle = url.searchParams.get("shuffle") === "1" || url.searchParams.get("shuffle") === "true";
-  const dbLimit = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(MAX_REVIEW_QUESTIONS, Math.max(limitParam * 8, limitParam)) : MAX_STUDY_QUESTIONS;
+  const dbLimit = shouldShuffle
+    ? MAX_STUDY_QUESTIONS
+    : Number.isFinite(limitParam) && limitParam > 0
+      ? Math.min(MAX_REVIEW_QUESTIONS, Math.max(limitParam * 8, limitParam))
+      : MAX_STUDY_QUESTIONS;
 
   const { data, error } = await supabase
     .from("board_questions")
