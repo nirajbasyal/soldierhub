@@ -107,7 +107,7 @@ export function AppProvider({ children }) {
     if (!SUPA) return undefined;
 
     const unsubscribe = subscribeToPosts((payload) => {
-      const eventType = String(payload?.eventType || "").toUpperCase();
+      const eventType = String(payload?.event || payload?.eventType || "").toUpperCase();
       if (eventType === "INSERT") setHasNewFeedItems(true);
     });
 
