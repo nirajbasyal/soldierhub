@@ -87,6 +87,7 @@ export default function NotificationsPage() {
   } = useApp();
 
   const [unreadSnapshotIds, setUnreadSnapshotIds] = useState(() => new Set());
+  const [markReadError, setMarkReadError] = useState("");
   const didMarkReadRef = useRef(false);
   const didLoadRef = useRef(false);
 
@@ -95,6 +96,7 @@ export default function NotificationsPage() {
     didLoadRef.current = false;
     didMarkReadRef.current = false;
     setUnreadSnapshotIds(new Set());
+    setMarkReadError("");
   }, [currentUser?.id]);
 
   useEffect(() => {
@@ -114,9 +116,26 @@ export default function NotificationsPage() {
   useEffect(() => {
     if (authLoading || notificationsLoading || !currentUser || didMarkReadRef.current) return;
     if (notifications.length === 0) return;
+
+    let cancelled = false;
     setUnreadSnapshotIds(new Set(notifications.filter((item) => item.read === false).map((item) => item.id)));
     didMarkReadRef.current = true;
-    markNotificationsRead();
+    setMarkReadError("");
+
+    Promise.resolve(markNotificationsRead?.())
+      .then((result) => {
+        if (cancelled || !result || result.ok !== false) return;
+        setMarkReadError(result.error || "Could not sync notification read status.");
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        console.error("Notification read sync failed:", error);
+        setMarkReadError("Could not sync notification read status. Pull to refresh or try again later.");
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [authLoading, currentUser, markNotificationsRead, notifications, notificationsLoading]);
 
   const groupedNotifications = useMemo(
@@ -151,6 +170,11 @@ export default function NotificationsPage() {
                     ? `${unreadGroupCount} new notification${unreadGroupCount > 1 ? "s" : ""}.`
                     : "Replies, upvotes, and new followers from the SoldierHub community."}
                 </p>
+                {markReadError ? (
+                  <p className="mt-2 rounded-2xl border px-3 py-2 text-xs font-semibold" style={{ backgroundColor: T.redBg, borderColor: "rgba(179,25,66,0.20)", color: T.brandRed }}>
+                    {markReadError}
+                  </p>
+                ) : null}
               </div>
             </div>
           </section>
