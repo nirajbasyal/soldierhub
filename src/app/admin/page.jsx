@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   BookOpen,
+  DoorOpen,
   Flag,
   Link2,
   Search,
@@ -25,6 +26,7 @@ import BlockedUsersList from "@/components/admin/BlockedUsersList";
 import AdminVerifyByEmail from "@/components/admin/AdminVerifyByEmail";
 import ResourceManager from "@/components/admin/ResourceManager";
 import BoardPrepManager from "@/components/admin/BoardPrepManager";
+import GateManager from "@/components/admin/GateManager";
 
 async function getAccessToken() {
   const supabase = createClient();
@@ -48,6 +50,7 @@ export default function AdminPage() {
   const [tab, setTab] = useState("pending");
   const [searchQuery, setSearchQuery] = useState("");
   const [resourceCount, setResourceCount] = useState(0);
+  const [gateCount, setGateCount] = useState(0);
   const [boardRequestCount, setBoardRequestCount] = useState(0);
 
   useEffect(() => {
@@ -112,6 +115,7 @@ export default function AdminPage() {
     { k: "blocked", label: "Blocked", icon: UserX, count: blockedCount },
     { k: "reported", label: "Reported", icon: Flag, count: reportedCount },
     { k: "board", label: "Board Prep", icon: BookOpen, count: boardRequestCount },
+    { k: "gates", label: "Gates", icon: DoorOpen, count: gateCount },
     { k: "resources", label: "Resources", icon: Link2, count: resourceCount },
   ];
 
@@ -137,7 +141,7 @@ export default function AdminPage() {
                   Admin dashboard
                 </h1>
                 <p className="mt-1 text-sm leading-6" style={{ color: T.textMuted }}>
-                  Review users, reports, resources, and Board Prep content from one safe admin panel.
+                  Review users, reports, gates, resources, and Board Prep content from one safe admin panel.
                 </p>
               </div>
               <span className="w-fit rounded-full px-3 py-1 text-xs font-black uppercase tracking-[0.14em]" style={{ backgroundColor: T.blueSoft, color: T.blue }}>
@@ -230,6 +234,7 @@ export default function AdminPage() {
                 {tab === "blocked" && <BlockedUsersList searchQuery={searchQuery} />}
                 {tab === "reported" && <ReportedPostsList />}
                 {tab === "board" && <BoardPrepManager onPendingRequestCountChange={setBoardRequestCount} />}
+                {tab === "gates" && <GateManager onCountChange={setGateCount} />}
                 {tab === "resources" && <ResourceManager onCountChange={setResourceCount} />}
               </div>
             </section>
