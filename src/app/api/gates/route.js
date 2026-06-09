@@ -14,14 +14,22 @@ let gatesCache = {
   cachedAt: null,
 };
 
-function createPublicSupabaseClient() {
+function getBearerToken(request) {
+  const header = request.headers.get("authorization") || "";
+  if (!header.toLowerCase().startsWith("bearer ")) return null;
+  return header.slice(7).trim() || null;
+}
+
+function createGateSupabaseClient(request) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const accessToken = getBearerToken(request);
 
   if (!url || !anonKey) return null;
 
   return createClient(url, anonKey, {
     auth: { autoRefreshToken: false, persistSession: false },
+    ...(accessToken ? { global: { headers: { Authorization: `Bearer ${accessToken}` } } } : {}),
   });
 }
 
@@ -33,6 +41,8 @@ function responseHeaders(cacheStatus) {
 }
 
 function getCachedGates(includeInactive) {
+  // Admin views must always read fresh data so inactive gates and edits appear immediately.
+  if (includeInactive) return null;
   if (!gatesCache.data) return null;
   if (gatesCache.includeInactive !== includeInactive) return null;
   if (Date.now() > gatesCache.expiresAt) return null;
@@ -44,6 +54,8 @@ function getCachedGates(includeInactive) {
 }
 
 function setCachedGates(data, includeInactive) {
+  if (includeInactive) return;
+
   gatesCache = {
     data,
     includeInactive,
@@ -67,7 +79,7 @@ export async function GET(request) {
     );
   }
 
-  const supabase = createPublicSupabaseClient();
+  const supabase = createGateSupabaseClient(request);
 
   if (!supabase) {
     return NextResponse.json(
@@ -87,7 +99,7 @@ export async function GET(request) {
   const { data, error } = await query;
 
   if (error) {
-    if (gatesCache.data) {
+    if (!includeInactive && gatesCache.data) {
       return NextResponse.json(
         {
           data: gatesCache.data,
