@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Mail, Phone, ShieldCheck, User, UserX } from "lucide-react";
 import { T } from "@/lib/theme";
 import { useApp } from "@/store/AppContext";
@@ -37,14 +37,48 @@ function DetailLine({ icon: Icon, children }) {
 }
 
 export default function MembersList({ searchQuery = "" }) {
-  const { users, removeUser } = useApp();
+  const { users, removeUser, reloadVerifiedUsers } = useApp();
   const [confirm, setConfirm] = useState(null);
+  const [loadingMembers, setLoadingMembers] = useState(users.length === 0);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function refreshMembers() {
+      if (users.length > 0) {
+        setLoadingMembers(false);
+        return;
+      }
+
+      if (typeof reloadVerifiedUsers !== "function") {
+        setLoadingMembers(false);
+        return;
+      }
+
+      setLoadingMembers(true);
+      try {
+        await reloadVerifiedUsers();
+      } finally {
+        if (mounted) setLoadingMembers(false);
+      }
+    }
+
+    refreshMembers();
+
+    return () => {
+      mounted = false;
+    };
+  }, [reloadVerifiedUsers, users.length]);
 
   const members = users.filter((u) => u.role !== "admin");
 
   const visibleUsers = members.filter((user) =>
     userMatchesSearch(user, searchQuery)
   );
+
+  if (members.length === 0 && loadingMembers) {
+    return <EmptyState icon={User} title="Loading members..." body="Verified members are being loaded from the admin database." />;
+  }
 
   if (members.length === 0) {
     return <EmptyState icon={User} title="No members yet" body="Verified members will appear here." />;
