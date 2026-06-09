@@ -18,6 +18,7 @@ import { T } from "@/lib/theme";
 import { createClient } from "@/lib/supabase/client";
 import AppShell from "@/components/layout/AppShell";
 import ToolPage from "@/components/ui/ToolPage";
+import InlineLoadingState from "@/components/ui/InlineLoadingState";
 import QuickMemoryGuide from "@/components/board-prep/QuickMemoryGuide";
 
 const OPTION_KEYS = ["a", "b", "c", "d"];
@@ -420,14 +421,13 @@ export default function BoardPrepPage() {
   return (
     <AppShell hideNav>
       <ToolPage title="Board Prep" eyebrow="Soldier Tools" icon={BookOpen} onBack={handleBack} backLabel="Back to feed">
-        {phase === "loading" && <div className="py-16 text-center text-sm" style={{ color: T.textMuted }}>Loading Board Prep...</div>}
+        {phase === "loading" && <InlineLoadingState title="Loading Board Prep" subtitle="Preparing your daily board questions and streak." icon={BookOpen} rows={3} />}
         {phase === "auth" && <Card className="p-5"><div className="text-center py-6"><p className="font-semibold" style={{ color: T.navy }}>Sign in to use Board Prep</p><p className="text-sm mt-1" style={{ color: T.textMuted }}>Track your daily score and streak.</p><button onClick={handleBack} className="mt-5 h-10 px-6 rounded-xl font-semibold text-white" style={{ backgroundColor: T.brandRed }}>Back to Feed</button></div></Card>}
         {phase === "error" && <Card className="p-5"><div className="text-center py-6"><p className="font-semibold" style={{ color: T.danger }}>Something went wrong</p><p className="text-sm mt-1" style={{ color: T.textMuted }}>{error}</p><button onClick={fetchDaily} className="mt-5 inline-flex items-center gap-2 h-10 px-6 rounded-xl font-semibold text-white" style={{ backgroundColor: T.navy }}><RotateCcw size={15} />Retry</button></div></Card>}
         {phase === "exhausted" && <ExhaustedPhase message={exhaustedMessage} onRestart={startReviewQuiz} onStudy={() => router.push("/tools/board-prep/study")} onBack={handleBack} />}
         {phase === "intro" && <IntroPhase streak={streak} questions={questions} onStart={() => { setQuestionIdx(0); setSelected(null); setResult(null); setPracticeMode(false); setPhase(questions.length ? "question" : "exhausted"); }} onStudy={() => router.push("/tools/board-prep/study")} />}
         {phase === "question" && currentQuestion && <QuestionPhase question={currentQuestion} questionIndex={questionIdx} selected={selected} result={result} submitting={submitting} streak={streak} practice={practiceMode} isFlashcard={currentIsFlashcard} totalQuestions={totalQuestions} onSelect={setSelected} onSubmit={handleSubmit} onNext={handleNext} />}
-        {phase === "question" && !currentQuestion && <ExhaustedPhase message={exhaustedMessage} onRestart={startReviewQuiz} onStudy={() => router.push("/tools/board-prep/study")} onBack={handleBack} />}
-        {phase === "done" && <DonePhase score={practiceMode ? practiceScore : (session?.score ?? 0)} streak={streak} practice={practiceMode} totalQuestions={totalQuestions} onReview={startReviewQuiz} onStudy={() => router.push("/tools/board-prep/study")} />}
+        {phase === "done" && <DonePhase score={practiceMode ? practiceScore : data?.session?.score || 0} streak={streak} practice={practiceMode} totalQuestions={totalQuestions} onReview={startReviewQuiz} onStudy={() => router.push("/tools/board-prep/study")} />}
       </ToolPage>
     </AppShell>
   );
