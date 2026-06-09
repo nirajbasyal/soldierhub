@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   BookOpen,
   CheckCircle,
+  ChevronDown,
   Edit3,
   FileJson,
   Inbox,
@@ -142,6 +143,24 @@ function TypePill({ type }) {
   );
 }
 
+function CollapseHeader({ icon, title, description, open, onToggle, action, color = T.blue, bg = T.blueSoft }) {
+  return (
+    <button type="button" onClick={onToggle} className="flex w-full items-start justify-between gap-3 text-left">
+      <span className="flex min-w-0 items-start gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl" style={{ backgroundColor: bg, color }}>{icon}</span>
+        <span className="min-w-0">
+          <span className="block font-black" style={{ color: T.navy }}>{title}</span>
+          <span className="mt-1 block text-xs leading-5" style={{ color: T.textMuted }}>{description}</span>
+        </span>
+      </span>
+      <span className="flex shrink-0 items-center gap-2">
+        {action}
+        <ChevronDown size={18} className={`transition-transform ${open ? "rotate-180" : ""}`} style={{ color: T.textMuted }} />
+      </span>
+    </button>
+  );
+}
+
 function DeleteConfirmModal({ target, deleting, onCancel, onConfirm, mode = "question" }) {
   if (!target) return null;
 
@@ -199,6 +218,8 @@ export default function BoardPrepManager({ onPendingRequestCountChange } = {}) {
   const [deletingRequest, setDeletingRequest] = useState(false);
   const [requestDeleteTarget, setRequestDeleteTarget] = useState(null);
   const [message, setMessage] = useState(null);
+  const [memoryGuideOpen, setMemoryGuideOpen] = useState(false);
+  const [questionEditorOpen, setQuestionEditorOpen] = useState(false);
 
   const editorRef = useRef(null);
   const questionInputRef = useRef(null);
@@ -235,10 +256,11 @@ export default function BoardPrepManager({ onPendingRequestCountChange } = {}) {
   useEffect(() => { load(); }, []);
 
   function focusEditor() {
+    setQuestionEditorOpen(true);
     window.setTimeout(() => {
       editorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       questionInputRef.current?.focus({ preventScroll: true });
-    }, 50);
+    }, 80);
   }
 
   function updateForm(key, value) {
@@ -332,6 +354,7 @@ export default function BoardPrepManager({ onPendingRequestCountChange } = {}) {
       const method = form.id ? "PATCH" : "POST";
       await apiJson("/api/admin/board-prep/questions", { method, body: buildSaveBody() });
       setForm(EMPTY_FORM);
+      setQuestionEditorOpen(false);
       setMessage(form.id ? "Question updated." : "Question added.");
       await load();
     } catch (err) {
@@ -430,7 +453,7 @@ export default function BoardPrepManager({ onPendingRequestCountChange } = {}) {
           </div>
           <div>
             <h2 className="text-2xl font-serif font-bold" style={{ color: T.navy }}>Board Prep admin</h2>
-            <p className="mt-1 text-sm leading-6" style={{ color: T.textMuted }}>Add questions, edit flashcards, manage memory guide text, and review user requests.</p>
+            <p className="mt-1 text-sm leading-6" style={{ color: T.textMuted }}>Review user requests first, then manage memory guide text and Board Prep questions.</p>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2 md:flex">
@@ -452,37 +475,6 @@ export default function BoardPrepManager({ onPendingRequestCountChange } = {}) {
           {message}
         </div>
       )}
-
-      <SectionCard>
-        <div className="mb-4 flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl" style={{ backgroundColor: T.blueSoft, color: T.blue }}><BookOpen size={19} /></div>
-          <div>
-            <h3 className="font-black" style={{ color: T.navy }}>Quick memory guide editor</h3>
-            <p className="mt-1 text-xs leading-5" style={{ color: T.textMuted }}>Edit the title, short label, and full body shown at the top of Board Prep.</p>
-          </div>
-        </div>
-
-        {loading ? (
-          <p className="text-sm" style={{ color: T.textMuted }}>Loading memory guide...</p>
-        ) : memoryItems.length === 0 ? (
-          <p className="text-sm" style={{ color: T.textMuted }}>No memory guide items found.</p>
-        ) : (
-          <div className="space-y-3">
-            {memoryItems.map((item) => (
-              <div key={item.id} className="rounded-2xl border p-3" style={{ borderColor: T.border, backgroundColor: T.card }}>
-                <div className="grid gap-3 md:grid-cols-[1fr_1.5fr_110px_110px]">
-                  <Field label="Title"><input className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={item.title || ""} onChange={(e) => updateMemoryItem(item.id, "title", e.target.value)} /></Field>
-                  <Field label="Short label"><input className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={item.summary || ""} onChange={(e) => updateMemoryItem(item.id, "summary", e.target.value)} /></Field>
-                  <Field label="Order"><input type="number" className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={item.display_order ?? 0} onChange={(e) => updateMemoryItem(item.id, "display_order", Number(e.target.value))} /></Field>
-                  <Field label="Status"><select className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={item.active ? "true" : "false"} onChange={(e) => updateMemoryItem(item.id, "active", e.target.value === "true")}><option value="true">Active</option><option value="false">Inactive</option></select></Field>
-                </div>
-                <div className="mt-3"><Field label="Body"><textarea rows={5} className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={item.body || ""} onChange={(e) => updateMemoryItem(item.id, "body", e.target.value)} /></Field></div>
-                <button type="button" onClick={() => saveMemoryItem(item)} disabled={memorySavingId === item.id} className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-2xl font-black text-white disabled:opacity-50" style={{ backgroundColor: T.navy }}><Save size={15} />{memorySavingId === item.id ? "Saving..." : "Save memory item"}</button>
-              </div>
-            ))}
-          </div>
-        )}
-      </SectionCard>
 
       <SectionCard>
         <div className="mb-4 flex items-start justify-between gap-3">
@@ -530,50 +522,93 @@ export default function BoardPrepManager({ onPendingRequestCountChange } = {}) {
         })}
       </SectionCard>
 
+      <SectionCard>
+        <CollapseHeader
+          icon={<BookOpen size={19} />}
+          title="Quick memory guide editor"
+          description="Collapsed by default. Open only when you need to edit the Board Prep memory guide."
+          open={memoryGuideOpen}
+          onToggle={() => setMemoryGuideOpen((open) => !open)}
+        />
+        {memoryGuideOpen && (
+          <div className="mt-4">
+            {loading ? (
+              <p className="text-sm" style={{ color: T.textMuted }}>Loading memory guide...</p>
+            ) : memoryItems.length === 0 ? (
+              <p className="text-sm" style={{ color: T.textMuted }}>No memory guide items found.</p>
+            ) : (
+              <div className="space-y-3">
+                {memoryItems.map((item) => (
+                  <div key={item.id} className="rounded-2xl border p-3" style={{ borderColor: T.border, backgroundColor: T.card }}>
+                    <div className="grid gap-3 md:grid-cols-[1fr_1.5fr_110px_110px]">
+                      <Field label="Title"><input className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={item.title || ""} onChange={(e) => updateMemoryItem(item.id, "title", e.target.value)} /></Field>
+                      <Field label="Short label"><input className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={item.summary || ""} onChange={(e) => updateMemoryItem(item.id, "summary", e.target.value)} /></Field>
+                      <Field label="Order"><input type="number" className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={item.display_order ?? 0} onChange={(e) => updateMemoryItem(item.id, "display_order", Number(e.target.value))} /></Field>
+                      <Field label="Status"><select className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={item.active ? "true" : "false"} onChange={(e) => updateMemoryItem(item.id, "active", e.target.value === "true")}><option value="true">Active</option><option value="false">Inactive</option></select></Field>
+                    </div>
+                    <div className="mt-3"><Field label="Body"><textarea rows={5} className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={item.body || ""} onChange={(e) => updateMemoryItem(item.id, "body", e.target.value)} /></Field></div>
+                    <button type="button" onClick={() => saveMemoryItem(item)} disabled={memorySavingId === item.id} className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-2xl font-black text-white disabled:opacity-50" style={{ backgroundColor: T.navy }}><Save size={15} />{memorySavingId === item.id ? "Saving..." : "Save memory item"}</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </SectionCard>
+
       <SectionCard className="scroll-mt-6">
-        <div ref={editorRef} className="mb-4 flex items-center justify-between gap-3">
-          <div>
-            <p className="text-[11px] font-black uppercase tracking-[0.16em]" style={{ color: T.brandRed }}>Question editor</p>
-            <h3 className="mt-1 text-xl font-serif font-black" style={{ color: T.navy }}>{form.id ? "Edit question" : isFlashcard ? "Add flashcard" : "Add multiple-choice question"}</h3>
-          </div>
-          {form.id && <button onClick={() => setForm(EMPTY_FORM)} className="inline-flex items-center gap-1 rounded-full border px-3 py-2 text-xs font-black" style={{ borderColor: T.border, color: T.brandRed, backgroundColor: T.card }}><X size={14} />Cancel edit</button>}
+        <div ref={editorRef}>
+          <CollapseHeader
+            icon={<Edit3 size={19} />}
+            title={form.id ? "Edit question" : isFlashcard ? "Add flashcard" : "Add multiple-choice question"}
+            description="Collapsed by default. It opens automatically when you add, edit, or copy a user request."
+            open={questionEditorOpen}
+            onToggle={() => setQuestionEditorOpen((open) => !open)}
+            color={T.brandRed}
+            bg={T.redBg}
+            action={form.id && <span onClick={(e) => { e.stopPropagation(); setForm(EMPTY_FORM); }} className="inline-flex items-center gap-1 rounded-full border px-3 py-2 text-xs font-black" style={{ borderColor: T.border, color: T.brandRed, backgroundColor: T.card }}><X size={14} />Cancel edit</span>}
+          />
         </div>
 
-        <div className="mb-4 grid grid-cols-2 gap-2">
-          <button type="button" onClick={() => changeQuestionType("multiple_choice")} className="h-11 rounded-2xl border text-sm font-black" style={{ borderColor: !isFlashcard ? T.brandRed : T.border, backgroundColor: !isFlashcard ? T.redBg : T.card, color: !isFlashcard ? T.brandRed : T.textMuted }}>Multiple choice</button>
-          <button type="button" onClick={() => changeQuestionType("flashcard")} className="h-11 rounded-2xl border text-sm font-black" style={{ borderColor: isFlashcard ? T.brandRed : T.border, backgroundColor: isFlashcard ? T.redBg : T.card, color: isFlashcard ? T.brandRed : T.textMuted }}>Flashcard</button>
-        </div>
-
-        <div className="grid gap-3 md:grid-cols-2">
-          <Field label="Category"><input className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={form.category} onChange={(e) => updateForm("category", e.target.value)} /></Field>
-          <Field label="Publication"><input className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={form.source_publication} onChange={(e) => updateForm("source_publication", e.target.value)} placeholder="AR 670-1" /></Field>
-        </div>
-        <div className="mt-3"><Field label="Question"><textarea ref={questionInputRef} rows={3} className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={form.question} onChange={(e) => updateForm("question", e.target.value)} /></Field></div>
-
-        {isFlashcard ? (
-          <div className="mt-3"><Field label="Answer"><textarea rows={4} className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={form.answer} onChange={(e) => updateForm("answer", e.target.value)} placeholder="Type the correct answer shown after tapping the flashcard." /></Field></div>
-        ) : (
-          <>
-            <div className="mt-3 grid gap-3 md:grid-cols-2">
-              {OPTION_KEYS.map((key) => <Field key={key} label={`Option ${key.toUpperCase()}`}><input className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={form[`option_${key}`]} onChange={(e) => updateForm(`option_${key}`, e.target.value)} /></Field>)}
+        {questionEditorOpen && (
+          <div className="mt-4">
+            <div className="mb-4 grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => changeQuestionType("multiple_choice")} className="h-11 rounded-2xl border text-sm font-black" style={{ borderColor: !isFlashcard ? T.brandRed : T.border, backgroundColor: !isFlashcard ? T.redBg : T.card, color: !isFlashcard ? T.brandRed : T.textMuted }}>Multiple choice</button>
+              <button type="button" onClick={() => changeQuestionType("flashcard")} className="h-11 rounded-2xl border text-sm font-black" style={{ borderColor: isFlashcard ? T.brandRed : T.border, backgroundColor: isFlashcard ? T.redBg : T.card, color: isFlashcard ? T.brandRed : T.textMuted }}>Flashcard</button>
             </div>
-            <div className="mt-3 grid gap-3 md:grid-cols-3">
-              <Field label="Correct"><select className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={form.correct_option} onChange={(e) => updateForm("correct_option", e.target.value)}><option value="a">A</option><option value="b">B</option><option value="c">C</option><option value="d">D</option></select></Field>
-              <Field label="Difficulty"><select className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={form.difficulty} onChange={(e) => updateForm("difficulty", e.target.value)}><option value="basic">Basic</option><option value="medium">Medium</option><option value="hard">Hard</option></select></Field>
-              <Field label="Status"><select className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={form.active ? "true" : "false"} onChange={(e) => updateForm("active", e.target.value === "true")}><option value="true">Active</option><option value="false">Inactive</option></select></Field>
-            </div>
-          </>
-        )}
 
-        {isFlashcard && (
-          <div className="mt-3 grid gap-3 md:grid-cols-2">
-            <Field label="Difficulty"><select className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={form.difficulty} onChange={(e) => updateForm("difficulty", e.target.value)}><option value="basic">Basic</option><option value="medium">Medium</option><option value="hard">Hard</option></select></Field>
-            <Field label="Status"><select className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={form.active ? "true" : "false"} onChange={(e) => updateForm("active", e.target.value === "true")}><option value="true">Active</option><option value="false">Inactive</option></select></Field>
+            <div className="grid gap-3 md:grid-cols-2">
+              <Field label="Category"><input className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={form.category} onChange={(e) => updateForm("category", e.target.value)} /></Field>
+              <Field label="Publication"><input className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={form.source_publication} onChange={(e) => updateForm("source_publication", e.target.value)} placeholder="AR 670-1" /></Field>
+            </div>
+            <div className="mt-3"><Field label="Question"><textarea ref={questionInputRef} rows={3} className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={form.question} onChange={(e) => updateForm("question", e.target.value)} /></Field></div>
+
+            {isFlashcard ? (
+              <div className="mt-3"><Field label="Answer"><textarea rows={4} className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={form.answer} onChange={(e) => updateForm("answer", e.target.value)} placeholder="Type the correct answer shown after tapping the flashcard." /></Field></div>
+            ) : (
+              <>
+                <div className="mt-3 grid gap-3 md:grid-cols-2">
+                  {OPTION_KEYS.map((key) => <Field key={key} label={`Option ${key.toUpperCase()}`}><input className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={form[`option_${key}`]} onChange={(e) => updateForm(`option_${key}`, e.target.value)} /></Field>)}
+                </div>
+                <div className="mt-3 grid gap-3 md:grid-cols-3">
+                  <Field label="Correct"><select className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={form.correct_option} onChange={(e) => updateForm("correct_option", e.target.value)}><option value="a">A</option><option value="b">B</option><option value="c">C</option><option value="d">D</option></select></Field>
+                  <Field label="Difficulty"><select className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={form.difficulty} onChange={(e) => updateForm("difficulty", e.target.value)}><option value="basic">Basic</option><option value="medium">Medium</option><option value="hard">Hard</option></select></Field>
+                  <Field label="Status"><select className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={form.active ? "true" : "false"} onChange={(e) => updateForm("active", e.target.value === "true")}><option value="true">Active</option><option value="false">Inactive</option></select></Field>
+                </div>
+              </>
+            )}
+
+            {isFlashcard && (
+              <div className="mt-3 grid gap-3 md:grid-cols-2">
+                <Field label="Difficulty"><select className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={form.difficulty} onChange={(e) => updateForm("difficulty", e.target.value)}><option value="basic">Basic</option><option value="medium">Medium</option><option value="hard">Hard</option></select></Field>
+                <Field label="Status"><select className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={form.active ? "true" : "false"} onChange={(e) => updateForm("active", e.target.value === "true")}><option value="true">Active</option><option value="false">Inactive</option></select></Field>
+              </div>
+            )}
+
+            <div className="mt-3"><Field label="Explanation / Note"><textarea rows={3} className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={form.explanation} onChange={(e) => updateForm("explanation", e.target.value)} placeholder={isFlashcard ? "Optional extra note shown below the answer." : "Optional explanation after answer submission."} /></Field></div>
+            <button onClick={saveQuestion} disabled={saving} className="mt-4 inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl font-black text-white disabled:opacity-50" style={{ backgroundColor: T.brandRed }}><Save size={16} />{saving ? "Saving..." : form.id ? "Save changes" : isFlashcard ? "Add flashcard" : "Add multiple-choice question"}</button>
           </div>
         )}
-
-        <div className="mt-3"><Field label="Explanation / Note"><textarea rows={3} className={inputClass()} style={{ borderColor: T.border, color: T.text }} value={form.explanation} onChange={(e) => updateForm("explanation", e.target.value)} placeholder={isFlashcard ? "Optional extra note shown below the answer." : "Optional explanation after answer submission."} /></Field></div>
-        <button onClick={saveQuestion} disabled={saving} className="mt-4 inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl font-black text-white disabled:opacity-50" style={{ backgroundColor: T.brandRed }}><Save size={16} />{saving ? "Saving..." : form.id ? "Save changes" : isFlashcard ? "Add flashcard" : "Add multiple-choice question"}</button>
       </SectionCard>
 
       <SectionCard>
