@@ -9,6 +9,7 @@ import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import EmptyState from "@/components/ui/EmptyState";
+import ProfileIdentityLink from "@/components/ui/ProfileIdentityLink";
 
 function userMatchesSearch(user, searchQuery) {
   const q = searchQuery.trim().toLowerCase();
@@ -57,6 +58,7 @@ export default function MembersList({ searchQuery = "" }) {
     <div className="grid gap-3">
       {visibleUsers.map((u) => {
         const email = u.email || u.personal_email || "No email";
+        const displayName = u.full_name || "Unnamed user";
 
         return (
           <article
@@ -66,27 +68,38 @@ export default function MembersList({ searchQuery = "" }) {
           >
             <div className="absolute left-0 top-0 h-full w-1.5 bg-[#1E4E8C]" />
 
-            <div className="pl-2 shrink-0">
-              <Avatar name={u.full_name} color={u.avatar_color} size={48} />
-            </div>
-
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="text-base font-extrabold truncate" style={{ color: T.navy }}>
-                  {u.full_name || "Unnamed user"}
-                </h3>
-                <Badge tone="green" icon={ShieldCheck}>Verified</Badge>
+            <ProfileIdentityLink
+              userId={u.id}
+              fallbackName={displayName}
+              profile={u}
+              className="group flex min-w-0 flex-1 items-center gap-4 rounded-2xl pl-2 outline-none transition focus-visible:ring-2 focus-visible:ring-[#1E4E8C]/30"
+              ariaLabel={`View profile for ${displayName}`}
+            >
+              <div className="shrink-0 transition-transform group-hover:scale-[1.03]">
+                <Avatar name={displayName} color={u.avatar_color} src={u.avatar_url} size={48} />
               </div>
 
-              <DetailLine icon={Mail}>{email}</DetailLine>
-              {u.phone && <DetailLine icon={Phone}>Phone: {u.phone}</DetailLine>}
-            </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-base font-extrabold truncate group-hover:underline" style={{ color: T.navy }}>
+                    {displayName}
+                  </h3>
+                  <Badge tone="green" icon={ShieldCheck}>Verified</Badge>
+                </div>
+
+                <DetailLine icon={Mail}>{email}</DetailLine>
+                {u.phone && <DetailLine icon={Phone}>Phone: {u.phone}</DetailLine>}
+              </div>
+            </ProfileIdentityLink>
 
             <Button
               variant="softDanger"
               size="sm"
               icon={UserX}
-              onClick={() => setConfirm({ id: u.id, name: u.full_name || "this user", email })}
+              onClick={(event) => {
+                event.stopPropagation();
+                setConfirm({ id: u.id, name: displayName, email });
+              }}
             >
               Revoke
             </Button>
