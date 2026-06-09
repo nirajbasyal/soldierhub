@@ -57,8 +57,24 @@ export default function AdminSecurityPage() {
     if (!authLoading && currentUser?.role === "admin") loadState();
   }, [authLoading, currentUser?.role]);
 
+  function requireVerifiedSessionForFactorChanges() {
+    if (verifiedFactors.length > 0 && currentLevel !== "aal2") {
+      setMessage({
+        type: "error",
+        text: "Verify your current Google Authenticator code before adding or removing admin MFA factors.",
+      });
+      router.push(`/admin/mfa?next=${encodeURIComponent("/admin/security")}`);
+      return false;
+    }
+
+    return true;
+  }
+
   async function startEnrollment() {
     setMessage(null);
+
+    if (!requireVerifiedSessionForFactorChanges()) return;
+
     setBusy(true);
 
     const supabase = createClient();
@@ -135,6 +151,16 @@ export default function AdminSecurityPage() {
 
   async function removeFactor(factorId) {
     setMessage(null);
+
+    if (currentLevel !== "aal2") {
+      setMessage({
+        type: "error",
+        text: "Verify your current Google Authenticator code before removing an MFA factor.",
+      });
+      router.push(`/admin/mfa?next=${encodeURIComponent("/admin/security")}`);
+      return;
+    }
+
     setBusy(true);
 
     const supabase = createClient();
@@ -162,6 +188,7 @@ export default function AdminSecurityPage() {
   const qrCode = enrollment?.totp?.qr_code;
   const secret = enrollment?.totp?.secret;
   const isVerifiedNow = currentLevel === "aal2";
+  const hasExistingFactor = verifiedFactors.length > 0;
 
   return (
     <AppShell hideNav>
@@ -216,7 +243,7 @@ export default function AdminSecurityPage() {
                     <p className="font-bold" style={{ color: T.text }}>{factor.friendly_name || "Authenticator app"}</p>
                     <p className="text-xs" style={{ color: T.textSubtle }}>Status: {factor.status}</p>
                   </div>
-                  <button type="button" onClick={() => removeFactor(factor.id)} disabled={busy} className="inline-flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-black disabled:opacity-50" style={{ backgroundColor: T.redBg, color: T.brandRed }}>
+                  <button type="button" onClick={() => removeFactor(factor.id)} disabled={busy || currentLevel !== "aal2"} className="inline-flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-black disabled:opacity-50" style={{ backgroundColor: T.redBg, color: T.brandRed }}>
                     <Trash2 size={14} /> Remove
                   </button>
                 </div>
@@ -237,7 +264,11 @@ export default function AdminSecurityPage() {
               </div>
             </div>
 
-            {!enrollment ? (
+            {hasExistingFactor && currentLevel !== "aal2" ? (
+              <div className="mt-4 rounded-2xl border px-4 py-4 text-sm" style={{ borderColor: T.border, backgroundColor: T.surface, color: T.textMuted }}>
+                Verify your current Google Authenticator code before adding another authenticator app.
+              </div>
+            ) : !enrollment ? (
               <div className="mt-4">
                 <Button type="button" variant="primary" icon={QrCode} onClick={startEnrollment} disabled={busy}>
                   {busy ? "Starting..." : "Start MFA setup"}
