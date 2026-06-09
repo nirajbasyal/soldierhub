@@ -5,57 +5,6 @@ import { Clock3, DoorOpen, Info, MapPin } from "lucide-react";
 import { T } from "@/lib/theme";
 import { listGates } from "@/lib/db/gates";
 
-const FALLBACK_GATES = [
-  {
-    name: "MSG Pena Gate",
-    label: "Main Gate",
-    hours: "24/7",
-    status_type: "always",
-    note: "Primary access gate.",
-    is_active: true,
-    display_order: 1,
-  },
-  {
-    name: "Buffalo Soldier Gate",
-    label: "Visitor Center",
-    hours: "24/7",
-    status_type: "always",
-    note: "Gate passes and visitor access can go here.",
-    is_active: true,
-    display_order: 2,
-  },
-  {
-    name: "Cassidy Gate",
-    label: "Access Gate",
-    hours: "24/7",
-    status_type: "always",
-    note: "Open daily.",
-    is_active: true,
-    display_order: 3,
-  },
-  {
-    name: "Constitution Gate",
-    label: "Access Gate",
-    hours: "24/7",
-    status_type: "always",
-    note: "Open daily.",
-    is_active: true,
-    display_order: 4,
-  },
-  {
-    name: "Old Ironsides Gate",
-    label: "Weekday Gate",
-    hours: "Mon-Fri · 5 AM-9 PM",
-    status_type: "weekday-limited",
-    open_time: "05:00:00",
-    close_time: "21:00:00",
-    days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
-    note: "Closed Saturday, Sunday, and national holidays.",
-    is_active: true,
-    display_order: 5,
-  },
-];
-
 function getElPasoParts(date) {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: "America/Denver",
@@ -191,7 +140,7 @@ export default function GateHoursCard() {
   const [now, setNow] = useState(new Date());
   const [gates, setGates] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [usingFallback, setUsingFallback] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60 * 1000);
@@ -205,14 +154,8 @@ export default function GateHoursCard() {
       const { data, error } = await listGates();
       if (cancelled) return;
 
-      if (error) {
-        setGates(FALLBACK_GATES);
-        setUsingFallback(true);
-      } else {
-        setGates(data || []);
-        setUsingFallback(false);
-      }
-
+      setGates(error ? [] : data || []);
+      setLoadError(Boolean(error));
       setLoading(false);
     }
 
@@ -276,7 +219,7 @@ export default function GateHoursCard() {
           </div>
         ) : gates.length === 0 ? (
           <div className="rounded-xl border px-3 py-4 text-center text-xs" style={{ borderColor: "#D5E2F2", color: T.textMuted }}>
-            No gate hours are listed right now.
+            {loadError ? "Gate hours are temporarily unavailable." : "No gate hours are listed right now."}
           </div>
         ) : gates.map((gate) => (
           <GateRow
@@ -300,7 +243,6 @@ export default function GateHoursCard() {
         <span>
           Gate hours are public schedule information and can change for holidays, training events, weather, or official updates.
           Confirm with official Fort Bliss channels before travel.
-          {usingFallback ? " Showing fallback hours because live gate data is temporarily unavailable." : ""}
         </span>
       </div>
     </div>
