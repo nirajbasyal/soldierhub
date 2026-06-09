@@ -16,6 +16,7 @@ import {
 import { T } from "@/lib/theme";
 import { useApp } from "@/store/AppContext";
 import { createClient } from "@/lib/supabase/client";
+import { getAdminMfaState } from "@/lib/admin/mfa";
 import AppShell from "@/components/layout/AppShell";
 import Footer from "@/components/layout/Footer";
 import CircularBackButton from "@/components/ui/CircularBackButton";
@@ -52,6 +53,8 @@ export default function AdminPage() {
   const [resourceCount, setResourceCount] = useState(0);
   const [gateCount, setGateCount] = useState(0);
   const [boardRequestCount, setBoardRequestCount] = useState(0);
+  const [mfaChecking, setMfaChecking] = useState(true);
+  const [mfaAllowed, setMfaAllowed] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -67,6 +70,39 @@ export default function AdminPage() {
   }, [authLoading, currentUser, router]);
 
   useEffect(() => {
+    let cancelled = false;
+
+    async function checkAdminMfa() {
+      if (authLoading) return;
+
+      if (!currentUser || currentUser.role !== "admin") {
+        setMfaChecking(false);
+        setMfaAllowed(false);
+        return;
+      }
+
+      setMfaChecking(true);
+      const state = await getAdminMfaState();
+      if (cancelled) return;
+
+      if (state.currentLevel === "aal2") {
+        setMfaAllowed(true);
+        setMfaChecking(false);
+        return;
+      }
+
+      const target = state.verifiedTotpFactors.length > 0 ? "/admin/mfa" : "/admin/security";
+      router.replace(`${target}?next=/admin`);
+    }
+
+    checkAdminMfa();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authLoading, currentUser, router]);
+
+  useEffect(() => {
     setSearchQuery("");
   }, [tab]);
 
@@ -74,7 +110,7 @@ export default function AdminPage() {
     let cancelled = false;
 
     async function loadBoardRequestCount() {
-      if (authLoading || currentUser?.role !== "admin") return;
+      if (authLoading || currentUser?.role !== "admin" || !mfaAllowed) return;
 
       try {
         const token = await getAccessToken();
@@ -98,10 +134,10 @@ export default function AdminPage() {
     return () => {
       cancelled = true;
     };
-  }, [authLoading, currentUser?.role]);
+  }, [authLoading, currentUser?.role, mfaAllowed]);
 
-  if (authLoading) return null;
-  if (!currentUser || currentUser.role !== "admin") return null;
+  if (authLoading || mfaChecking) return null;
+  if (!currentUser || currentUser.role !== "admin" || !mfaAllowed) return null;
 
   const reportedCount = posts.filter((p) => p.status === "reported").length;
   const memberCount = users.filter((u) => u.role !== "admin").length;
