@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { KeyRound, QrCode, ShieldCheck, Smartphone, Trash2 } from "lucide-react";
 import { T } from "@/lib/theme";
 import { useApp } from "@/store/AppContext";
@@ -18,10 +18,9 @@ function cleanNextPath(value) {
 
 export default function AdminSecurityPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { currentUser, authLoading } = useApp();
 
-  const nextPath = useMemo(() => cleanNextPath(searchParams.get("next")), [searchParams]);
+  const [nextPath, setNextPath] = useState("/admin");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState(null);
@@ -29,6 +28,11 @@ export default function AdminSecurityPage() {
   const [currentLevel, setCurrentLevel] = useState("aal1");
   const [enrollment, setEnrollment] = useState(null);
   const [code, setCode] = useState("");
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setNextPath(cleanNextPath(params.get("next")));
+  }, []);
 
   useEffect(() => {
     if (authLoading) return;
