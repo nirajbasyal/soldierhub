@@ -1,3 +1,5 @@
+"use client";
+
 import { MessageSquareText } from "lucide-react";
 import PageLoadingState from "@/components/ui/PageLoadingState";
 
