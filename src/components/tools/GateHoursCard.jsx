@@ -136,7 +136,7 @@ function GateRow({ gate, status }) {
         style={{ backgroundColor: status.open ? "#207245" : "#B42318" }}
       />
 
-      <div className="flex items-start justify-between gap-3 pl-1.5">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 pl-1.5">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <div
@@ -165,9 +165,9 @@ function GateRow({ gate, status }) {
           ) : null}
         </div>
 
-        <div className="text-right shrink-0">
+        <div className="min-w-[86px] max-w-[150px] text-right">
           <div
-            className="rounded-full px-2.5 py-1 text-[11px] font-semibold"
+            className="ml-auto inline-flex w-fit max-w-full justify-center rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none whitespace-nowrap"
             style={{
               backgroundColor: status.open
                 ? "rgba(236,247,239,0.95)"
@@ -178,7 +178,7 @@ function GateRow({ gate, status }) {
             {status.text}
           </div>
 
-          <div className="mt-1 text-[11px]" style={{ color: T.textSubtle }}>
+          <div className="mt-1 text-[11px] leading-snug" style={{ color: T.textSubtle }}>
             {gate.hours}
           </div>
         </div>
