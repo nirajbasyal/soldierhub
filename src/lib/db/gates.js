@@ -37,9 +37,17 @@ async function adminGateAction(payload, fallbackMessage) {
 }
 
 export async function listGates({ includeInactive = false } = {}) {
+  const headers = { Accept: "application/json" };
+
+  if (includeInactive) {
+    const { accessToken, error } = await getToken();
+    if (error || !accessToken) return { data: [], error };
+    headers.Authorization = `Bearer ${accessToken}`;
+  }
+
   const response = await fetch(`/api/gates${includeInactive ? "?includeInactive=true" : ""}`, {
     method: "GET",
-    headers: { Accept: "application/json" },
+    headers,
     cache: "no-store",
   });
 
