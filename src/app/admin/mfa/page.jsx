@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { KeyRound, ShieldCheck } from "lucide-react";
 import { T } from "@/lib/theme";
 import { useApp } from "@/store/AppContext";
@@ -18,15 +18,19 @@ function cleanNextPath(value) {
 
 export default function AdminMfaPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { currentUser, authLoading } = useApp();
 
-  const nextPath = useMemo(() => cleanNextPath(searchParams.get("next")), [searchParams]);
+  const [nextPath, setNextPath] = useState("/admin");
   const [code, setCode] = useState("");
   const [factor, setFactor] = useState(null);
   const [loading, setLoading] = useState(true);
   const [verifying, setVerifying] = useState(false);
   const [message, setMessage] = useState(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setNextPath(cleanNextPath(params.get("next")));
+  }, []);
 
   useEffect(() => {
     if (authLoading) return;
