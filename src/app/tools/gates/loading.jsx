@@ -1,3 +1,5 @@
+"use client";
+
 import { DoorOpen } from "lucide-react";
 import PageLoadingState from "@/components/ui/PageLoadingState";
 
