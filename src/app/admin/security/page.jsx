@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 import { getAdminMfaState } from "@/lib/admin/mfa";
 import AppShell from "@/components/layout/AppShell";
 import Button from "@/components/ui/Button";
+import PageLoadingState from "@/components/ui/PageLoadingState";
 
 function cleanNextPath(value) {
   if (!value || !value.startsWith("/")) return "/admin";
@@ -183,7 +184,17 @@ export default function AdminSecurityPage() {
     await loadState();
   }
 
-  if (authLoading || loading || !currentUser || currentUser.role !== "admin") return null;
+  if (authLoading || loading) {
+    return (
+      <PageLoadingState
+        title="Loading admin security"
+        subtitle="Checking your Google Authenticator setup."
+        mode="admin"
+      />
+    );
+  }
+
+  if (!currentUser || currentUser.role !== "admin") return null;
 
   const qrCode = enrollment?.totp?.qr_code;
   const secret = enrollment?.totp?.secret;
