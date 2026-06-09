@@ -38,9 +38,10 @@ export default function PageLoadingState({
   title = "Loading",
   subtitle = "Getting things ready...",
   mode = "page",
+  icon,
 }) {
   const isAdmin = mode === "admin";
-  const Icon = isAdmin ? Shield : Sparkles;
+  const Icon = icon || (isAdmin ? Shield : Sparkles);
 
   return (
     <main className="min-h-screen px-4 py-6" style={{ backgroundColor: T.bg }} aria-busy="true" aria-live="polite">
