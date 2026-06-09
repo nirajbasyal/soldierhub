@@ -25,6 +25,24 @@ function getExpectedAdminEmails() {
     .filter(Boolean);
 }
 
+function decodeJwtPayload(token) {
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return null;
+
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), "=");
+    return JSON.parse(Buffer.from(padded, "base64").toString("utf8"));
+  } catch {
+    return null;
+  }
+}
+
+function hasMfaAssurance(accessToken) {
+  const payload = decodeJwtPayload(accessToken);
+  return payload?.aal === "aal2";
+}
+
 export function isExpectedAdmin({ user, profile }) {
   const expectedEmails = getExpectedAdminEmails();
   if (!expectedEmails.length) return false;
@@ -41,7 +59,7 @@ export function isExpectedAdmin({ user, profile }) {
   );
 }
 
-export async function requireAdmin(request) {
+export async function requireAdmin(request, { requireMfa = true } = {}) {
   const accessToken = getBearerToken(request);
   if (!accessToken) {
     return { ok: false, status: 401, error: "Please log in again before using admin actions." };
@@ -73,6 +91,15 @@ export async function requireAdmin(request) {
 
   if (!isExpectedAdmin({ user, profile })) {
     return { ok: false, status: 403, error: "Admin access is required." };
+  }
+
+  if (requireMfa && !hasMfaAssurance(accessToken)) {
+    return {
+      ok: false,
+      status: 403,
+      error: "Admin MFA verification is required before using admin actions.",
+      code: "ADMIN_MFA_REQUIRED",
+    };
   }
 
   return { ok: true, supabase, user, profile, accessToken };
