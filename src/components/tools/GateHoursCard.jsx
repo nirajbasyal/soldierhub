@@ -3,42 +3,56 @@
 import { useEffect, useMemo, useState } from "react";
 import { Clock3, DoorOpen, Info, MapPin } from "lucide-react";
 import { T } from "@/lib/theme";
+import { listGates } from "@/lib/db/gates";
 
-const GATES = [
+const FALLBACK_GATES = [
   {
     name: "MSG Pena Gate",
     label: "Main Gate",
     hours: "24/7",
-    type: "always",
+    status_type: "always",
     note: "Primary access gate.",
+    is_active: true,
+    display_order: 1,
   },
   {
     name: "Buffalo Soldier Gate",
     label: "Visitor Center",
     hours: "24/7",
-    type: "always",
+    status_type: "always",
     note: "Gate passes and visitor access can go here.",
+    is_active: true,
+    display_order: 2,
   },
   {
     name: "Cassidy Gate",
     label: "Access Gate",
     hours: "24/7",
-    type: "always",
+    status_type: "always",
     note: "Open daily.",
+    is_active: true,
+    display_order: 3,
   },
   {
     name: "Constitution Gate",
     label: "Access Gate",
     hours: "24/7",
-    type: "always",
+    status_type: "always",
     note: "Open daily.",
+    is_active: true,
+    display_order: 4,
   },
   {
     name: "Old Ironsides Gate",
     label: "Weekday Gate",
     hours: "Mon–Fri · 5 AM–9 PM",
-    type: "weekday-limited",
+    status_type: "weekday-limited",
+    open_time: "05:00:00",
+    close_time: "21:00:00",
+    days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
     note: "Closed Saturday, Sunday, and national holidays.",
+    is_active: true,
+    display_order: 5,
   },
 ];
 
@@ -68,25 +82,40 @@ function formatElPasoTime(date) {
   }).format(date);
 }
 
+function timeToMinutes(value) {
+  if (!value) return null;
+  const [hour, minute] = String(value).split(":").map(Number);
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null;
+  return hour * 60 + minute;
+}
+
 function getGateStatus(gate, now) {
-  if (gate.type === "always") {
+  if (gate.status_type === "closed") {
+    return { open: false, text: "Closed" };
+  }
+
+  if (gate.status_type === "custom") {
+    return {
+      open: gate.custom_is_open !== false,
+      text: gate.custom_status_text || (gate.custom_is_open === false ? "Closed" : "Open"),
+    };
+  }
+
+  if (gate.status_type === "always" || gate.type === "always") {
     return {
       open: true,
       text: "Open 24/7",
     };
   }
 
-  const weekday = now.weekday;
+  const days = Array.isArray(gate.days) && gate.days.length
+    ? gate.days
+    : ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+  const opensAt = timeToMinutes(gate.open_time) ?? 5 * 60;
+  const closesAt = timeToMinutes(gate.close_time) ?? 21 * 60;
   const minutes = now.hour * 60 + now.minute;
-
-  const isWeekday = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"].includes(
-    weekday
-  );
-
-  const opensAt = 5 * 60;
-  const closesAt = 21 * 60;
-
-  const isOpen = isWeekday && minutes >= opensAt && minutes < closesAt;
+  const isOpenDay = days.includes(now.weekday);
+  const isOpen = isOpenDay && minutes >= opensAt && minutes < closesAt;
 
   return {
     open: isOpen,
@@ -160,10 +189,38 @@ function GateRow({ gate, status }) {
 
 export default function GateHoursCard() {
   const [now, setNow] = useState(new Date());
+  const [gates, setGates] = useState(FALLBACK_GATES);
+  const [loading, setLoading] = useState(true);
+  const [usingFallback, setUsingFallback] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60 * 1000);
     return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadGates() {
+      const { data, error } = await listGates();
+      if (cancelled) return;
+
+      if (error || !data?.length) {
+        setGates(FALLBACK_GATES);
+        setUsingFallback(true);
+      } else {
+        setGates(data);
+        setUsingFallback(false);
+      }
+
+      setLoading(false);
+    }
+
+    loadGates();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const elPasoNow = useMemo(() => getElPasoParts(now), [now]);
@@ -213,9 +270,13 @@ export default function GateHoursCard() {
       </div>
 
       <div className="mt-4 flex flex-col gap-2.5">
-        {GATES.map((gate) => (
+        {loading ? (
+          <div className="rounded-xl border px-3 py-4 text-center text-xs" style={{ borderColor: "#D5E2F2", color: T.textMuted }}>
+            Loading gate hours...
+          </div>
+        ) : gates.map((gate) => (
           <GateRow
-            key={gate.name}
+            key={gate.id || gate.name}
             gate={gate}
             status={getGateStatus(gate, elPasoNow)}
           />
@@ -235,6 +296,7 @@ export default function GateHoursCard() {
         <span>
           Gate hours can change for holidays, training events, or security
           conditions. Confirm with official Fort Bliss channels before travel.
+          {usingFallback ? " Showing fallback hours because live gate data is temporarily unavailable." : ""}
         </span>
       </div>
     </div>
