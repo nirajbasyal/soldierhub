@@ -45,34 +45,13 @@ const FALLBACK_GATES = [
   {
     name: "Old Ironsides Gate",
     label: "Weekday Gate",
-    hours: "Mon–Fri · 5 AM–9 PM",
+    hours: "Mon-Fri · 5 AM-9 PM",
     status_type: "weekday-limited",
-    open_time: "05:00:00",
-    close_time: "21:00:00",
-    days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
     note: "Closed Saturday, Sunday, and national holidays.",
     is_active: true,
     display_order: 5,
   },
 ];
-
-function getElPasoParts(date) {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/Denver",
-    weekday: "long",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).formatToParts(date);
-
-  const get = (type) => parts.find((part) => part.type === type)?.value;
-
-  return {
-    weekday: get("weekday"),
-    hour: Number(get("hour") || 0),
-    minute: Number(get("minute") || 0),
-  };
-}
 
 function formatElPasoTime(date) {
   return new Intl.DateTimeFormat("en-US", {
@@ -82,48 +61,17 @@ function formatElPasoTime(date) {
   }).format(date);
 }
 
-function timeToMinutes(value) {
-  if (!value) return null;
-  const [hour, minute] = String(value).split(":").map(Number);
-  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null;
-  return hour * 60 + minute;
+function getScheduleLabel(gate) {
+  if (gate.status_type === "closed") return "Listed closed";
+  if (gate.status_type === "custom") return gate.custom_status_text || "Custom note";
+  if (gate.status_type === "always" || gate.hours === "24/7") return "Published 24/7";
+  return "Published hours";
 }
 
-function getGateStatus(gate, now) {
-  if (gate.status_type === "closed") {
-    return { open: false, text: "Closed" };
-  }
+function GateRow({ gate }) {
+  const scheduleLabel = getScheduleLabel(gate);
+  const isClosed = gate.status_type === "closed";
 
-  if (gate.status_type === "custom") {
-    return {
-      open: gate.custom_is_open !== false,
-      text: gate.custom_status_text || (gate.custom_is_open === false ? "Closed" : "Open"),
-    };
-  }
-
-  if (gate.status_type === "always" || gate.type === "always") {
-    return {
-      open: true,
-      text: "Open 24/7",
-    };
-  }
-
-  const days = Array.isArray(gate.days) && gate.days.length
-    ? gate.days
-    : ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-  const opensAt = timeToMinutes(gate.open_time) ?? 5 * 60;
-  const closesAt = timeToMinutes(gate.close_time) ?? 21 * 60;
-  const minutes = now.hour * 60 + now.minute;
-  const isOpenDay = days.includes(now.weekday);
-  const isOpen = isOpenDay && minutes >= opensAt && minutes < closesAt;
-
-  return {
-    open: isOpen,
-    text: isOpen ? "Open now" : "Closed now",
-  };
-}
-
-function GateRow({ gate, status }) {
   return (
     <div
       className="rounded-xl border px-3 py-3 relative overflow-hidden"
@@ -135,7 +83,7 @@ function GateRow({ gate, status }) {
     >
       <div
         className="absolute left-0 top-0 h-full w-1"
-        style={{ backgroundColor: status.open ? "#1E4E8C" : "#B31942" }}
+        style={{ backgroundColor: isClosed ? "#B31942" : "#1E4E8C" }}
       />
 
       <div className="flex items-start justify-between gap-3 pl-1.5">
@@ -144,7 +92,7 @@ function GateRow({ gate, status }) {
             <div
               className="h-2.5 w-2.5 rounded-full shrink-0"
               style={{
-                backgroundColor: status.open ? "#207245" : "#B42318",
+                backgroundColor: isClosed ? "#B42318" : "#1E4E8C",
               }}
             />
 
@@ -160,22 +108,24 @@ function GateRow({ gate, status }) {
             {gate.label}
           </div>
 
-          <div className="mt-2 text-xs leading-relaxed" style={{ color: T.textMuted }}>
-            {gate.note}
-          </div>
+          {gate.note ? (
+            <div className="mt-2 text-xs leading-relaxed" style={{ color: T.textMuted }}>
+              {gate.note}
+            </div>
+          ) : null}
         </div>
 
         <div className="text-right shrink-0">
           <div
             className="rounded-full px-2.5 py-1 text-[11px] font-semibold"
             style={{
-              backgroundColor: status.open
-                ? "rgba(220,232,247,0.95)"
-                : "rgba(253,236,240,0.95)",
-              color: status.open ? "#1E4E8C" : "#B31942",
+              backgroundColor: isClosed
+                ? "rgba(253,236,240,0.95)"
+                : "rgba(220,232,247,0.95)",
+              color: isClosed ? "#B31942" : "#1E4E8C",
             }}
           >
-            {status.text}
+            {scheduleLabel}
           </div>
 
           <div className="mt-1 text-[11px]" style={{ color: T.textSubtle }}>
@@ -223,7 +173,6 @@ export default function GateHoursCard() {
     };
   }, []);
 
-  const elPasoNow = useMemo(() => getElPasoParts(now), [now]);
   const localTime = useMemo(() => formatElPasoTime(now), [now]);
 
   return (
@@ -278,7 +227,6 @@ export default function GateHoursCard() {
           <GateRow
             key={gate.id || gate.name}
             gate={gate}
-            status={getGateStatus(gate, elPasoNow)}
           />
         ))}
       </div>
@@ -294,8 +242,8 @@ export default function GateHoursCard() {
       >
         <Info size={14} className="mt-0.5 shrink-0" style={{ color: T.blue }} />
         <span>
-          Gate hours can change for holidays, training events, or security
-          conditions. Confirm with official Fort Bliss channels before travel.
+          Gate hours are public schedule information and can change for holidays, training events, weather, or official updates.
+          Confirm with official Fort Bliss channels before travel.
           {usingFallback ? " Showing fallback hours because live gate data is temporarily unavailable." : ""}
         </span>
       </div>
