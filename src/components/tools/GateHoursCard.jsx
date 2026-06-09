@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Clock3, DoorOpen, Info, MapPin } from "lucide-react";
 import { T } from "@/lib/theme";
 import { listGates } from "@/lib/db/gates";
+import InlineLoadingState from "@/components/ui/InlineLoadingState";
 
 function getElPasoParts(date) {
   const parts = new Intl.DateTimeFormat("en-US", {
@@ -214,9 +215,12 @@ export default function GateHoursCard() {
 
       <div className="mt-4 flex flex-col gap-2.5">
         {loading ? (
-          <div className="rounded-xl border px-3 py-4 text-center text-xs" style={{ borderColor: "#D5E2F2", color: T.textMuted }}>
-            Loading gate hours...
-          </div>
+          <InlineLoadingState
+            title="Loading gate hours"
+            subtitle="Checking the latest saved gate information."
+            icon={DoorOpen}
+            rows={2}
+          />
         ) : gates.length === 0 ? (
           <div className="rounded-xl border px-3 py-4 text-center text-xs" style={{ borderColor: "#D5E2F2", color: T.textMuted }}>
             {loadError ? "Gate hours are temporarily unavailable." : "No gate hours are listed right now."}
