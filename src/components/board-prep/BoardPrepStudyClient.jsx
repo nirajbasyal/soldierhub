@@ -28,9 +28,11 @@ const ALL_DECK_KEY = "__all__";
 async function getAccessToken() {
   const supabase = createClient();
   if (!supabase) return null;
+
   const {
     data: { session },
   } = await supabase.auth.getSession();
+
   return session?.access_token || null;
 }
 
@@ -54,25 +56,31 @@ function getCategoryLabel(question) {
 }
 
 function getScoreSummary(scores, questions = []) {
-  const ids = new Set(questions.map((question) => question.id));
+  const validIds = new Set(questions.map((question) => question.id));
   const values = Object.entries(scores || {})
-    .filter(([id]) => ids.has(id))
+    .filter(([id]) => validIds.has(id))
     .map(([, value]) => value);
+
   const known = values.filter((value) => value === "known").length;
   const review = values.filter((value) => value === "review").length;
   const attempted = known + review;
   const total = questions.length;
   const percent = attempted ? Math.round((known / attempted) * 100) : 0;
+
   return { known, review, attempted, total, percent };
 }
 
 function loadDraftScores(validIds = []) {
   if (typeof window === "undefined") return {};
+
   try {
     const parsed = JSON.parse(localStorage.getItem(SCORE_DRAFT_KEY) || "{}");
     const valid = new Set(validIds);
+
     return Object.fromEntries(
-      Object.entries(parsed || {}).filter(([id, value]) => valid.has(id) && ["known", "review"].includes(value))
+      Object.entries(parsed || {}).filter(
+        ([id, value]) => valid.has(id) && ["known", "review"].includes(value)
+      )
     );
   } catch {
     return {};
@@ -84,21 +92,73 @@ function saveDraftScores(scores) {
   localStorage.setItem(SCORE_DRAFT_KEY, JSON.stringify(scores || {}));
 }
 
+function TextInput({ label, value, onChange, placeholder }) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-[11px] font-black uppercase tracking-[0.15em]" style={{ color: T.textSubtle }}>
+        {label}
+      </span>
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="h-11 w-full rounded-2xl border px-3 text-sm font-semibold outline-none"
+        style={{ borderColor: T.border, color: T.text }}
+        placeholder={placeholder}
+      />
+    </label>
+  );
+}
+
+function TextArea({ label, value, onChange, rows, placeholder, className = "" }) {
+  return (
+    <label className={`block ${className}`}>
+      <span className="mb-1 block text-[11px] font-black uppercase tracking-[0.15em]" style={{ color: T.textSubtle }}>
+        {label}
+      </span>
+      <textarea
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        rows={rows}
+        className="w-full rounded-2xl border p-3 text-sm font-semibold outline-none"
+        style={{ borderColor: T.border, color: T.text }}
+        placeholder={placeholder}
+      />
+    </label>
+  );
+}
+
 function ScoreHero({ summary, filteredCount, totalCount, title, subtitle }) {
   const progress = summary.total ? Math.round((summary.attempted / summary.total) * 100) : 0;
   const tone = summary.percent >= 80 ? T.success : summary.percent >= 50 ? T.gold : T.textMuted;
   const toneBg = summary.percent >= 80 ? "#F3FBF6" : summary.percent >= 50 ? T.goldBg : "#FFFFFF";
 
   return (
-    <Card className="overflow-hidden p-4" style={{ background: "linear-gradient(135deg, #FFFFFF 0%, #F7FBFF 48%, #EEF6FF 100%)", borderColor: "#D9E5F2" }}>
+    <Card
+      className="overflow-hidden p-4"
+      style={{
+        background: "linear-gradient(135deg, #FFFFFF 0%, #F7FBFF 48%, #EEF6FF 100%)",
+        borderColor: "#D9E5F2",
+      }}
+    >
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[11px] font-black uppercase tracking-[0.18em]" style={{ color: T.brandRed }}>{title}</p>
-          <h2 className="mt-1 text-2xl font-black leading-tight" style={{ color: T.navy }}>{summary.known}/{summary.attempted || 0} known</h2>
-          <p className="mt-1 text-xs font-semibold" style={{ color: T.textMuted }}>{summary.review} need review · {summary.total - summary.attempted} not scored</p>
-          <p className="mt-1 text-[11px] font-semibold" style={{ color: T.textSubtle }}>Showing {filteredCount} of {totalCount} questions · {subtitle}</p>
+          <p className="text-[11px] font-black uppercase tracking-[0.18em]" style={{ color: T.brandRed }}>
+            {title}
+          </p>
+          <h2 className="mt-1 text-2xl font-black leading-tight" style={{ color: T.navy }}>
+            {summary.known}/{summary.attempted || 0} known
+          </h2>
+          <p className="mt-1 text-xs font-semibold" style={{ color: T.textMuted }}>
+            {summary.review} need review · {summary.total - summary.attempted} not scored
+          </p>
+          <p className="mt-1 text-[11px] font-semibold" style={{ color: T.textSubtle }}>
+            Showing {filteredCount} of {totalCount} questions · {subtitle}
+          </p>
         </div>
-        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-4" style={{ borderColor: tone, backgroundColor: toneBg, color: tone }}>
+        <div
+          className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-4"
+          style={{ borderColor: tone, backgroundColor: toneBg, color: tone }}
+        >
           <span className="text-lg font-black">{summary.percent}%</span>
         </div>
       </div>
@@ -109,56 +169,54 @@ function ScoreHero({ summary, filteredCount, totalCount, title, subtitle }) {
   );
 }
 
-function TextInput({ label, value, onChange, placeholder }) {
-  return (
-    <label className="block">
-      <span className="mb-1 block text-[11px] font-black uppercase tracking-[0.15em]" style={{ color: T.textSubtle }}>{label}</span>
-      <input value={value} onChange={(event) => onChange(event.target.value)} className="h-11 w-full rounded-2xl border px-3 text-sm font-semibold outline-none" style={{ borderColor: T.border, color: T.text }} placeholder={placeholder} />
-    </label>
-  );
-}
-
-function TextArea({ label, value, onChange, rows, placeholder, className = "" }) {
-  return (
-    <label className={`block ${className}`}>
-      <span className="mb-1 block text-[11px] font-black uppercase tracking-[0.15em]" style={{ color: T.textSubtle }}>{label}</span>
-      <textarea value={value} onChange={(event) => onChange(event.target.value)} rows={rows} className="w-full rounded-2xl border p-3 text-sm font-semibold outline-none" style={{ borderColor: T.border, color: T.text }} placeholder={placeholder} />
-    </label>
-  );
-}
-
-function SectionChoiceCard({ active, tone = "red", icon, title, description, onClick, children }) {
-  const activeBorder = tone === "blue" ? "rgba(37,99,145,0.34)" : "rgba(179,25,66,0.34)";
-  const activeBg = tone === "blue" ? "rgba(238,246,255,0.92)" : "rgba(253,236,240,0.92)";
-  const iconBg = tone === "blue" ? T.blueSoft : T.redBg;
-  const iconColor = tone === "blue" ? T.blue : T.brandRed;
+function RequestSection({ active, tone = "red", icon, title, description, onClick, children }) {
+  const isBlue = tone === "blue";
+  const activeBorder = isBlue ? "rgba(37,99,145,0.34)" : "rgba(179,25,66,0.34)";
+  const activeBg = isBlue ? "rgba(238,246,255,0.92)" : "rgba(253,236,240,0.92)";
+  const iconBg = isBlue ? T.blueSoft : T.redBg;
+  const iconColor = isBlue ? T.blue : T.brandRed;
 
   return (
     <div
-      className="rounded-[1.4rem] border p-3 transition"
+      className="rounded-[1.4rem] border transition"
       style={{
         backgroundColor: active ? activeBg : T.surface,
         borderColor: active ? activeBorder : T.borderSoft,
       }}
     >
-      <button type="button" onClick={onClick} className="flex w-full items-start gap-3 text-left">
-        <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl" style={{ backgroundColor: iconBg, color: iconColor }}>
+      <button
+        type="button"
+        onClick={onClick}
+        className="flex w-full items-start gap-3 p-3 text-left active:scale-[0.995]"
+      >
+        <span
+          className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl"
+          style={{ backgroundColor: iconBg, color: iconColor }}
+        >
           {icon}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-base font-black leading-tight" style={{ color: T.navy }}>{title}</span>
-          <span className="mt-1 block text-xs font-semibold leading-5" style={{ color: T.textMuted }}>{description}</span>
+          <span className="block text-base font-black leading-tight" style={{ color: T.navy }}>
+            {title}
+          </span>
+          <span className="mt-1 block text-xs font-semibold leading-5" style={{ color: T.textMuted }}>
+            {description}
+          </span>
         </span>
-        <ChevronRight size={18} className={active ? "mt-2 shrink-0 rotate-90 transition" : "mt-2 shrink-0 transition"} style={{ color: T.textSubtle }} />
+        <ChevronDown
+          size={18}
+          className={active ? "mt-2 shrink-0 rotate-180 transition" : "mt-2 shrink-0 transition"}
+          style={{ color: T.textSubtle }}
+        />
       </button>
-      {active && <div className="mt-3 border-t pt-3" style={{ borderColor: T.borderSoft }}>{children}</div>}
+      {active && <div className="border-t p-3 pt-3" style={{ borderColor: T.borderSoft }}>{children}</div>}
     </div>
   );
 }
 
 function RequestPanel() {
   const [open, setOpen] = useState(false);
-  const [mode, setMode] = useState("add");
+  const [mode, setMode] = useState(null);
   const [addMode, setAddMode] = useState("single");
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
@@ -169,6 +227,11 @@ function RequestPanel() {
   const [explanation, setExplanation] = useState("");
   const [sending, setSending] = useState(false);
   const [status, setStatus] = useState(null);
+
+  function toggleMode(nextMode) {
+    setStatus(null);
+    setMode((current) => (current === nextMode ? null : nextMode));
+  }
 
   async function sendRequest(payload) {
     const token = await getAccessToken();
@@ -182,6 +245,11 @@ function RequestPanel() {
   }
 
   async function submitRequest() {
+    if (!mode) {
+      setStatus({ type: "error", text: "Choose add or update/remove first." });
+      return;
+    }
+
     setSending(true);
     setStatus(null);
 
@@ -191,6 +259,7 @@ function RequestPanel() {
         const q = question.trim();
         const a = answer.trim();
         const bulk = bulkText.trim();
+
         if (isSingle && (!q || !a)) throw new Error("Add both question and answer.");
         if (!isSingle && !bulk) throw new Error("Paste the questions and answers first.");
 
@@ -214,7 +283,10 @@ function RequestPanel() {
         const numberText = questionNumber.trim();
         const categoryText = category.trim();
         const explanationText = explanation.trim();
-        if (!numberText || !categoryText || !explanationText) throw new Error("Add question number, category, and explanation.");
+
+        if (!numberText || !categoryText || !explanationText) {
+          throw new Error("Add question number, category, and explanation.");
+        }
 
         const requestType = action === "delete" ? "remove" : "update";
         await sendRequest({
@@ -232,6 +304,7 @@ function RequestPanel() {
       }
 
       setStatus({ type: "success", text: "Submitted to admin for review." });
+      setMode(null);
     } catch (err) {
       setStatus({ type: "error", text: err.message || "Could not submit request." });
     } finally {
@@ -241,9 +314,19 @@ function RequestPanel() {
 
   return (
     <Card className="overflow-hidden">
-      <button type="button" onClick={() => setOpen((value) => !value)} className="flex w-full items-center justify-between gap-3 p-3 text-left">
+      <button
+        type="button"
+        onClick={() => {
+          setOpen((value) => !value);
+          setMode(null);
+          setStatus(null);
+        }}
+        className="flex w-full items-center justify-between gap-3 p-3 text-left"
+      >
         <div className="flex min-w-0 items-center gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl" style={{ backgroundColor: T.redBg, color: T.brandRed }}><PlusCircle size={19} /></span>
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl" style={{ backgroundColor: T.redBg, color: T.brandRed }}>
+            <PlusCircle size={19} />
+          </span>
           <div className="min-w-0">
             <p className="font-black leading-tight" style={{ color: T.navy }}>Help Soldier Hub improve Board Prep.</p>
             <p className="mt-0.5 text-xs leading-5" style={{ color: T.textMuted }}>Add new questions or suggest updates/removal for admin review.</p>
@@ -254,18 +337,16 @@ function RequestPanel() {
 
       {open && (
         <div className="space-y-3 border-t p-3" style={{ borderColor: T.borderSoft }}>
-          <SectionChoiceCard
+          <RequestSection
             active={mode === "add"}
             tone="red"
             icon={<PlusCircle size={18} />}
             title="Add new questions"
             description="Submit a brand-new board question. Single and multiple options belong here only."
-            onClick={() => setMode("add")}
+            onClick={() => toggleMode("add")}
           >
             <div className="rounded-[1.15rem] border bg-white/70 p-2" style={{ borderColor: T.borderSoft }}>
-              <p className="px-1 pb-2 text-[11px] font-black uppercase tracking-[0.16em]" style={{ color: T.textSubtle }}>
-                Choose add format
-              </p>
+              <p className="px-1 pb-2 text-[11px] font-black uppercase tracking-[0.16em]" style={{ color: T.textSubtle }}>Choose add format</p>
               <div className="grid grid-cols-2 gap-2">
                 <button type="button" onClick={() => setAddMode("single")} className="h-10 rounded-2xl border text-sm font-black" style={{ borderColor: addMode === "single" ? T.navy : T.border, backgroundColor: addMode === "single" ? T.navy : T.card, color: addMode === "single" ? "#fff" : T.textMuted }}>Single question</button>
                 <button type="button" onClick={() => setAddMode("multiple")} className="h-10 rounded-2xl border text-sm font-black" style={{ borderColor: addMode === "multiple" ? T.navy : T.border, backgroundColor: addMode === "multiple" ? T.navy : T.card, color: addMode === "multiple" ? "#fff" : T.textMuted }}>Multiple questions</button>
@@ -280,20 +361,18 @@ function RequestPanel() {
             ) : (
               <TextArea label="Multiple questions" value={bulkText} onChange={setBulkText} rows={7} className="mt-3" placeholder={"Enter multiple questions and answers here.\n\nExample:\nQ: What does AR 670-1 cover?\nA: Wear and appearance of Army uniforms and insignia."} />
             )}
-          </SectionChoiceCard>
+          </RequestSection>
 
-          <SectionChoiceCard
+          <RequestSection
             active={mode === "update_delete"}
             tone="blue"
             icon={<Search size={18} />}
             title="Update or remove existing questions"
             description="Use this only when a current question is wrong, outdated, duplicated, or should be removed."
-            onClick={() => setMode("update_delete")}
+            onClick={() => toggleMode("update_delete")}
           >
             <div className="rounded-[1.15rem] border bg-white/70 p-2" style={{ borderColor: T.borderSoft }}>
-              <p className="px-1 pb-2 text-[11px] font-black uppercase tracking-[0.16em]" style={{ color: T.textSubtle }}>
-                Request type
-              </p>
+              <p className="px-1 pb-2 text-[11px] font-black uppercase tracking-[0.16em]" style={{ color: T.textSubtle }}>Request type</p>
               <div className="grid grid-cols-2 gap-2">
                 <button type="button" onClick={() => setAction("update")} className="h-10 rounded-2xl border text-sm font-black" style={{ borderColor: action === "update" ? T.navy : T.border, backgroundColor: action === "update" ? T.navy : T.card, color: action === "update" ? "#fff" : T.textMuted }}>Update</button>
                 <button type="button" onClick={() => setAction("delete")} className="h-10 rounded-2xl border text-sm font-black" style={{ borderColor: action === "delete" ? T.brandRed : T.border, backgroundColor: action === "delete" ? T.redBg : T.card, color: action === "delete" ? T.brandRed : T.textMuted }}>Delete</button>
@@ -305,11 +384,19 @@ function RequestPanel() {
               <TextInput label="Category" value={category} onChange={setCategory} placeholder="Example: Leadership" />
               <TextArea label="Explanation" value={explanation} onChange={setExplanation} rows={4} placeholder="Explain what should be updated or why it should be deleted." />
             </div>
-          </SectionChoiceCard>
+          </RequestSection>
 
-          <button type="button" onClick={submitRequest} disabled={sending} className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl font-black text-white disabled:opacity-50" style={{ backgroundColor: T.brandRed }}>
-            <Send size={15} /> {sending ? "Submitting..." : mode === "add" ? "Submit new question" : "Submit update/removal request"}
-          </button>
+          {mode && (
+            <button
+              type="button"
+              onClick={submitRequest}
+              disabled={sending}
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl font-black text-white disabled:opacity-50"
+              style={{ backgroundColor: T.brandRed }}
+            >
+              <Send size={15} /> {sending ? "Submitting..." : mode === "add" ? "Submit new question" : "Submit update/removal request"}
+            </button>
+          )}
           {status && <p className="text-xs font-semibold" style={{ color: status.type === "success" ? T.success : T.danger }}>{status.text}</p>}
         </div>
       )}
@@ -332,10 +419,21 @@ function DeckCard({ deck, onSelect }) {
   const isAll = deck.key === ALL_DECK_KEY;
 
   return (
-    <button type="button" onClick={() => onSelect(deck)} className="group rounded-[1.65rem] border p-4 text-left shadow-sm transition active:scale-[0.99]" style={{ backgroundColor: T.card, borderColor: isAll ? "rgba(179,25,66,0.30)" : T.border, boxShadow: isAll ? "0 12px 26px rgba(179,25,66,0.08)" : undefined }}>
+    <button
+      type="button"
+      onClick={() => onSelect(deck)}
+      className="group rounded-[1.65rem] border p-4 text-left shadow-sm transition active:scale-[0.99]"
+      style={{
+        backgroundColor: T.card,
+        borderColor: isAll ? "rgba(179,25,66,0.30)" : T.border,
+        boxShadow: isAll ? "0 12px 26px rgba(179,25,66,0.08)" : undefined,
+      }}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl" style={{ backgroundColor: isAll ? T.redBg : T.blueSoft, color: isAll ? T.brandRed : T.blue }}><Layers size={20} /></div>
+          <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl" style={{ backgroundColor: isAll ? T.redBg : T.blueSoft, color: isAll ? T.brandRed : T.blue }}>
+            <Layers size={20} />
+          </div>
           <h3 className="line-clamp-2 text-lg font-black leading-snug" style={{ color: T.navy }}>{deck.label}</h3>
           <p className="mt-1 text-xs font-semibold" style={{ color: T.textMuted }}>{deck.total} question{deck.total === 1 ? "" : "s"}</p>
         </div>
@@ -364,7 +462,9 @@ function DeckSelection({ decks, deckQuery, setDeckQuery, onSelect }) {
     <div className="space-y-4">
       <Card className="p-4" style={{ background: `linear-gradient(135deg, ${T.navy}, #163b63)`, borderColor: "rgba(255,255,255,0.12)" }}>
         <div className="flex items-start gap-3">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-white"><Layers size={22} /></div>
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-white">
+            <Layers size={22} />
+          </div>
           <div className="min-w-0">
             <p className="text-[11px] font-black uppercase tracking-[0.2em] text-white/65">Study decks</p>
             <h2 className="mt-1 text-2xl font-serif font-black text-white">Choose a category</h2>
@@ -374,7 +474,13 @@ function DeckSelection({ decks, deckQuery, setDeckQuery, onSelect }) {
       <Card className="p-2.5">
         <div className="flex h-11 items-center gap-2 rounded-2xl border px-3" style={{ borderColor: T.border, backgroundColor: T.surface }}>
           <Search size={16} style={{ color: T.textSubtle }} />
-          <input value={deckQuery} onChange={(event) => setDeckQuery(event.target.value)} placeholder="Search category decks" className="min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none placeholder:font-semibold" style={{ color: T.text }} />
+          <input
+            value={deckQuery}
+            onChange={(event) => setDeckQuery(event.target.value)}
+            placeholder="Search category decks"
+            className="min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none placeholder:font-semibold"
+            style={{ color: T.text }}
+          />
         </div>
       </Card>
       <div className="grid gap-3 md:grid-cols-2">
@@ -494,24 +600,45 @@ export default function BoardPrepStudyClient() {
       if (!byCategory.has(label)) byCategory.set(label, []);
       byCategory.get(label).push(question);
     });
+
     const categoryDecks = [...byCategory.entries()]
-      .map(([label, deckQuestions]) => ({ key: label, label, questions: deckQuestions, total: deckQuestions.length, summary: getScoreSummary(scores, deckQuestions) }))
+      .map(([label, deckQuestions]) => ({
+        key: label,
+        label,
+        questions: deckQuestions,
+        total: deckQuestions.length,
+        summary: getScoreSummary(scores, deckQuestions),
+      }))
       .sort((a, b) => a.label.localeCompare(b.label));
-    return [{ key: ALL_DECK_KEY, label: "All questions", questions, total: questions.length, summary: getScoreSummary(scores, questions) }, ...categoryDecks];
+
+    return [
+      { key: ALL_DECK_KEY, label: "All questions", questions, total: questions.length, summary: getScoreSummary(scores, questions) },
+      ...categoryDecks,
+    ];
   }, [questions, scores]);
 
-  const selectedDeck = useMemo(() => selectedDeckKey ? decks.find((deck) => deck.key === selectedDeckKey) || null : null, [decks, selectedDeckKey]);
+  const selectedDeck = useMemo(
+    () => (selectedDeckKey ? decks.find((deck) => deck.key === selectedDeckKey) || null : null),
+    [decks, selectedDeckKey]
+  );
+
   const deckQuestions = selectedDeck?.questions || [];
 
   const filteredQuestions = useMemo(() => {
     const search = searchQuery.trim().toLowerCase();
+
     return deckQuestions.filter((question) => {
       const score = scores[question.id];
       if (statusFilter === "known" && score !== "known") return false;
       if (statusFilter === "review" && score !== "review") return false;
       if (statusFilter === "unscored" && score) return false;
       if (!search) return true;
-      return [question.question, question.category, question.source_publication, question.explanation, getAnswerText(question)].filter(Boolean).join(" ").toLowerCase().includes(search);
+
+      return [question.question, question.category, question.source_publication, question.explanation, getAnswerText(question)]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(search);
     });
   }, [deckQuestions, scores, searchQuery, statusFilter]);
 
@@ -521,26 +648,46 @@ export default function BoardPrepStudyClient() {
   const loadQuestions = useCallback(async () => {
     setLoading(true);
     setError(null);
+
     const token = await getAccessToken();
     if (!token) {
       setError("Sign in to study Board Prep questions.");
       setLoading(false);
       return;
     }
-    const res = await fetch("/api/board-prep/questions", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+
+    const res = await fetch("/api/board-prep/questions", {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
     const json = await res.json().catch(() => ({}));
+
     setLoading(false);
     if (!res.ok) {
       setError(json.error || "Could not load study questions.");
       return;
     }
+
     const loadedQuestions = json.data || [];
     setQuestions(loadedQuestions);
-    setScores(loadDraftScores(loadedQuestions.map((q) => q.id)));
+    setScores(loadDraftScores(loadedQuestions.map((question) => question.id)));
   }, []);
 
   useEffect(() => { loadQuestions(); }, [loadQuestions]);
   useEffect(() => { if (selectedDeckKey && !selectedDeck) setSelectedDeckKey(null); }, [selectedDeckKey, selectedDeck]);
+
+  function handleTopBack() {
+    if (selectedDeck) {
+      setSelectedDeckKey(null);
+      setSearchQuery("");
+      setFilterOpen(false);
+      setShowAll(false);
+      if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+
+    router.push("/tools/board-prep");
+  }
 
   function handleScore(questionId, value) {
     setScores((current) => {
@@ -564,20 +711,9 @@ export default function BoardPrepStudyClient() {
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function backToDecks() {
-    setSelectedDeckKey(null);
-    setSearchQuery("");
-    setFilterOpen(false);
-    setShowAll(false);
-    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-
-  const handleTopBack = selectedDeck ? backToDecks : () => router.push("/tools/board-prep");
-  const backLabel = selectedDeck ? "Back to category decks" : "Back to Board Prep";
-
   return (
     <AppShell hideNav>
-      <ToolPage title="Study all questions" eyebrow="Board Prep" icon={BookOpen} onBack={handleTopBack} backLabel={backLabel}>
+      <ToolPage title="Study all questions" eyebrow="Board Prep" icon={BookOpen} onBack={handleTopBack} backLabel={selectedDeck ? "Back to category decks" : "Back to Board Prep"}>
         <div className="space-y-4">
           {loading && <Card className="p-6 text-center text-sm" style={{ color: T.textMuted }}>Loading study decks...</Card>}
           {!loading && error && <Card className="p-5 text-center"><p className="font-bold" style={{ color: T.danger }}>{error}</p><button onClick={() => router.push("/tools/board-prep")} className="mt-4 rounded-2xl px-5 py-2 font-bold text-white" style={{ backgroundColor: T.navy }}>Back to Board Prep</button></Card>}
