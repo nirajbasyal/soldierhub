@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 import { getAdminMfaState } from "@/lib/admin/mfa";
 import AppShell from "@/components/layout/AppShell";
 import Button from "@/components/ui/Button";
+import PageLoadingState from "@/components/ui/PageLoadingState";
 
 function cleanNextPath(value) {
   if (!value || !value.startsWith("/")) return "/admin";
@@ -119,7 +120,17 @@ export default function AdminMfaPage() {
     router.replace(nextPath);
   }
 
-  if (authLoading || loading || !currentUser || currentUser.role !== "admin") return null;
+  if (authLoading || loading) {
+    return (
+      <PageLoadingState
+        title="Preparing MFA check"
+        subtitle="Finding your Google Authenticator setup."
+        mode="admin"
+      />
+    );
+  }
+
+  if (!currentUser || currentUser.role !== "admin") return null;
 
   return (
     <AppShell hideNav>
