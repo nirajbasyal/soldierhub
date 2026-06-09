@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect } from "react";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -10,7 +10,6 @@ import {
   Calculator,
   ChevronRight,
   Compass,
-  Loader2,
   LogIn,
   LogOut,
   Shield,
@@ -28,42 +27,6 @@ const SIDEBAR_LOGO_SRC = "/brand/soldierhub-logo-sidebar.svg";
 
 function getPathnameOnly(path = "") {
   return String(path || "").split("?")[0] || "/";
-}
-
-function PageLoadingScreen() {
-  return (
-    <div
-      className="fixed inset-0 z-[110] md:hidden flex items-center justify-center px-6"
-      style={{ backgroundColor: T.bg }}
-    >
-      <div className="w-full max-w-xs text-center">
-        <div className="flex justify-center mb-5">
-          <Image
-            src={SIDEBAR_LOGO_SRC}
-            alt="SoldierHub"
-            width={240}
-            height={80}
-            priority
-            className="h-14 w-auto object-contain"
-          />
-        </div>
-
-        <div
-          className="mx-auto h-12 w-12 rounded-2xl flex items-center justify-center border"
-          style={{ backgroundColor: T.card, borderColor: T.border }}
-        >
-          <Loader2 size={22} className="animate-spin" style={{ color: T.navy }} />
-        </div>
-
-        <p className="mt-4 text-sm font-semibold" style={{ color: T.text }}>
-          Opening page
-        </p>
-        <p className="mt-1 text-xs leading-5" style={{ color: T.textSubtle }}>
-          Loading SoldierHub content…
-        </p>
-      </div>
-    </div>
-  );
 }
 
 function BoardPrepMenuCard({ onClick }) {
@@ -105,7 +68,6 @@ function BoardPrepMenuCard({ onClick }) {
 export default function MobileMenu() {
   const router = useRouter();
   const pathname = usePathname();
-  const [navigatingTo, setNavigatingTo] = useState("");
 
   const {
     currentUser,
@@ -115,26 +77,6 @@ export default function MobileMenu() {
     setAuthModal,
     handleLogout,
   } = useApp();
-
-  const navigatingPathname = useMemo(
-    () => getPathnameOnly(navigatingTo),
-    [navigatingTo]
-  );
-
-  const isNavigating = Boolean(navigatingTo);
-
-  useEffect(() => {
-    if (!navigatingTo) return;
-
-    if (pathname === navigatingPathname) {
-      const timer = window.setTimeout(() => {
-        setNavigatingTo("");
-        setMobileMenu(false);
-      }, 120);
-
-      return () => window.clearTimeout(timer);
-    }
-  }, [navigatingTo, navigatingPathname, pathname, setMobileMenu]);
 
   useEffect(() => {
     if (!mobileMenu) return;
@@ -149,10 +91,6 @@ export default function MobileMenu() {
     router.prefetch?.("/tools/board-prep/study");
   }, [isAdmin, mobileMenu, router]);
 
-  if (isNavigating) {
-    return <PageLoadingScreen />;
-  }
-
   if (!mobileMenu) return null;
 
   const close = () => {
@@ -162,14 +100,15 @@ export default function MobileMenu() {
   const go = (path) => {
     const nextPathname = getPathnameOnly(path);
 
+    setMobileMenu(false);
+
     if (pathname === nextPathname) {
-      setMobileMenu(false);
       return;
     }
 
-    setNavigatingTo(path);
-    setMobileMenu(false);
-    router.push(path);
+    window.setTimeout(() => {
+      router.push(path);
+    }, 0);
   };
 
   const openAuth = (mode) => {
