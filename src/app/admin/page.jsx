@@ -20,6 +20,7 @@ import { getAdminMfaState } from "@/lib/admin/mfa";
 import AppShell from "@/components/layout/AppShell";
 import Footer from "@/components/layout/Footer";
 import CircularBackButton from "@/components/ui/CircularBackButton";
+import PageLoadingState from "@/components/ui/PageLoadingState";
 import PendingUsersList from "@/components/admin/PendingUsersList";
 import ReportedPostsList from "@/components/admin/ReportedPostsList";
 import MembersList from "@/components/admin/MembersList";
@@ -136,7 +137,16 @@ export default function AdminPage() {
     };
   }, [authLoading, currentUser?.role, mfaAllowed]);
 
-  if (authLoading || mfaChecking) return null;
+  if (authLoading || mfaChecking) {
+    return (
+      <PageLoadingState
+        title="Securing admin dashboard"
+        subtitle="Checking your login and MFA verification."
+        mode="admin"
+      />
+    );
+  }
+
   if (!currentUser || currentUser.role !== "admin" || !mfaAllowed) return null;
 
   const reportedCount = posts.filter((p) => p.status === "reported").length;
