@@ -194,6 +194,38 @@ function PendingReviewContent() {
     }
   };
 
+  const verifyPendingStatusAfterRereview = async () => {
+    if (!supabase) return { ok: false, error: "Supabase is not configured." };
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user?.id) {
+      return { ok: false, error: "Please sign in with this same account first, then request re-review." };
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("id, email, personal_email, full_name, phone, verification_status")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profileError || !profile) {
+      return { ok: false, error: profileError?.message || "Could not confirm your profile status." };
+    }
+
+    if (profile.verification_status !== "pending") {
+      return { ok: false, error: "Re-review did not move this account to pending. Please sign out, sign back in with the same account, and try again." };
+    }
+
+    setCurrentEmail(profile.email || profile.personal_email || user.email || currentEmail);
+    setCurrentName(profile.full_name || currentName);
+    setRereviewPhone(profile.phone || "");
+    return { ok: true, profile };
+  };
+
   const handleRequestRereview = async () => {
     try {
       setRereviewMessage("");
@@ -206,12 +238,32 @@ function PendingReviewContent() {
         setRereviewMessage("Please enter a valid 10-digit phone number.");
         return;
       }
+
       setRereviewing(true);
-      const result = await requestRereview({ phone: cleanRereviewPhone });
-      if (result?.ok === false) {
-        setRereviewMessage(result.error || "Could not request re-review. Please contact admin.");
-        return;
+
+      if (supabase) {
+        const { error: rpcError } = await supabase.rpc("request_profile_rereview", {
+          p_phone: cleanRereviewPhone,
+        });
+
+        if (rpcError) {
+          setRereviewMessage(rpcError.message || "Could not request re-review. Please contact admin.");
+          return;
+        }
+
+        const verified = await verifyPendingStatusAfterRereview();
+        if (!verified.ok) {
+          setRereviewMessage(verified.error || "Could not confirm re-review status. Please contact admin.");
+          return;
+        }
+      } else {
+        const result = await requestRereview({ phone: cleanRereviewPhone });
+        if (result?.ok === false) {
+          setRereviewMessage(result.error || "Could not request re-review. Please contact admin.");
+          return;
+        }
       }
+
       setProfileStatus("pending");
       setRereviewMessage("Re-review request submitted. Your profile is pending admin review again.");
       router.replace(`/pending-review?email=${encodeURIComponent(currentEmail || "")}&name=${encodeURIComponent(currentName || "")}&found=1&status=pending`);
