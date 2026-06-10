@@ -12,19 +12,51 @@ function cleanText(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function profileSelect() {
+  return "id, full_name, email, personal_email, verification_status, role";
+}
+
+function statusForAction(action) {
+  if (action === "verify" || action === "verify_by_email") return "verified";
+  if (action === "reject") return "rejected";
+  return "revoked";
+}
+
+async function updateProfileStatusById({ supabase, profileId, status }) {
+  return supabase
+    .from("profiles")
+    .update({ verification_status: status })
+    .eq("id", profileId)
+    .select(profileSelect())
+    .maybeSingle();
+}
+
+async function updateProfileStatusByEmail({ supabase, email, status }) {
+  const primary = await supabase
+    .from("profiles")
+    .update({ verification_status: status })
+    .eq("email", email)
+    .select(profileSelect())
+    .maybeSingle();
+
+  if (primary.data || primary.error) return primary;
+
+  return supabase
+    .from("profiles")
+    .update({ verification_status: status })
+    .eq("personal_email", email)
+    .select(profileSelect())
+    .maybeSingle();
+}
+
 async function runAdminAction({ supabase, action, profileId, email }) {
-  if (action === "verify") {
-    return supabase
-      .from("profiles")
-      .update({ verification_status: "verified" })
-      .eq("id", profileId)
-      .select("id, full_name, email, verification_status")
-      .maybeSingle();
+  const status = statusForAction(action);
+
+  if (["verify", "reject", "revoke"].includes(action)) {
+    return updateProfileStatusById({ supabase, profileId, status });
   }
-  if (action === "reject") return supabase.rpc("admin_reject_profile", { p_profile_id: profileId });
-  if (action === "revoke") return supabase.rpc("admin_revoke_profile", { p_profile_id: profileId });
-  if (action === "verify_by_email") return supabase.rpc("admin_verify_profile_by_email", { p_email: email });
-  return supabase.rpc("admin_revoke_profile_by_email", { p_email: email });
+
+  return updateProfileStatusByEmail({ supabase, email, status });
 }
 
 export async function POST(request) {
@@ -91,7 +123,13 @@ export async function POST(request) {
     );
   }
 
-  const { data, error } = await runAdminAction({ supabase: db.supabase, action, profileId, email });
+  const { data, error } = await runAdminAction({
+    supabase: db.supabase,
+    action,
+    profileId,
+    email,
+  });
+
   if (error) {
     return NextResponse.json(
       { error: error.message || "Admin action failed." },
@@ -100,7 +138,7 @@ export async function POST(request) {
   }
 
   return NextResponse.json(
-    { data: Array.isArray(data) ? data[0] || null : data || null },
+    { data: data || null },
     { status: 200, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
   );
 }
