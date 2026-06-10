@@ -28,3 +28,18 @@ export function getOptionalServiceRoleClient() {
 export function getServiceRoleStatus() {
   return createServiceRoleClient() ? "service_role" : "missing";
 }
+
+export function requireServiceRoleClient() {
+  const client = createServiceRoleClient();
+
+  if (!client) {
+    return {
+      ok: false,
+      status: 503,
+      error:
+        "Admin service database access is not configured. Set SUPABASE_SERVICE_ROLE_KEY as a server-only environment variable and redeploy.",
+    };
+  }
+
+  return { ok: true, supabase: client };
+}
