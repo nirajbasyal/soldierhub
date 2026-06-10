@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { checkRateLimit, rateLimitResponse } from "@/lib/server/rateLimit";
 import { requireAdmin } from "@/lib/server/adminAuth";
-import { requireServiceRoleClient } from "@/lib/server/supabaseAdmin";
+import { getOptionalServiceRoleClient, getServiceRoleStatus } from "@/lib/server/supabaseAdmin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -74,14 +74,6 @@ export async function POST(request) {
   });
   if (!userRateLimit.allowed) return rateLimitResponse(userRateLimit);
 
-  const db = requireServiceRoleClient();
-  if (!db.ok) {
-    return NextResponse.json(
-      { error: db.error, code: "ADMIN_DB_REQUIRED" },
-      { status: db.status, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
-    );
-  }
-
   let requestBody;
   try {
     requestBody = await request.json();
@@ -102,16 +94,19 @@ export async function POST(request) {
     );
   }
 
-  const { data, error } = await listAdminProfiles({ supabase: db.supabase, queue, limit });
+  const db = getOptionalServiceRoleClient() || admin.supabase;
+  const dbMode = getServiceRoleStatus();
+  const { data, error } = await listAdminProfiles({ supabase: db, queue, limit });
+
   if (error) {
     return NextResponse.json(
       { error: error.message || "Could not load admin profiles." },
-      { status: 500, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
+      { status: 500, headers: { ...userRateLimit.headers, "Cache-Control": "no-store", "X-SoldierHub-Admin-DB": dbMode } }
     );
   }
 
   return NextResponse.json(
     { data: data || [] },
-    { status: 200, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
+    { status: 200, headers: { ...userRateLimit.headers, "Cache-Control": "no-store", "X-SoldierHub-Admin-DB": dbMode } }
   );
 }
