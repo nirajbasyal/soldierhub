@@ -8,7 +8,18 @@
   min-width: 0;
 }
 
+.sh-feed-post-list {
+  width: 100%;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 .sh-feed-post-list > article {
+  width: 100%;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
   overflow: hidden;
 }
 
@@ -21,6 +32,17 @@
   max-width: 100%;
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+@media (max-width: 767px) {
+  .sh-feed-post-list > article {
+    border-left-width: 1px !important;
+    border-right-width: 1px !important;
+    border-top-width: 1px !important;
+    border-bottom-width: 1px !important;
+    border-radius: 22px !important;
+    box-shadow: 0 8px 18px rgba(7, 27, 51, 0.045) !important;
+  }
 }
 
 /* Desktop: keep the feed/profile post list closer to Facebook size instead of stretching across the laptop screen. */
@@ -257,30 +279,5 @@ main > div.max-w-5xl.mx-auto > section.mt-6 {
 
   main > div.max-w-5xl.mx-auto > section.mt-5 > div:not(.absolute) > div.flex > div:nth-child(2) {
     text-align: center !important;
-  }
-
-  main > div.max-w-5xl.mx-auto > section.mt-5 h1,
-  main > div.max-w-5xl.mx-auto > section.mt-5 p {
-    text-align: center !important;
-  }
-
-  main > div.max-w-5xl.mx-auto > section.mt-5 h1 {
-    font-size: clamp(1.85rem, 9vw, 2.45rem) !important;
-    white-space: normal !important;
-  }
-}
-
-/* Desktop sidebar weather/tool stack should start level with the feed hero, not with extra empty top space. */
-@media (min-width: 1024px) {
-  main aside.sticky.top-24 {
-    top: 88px !important;
-  }
-}
-
-/* Mobile keeps the edge-to-edge post cards, but long unbroken text still stays inside the card. */
-@media (max-width: 767px) {
-  .sh-feed-post-list > article :where(p, span, div, a, li) {
-    overflow-wrap: anywhere;
-    word-break: break-word;
   }
 }
