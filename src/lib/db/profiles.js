@@ -5,9 +5,6 @@ import { createClient } from "@/lib/supabase/client";
 const SELF_PROFILE_FIELDS =
   "id, full_name, email, personal_email, phone, bio, avatar_color, avatar_url, role, verification_status, base, created_at, updated_at";
 
-const ADMIN_PROFILE_FIELDS =
-  "id, full_name, email, personal_email, phone, bio, avatar_color, avatar_url, role, verification_status, base, created_at, updated_at";
-
 const PUBLIC_PROFILE_SEARCH_FIELDS = "id, full_name, avatar_color, avatar_url, base";
 const DEFAULT_ADMIN_PROFILE_LIMIT = 50;
 const MAX_ADMIN_PROFILE_LIMIT = 100;
@@ -119,33 +116,21 @@ async function listAdminProfileQueue(queue, { limit = DEFAULT_ADMIN_PROFILE_LIMI
   if (!supabase) return { data: [], error: null };
 
   const safeLimit = cleanLimit(limit);
+  const fallbackMessage = "Could not load admin profiles.";
+  const { accessToken, error } = await getAccessTokenForApi(supabase, fallbackMessage);
+  if (error || !accessToken) return { data: [], error };
 
-  const { data, error } = await supabase.rpc("admin_list_profiles", {
-    p_queue: queue,
-    p_limit: safeLimit,
-  });
+  const result = await postJsonToApi(
+    "/api/admin/profiles/list",
+    accessToken,
+    { queue, limit: safeLimit },
+    fallbackMessage
+  );
 
-  if (!error) return { data: data || [], error: null };
-
-  if (queue === "blocked") {
-    const fallback = await supabase
-      .from("profiles")
-      .select(ADMIN_PROFILE_FIELDS)
-      .in("verification_status", ["rejected", "revoked"])
-      .order("created_at", { ascending: false })
-      .limit(safeLimit);
-
-    return { data: fallback.data || [], error: fallback.error };
-  }
-
-  const fallback = await supabase
-    .from("profiles")
-    .select(ADMIN_PROFILE_FIELDS)
-    .eq("verification_status", queue)
-    .order("created_at", { ascending: false })
-    .limit(safeLimit);
-
-  return { data: fallback.data || [], error: fallback.error };
+  return {
+    data: Array.isArray(result.data) ? result.data : [],
+    error: result.error,
+  };
 }
 
 export async function getProfile(userId) {
