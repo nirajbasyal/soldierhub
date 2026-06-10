@@ -339,7 +339,10 @@ export default function AuthModal() {
 
         if (result?.ok === false) {
           setError(result.error || "Signup failed. Please try again.");
+          return;
         }
+
+        pushToast?.("Account submitted. Check your email, then wait for admin verification.", "success");
       } catch (err) {
         console.error("Signup failed:", err);
         setError("Signup failed. Please try again.");
@@ -480,6 +483,7 @@ export default function AuthModal() {
               type="button"
               onClick={() => {
                 setTab("login");
+                setPassword("");
                 setError("");
                 setResetSent(false);
                 setShowCommunityAgreement(false);
@@ -609,10 +613,7 @@ export default function AuthModal() {
             {tab === "signup" && (
               <>
                 <label className="block">
-                  <span
-                    className="mb-1 block text-xs font-bold sm:mb-1.5"
-                    style={{ color: T.textMuted }}
-                  >
+                  <span className="mb-1 block text-xs font-bold sm:mb-1.5" style={{ color: T.textMuted }}>
                     Confirm password <span style={{ color: T.red }}>*</span>
                   </span>
 
@@ -736,8 +737,8 @@ export default function AuthModal() {
             <div className={compactSignup ? "sticky bottom-0 z-10 -mx-4 mt-0 bg-gradient-to-t from-white via-white/95 to-transparent px-4 pt-2 pb-0 sm:static sm:mx-0 sm:bg-transparent sm:px-0 sm:pt-0" : ""}>
               <Button
                 variant="primary"
-                icon={tab === "signup" ? UserPlus : tab === "forgot" ? Send : LogIn}
-                onClick={submit}
+                icon={tab === "signup" ? ShieldCheck : tab === "forgot" ? Send : LogIn}
+                onClick={() => submit()}
                 disabled={submitting}
                 className={`${compactSignup ? "w-full rounded-xl sm:rounded-2xl" : "mt-1 w-full rounded-2xl"}`}
               >
@@ -748,7 +749,7 @@ export default function AuthModal() {
                     ? "Creating..."
                     : "Signing in..."
                   : tab === "signup"
-                  ? "Create account"
+                  ? "Review & continue"
                   : tab === "forgot"
                   ? "Send reset link"
                   : "Sign in"}
@@ -756,23 +757,11 @@ export default function AuthModal() {
 
               {tab === "signup" && (
                 <div className="mt-1.5 flex items-center justify-center gap-2 text-[11px] font-bold sm:text-xs" style={{ color: T.textMuted }}>
-                  <a
-                    href="/terms"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hover:underline"
-                    style={{ color: T.navy }}
-                  >
+                  <a href="/terms" target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: T.navy }}>
                     Terms of Use
                   </a>
                   <span style={{ color: T.textSubtle }}>•</span>
-                  <a
-                    href="/privacy"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hover:underline"
-                    style={{ color: T.navy }}
-                  >
+                  <a href="/privacy" target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: T.navy }}>
                     Privacy Policy
                   </a>
                 </div>
@@ -783,30 +772,25 @@ export default function AuthModal() {
       </Modal>
 
       {showCommunityAgreement && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/35 px-4 backdrop-blur-sm">
-          <div
-            className="w-full max-w-sm rounded-3xl border p-4 shadow-2xl"
-            style={{
-              backgroundColor: "#FFFFFF",
-              borderColor: T.borderSoft,
-            }}
-          >
+        <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-slate-950/45 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-3xl border p-4 shadow-2xl" style={{ backgroundColor: "#FFFFFF", borderColor: T.borderSoft }}>
             <div className="mb-3 flex items-start gap-3">
-              <span
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl"
-                style={{ backgroundColor: "rgba(179,25,66,0.08)", color: T.red }}
-              >
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl" style={{ backgroundColor: "rgba(179,25,66,0.08)", color: T.red }}>
                 <ShieldCheck size={20} strokeWidth={2.5} />
               </span>
 
               <div>
                 <h3 className="text-base font-black tracking-[-0.02em]" style={{ color: T.navy }}>
-                  Community Agreement
+                  Final step before creating account
                 </h3>
                 <p className="mt-1 text-sm font-semibold leading-6" style={{ color: T.textMuted }}>
-                  By creating an account, I agree to respect all members, avoid rank pressure, help build a positive community, and support those in need.
+                  Review the community agreement. Your account will be created after you tap Create account below.
                 </p>
               </div>
+            </div>
+
+            <div className="rounded-2xl border px-3 py-3 text-sm font-semibold leading-6" style={{ backgroundColor: "rgba(248,250,253,0.96)", borderColor: T.borderSoft, color: T.textMuted }}>
+              I agree to respect all members, avoid rank pressure, help build a positive community, and support those in need.
             </div>
 
             <div className="mt-4 grid grid-cols-2 gap-2">
@@ -814,13 +798,9 @@ export default function AuthModal() {
                 type="button"
                 onClick={() => setShowCommunityAgreement(false)}
                 className="sh-tap h-11 rounded-2xl border text-sm font-extrabold"
-                style={{
-                  backgroundColor: "#FFFFFF",
-                  borderColor: T.borderSoft,
-                  color: T.textMuted,
-                }}
+                style={{ backgroundColor: "#FFFFFF", borderColor: T.borderSoft, color: T.textMuted }}
               >
-                Cancel
+                Back
               </button>
 
               <button
@@ -833,7 +813,7 @@ export default function AuthModal() {
                 className="sh-tap h-11 rounded-2xl text-sm font-extrabold text-white disabled:opacity-70"
                 style={{ backgroundColor: T.red }}
               >
-                I Agree
+                {submitting ? "Creating..." : "Create account"}
               </button>
             </div>
           </div>
