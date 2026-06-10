@@ -110,6 +110,16 @@ function replaceProfileInList(list = [], profile = {}) {
   return list.map((item) => (item?.id === profile.id ? { ...item, ...profile } : item));
 }
 
+function profileMatchesCurrentUser(profile = {}, currentUser = {}) {
+  if (!profile?.id && !currentUser?.id) return false;
+
+  return Boolean(
+    profile?.id === currentUser?.id ||
+      profile?.email === currentUser?.email ||
+      profile?.personal_email === currentUser?.personal_email
+  );
+}
+
 function refreshProfileEverywhere({
   profile,
   setCurrentUser,
@@ -217,6 +227,28 @@ export function useProfileActions({
       return { ok: false, error: "You must be signed in to request re-review." };
     }
 
+    const buildPendingProfile = (profile = currentUser) => ({
+      ...currentUser,
+      ...(profile || {}),
+      verification_status: "pending",
+      phone: cleanPhone || profile?.phone || currentUser.phone || null,
+      updated_at: profile?.updated_at || new Date().toISOString(),
+    });
+
+    const moveProfileToPendingQueue = (profile) => {
+      if (!profile?.id) return;
+
+      setUsers((list) => (list || []).filter((item) => !profileMatchesCurrentUser(item, profile)));
+      setBlockedUsers((list) => (list || []).filter((item) => !profileMatchesCurrentUser(item, profile)));
+      setPendingUsers((list) => {
+        const safeList = list || [];
+        const exists = safeList.some((item) => profileMatchesCurrentUser(item, profile));
+        return exists
+          ? safeList.map((item) => (profileMatchesCurrentUser(item, profile) ? { ...item, ...profile } : item))
+          : [{ ...profile }, ...safeList];
+      });
+    };
+
     if (SUPA) {
       const { error } = await ProfilesDB.requestProfileRereview({
         phone: cleanPhone,
@@ -227,13 +259,11 @@ export function useProfileActions({
       }
 
       const { profile } = await Auth.getCurrentUser();
-      const updated = profile || {
-        ...currentUser,
-        verification_status: "pending",
-        phone: cleanPhone || currentUser.phone,
-      };
+      const updated = buildPendingProfile(profile);
 
+      writeProfileCache(updated);
       setCurrentUser(updated);
+      moveProfileToPendingQueue(updated);
       pushToast(
         "Re-review request submitted. Your profile is pending admin review again.",
         "success"
@@ -248,26 +278,10 @@ export function useProfileActions({
       return { ok: true, data: updated };
     }
 
-    const updated = {
-      ...currentUser,
-      verification_status: "pending",
-      phone: cleanPhone || currentUser.phone,
-    };
-
-    const matchesMe = (u) =>
-      u.id === currentUser.id ||
-      u.email === currentUser.email ||
-      u.personal_email === currentUser.personal_email;
+    const updated = buildPendingProfile(currentUser);
 
     setCurrentUser(updated);
-    setUsers((l) => l.filter((u) => !matchesMe(u)));
-    setBlockedUsers((l) => l.filter((u) => !matchesMe(u)));
-    setPendingUsers((l) => {
-      const exists = l.some((u) => u.id === currentUser.id);
-      return exists
-        ? l.map((u) => (u.id === currentUser.id ? updated : u))
-        : [...l, updated];
-    });
+    moveProfileToPendingQueue(updated);
 
     pushToast("Re-review request submitted", "success");
     sendToPendingReview({
