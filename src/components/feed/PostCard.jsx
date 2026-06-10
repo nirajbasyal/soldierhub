@@ -497,8 +497,6 @@ export default function PostCard({ post, openRepliesDefault = false }) {
   const bodyText = post?.body || post?.content || post?.text || "";
   const postImage = getPostImage(post);
 
-  // Descriptive alt text for accessibility and image SEO. Derived from the post
-  // body (preferred), falling back to category + author when there is no text.
   const imageAlt = (() => {
     const fromBody = String(bodyText || "").replace(/\s+/g, " ").trim();
     if (fromBody) return fromBody.length > 120 ? `${fromBody.slice(0, 119).trimEnd()}…` : fromBody;
@@ -770,7 +768,7 @@ export default function PostCard({ post, openRepliesDefault = false }) {
 
   return (
     <>
-      <article className="group overflow-visible rounded-none border-x-0 border-t border-b-0 shadow-none transition-colors duration-200 md:border md:rounded-[24px] md:shadow-sm" style={{ backgroundColor: T.card, borderColor: T.border }}>
+      <article className="group overflow-visible rounded-[22px] border shadow-sm transition-colors duration-200 md:rounded-[24px]" style={{ backgroundColor: T.card, borderColor: T.border }}>
         <div className="px-4 md:px-5 pt-4 pb-3">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-3 min-w-0 flex-1">
