@@ -1,0 +1,50 @@
+/*
+  Final mobile feed width fix.
+  Purpose: keep feed post cards close to the phone edge and visually aligned with
+  the hero/category area. This is mobile-only and does not touch app logic.
+*/
+
+@media (max-width: 767px) {
+  body .sh-feed-post-list {
+    position: relative !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: calc(100dvw - 12px) !important;
+    max-width: calc(100dvw - 12px) !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  body .sh-feed-post-list > article {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    border-radius: 20px !important;
+  }
+}
+
+@media (max-width: 767px) {
+  @supports not (width: 100dvw) {
+    body .sh-feed-post-list {
+      width: calc(100vw - 12px) !important;
+      max-width: calc(100vw - 12px) !important;
+    }
+  }
+}
+
+@media (max-width: 420px) {
+  body .sh-feed-post-list {
+    width: calc(100dvw - 10px) !important;
+    max-width: calc(100dvw - 10px) !important;
+  }
+
+  @supports not (width: 100dvw) {
+    body .sh-feed-post-list {
+      width: calc(100vw - 10px) !important;
+      max-width: calc(100vw - 10px) !important;
+    }
+  }
+}
