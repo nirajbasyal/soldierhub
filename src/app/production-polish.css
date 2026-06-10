@@ -55,12 +55,28 @@
 }
 
 @media (max-width: 767px) {
-  .sh-feed-post-list {
-    gap: 0.58rem !important;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
+  main > div.grid > div.mx-auto {
+    gap: 0.6rem !important;
+  }
+
+  main > div.grid > div.mx-auto > *:not(.sh-feed-post-list) {
     width: 100% !important;
     max-width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  /* Production mobile feed alignment: force post cards onto the same near-edge grid as the top feed cards. */
+  .sh-feed-post-list {
+    position: relative !important;
+    left: 50% !important;
+    width: calc(100vw - 12px) !important;
+    max-width: calc(100vw - 12px) !important;
+    margin-left: calc(-50vw + 6px) !important;
+    margin-right: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    gap: 0.58rem !important;
   }
 
   .sh-feed-post-list > article {
@@ -70,19 +86,6 @@
     margin-right: 0 !important;
     border-radius: 20px !important;
     box-shadow: 0 10px 22px rgba(7, 27, 51, 0.058) !important;
-  }
-
-  /* Keep weather, hero, quick actions, category strip, and post cards on one mobile edge line. */
-  main > div.grid > div.mx-auto > * {
-    width: 100% !important;
-    max-width: 100% !important;
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-  }
-
-  /* Tighten the vertical rhythm between the top feed sections. */
-  main > div.grid > div.mx-auto {
-    gap: 0.6rem !important;
   }
 
   main > div.grid > div.mx-auto > div:first-child {
@@ -104,14 +107,15 @@
 }
 
 @media (max-width: 520px) {
-  .sh-feed-post-list {
-    gap: 0.5rem !important;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-  }
-
   main > div.grid > div.mx-auto {
     gap: 0.52rem !important;
+  }
+
+  .sh-feed-post-list {
+    width: calc(100vw - 10px) !important;
+    max-width: calc(100vw - 10px) !important;
+    margin-left: calc(-50vw + 5px) !important;
+    gap: 0.5rem !important;
   }
 }
 
