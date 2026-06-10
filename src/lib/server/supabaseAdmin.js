@@ -5,8 +5,7 @@ import { createClient } from "@supabase/supabase-js";
  *
  * Never import this from Client Components. The service-role key must only exist
  * in server runtime environment variables and must never be prefixed with
- * NEXT_PUBLIC_. Admin database actions must fail closed when this key is not
- * configured correctly.
+ * NEXT_PUBLIC_.
  */
 export function createServiceRoleClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -22,17 +21,10 @@ export function createServiceRoleClient() {
   });
 }
 
-export function requireServiceRoleClient() {
-  const client = createServiceRoleClient();
+export function getOptionalServiceRoleClient() {
+  return createServiceRoleClient();
+}
 
-  if (!client) {
-    return {
-      ok: false,
-      status: 503,
-      error:
-        "Admin service database access is not configured. Set SUPABASE_SERVICE_ROLE_KEY as a server-only environment variable and redeploy.",
-    };
-  }
-
-  return { ok: true, supabase: client };
+export function getServiceRoleStatus() {
+  return createServiceRoleClient() ? "service_role" : "missing";
 }
