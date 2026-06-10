@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { checkRateLimit, rateLimitResponse } from "@/lib/server/rateLimit";
 import { requireAdmin } from "@/lib/server/adminAuth";
-import { requireServiceRoleClient } from "@/lib/server/supabaseAdmin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,51 +11,29 @@ function cleanText(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function profileSelect() {
-  return "id, full_name, email, personal_email, verification_status, role";
-}
-
-function statusForAction(action) {
-  if (action === "verify" || action === "verify_by_email") return "verified";
-  if (action === "reject") return "rejected";
-  return "revoked";
-}
-
-async function updateProfileStatusById({ supabase, profileId, status }) {
-  return supabase
-    .from("profiles")
-    .update({ verification_status: status })
-    .eq("id", profileId)
-    .select(profileSelect())
-    .maybeSingle();
-}
-
-async function updateProfileStatusByEmail({ supabase, email, status }) {
-  const primary = await supabase
-    .from("profiles")
-    .update({ verification_status: status })
-    .eq("email", email)
-    .select(profileSelect())
-    .maybeSingle();
-
-  if (primary.data || primary.error) return primary;
-
-  return supabase
-    .from("profiles")
-    .update({ verification_status: status })
-    .eq("personal_email", email)
-    .select(profileSelect())
-    .maybeSingle();
-}
-
 async function runAdminAction({ supabase, action, profileId, email }) {
-  const status = statusForAction(action);
-
-  if (["verify", "reject", "revoke"].includes(action)) {
-    return updateProfileStatusById({ supabase, profileId, status });
+  if (action === "verify") {
+    return supabase
+      .from("profiles")
+      .update({ verification_status: "verified" })
+      .eq("id", profileId)
+      .select("id, full_name, email, verification_status")
+      .maybeSingle();
   }
 
-  return updateProfileStatusByEmail({ supabase, email, status });
+  if (action === "reject") {
+    return supabase.rpc("admin_reject_profile", { p_profile_id: profileId });
+  }
+
+  if (action === "revoke") {
+    return supabase.rpc("admin_revoke_profile", { p_profile_id: profileId });
+  }
+
+  if (action === "verify_by_email") {
+    return supabase.rpc("admin_verify_profile_by_email", { p_email: email });
+  }
+
+  return supabase.rpc("admin_revoke_profile_by_email", { p_email: email });
 }
 
 export async function POST(request) {
@@ -82,14 +59,6 @@ export async function POST(request) {
   });
   if (!userRateLimit.allowed) return rateLimitResponse(userRateLimit);
 
-  const db = requireServiceRoleClient();
-  if (!db.ok) {
-    return NextResponse.json(
-      { error: db.error, code: "ADMIN_DB_REQUIRED" },
-      { status: db.status, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
-    );
-  }
-
   let requestBody;
   try {
     requestBody = await request.json();
@@ -110,12 +79,14 @@ export async function POST(request) {
       { status: 400, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
     );
   }
+
   if (["verify", "reject", "revoke"].includes(action) && !profileId) {
     return NextResponse.json(
       { error: "Profile id is required for this admin action." },
       { status: 400, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
     );
   }
+
   if (["verify_by_email", "revoke_by_email"].includes(action) && !email) {
     return NextResponse.json(
       { error: "Email is required for this admin action." },
@@ -124,7 +95,7 @@ export async function POST(request) {
   }
 
   const { data, error } = await runAdminAction({
-    supabase: db.supabase,
+    supabase: admin.supabase,
     action,
     profileId,
     email,
@@ -138,7 +109,7 @@ export async function POST(request) {
   }
 
   return NextResponse.json(
-    { data: data || null },
+    { data: Array.isArray(data) ? data[0] || null : data || null },
     { status: 200, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
   );
 }
