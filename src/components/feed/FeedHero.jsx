@@ -8,14 +8,14 @@ function HeroPill({ icon: Icon, children, tone = "blue" }) {
 
   return (
     <span
-      className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-extrabold shadow-sm"
+      className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10.5px] font-extrabold shadow-sm md:gap-1.5 md:px-3 md:py-1.5 md:text-[11px]"
       style={{
         backgroundColor: isRed ? "rgba(179,25,66,0.08)" : "rgba(30,78,140,0.07)",
         borderColor: isRed ? "rgba(179,25,66,0.16)" : "rgba(30,78,140,0.14)",
         color: isRed ? T.brandRed : T.brandBlue,
       }}
     >
-      {Icon ? <Icon size={13} strokeWidth={2.45} aria-hidden="true" /> : null}
+      {Icon ? <Icon size={12} className="md:h-[13px] md:w-[13px]" strokeWidth={2.45} aria-hidden="true" /> : null}
       {children}
     </span>
   );
@@ -26,7 +26,7 @@ export default function FeedHero({ currentUser, postCount = 0 }) {
 
   return (
     <section
-      className="relative mb-0 overflow-hidden rounded-[24px] border px-4 py-4 shadow-[0_14px_34px_rgba(7,27,51,0.075)] md:px-5 md:py-5"
+      className="relative mb-0 overflow-hidden rounded-[22px] border px-3.5 py-3 shadow-[0_10px_24px_rgba(7,27,51,0.06)] md:rounded-[24px] md:px-5 md:py-5 md:shadow-[0_14px_34px_rgba(7,27,51,0.075)]"
       style={{
         background:
           "linear-gradient(180deg, rgba(253,254,255,0.98) 0%, rgba(247,250,254,0.98) 100%)",
@@ -34,19 +34,19 @@ export default function FeedHero({ currentUser, postCount = 0 }) {
       }}
     >
       <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-[linear-gradient(90deg,#B31942_0%,#1E4E8C_62%,#DCE8F7_100%)]" />
-      <div className="pointer-events-none absolute -right-20 -top-24 h-48 w-48 rounded-full bg-[#DCE8F7]/70 blur-3xl" />
+      <div className="pointer-events-none absolute -right-24 -top-28 h-44 w-44 rounded-full bg-[#DCE8F7]/65 blur-3xl md:-right-20 md:-top-24 md:h-48 md:w-48" />
 
       <div className="relative">
-        <div className="mb-3 flex flex-wrap items-center gap-2">
+        <div className="mb-2 flex flex-wrap items-center gap-2 md:mb-3">
           <div
-            className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-extrabold shadow-sm"
+            className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-extrabold shadow-sm md:gap-2 md:px-3 md:py-1.5 md:text-xs"
             style={{
               backgroundColor: "rgba(255,255,255,0.82)",
               borderColor: T.borderSoft,
               color: T.brandNavy,
             }}
           >
-            <MapPin size={14} style={{ color: T.brandRed }} aria-hidden="true" />
+            <MapPin size={12} className="md:h-3.5 md:w-3.5" style={{ color: T.brandRed }} aria-hidden="true" />
             <span>Fort Bliss</span>
             <span className="h-1 w-1 rounded-full" style={{ backgroundColor: "rgba(179,25,66,0.45)" }} />
             <span style={{ color: T.textSecondary }}>El Paso, TX</span>
@@ -54,7 +54,7 @@ export default function FeedHero({ currentUser, postCount = 0 }) {
         </div>
 
         <div className="max-w-4xl">
-          <h1 className="text-[23px] font-black leading-[1.12] tracking-tight md:text-[32px]" style={{ color: T.brandNavy }}>
+          <h1 className="text-[20px] font-black leading-[1.08] tracking-tight md:text-[32px] md:leading-[1.12]" style={{ color: T.brandNavy }}>
             {currentUser ? (
               <>Welcome back, {firstName}.</>
             ) : (
@@ -62,7 +62,7 @@ export default function FeedHero({ currentUser, postCount = 0 }) {
             )}
           </h1>
 
-          <p className="mt-2.5 max-w-3xl text-sm font-semibold leading-6 md:text-[15px]" style={{ color: T.textSecondary }}>
+          <p className="mt-1.5 max-w-3xl text-[12.5px] font-semibold leading-5 md:mt-2.5 md:text-[15px] md:leading-6" style={{ color: T.textSecondary }}>
             {currentUser ? (
               <>Catch up on what your community is asking, sharing, and solving today.</>
             ) : (
@@ -73,18 +73,18 @@ export default function FeedHero({ currentUser, postCount = 0 }) {
             )}
           </p>
 
-          <p className="mt-2 max-w-3xl text-[11px] font-semibold leading-5 md:text-xs" style={{ color: T.textMuted }}>
-            Independent, unofficial community platform. No rank-pulling culture — just respectful help from the community.
+          <p className="mt-1.5 max-w-3xl text-[10.5px] font-semibold leading-4 md:mt-2 md:text-xs md:leading-5" style={{ color: T.textMuted }}>
+            Independent, unofficial community platform. No rank-pulling culture — respectful help only.
           </p>
         </div>
 
-        <div className="mt-3.5 flex flex-wrap items-center gap-2">
+        <div className="mt-2.5 flex flex-wrap items-center gap-1.5 md:mt-3.5 md:gap-2">
           <HeroPill tone="red" icon={TrendingUp}>
-            {postCount} active discussions
+            {postCount} discussions
           </HeroPill>
 
           <HeroPill icon={ShieldCheck}>
-            Verified members only
+            Verified members
           </HeroPill>
         </div>
       </div>
