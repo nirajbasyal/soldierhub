@@ -1,3 +1,4 @@
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import "./feed-polish.css";
 import "./production-polish.css";
@@ -185,6 +186,7 @@ export default function RootLayout({ children }) {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(siteSchema) }}
         />
         <Providers>{children}</Providers>
+        <Analytics />
       </body>
     </html>
   );
