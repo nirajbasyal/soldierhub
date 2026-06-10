@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { checkRateLimit, rateLimitResponse } from "@/lib/server/rateLimit";
 import { requireAdmin } from "@/lib/server/adminAuth";
+import { getAdminDbClient, getAdminDbClientMode } from "@/lib/server/supabaseAdmin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -102,8 +103,11 @@ export async function POST(request) {
     );
   }
 
+  const adminDb = getAdminDbClient(admin.supabase);
+  const adminDbMode = getAdminDbClientMode();
+
   const { data, error } = await runAdminAction({
-    supabase: admin.supabase,
+    supabase: adminDb,
     action,
     profileId,
     email,
@@ -112,12 +116,26 @@ export async function POST(request) {
   if (error) {
     return NextResponse.json(
       { error: error.message || "Admin action failed." },
-      { status: 500, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
+      {
+        status: 500,
+        headers: {
+          ...userRateLimit.headers,
+          "Cache-Control": "no-store",
+          "X-SoldierHub-Admin-DB": adminDbMode,
+        },
+      }
     );
   }
 
   return NextResponse.json(
     { data: Array.isArray(data) ? data[0] || null : data || null },
-    { status: 200, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
+    {
+      status: 200,
+      headers: {
+        ...userRateLimit.headers,
+        "Cache-Control": "no-store",
+        "X-SoldierHub-Admin-DB": adminDbMode,
+      },
+    }
   );
 }
