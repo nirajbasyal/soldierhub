@@ -18,10 +18,11 @@ export async function getAdminMfaState() {
     };
   }
 
-  const [aalResult, factorsResult] = await Promise.all([
-    supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
-    supabase.auth.mfa.listFactors(),
-  ]);
+  // Supabase Auth uses a browser storage lock. Running MFA auth calls in parallel
+  // can break that lock on slower mobile browsers and trigger Sentry AbortError noise.
+  // Keep these calls sequential so the admin/MFA pages remain stable.
+  const aalResult = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  const factorsResult = await supabase.auth.mfa.listFactors();
 
   const verifiedTotpFactors = getVerifiedTotpFactors(factorsResult.data);
 
