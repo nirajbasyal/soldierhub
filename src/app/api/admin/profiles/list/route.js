@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { checkRateLimit, rateLimitResponse } from "@/lib/server/rateLimit";
 import { requireAdmin } from "@/lib/server/adminAuth";
-import { getAdminDbClient, getAdminDbClientMode } from "@/lib/server/supabaseAdmin";
+import { requireServiceRoleClient } from "@/lib/server/supabaseAdmin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,11 +28,8 @@ async function listAdminProfiles({ supabase, queue, limit }) {
     p_limit: limit,
   });
 
-  if (!rpcResult.error) {
-    return { data: rpcResult.data || [], error: null };
-  }
+  if (!rpcResult.error) return { data: rpcResult.data || [], error: null };
 
-  // Backward-compatible fallback if the RPC is unavailable during deployment.
   if (queue === "blocked") {
     const fallback = await supabase
       .from("profiles")
@@ -60,7 +57,6 @@ export async function POST(request) {
     limit: 80,
     windowMs: 60 * 1000,
   });
-
   if (!ipRateLimit.allowed) return rateLimitResponse(ipRateLimit);
 
   const admin = await requireAdmin(request);
@@ -76,8 +72,15 @@ export async function POST(request) {
     limit: 120,
     windowMs: 10 * 60 * 1000,
   });
-
   if (!userRateLimit.allowed) return rateLimitResponse(userRateLimit);
+
+  const db = requireServiceRoleClient();
+  if (!db.ok) {
+    return NextResponse.json(
+      { error: db.error, code: "ADMIN_DB_REQUIRED" },
+      { status: db.status, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
+    );
+  }
 
   let requestBody;
   try {
@@ -99,38 +102,16 @@ export async function POST(request) {
     );
   }
 
-  const adminDb = getAdminDbClient(admin.supabase);
-  const adminDbMode = getAdminDbClientMode();
-
-  const { data, error } = await listAdminProfiles({
-    supabase: adminDb,
-    queue,
-    limit,
-  });
-
+  const { data, error } = await listAdminProfiles({ supabase: db.supabase, queue, limit });
   if (error) {
     return NextResponse.json(
       { error: error.message || "Could not load admin profiles." },
-      {
-        status: 500,
-        headers: {
-          ...userRateLimit.headers,
-          "Cache-Control": "no-store",
-          "X-SoldierHub-Admin-DB": adminDbMode,
-        },
-      }
+      { status: 500, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
     );
   }
 
   return NextResponse.json(
     { data: data || [] },
-    {
-      status: 200,
-      headers: {
-        ...userRateLimit.headers,
-        "Cache-Control": "no-store",
-        "X-SoldierHub-Admin-DB": adminDbMode,
-      },
-    }
+    { status: 200, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
   );
 }
