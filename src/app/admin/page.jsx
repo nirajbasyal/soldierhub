@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  Activity,
   BookOpen,
   DoorOpen,
   Flag,
@@ -29,6 +30,7 @@ import AdminVerifyByEmail from "@/components/admin/AdminVerifyByEmail";
 import ResourceManager from "@/components/admin/ResourceManager";
 import BoardPrepManager from "@/components/admin/BoardPrepManager";
 import GateManager from "@/components/admin/GateManager";
+import AuditLogs from "@/components/admin/AuditLogs";
 
 async function getAccessToken() {
   const supabase = createClient();
@@ -54,6 +56,7 @@ export default function AdminPage() {
   const [resourceCount, setResourceCount] = useState(0);
   const [gateCount, setGateCount] = useState(0);
   const [boardRequestCount, setBoardRequestCount] = useState(0);
+  const [auditCount, setAuditCount] = useState(0);
   const [mfaChecking, setMfaChecking] = useState(true);
   const [mfaAllowed, setMfaAllowed] = useState(false);
 
@@ -163,6 +166,7 @@ export default function AdminPage() {
     { k: "board", label: "Board Prep", icon: BookOpen, count: boardRequestCount },
     { k: "gates", label: "Gates", icon: DoorOpen, count: gateCount },
     { k: "resources", label: "Resources", icon: Link2, count: resourceCount },
+    { k: "audit", label: "Audit", icon: Activity, count: auditCount },
   ];
 
   const activeTab = tabs.find((item) => item.k === tab) || tabs[0];
@@ -187,7 +191,7 @@ export default function AdminPage() {
                   Admin dashboard
                 </h1>
                 <p className="mt-1 text-sm leading-6" style={{ color: T.textMuted }}>
-                  Review users, reports, gates, resources, and Board Prep content from one safe admin panel.
+                  Review users, reports, gates, resources, Board Prep content, and audit history from one safe admin panel.
                 </p>
               </div>
               <span className="w-fit rounded-full px-3 py-1 text-xs font-black uppercase tracking-[0.14em]" style={{ backgroundColor: T.blueSoft, color: T.blue }}>
@@ -282,6 +286,7 @@ export default function AdminPage() {
                 {tab === "board" && <BoardPrepManager onPendingRequestCountChange={setBoardRequestCount} />}
                 {tab === "gates" && <GateManager onCountChange={setGateCount} />}
                 {tab === "resources" && <ResourceManager onCountChange={setResourceCount} />}
+                {tab === "audit" && <AuditLogs onCountChange={setAuditCount} />}
               </div>
             </section>
           </div>
