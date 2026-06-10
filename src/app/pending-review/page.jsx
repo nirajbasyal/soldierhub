@@ -117,7 +117,9 @@ function PendingReviewContent() {
   const isRevoked = profileStatus === "revoked";
   const isApproved = profileStatus === "verified";
   const isAccessBlocked = isRejected || isRevoked;
-  const phoneInvalid = rereviewPhone.trim().length > 0 && rereviewPhone.trim().length !== 10;
+  const cleanRereviewPhone = rereviewPhone.replace(/\D/g, "");
+  const hasPhoneOnFile = cleanRereviewPhone.length === 10;
+  const phoneInvalid = !hasPhoneOnFile && rereviewPhone.trim().length > 0 && cleanRereviewPhone.length !== 10;
 
   const safeSignOut = async () => {
     if (supabase) await supabase.auth.signOut();
@@ -200,13 +202,12 @@ function PendingReviewContent() {
         setAuthModal("login");
         return;
       }
-      const cleanPhone = rereviewPhone.trim();
-      if (cleanPhone && cleanPhone.length !== 10) {
+      if (!hasPhoneOnFile && rereviewPhone.trim().length > 0 && cleanRereviewPhone.length !== 10) {
         setRereviewMessage("Please enter a valid 10-digit phone number.");
         return;
       }
       setRereviewing(true);
-      const result = await requestRereview({ phone: cleanPhone });
+      const result = await requestRereview({ phone: cleanRereviewPhone });
       if (result?.ok === false) {
         setRereviewMessage(result.error || "Could not request re-review. Please contact admin.");
         return;
@@ -279,20 +280,32 @@ function PendingReviewContent() {
             <>
               <div className="mt-6 space-y-3">
                 <StepCard icon={ShieldAlert} tone="danger" title={isRejected ? "Admin did not approve this profile" : "Access was removed"} body={isRejected ? "This profile was not approved during verification. You may request another review using the same account." : "For security reasons, access to this profile was removed. You may contact admin or request another review."} />
-                <StepCard icon={Mail} title="Need help?" body={`Contact the Soldier Hub admin team at ${ADMIN_CONTACT_EMAIL}. You may also add an optional phone number below if you would like to be contacted for additional verification before requesting re-review.`} />
+                <StepCard icon={Mail} title="Need help?" body={hasPhoneOnFile ? `Contact the Soldier Hub admin team at ${ADMIN_CONTACT_EMAIL}. Your phone number is already on file, so you can request re-review without adding it again.` : `Contact the Soldier Hub admin team at ${ADMIN_CONTACT_EMAIL}. You may also add an optional phone number below if you would like to be contacted for additional verification before requesting re-review.`} />
               </div>
               <EmailBadge email={currentEmail} />
               <div className="mt-5 rounded-2xl border p-4 text-left sm:p-5" style={{ backgroundColor: "#FFFFFF", borderColor: "rgba(63,95,125,0.18)" }}>
                 <p className="text-[15px] font-extrabold" style={{ color: T.text }}>Request re-review</p>
-                <p className="mt-1.5 text-[13px] leading-6" style={{ color: T.textMuted }}>Add optional information below. This will move your account back to pending admin review.</p>
-                <label className="mt-4 block">
-                  <span className="mb-1.5 block text-xs font-bold" style={{ color: T.textMuted }}>Phone number optional</span>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2" style={{ color: phoneInvalid ? T.red : T.textSubtle }}><Phone size={17} /></span>
-                    <input type="tel" inputMode="numeric" maxLength={10} value={rereviewPhone} onChange={(e) => setRereviewPhone(e.target.value.replace(/\D/g, ""))} placeholder="9151234567" className="h-12 w-full rounded-2xl border bg-white pl-11 pr-3 text-[16px] outline-none" style={{ borderColor: phoneInvalid ? T.red : "rgba(63,95,125,0.22)", color: T.text }} />
+                <p className="mt-1.5 text-[13px] leading-6" style={{ color: T.textMuted }}>{hasPhoneOnFile ? "Your phone number is already saved. Requesting re-review will move your account back to pending admin review." : "Add optional information below. This will move your account back to pending admin review."}</p>
+                {hasPhoneOnFile ? (
+                  <div className="mt-4 rounded-2xl border px-3 py-3" style={{ backgroundColor: "#F7FAFD", borderColor: "rgba(63,95,125,0.18)" }}>
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: "rgba(63,95,125,0.1)", color: T.navy }}><Phone size={17} /></span>
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-black uppercase tracking-[0.14em]" style={{ color: T.textMuted }}>Phone on file</p>
+                        <p className="mt-0.5 text-sm font-extrabold" style={{ color: T.text }}>{cleanRereviewPhone}</p>
+                      </div>
+                    </div>
                   </div>
-                  {phoneInvalid ? <p className="mt-1.5 text-xs font-semibold" style={{ color: T.red }}>Please enter a valid 10-digit phone number.</p> : null}
-                </label>
+                ) : (
+                  <label className="mt-4 block">
+                    <span className="mb-1.5 block text-xs font-bold" style={{ color: T.textMuted }}>Phone number optional</span>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2" style={{ color: phoneInvalid ? T.red : T.textSubtle }}><Phone size={17} /></span>
+                      <input type="tel" inputMode="numeric" maxLength={10} value={rereviewPhone} onChange={(e) => setRereviewPhone(e.target.value.replace(/\D/g, ""))} placeholder="9151234567" className="h-12 w-full rounded-2xl border bg-white pl-11 pr-3 text-[16px] outline-none" style={{ borderColor: phoneInvalid ? T.red : "rgba(63,95,125,0.22)", color: T.text }} />
+                    </div>
+                    {phoneInvalid ? <p className="mt-1.5 text-xs font-semibold" style={{ color: T.red }}>Please enter a valid 10-digit phone number.</p> : null}
+                  </label>
+                )}
                 {rereviewMessage ? <p className="mt-3 text-xs leading-6" style={{ color: T.textMuted }}>{rereviewMessage}</p> : null}
               </div>
               <div className="mt-6 flex flex-col gap-2.5">
