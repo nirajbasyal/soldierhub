@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { BookOpen, CheckCircle2, ChevronRight, Flame, Target } from "lucide-react";
 import { T } from "@/lib/theme";
 import { createClient } from "@/lib/supabase/client";
+import MobileFeedQuickActions from "@/components/feed/MobileFeedQuickActions";
 
 const HISTORY_DAYS = 14;
 
@@ -210,13 +211,13 @@ export function BoardPrepStatusBadge({ variant = "default", className = "", onCl
 
 /**
  * Sidebar card promoting the daily Board Prep quiz.
- * The mobile feed version intentionally renders nothing because Board Prep lives in the hamburger menu.
+ * The mobile feed variant renders a compact quick-action row below the feed hero.
  */
 export default function BoardPrepCard({ variant = "sidebar", className = "" }) {
   const router = useRouter();
   const compact = variant === "mobile";
 
-  if (compact) return null;
+  if (compact) return <MobileFeedQuickActions />;
 
   return (
     <button
