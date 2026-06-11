@@ -3,6 +3,11 @@ import { createHash } from "crypto";
 const DEFAULT_WINDOW_MS = 60 * 1000;
 const DEFAULT_LIMIT = 60;
 const MAX_TRACKED_KEYS = 5000;
+const SHARED_RATE_LIMIT_TIMEOUT_MS = Number(process.env.RATE_LIMIT_SHARED_TIMEOUT_MS || 700);
+
+function isProductionRuntime() {
+  return process.env.NODE_ENV === "production";
+}
 
 function getStore() {
   if (!globalThis.__soldierhubRateLimitStore) {
@@ -64,6 +69,26 @@ function cleanupExpiredEntries(store, now) {
       store.delete(key);
     }
   }
+}
+
+function unavailableRateLimitResult(reason = "shared_rate_limiter_unavailable") {
+  return {
+    allowed: false,
+    limit: 0,
+    remaining: 0,
+    retryAfter: 30,
+    resetAt: Date.now() + 30 * 1000,
+    source: "unavailable",
+    status: 503,
+    error: "Traffic protection is temporarily unavailable. Please try again shortly.",
+    reason,
+    headers: {
+      "X-RateLimit-Limit": "0",
+      "X-RateLimit-Remaining": "0",
+      "X-RateLimit-Reset": String(Math.ceil((Date.now() + 30 * 1000) / 1000)),
+      "X-RateLimit-Source": "unavailable",
+    },
+  };
 }
 
 function checkInMemoryRateLimit(
@@ -130,32 +155,40 @@ async function runUpstashPipeline(commands) {
   const config = getUpstashConfig();
   if (!config) return null;
 
-  const response = await fetch(`${config.url}/pipeline`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${config.token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(commands),
-    cache: "no-store",
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), SHARED_RATE_LIMIT_TIMEOUT_MS);
 
-  if (!response.ok) {
-    throw new Error(`Rate limit store returned ${response.status}`);
+  try {
+    const response = await fetch(`${config.url}/pipeline`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(commands),
+      cache: "no-store",
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Rate limit store returned ${response.status}`);
+    }
+
+    const payload = await response.json();
+
+    if (!Array.isArray(payload)) {
+      throw new Error("Rate limit store returned an invalid response.");
+    }
+
+    const commandError = payload.find((entry) => entry?.error);
+    if (commandError) {
+      throw new Error(commandError.error || "Rate limit store command failed.");
+    }
+
+    return payload.map((entry) => entry?.result);
+  } finally {
+    clearTimeout(timeout);
   }
-
-  const payload = await response.json();
-
-  if (!Array.isArray(payload)) {
-    throw new Error("Rate limit store returned an invalid response.");
-  }
-
-  const commandError = payload.find((entry) => entry?.error);
-  if (commandError) {
-    throw new Error(commandError.error || "Rate limit store command failed.");
-  }
-
-  return payload.map((entry) => entry?.result);
 }
 
 async function checkSharedRateLimit(
@@ -202,7 +235,12 @@ async function checkSharedRateLimit(
 }
 
 export async function checkRateLimit(request, options = {}) {
-  if (!getUpstashConfig()) {
+  const hasSharedStore = Boolean(getUpstashConfig());
+
+  if (!hasSharedStore) {
+    if (isProductionRuntime()) {
+      return unavailableRateLimitResult("missing_shared_rate_limiter_config");
+    }
     return checkInMemoryRateLimit(request, options);
   }
 
@@ -210,24 +248,32 @@ export async function checkRateLimit(request, options = {}) {
     const sharedResult = await checkSharedRateLimit(request, options);
     if (sharedResult) return sharedResult;
   } catch (error) {
-    console.error("Shared rate limiter failed; using local fallback:", error);
+    console.error("Shared rate limiter failed:", error);
+    if (isProductionRuntime()) {
+      return unavailableRateLimitResult("shared_rate_limiter_error");
+    }
   }
 
   return checkInMemoryRateLimit(request, options);
 }
 
 export function rateLimitResponse(result) {
+  const status = result.status || 429;
+  const isUnavailable = status === 503;
+
   return Response.json(
     {
-      error: "Too many requests. Please try again shortly.",
+      error: result.error || "Too many requests. Please try again shortly.",
       retryAfter: result.retryAfter,
+      ...(result.reason ? { reason: result.reason } : {}),
     },
     {
-      status: 429,
+      status,
       headers: {
         ...result.headers,
         "Retry-After": String(result.retryAfter),
         "Cache-Control": "no-store",
+        ...(isUnavailable ? { "X-SoldierHub-Protection": "rate-limit-unavailable" } : {}),
       },
     }
   );
