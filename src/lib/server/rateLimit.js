@@ -5,6 +5,31 @@ const DEFAULT_LIMIT = 60;
 const MAX_TRACKED_KEYS = 5000;
 const SHARED_RATE_LIMIT_TIMEOUT_MS = Number(process.env.RATE_LIMIT_SHARED_TIMEOUT_MS || 700);
 
+// In production we require a shared (Upstash/KV) rate-limit store. The per-instance
+// in-memory store is trivially bypassed on serverless (each warm instance keeps its
+// own counters), so when the shared store is missing or unreachable in production we
+// fail CLOSED (return a 503 via rateLimitResponse) instead of silently allowing the
+// request. Outside production we keep the in-memory store for local development.
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
+
+function limiterUnavailableResult(limit = DEFAULT_LIMIT) {
+  const retryAfter = 5;
+  return {
+    allowed: false,
+    unavailable: true,
+    limit,
+    remaining: 0,
+    retryAfter,
+    resetAt: Date.now() + retryAfter * 1000,
+    source: "unavailable",
+    headers: {
+      "X-RateLimit-Limit": String(limit),
+      "X-RateLimit-Remaining": "0",
+      "X-RateLimit-Source": "unavailable",
+    },
+  };
+}
+
 function getStore() {
   if (!globalThis.__soldierhubRateLimitStore) {
     globalThis.__soldierhubRateLimitStore = new Map();
@@ -212,20 +237,50 @@ async function checkSharedRateLimit(
 
 export async function checkRateLimit(request, options = {}) {
   if (!getUpstashConfig()) {
+    // No shared store configured. In production this is a misconfiguration: fail
+    // closed rather than fall back to bypassable in-memory limiting.
+    if (IS_PRODUCTION) {
+      console.error(
+        "Shared rate limiter is not configured in production (set UPSTASH_REDIS_REST_URL/_TOKEN); failing closed."
+      );
+      return limiterUnavailableResult(options.limit);
+    }
     return checkInMemoryRateLimit(request, options);
   }
 
   try {
     const sharedResult = await checkSharedRateLimit(request, options);
     if (sharedResult) return sharedResult;
+    // A null result means the shared store could not be reached.
+    if (IS_PRODUCTION) return limiterUnavailableResult(options.limit);
   } catch (error) {
-    console.error("Shared rate limiter failed; using local fallback:", error);
+    console.error("Shared rate limiter failed:", error);
+    if (IS_PRODUCTION) return limiterUnavailableResult(options.limit);
   }
 
   return checkInMemoryRateLimit(request, options);
 }
 
 export function rateLimitResponse(result) {
+  // When the shared limiter is unavailable in production we fail closed with 503
+  // so the request is rejected rather than allowed without protection.
+  if (result.unavailable) {
+    return Response.json(
+      {
+        error: "This action is temporarily unavailable. Please try again shortly.",
+        retryAfter: result.retryAfter,
+      },
+      {
+        status: 503,
+        headers: {
+          ...result.headers,
+          "Retry-After": String(result.retryAfter),
+          "Cache-Control": "no-store",
+        },
+      }
+    );
+  }
+
   return Response.json(
     {
       error: "Too many requests. Please try again shortly.",
