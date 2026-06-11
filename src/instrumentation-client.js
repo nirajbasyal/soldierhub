@@ -17,15 +17,14 @@ const IGNORED_BROWSER_ERRORS = [
 ];
 
 Sentry.init({
-  dsn: "https://77552e0c6b99538e4b2bb012d1f1654f@o4511391652315136.ingest.us.sentry.io/4511480968314880",
+  dsn:
+    process.env.NEXT_PUBLIC_SENTRY_DSN ||
+    "https://77552e0c6b99538e4b2bb012d1f1654f@o4511391652315136.ingest.us.sentry.io/4511480968314880",
 
-  integrations: [Sentry.replayIntegration()],
-
+  // Session Replay is intentionally NOT enabled: statically referencing
+  // replayIntegration() pulls the full replay/rrweb bundle into the critical
+  // chunk of every page. Error capture and tracing stay enabled.
   tracesSampleRate: process.env.NODE_ENV === "development" ? 1.0 : 0.1,
-  enableLogs: true,
-
-  replaysSessionSampleRate: 0.05,
-  replaysOnErrorSampleRate: 1.0,
 
   sendDefaultPii: false,
 

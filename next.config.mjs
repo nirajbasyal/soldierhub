@@ -110,4 +110,14 @@ export default withSentryConfig(nextConfig, {
       removeDebugLogging: true,
     },
   },
+
+  // Strip unused Sentry features from the client bundle. Replay is not used
+  // (see src/instrumentation-client.js); these flags make that guaranteed at
+  // the bundler level rather than relying on tree-shaking.
+  bundleSizeOptimizations: {
+    excludeDebugStatements: true,
+    excludeReplayIframe: true,
+    excludeReplayShadowDom: true,
+    excludeReplayWorker: true,
+  },
 });
