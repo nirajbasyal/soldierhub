@@ -43,11 +43,12 @@ const THREAT_KEYWORDS = [
   "kill yourself",
 ];
 
+const MODERATION_MODELS = ["omni-moderation-latest", "text-moderation-latest"];
 const FAILURE_THRESHOLD = 4;
 const COOLDOWN_MS = 30 * 1000;
 const SUSTAINED_FAILURE_MS = 60 * 1000;
 const ALERT_COOLDOWN_MS = 5 * 60 * 1000;
-const OPENAI_TIMEOUT_MS = 4000;
+const OPENAI_TIMEOUT_MS = Number(process.env.MODERATION_TIMEOUT_MS || 12000);
 
 function isProductionRuntime() {
   return process.env.NODE_ENV === "production";
@@ -184,14 +185,7 @@ function localThreatCheck(text) {
   });
 }
 
-async function runOpenAiModeration(apiKey, cleanText) {
-  const openai = new OpenAI({ apiKey });
-  const moderation = await openai.moderations.create(
-    { model: "omni-moderation-latest", input: cleanText },
-    { timeout: OPENAI_TIMEOUT_MS }
-  );
-
-  const result = moderation.results?.[0];
+function buildModerationResult(result) {
   if (!result) {
     throw new Error("Moderation returned no result");
   }
@@ -226,6 +220,29 @@ async function runOpenAiModeration(apiKey, cleanText) {
     degraded: false,
     degradedReason: null,
   };
+}
+
+async function runOpenAiModeration(apiKey, cleanText) {
+  const openai = new OpenAI({ apiKey, timeout: OPENAI_TIMEOUT_MS });
+  const errors = [];
+
+  for (const model of MODERATION_MODELS) {
+    try {
+      const moderation = await openai.moderations.create(
+        { model, input: cleanText },
+        { timeout: OPENAI_TIMEOUT_MS }
+      );
+
+      return buildModerationResult(moderation.results?.[0]);
+    } catch (error) {
+      errors.push(`${model}: ${error?.status || error?.code || "error"} ${error?.message || error}`);
+
+      // Fallback only for temporary/model availability problems. Auth/quota problems must fail closed.
+      if ([401, 403, 429].includes(Number(error?.status))) break;
+    }
+  }
+
+  throw new Error(`Moderation API failed after retries: ${errors.join(" | ")}`);
 }
 
 function degradedAllow(reason, error) {
