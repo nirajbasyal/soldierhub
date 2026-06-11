@@ -28,6 +28,13 @@ export const SAFETY_MESSAGE =
 // for rate limiting — see the NOTE markers below for exactly where that slots in.
 // ---------------------------------------------------------------------------
 
+// In production, moderation fails CLOSED: if we cannot get an authoritative verdict
+// from OpenAI (missing key, open circuit, or API error) we reject the submission with
+// a temporary error instead of allowing unmoderated content onto a Soldier-facing
+// feed. Outside production we keep the "degraded allow" behavior so local development
+// without a moderation key still works.
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
+
 const BLOCKED_CATEGORIES = [
   "hate",
   "hate/threatening",
@@ -164,6 +171,25 @@ function allowResult({ degraded = false, degradedReason = null } = {}) {
   };
 }
 
+// Returned when moderation is unavailable in production. `temporaryFailure` tells
+// callers to respond with 503 (try again later) rather than 400 (content rejected).
+function unavailableResult(degradedReason) {
+  return {
+    allowed: false,
+    flagged: false,
+    blocked: false,
+    blockedBy: degradedReason,
+    categories: {},
+    scores: {},
+    matchedCategories: [],
+    reason:
+      "Posting is temporarily unavailable while we verify content safety. Please try again in a few minutes.",
+    degraded: true,
+    degradedReason,
+    temporaryFailure: true,
+  };
+}
+
 function blockResult({ blockedBy, matchedCategories = [], categories = {}, scores = {} }) {
   return {
     allowed: false,
@@ -259,21 +285,24 @@ export async function checkContentSafety(text) {
   const apiKey = process.env.MODERATION_API_KEY || process.env.OPENAI_API_KEY;
   if (!apiKey) {
     recordFailure("missing_api_key", new Error("Moderation API key not configured"));
+    // Production: fail closed. Dev: degraded allow so local work isn't blocked.
+    if (IS_PRODUCTION) return unavailableResult("local_only_missing_openai_key");
     return allowResult({
       degraded: true,
       degradedReason: "local_only_missing_openai_key",
     });
   }
 
-  // 3) Circuit open => skip OpenAI entirely and serve local-only (fast).
+  // 3) Circuit open => skip OpenAI entirely.
   if (isCircuitOpen()) {
+    if (IS_PRODUCTION) return unavailableResult("local_only_circuit_open");
     return allowResult({
       degraded: true,
       degradedReason: "local_only_circuit_open",
     });
   }
 
-  // 4) Try OpenAI. Success closes the circuit; failure trips it + degraded allow.
+  // 4) Try OpenAI. Success closes the circuit; failure trips it.
   try {
     const result = await runOpenAiModeration(apiKey, cleanText);
     recordSuccess();
@@ -281,6 +310,7 @@ export async function checkContentSafety(text) {
   } catch (error) {
     console.error("Server content safety check failed:", error);
     recordFailure("openai_error", error);
+    if (IS_PRODUCTION) return unavailableResult("moderation_error");
     return allowResult({
       degraded: true,
       degradedReason: "moderation_error_allowed_local_only",

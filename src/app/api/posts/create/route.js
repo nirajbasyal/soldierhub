@@ -287,7 +287,10 @@ export async function POST(request) {
   if (!safety.allowed) {
     return NextResponse.json(
       { error: safety.reason || "This post could not be submitted." },
-      { status: 400, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
+      {
+        status: safety.temporaryFailure ? 503 : 400,
+        headers: { ...userRateLimit.headers, "Cache-Control": "no-store" },
+      }
     );
   }
 
