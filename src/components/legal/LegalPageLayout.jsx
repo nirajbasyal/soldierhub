@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CheckCircle2, ExternalLink } from "lucide-react";
+import { CheckCircle2, ExternalLink, XCircle } from "lucide-react";
 import { T } from "@/lib/theme";
 import AppShell from "@/components/layout/AppShell";
 import Footer from "@/components/layout/Footer";
@@ -61,18 +61,21 @@ function Section({ id, title, body = [], bullets, footer, tone = "blue" }) {
       </div>
 
       <div className="space-y-3 text-[14px] leading-7 md:text-[15px]" style={{ color: T.textMuted }}>
-        {body.map((paragraph) => (
-          <p key={paragraph}>{paragraph}</p>
+        {body.map((paragraph, i) => (
+          <p key={i}>{paragraph}</p>
         ))}
 
         {bullets ? (
           <ul className="grid gap-2.5 pt-1">
-            {bullets.map((item) => (
-              <li key={item} className="flex gap-2.5 rounded-2xl bg-[#F7FAFE] px-3 py-2.5">
-                <CheckCircle2 size={16} className="mt-1 shrink-0" style={{ color: accentColor }} />
-                <span>{item}</span>
-              </li>
-            ))}
+            {bullets.map((item, i) => {
+              const BulletIcon = tone === "danger" ? XCircle : CheckCircle2;
+              return (
+                <li key={i} className="flex gap-2.5 rounded-2xl bg-[#F7FAFE] px-3 py-2.5">
+                  <BulletIcon size={16} className="mt-1 shrink-0" style={{ color: accentColor }} />
+                  <span>{item}</span>
+                </li>
+              );
+            })}
           </ul>
         ) : null}
 
@@ -101,8 +104,10 @@ export default function LegalPageLayout({
   effectiveDate,
   quickTitle,
   quickStats = [],
+  quickLinks = [],
   noticeIcon: NoticeIcon,
   noticeText,
+  contactLabel,
   sections = [],
   crossLinkTitle,
   crossLinkBody,
@@ -205,6 +210,36 @@ export default function LegalPageLayout({
               </div>
             </div>
 
+            {quickLinks.length > 0 && (
+              <div
+                className="rounded-[26px] border bg-white p-5 md:p-6"
+                style={{
+                  borderColor: "rgba(207,218,232,0.9)",
+                  boxShadow: "0 12px 30px rgba(11,28,44,0.045)",
+                }}
+              >
+                <div className="text-[11px] font-extrabold uppercase tracking-[0.14em]" style={{ color: T.textSubtle }}>
+                  Jump to section
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {quickLinks.map((link) => (
+                    <a
+                      key={link.href}
+                      href={link.href}
+                      className="inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-semibold transition hover:-translate-y-0.5"
+                      style={{
+                        backgroundColor: "#F7FAFE",
+                        borderColor: "#DCE7F4",
+                        color: T.blue,
+                      }}
+                    >
+                      {link.label}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {sections.map((section) => (
               <Section key={section.id} {...section} />
             ))}
@@ -225,14 +260,25 @@ export default function LegalPageLayout({
                 </p>
               </div>
 
-              <Link
-                href={crossLinkHref}
-                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-extrabold transition hover:-translate-y-0.5 active:scale-[0.98]"
-                style={{ background: `linear-gradient(135deg, ${T.navy} 0%, ${T.blue} 100%)`, color: "#FFFFFF" }}
-              >
-                {crossLinkLabel}
-                <ExternalLink size={15} />
-              </Link>
+              <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+                {contactLabel && (
+                  <a
+                    href="mailto:support@soldierhub.com"
+                    className="inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2.5 text-sm font-extrabold transition hover:-translate-y-0.5 active:scale-[0.98]"
+                    style={{ borderColor: "#DCE7F4", backgroundColor: "#F7FAFE", color: T.navy }}
+                  >
+                    {contactLabel}
+                  </a>
+                )}
+                <Link
+                  href={crossLinkHref}
+                  className="inline-flex items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-extrabold transition hover:-translate-y-0.5 active:scale-[0.98]"
+                  style={{ background: `linear-gradient(135deg, ${T.navy} 0%, ${T.blue} 100%)`, color: "#FFFFFF" }}
+                >
+                  {crossLinkLabel}
+                  <ExternalLink size={15} />
+                </Link>
+              </div>
             </div>
           </div>
 
