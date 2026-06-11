@@ -107,7 +107,7 @@ export default function NotificationsPage() {
 
   useEffect(() => {
     if (!currentUser) return;
-    reloadNotifications?.({ reset: true });
+    reloadNotifications?.({ silent: true });
   }, [currentUser, reloadNotifications]);
 
   useEffect(() => {
@@ -131,7 +131,7 @@ export default function NotificationsPage() {
     markNotificationsRead?.();
   }, [currentUser, markNotificationsRead, notificationSignature, notifications, notificationsLoading]);
 
-  if (authLoading || notificationsLoading) return <NotificationsLoadingState />;
+  if (authLoading) return <NotificationsLoadingState />;
   if (!currentUser) return null;
 
   return (
@@ -169,8 +169,8 @@ export default function NotificationsPage() {
             <div className="rounded-[28px] border border-white/80 bg-white/80 p-8 shadow-sm backdrop-blur">
               <EmptyState
                 icon={Bell}
-                title="You&apos;re all caught up"
-                body="When someone replies to your posts, upvotes them, or follows your profile, you&apos;ll see it here."
+                title={notificationsLoading ? "Loading activity..." : "You&apos;re all caught up"}
+                body={notificationsLoading ? "Checking your latest replies, upvotes, and follows." : "When someone replies to your posts, upvotes them, or follows your profile, you&apos;ll see it here."}
               />
             </div>
           ) : (
