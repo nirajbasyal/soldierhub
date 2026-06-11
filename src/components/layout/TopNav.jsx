@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -40,6 +40,7 @@ export default function TopNav() {
     currentUser,
     isAdmin = false,
     unreadCount = 0,
+    reloadNotifications,
     search = "",
     setSearch = () => {},
     setAuthModal = () => {},
@@ -61,6 +62,11 @@ export default function TopNav() {
   const searchIconColor = hasSearchText ? SEARCH_ACTIVE_COLOR : SEARCH_IDLE_COLOR;
   const rightSearchButtonActive = hasSearchText || searchFocused;
   const rightSearchButtonColor = rightSearchButtonActive ? SEARCH_ACTIVE_COLOR : SEARCH_IDLE_COLOR;
+
+  useEffect(() => {
+    if (!safeUser?.id || userStatus !== "verified") return;
+    reloadNotifications?.({ silent: true });
+  }, [reloadNotifications, safeUser?.id, userStatus]);
 
   const goProfile = () => {
     if (!safeUser) return setAuthModal("login");
