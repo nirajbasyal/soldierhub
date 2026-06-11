@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { checkRateLimit, rateLimitResponse } from "@/lib/server/rateLimit";
 import { requireAdmin } from "@/lib/server/adminAuth";
-import { getOptionalServiceRoleClient, getServiceRoleStatus } from "@/lib/server/supabaseAdmin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -71,10 +70,8 @@ export async function POST(request) {
   }
 
   const limit = cleanLimit(requestBody?.limit);
-  const db = getOptionalServiceRoleClient() || admin.supabase;
-  const dbMode = getServiceRoleStatus();
 
-  const { data: logs, error } = await db
+  const { data: logs, error } = await admin.supabase
     .from("profile_status_audit_log")
     .select("id, profile_id, actor_id, old_verification_status, new_verification_status, old_role, new_role, changed_at")
     .order("changed_at", { ascending: false })
@@ -83,13 +80,13 @@ export async function POST(request) {
   if (error) {
     return NextResponse.json(
       { error: error.message || "Could not load audit logs." },
-      { status: 500, headers: { ...userRateLimit.headers, "Cache-Control": "no-store", "X-SoldierHub-Admin-DB": dbMode } }
+      { status: 500, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
     );
   }
 
   try {
     const profileIds = uniqueIds((logs || []).flatMap((log) => [log.profile_id, log.actor_id]));
-    const profiles = await loadProfileMap(db, profileIds);
+    const profiles = await loadProfileMap(admin.supabase, profileIds);
 
     const enrichedLogs = (logs || []).map((log) => ({
       ...log,
@@ -99,12 +96,12 @@ export async function POST(request) {
 
     return NextResponse.json(
       { data: enrichedLogs },
-      { status: 200, headers: { ...userRateLimit.headers, "Cache-Control": "no-store", "X-SoldierHub-Admin-DB": dbMode } }
+      { status: 200, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
     );
   } catch (profileError) {
     return NextResponse.json(
       { error: profileError.message || "Could not load audit profile details." },
-      { status: 500, headers: { ...userRateLimit.headers, "Cache-Control": "no-store", "X-SoldierHub-Admin-DB": dbMode } }
+      { status: 500, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
     );
   }
 }

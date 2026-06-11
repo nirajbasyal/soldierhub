@@ -1,0 +1,41 @@
+name: Prelaunch CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main, fix/prelaunch-safety-hardening-v2]
+
+jobs:
+  build:
+    name: Lint and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://example.supabase.co' }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'ci-placeholder-anon-key' }}
+      SOLDIERHUB_ADMIN_EMAILS: ${{ secrets.SOLDIERHUB_ADMIN_EMAILS || 'admin@example.com' }}
+      MODERATION_API_KEY: ${{ secrets.MODERATION_API_KEY || 'ci-placeholder-moderation-key' }}
+      UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL || 'https://example-upstash.invalid' }}
+      UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN || 'ci-placeholder-upstash-token' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Lint
+        run: npm run lint --if-present
+
+      - name: Build
+        run: npm run build

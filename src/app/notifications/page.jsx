@@ -78,104 +78,90 @@ export default function NotificationsPage() {
     authLoading,
     notificationsLoading,
     notifications = [],
+    markAllNotificationsRead,
+    loadNotifications,
+    loadMoreNotifications,
     hasMoreNotifications,
     loadingMoreNotifications,
-    reloadNotifications,
-    loadMoreNotifications,
-    setAuthModal,
-    markNotificationsRead,
+    unreadNotificationCount,
   } = useApp();
-
-  const [unreadSnapshotIds, setUnreadSnapshotIds] = useState(() => new Set());
-  const [markReadError, setMarkReadError] = useState("");
-  const didMarkReadRef = useRef(false);
-  const didLoadRef = useRef(false);
-
-  useEffect(() => {
-    if (!currentUser?.id) return;
-    didLoadRef.current = false;
-    didMarkReadRef.current = false;
-    setUnreadSnapshotIds(new Set());
-    setMarkReadError("");
-  }, [currentUser?.id]);
-
-  useEffect(() => {
-    if (authLoading) return;
-    if (!currentUser) {
-      router.replace("/");
-      setAuthModal("login");
-    }
-  }, [authLoading, currentUser, router, setAuthModal]);
-
-  useEffect(() => {
-    if (authLoading || !currentUser?.id || didLoadRef.current) return;
-    didLoadRef.current = true;
-    reloadNotifications?.();
-  }, [authLoading, currentUser?.id, reloadNotifications]);
-
-  useEffect(() => {
-    if (authLoading || notificationsLoading || !currentUser || didMarkReadRef.current) return;
-    if (notifications.length === 0) return;
-
-    let cancelled = false;
-    setUnreadSnapshotIds(new Set(notifications.filter((item) => item.read === false).map((item) => item.id)));
-    didMarkReadRef.current = true;
-    setMarkReadError("");
-
-    Promise.resolve(markNotificationsRead?.())
-      .then((result) => {
-        if (cancelled || !result || result.ok !== false) return;
-        setMarkReadError(result.error || "Could not sync notification read status.");
-      })
-      .catch((error) => {
-        if (cancelled) return;
-        console.error("Notification read sync failed:", error);
-        setMarkReadError("Could not sync notification read status. Pull to refresh or try again later.");
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [authLoading, currentUser, markNotificationsRead, notifications, notificationsLoading]);
+  const [readSnapshotIds, setReadSnapshotIds] = useState(() => new Set());
+  const hasMarkedInitialRead = useRef(false);
+  const lastNotificationSignature = useRef("");
 
   const groupedNotifications = useMemo(
-    () => groupNotificationsByActivity(notifications, unreadSnapshotIds),
-    [notifications, unreadSnapshotIds]
+    () => groupNotificationsByActivity(notifications, readSnapshotIds),
+    [notifications, readSnapshotIds]
   );
-  const unreadGroupCount = groupedNotifications.filter((group) => group.notifications.some((item) => item.read === false)).length;
+
+  const notificationSignature = useMemo(
+    () => notifications.map((notification) => notification.id).filter(Boolean).join("|"),
+    [notifications]
+  );
+
+  useEffect(() => {
+    if (!authLoading && !currentUser) {
+      router.replace("/");
+    }
+  }, [authLoading, currentUser, router]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    loadNotifications?.({ reset: true });
+  }, [currentUser, loadNotifications]);
+
+  useEffect(() => {
+    if (!currentUser || notificationsLoading || !notifications.length) return;
+    if (hasMarkedInitialRead.current && lastNotificationSignature.current === notificationSignature) return;
+
+    const unreadIds = notifications
+      .filter((notification) => notification.read === false)
+      .map((notification) => notification.id)
+      .filter(Boolean);
+
+    if (!unreadIds.length) {
+      lastNotificationSignature.current = notificationSignature;
+      hasMarkedInitialRead.current = true;
+      return;
+    }
+
+    setReadSnapshotIds(new Set(unreadIds));
+    lastNotificationSignature.current = notificationSignature;
+    hasMarkedInitialRead.current = true;
+    markAllNotificationsRead?.({ silent: true });
+  }, [currentUser, markAllNotificationsRead, notificationSignature, notifications, notificationsLoading]);
 
   if (authLoading || notificationsLoading) return <NotificationsLoadingState />;
-  if (!authLoading && !currentUser) return <NotificationsLoadingState />;
+  if (!currentUser) return null;
 
   return (
     <AppShell hideNav>
-      <main className="min-h-screen bg-[#F3F6FA] pb-24 md:pb-12">
-        <div className="mx-auto w-full max-w-2xl px-4 py-5 md:px-6 md:py-10">
-          <CircularBackButton href="/" label="Back to feed" />
-
-          <section className="mt-5 mb-5 rounded-[28px] border border-white/80 bg-white/90 p-5 shadow-sm backdrop-blur">
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#EEF3F8]">
-                <Bell size={22} style={{ color: T.gold }} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="mb-1 text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: T.gold }}>
-                  Activity
+      <main className="min-h-screen bg-[#F3F6FA] px-4 pb-28 pt-5 md:pb-12 md:pt-8">
+        <div className="mx-auto flex w-full max-w-2xl flex-col gap-5">
+          <section className="rounded-[30px] border border-white/80 bg-white/85 p-5 shadow-sm backdrop-blur">
+            <div className="flex items-start gap-3">
+              <CircularBackButton fallbackHref="/" />
+              <div className="flex min-w-0 flex-1 items-start gap-3">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#EEF3F8]">
+                  <Bell size={22} style={{ color: T.gold }} />
                 </div>
-                <h1 className="text-3xl leading-tight font-serif md:text-4xl" style={{ color: T.navy }}>
-                  Notifications
-                </h1>
-                <p className="mt-1 text-sm" style={{ color: T.muted }}>
-                  {unreadGroupCount > 0
-                    ? `${unreadGroupCount} new notification${unreadGroupCount > 1 ? "s" : ""}.`
-                    : "Replies, upvotes, and new followers from the SoldierHub community."}
-                </p>
-                {markReadError ? (
-                  <p className="mt-2 rounded-2xl border px-3 py-2 text-xs font-semibold" style={{ backgroundColor: T.redBg, borderColor: "rgba(179,25,66,0.20)", color: T.brandRed }}>
-                    {markReadError}
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: T.gold }}>
+                    Notifications
                   </p>
-                ) : null}
+                  <h1 className="mt-1 text-2xl font-black tracking-tight" style={{ color: T.ink }}>
+                    Activity center
+                  </h1>
+                  <p className="mt-2 text-sm leading-relaxed" style={{ color: T.muted }}>
+                    Catch up on replies, upvotes, follows, and updates from your community.
+                  </p>
+                </div>
               </div>
+              {unreadNotificationCount > 0 && (
+                <span className="rounded-full bg-[#C89B3C] px-3 py-1 text-xs font-black text-white shadow-sm">
+                  {unreadNotificationCount} new
+                </span>
+              )}
             </div>
           </section>
 
@@ -183,8 +169,8 @@ export default function NotificationsPage() {
             <div className="rounded-[28px] border border-white/80 bg-white/80 p-8 shadow-sm backdrop-blur">
               <EmptyState
                 icon={Bell}
-                title="You're all caught up"
-                body="When someone replies to your posts, upvotes them, or follows your profile, you'll see it here."
+                title="You&apos;re all caught up"
+                body="When someone replies to your posts, upvotes them, or follows your profile, you&apos;ll see it here."
               />
             </div>
           ) : (
@@ -228,10 +214,10 @@ function NotificationsLoadingState() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="mb-1 text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: T.gold }}>
-                  Activity
-                </div>
-                <h1 className="text-3xl leading-tight font-serif md:text-4xl" style={{ color: T.navy }}>
                   Notifications
+                </div>
+                <h1 className="text-2xl font-black tracking-tight" style={{ color: T.ink }}>
+                  Loading activity
                 </h1>
                 <p className="mt-1 text-sm font-medium" style={{ color: T.muted }}>
                   Loading notifications...
