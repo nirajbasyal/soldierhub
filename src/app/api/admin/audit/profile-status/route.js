@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { checkRateLimit, rateLimitResponse } from "@/lib/server/rateLimit";
 import { requireAdmin } from "@/lib/server/adminAuth";
-import { getOptionalServiceRoleClient } from "@/lib/server/supabaseAdmin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -71,9 +70,8 @@ export async function POST(request) {
   }
 
   const limit = cleanLimit(requestBody?.limit);
-  const db = getOptionalServiceRoleClient() || admin.supabase;
 
-  const { data: logs, error } = await db
+  const { data: logs, error } = await admin.supabase
     .from("profile_status_audit_log")
     .select("id, profile_id, actor_id, old_verification_status, new_verification_status, old_role, new_role, changed_at")
     .order("changed_at", { ascending: false })
@@ -88,7 +86,7 @@ export async function POST(request) {
 
   try {
     const profileIds = uniqueIds((logs || []).flatMap((log) => [log.profile_id, log.actor_id]));
-    const profiles = await loadProfileMap(db, profileIds);
+    const profiles = await loadProfileMap(admin.supabase, profileIds);
 
     const enrichedLogs = (logs || []).map((log) => ({
       ...log,
