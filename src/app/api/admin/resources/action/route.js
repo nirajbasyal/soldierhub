@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import { checkRateLimit, rateLimitResponse } from "@/lib/server/rateLimit";
+import { requireAdmin } from "@/lib/server/adminAuth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,50 +11,8 @@ const MAX_TITLE_LENGTH = 140;
 const MAX_DESCRIPTION_LENGTH = 1200;
 const MAX_LINK_LENGTH = 500;
 
-function getExpectedAdminEmails() {
-  return (process.env.SOLDIERHUB_ADMIN_EMAILS || "")
-    .split(",")
-    .map((email) => email.trim().toLowerCase())
-    .filter(Boolean);
-}
-
-function getBearerToken(request) {
-  const header = request.headers.get("authorization") || "";
-  if (!header.toLowerCase().startsWith("bearer ")) return null;
-  return header.slice(7).trim() || null;
-}
-
 function cleanText(value) {
   return typeof value === "string" ? value.trim() : "";
-}
-
-function createAuthedSupabaseClient(accessToken) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!url || !anonKey) return null;
-
-  return createClient(url, anonKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-    global: { headers: { Authorization: `Bearer ${accessToken}` } },
-  });
-}
-
-function isExpectedAdmin({ user, profile }) {
-  const expectedEmails = getExpectedAdminEmails();
-
-  if (!expectedEmails.length) return false;
-
-  const authEmail = user?.email?.trim().toLowerCase() || "";
-  const profileEmail = profile?.email?.trim().toLowerCase() || "";
-  const personalEmail = profile?.personal_email?.trim().toLowerCase() || "";
-
-  return (
-    profile?.role === "admin" &&
-    expectedEmails.some((expectedEmail) =>
-      [authEmail, profileEmail, personalEmail].includes(expectedEmail)
-    )
-  );
 }
 
 function normalizeResourceInput(input = {}) {
@@ -121,35 +79,15 @@ export async function POST(request) {
 
   if (!ipRateLimit.allowed) return rateLimitResponse(ipRateLimit);
 
-  const accessToken = getBearerToken(request);
-
-  if (!accessToken) {
+  const admin = await requireAdmin(request);
+  if (!admin.ok) {
     return NextResponse.json(
-      { error: "Please log in again before using admin resource actions." },
-      { status: 401, headers: { ...ipRateLimit.headers, "Cache-Control": "no-store" } }
+      { error: admin.error, ...(admin.code ? { code: admin.code } : {}) },
+      { status: admin.status, headers: { ...ipRateLimit.headers, "Cache-Control": "no-store" } }
     );
   }
 
-  const supabase = createAuthedSupabaseClient(accessToken);
-
-  if (!supabase) {
-    return NextResponse.json(
-      { error: "Supabase is not configured." },
-      { status: 503, headers: { ...ipRateLimit.headers, "Cache-Control": "no-store" } }
-    );
-  }
-
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser(accessToken);
-
-  if (userError || !user) {
-    return NextResponse.json(
-      { error: "Please log in again before using admin resource actions." },
-      { status: 401, headers: { ...ipRateLimit.headers, "Cache-Control": "no-store" } }
-    );
-  }
+  const { supabase, user } = admin;
 
   const userRateLimit = await checkRateLimit(request, {
     keyPrefix: `admin-resources-action-user-${user.id}`,
@@ -183,26 +121,6 @@ export async function POST(request) {
     return NextResponse.json(
       { error: "Resource id is required for this action." },
       { status: 400, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
-    );
-  }
-
-  const { data: adminProfile, error: adminProfileError } = await supabase
-    .from("profiles")
-    .select("id, email, personal_email, role")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (adminProfileError) {
-    return NextResponse.json(
-      { error: "Could not verify your admin profile. Please try again." },
-      { status: 500, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
-    );
-  }
-
-  if (!isExpectedAdmin({ user, profile: adminProfile })) {
-    return NextResponse.json(
-      { error: "Admin access is required for this action." },
-      { status: 403, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
     );
   }
 
