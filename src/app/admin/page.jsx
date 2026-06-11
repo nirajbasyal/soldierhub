@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import {
   Activity,
@@ -22,15 +23,19 @@ import AppShell from "@/components/layout/AppShell";
 import Footer from "@/components/layout/Footer";
 import CircularBackButton from "@/components/ui/CircularBackButton";
 import PageLoadingState from "@/components/ui/PageLoadingState";
-import PendingUsersList from "@/components/admin/PendingUsersList";
-import ReportedPostsList from "@/components/admin/ReportedPostsList";
-import MembersList from "@/components/admin/MembersList";
-import BlockedUsersList from "@/components/admin/BlockedUsersList";
 import AdminVerifyByEmail from "@/components/admin/AdminVerifyByEmail";
-import ResourceManager from "@/components/admin/ResourceManager";
-import BoardPrepManager from "@/components/admin/BoardPrepManager";
-import GateManager from "@/components/admin/GateManager";
-import AuditLogs from "@/components/admin/AuditLogs";
+
+// Tab panels load on demand so the admin page doesn't ship every manager
+// bundle up front — only the active tab's code is downloaded.
+const managerLoading = () => <PageLoadingState title="Loading section" subtitle="One moment..." mode="admin" />;
+const PendingUsersList = dynamic(() => import("@/components/admin/PendingUsersList"), { loading: managerLoading });
+const ReportedPostsList = dynamic(() => import("@/components/admin/ReportedPostsList"), { loading: managerLoading });
+const MembersList = dynamic(() => import("@/components/admin/MembersList"), { loading: managerLoading });
+const BlockedUsersList = dynamic(() => import("@/components/admin/BlockedUsersList"), { loading: managerLoading });
+const ResourceManager = dynamic(() => import("@/components/admin/ResourceManager"), { loading: managerLoading });
+const BoardPrepManager = dynamic(() => import("@/components/admin/BoardPrepManager"), { loading: managerLoading });
+const GateManager = dynamic(() => import("@/components/admin/GateManager"), { loading: managerLoading });
+const AuditLogs = dynamic(() => import("@/components/admin/AuditLogs"), { loading: managerLoading });
 
 async function getAccessToken() {
   const supabase = createClient();
