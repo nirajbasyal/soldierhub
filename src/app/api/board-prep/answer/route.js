@@ -79,6 +79,7 @@ export async function POST(request) {
     .from("board_sessions")
     .select("id, question_ids, answers, completed")
     .eq("id", session_id)
+    .eq("user_id", user.id)
     .maybeSingle();
 
   if (sessionError || !session) {
@@ -139,6 +140,7 @@ export async function POST(request) {
       ...(isNowComplete ? { score } : {}),
     })
     .eq("id", session_id)
+    .eq("user_id", user.id)
     .select("id, answers, completed, score")
     .single();
 
