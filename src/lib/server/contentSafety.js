@@ -4,29 +4,8 @@ import * as Sentry from "@sentry/nextjs";
 export const SAFETY_MESSAGE =
   "This content may violate SoldierHub community safety rules. Please revise it and try again.";
 
-// ---------------------------------------------------------------------------
-// What changed vs. the old version, and why
-// ---------------------------------------------------------------------------
-// Old behavior: if OpenAI was missing/errored, we logged to console and allowed
-// the content. That is "silent fail-open" — a broken API key could leave every
-// post unmoderated for days with nobody noticing.
-//
-// New behavior ("loud soft fail-open"):
-//   1. Local checks ALWAYS run first (works even when OpenAI is down).
-//   2. OpenAI runs when healthy and its verdict is authoritative.
-//   3. When OpenAI fails, we allow content that passes local checks BUT mark the
-//      result `degraded: true` so the caller can flag the row for later re-scan.
-//   4. A circuit breaker stops hammering a dead API: after N consecutive
-//      failures we skip OpenAI for a short cooldown and serve local-only (fast),
-//      then send one probe to see if it recovered.
-//   5. Sustained failure raises a Sentry alert (deduped) so fail-open is LOUD.
-//
-// IMPORTANT serverless caveat: the state below lives per warm instance, not
-// globally. The circuit breaker is still effective (a failing instance protects
-// itself), but cross-instance "sustained failure" detection is approximate. The
-// robust upgrade is to keep these counters in the Upstash store already wired up
-// for rate limiting — see the NOTE markers below for exactly where that slots in.
-// ---------------------------------------------------------------------------
+export const MODERATION_UNAVAILABLE_MESSAGE =
+  "Content safety checks are temporarily unavailable. Please try again shortly.";
 
 const BLOCKED_CATEGORIES = [
   "hate",
@@ -64,16 +43,17 @@ const THREAT_KEYWORDS = [
   "kill yourself",
 ];
 
-// --- Circuit breaker + alert tuning -----------------------------------------
-const FAILURE_THRESHOLD = 4; // consecutive failures before the circuit opens
-const COOLDOWN_MS = 30 * 1000; // how long to skip OpenAI once the circuit is open
-const SUSTAINED_FAILURE_MS = 60 * 1000; // failing longer than this => "sustained"
-const ALERT_COOLDOWN_MS = 5 * 60 * 1000; // don't re-alert more than once per 5 min
-const OPENAI_TIMEOUT_MS = 4000; // give up on a slow call instead of blocking the user
+const FAILURE_THRESHOLD = 4;
+const COOLDOWN_MS = 30 * 1000;
+const SUSTAINED_FAILURE_MS = 60 * 1000;
+const ALERT_COOLDOWN_MS = 5 * 60 * 1000;
+const OPENAI_TIMEOUT_MS = 4000;
+
+function isProductionRuntime() {
+  return process.env.NODE_ENV === "production";
+}
 
 function getBreakerState() {
-  // NOTE (Upstash upgrade point): to coordinate across serverless instances,
-  // back this object with the shared store instead of globalThis.
   if (!globalThis.__soldierhubModerationBreaker) {
     globalThis.__soldierhubModerationBreaker = {
       consecutiveFailures: 0,
@@ -103,52 +83,49 @@ function recordFailure(reason, error) {
     state.circuitOpenUntil = now + COOLDOWN_MS;
   }
 
-  maybeAlertSustainedFailure({ state, now, reason, error });
+  maybeAlertModerationFailure({ state, now, reason, error });
 }
 
 function isCircuitOpen() {
   const state = getBreakerState();
   if (!state.circuitOpenUntil) return false;
-  // Cooldown elapsed => allow ONE probe through (half-open).
+
   if (Date.now() >= state.circuitOpenUntil) {
     state.circuitOpenUntil = 0;
     return false;
   }
+
   return true;
 }
 
-function maybeAlertSustainedFailure({ state, now, reason, error }) {
+function maybeAlertModerationFailure({ state, now, reason, error, force = false }) {
   const failingFor = state.firstFailureAt ? now - state.firstFailureAt : 0;
   const sustained =
-    state.consecutiveFailures >= FAILURE_THRESHOLD &&
-    failingFor >= SUSTAINED_FAILURE_MS;
+    force ||
+    (state.consecutiveFailures >= FAILURE_THRESHOLD &&
+      failingFor >= SUSTAINED_FAILURE_MS);
 
   if (!sustained) return;
-  if (now - state.lastAlertAt < ALERT_COOLDOWN_MS) return; // dedupe
+  if (now - state.lastAlertAt < ALERT_COOLDOWN_MS) return;
 
   state.lastAlertAt = now;
 
-  // Sentry is configured in sentry.server.config.js; if the DSN is unset this
-  // is a no-op, so the call is always safe.
   try {
-    Sentry.captureMessage(
-      "Content moderation degraded: OpenAI unavailable, serving local-only checks",
-      {
-        level: "error",
-        tags: { subsystem: "moderation", degraded_reason: reason || "unknown" },
-        extra: {
-          consecutiveFailures: state.consecutiveFailures,
-          failingForMs: failingFor,
-          lastError: error?.message || String(error || ""),
-        },
-      }
-    );
+    Sentry.captureMessage("Content moderation unavailable", {
+      level: "error",
+      tags: { subsystem: "moderation", reason: reason || "unknown" },
+      extra: {
+        consecutiveFailures: state.consecutiveFailures,
+        failingForMs: failingFor,
+        lastError: error?.message || String(error || ""),
+        failClosed: isProductionRuntime(),
+      },
+    });
   } catch {
     // Never let alerting throw into the request path.
   }
 }
 
-// --- Result builders (keep the exact field contract callers depend on) ------
 function allowResult({ degraded = false, degradedReason = null } = {}) {
   return {
     allowed: true,
@@ -159,12 +136,13 @@ function allowResult({ degraded = false, degradedReason = null } = {}) {
     scores: {},
     matchedCategories: [],
     reason: "",
+    status: 200,
     degraded,
     degradedReason: degraded ? degradedReason : null,
   };
 }
 
-function blockResult({ blockedBy, matchedCategories = [], categories = {}, scores = {} }) {
+function blockResult({ blockedBy, matchedCategories = [], categories = {}, scores = {}, reason = SAFETY_MESSAGE, status = 400 }) {
   return {
     allowed: false,
     flagged: true,
@@ -173,18 +151,23 @@ function blockResult({ blockedBy, matchedCategories = [], categories = {}, score
     categories,
     scores,
     matchedCategories,
-    reason: SAFETY_MESSAGE,
+    reason,
+    status,
     degraded: false,
     degradedReason: null,
   };
 }
 
-// --- Local checks (always run, even when the circuit is open) ---------------
+function moderationUnavailableResult(blockedBy) {
+  return blockResult({
+    blockedBy,
+    matchedCategories: ["moderation_unavailable"],
+    reason: MODERATION_UNAVAILABLE_MESSAGE,
+    status: 503,
+  });
+}
+
 function normalizeForLocal(text) {
-  // Coarse normalization to reduce the most trivial evasions, while preserving
-  // word boundaries so multi-word phrases still match. This is a backstop, not
-  // a comprehensive filter — hardening the local lexicon (leetspeak, spacing,
-  // slur lists) is a deliberate content-policy task, not something to fake here.
   return String(text || "")
     .toLowerCase()
     .replace(/\s+/g, " ")
@@ -201,7 +184,6 @@ function localThreatCheck(text) {
   });
 }
 
-// --- OpenAI call wrapped with a timeout -------------------------------------
 async function runOpenAiModeration(apiKey, cleanText) {
   const openai = new OpenAI({ apiKey });
   const moderation = await openai.moderations.create(
@@ -211,7 +193,6 @@ async function runOpenAiModeration(apiKey, cleanText) {
 
   const result = moderation.results?.[0];
   if (!result) {
-    // Treat an empty payload as a soft failure so it counts toward the breaker.
     throw new Error("Moderation returned no result");
   }
 
@@ -241,49 +222,67 @@ async function runOpenAiModeration(apiKey, cleanText) {
     scores,
     matchedCategories,
     reason: "",
+    status: 200,
     degraded: false,
     degradedReason: null,
   };
 }
 
-// --- Public entry point -----------------------------------------------------
+function degradedAllow(reason, error) {
+  recordFailure(reason, error);
+  return allowResult({
+    degraded: true,
+    degradedReason: reason,
+  });
+}
+
+function failClosedModeration(reason, error) {
+  recordFailure(reason, error);
+  maybeAlertModerationFailure({
+    state: getBreakerState(),
+    now: Date.now(),
+    reason,
+    error,
+    force: true,
+  });
+  return moderationUnavailableResult(reason);
+}
+
 export async function checkContentSafety(text) {
   const cleanText = String(text || "").trim();
   if (!cleanText) return allowResult();
 
-  // 1) Local checks ALWAYS run first and can hard-block regardless of OpenAI.
   const localBlock = localThreatCheck(cleanText);
   if (localBlock) return localBlock;
 
-  // 2) No key configured => degraded allow (local-only), surfaced loudly once.
   const apiKey = process.env.MODERATION_API_KEY || process.env.OPENAI_API_KEY;
   if (!apiKey) {
-    recordFailure("missing_api_key", new Error("Moderation API key not configured"));
-    return allowResult({
-      degraded: true,
-      degradedReason: "local_only_missing_openai_key",
-    });
+    const error = new Error("Moderation API key not configured");
+    if (isProductionRuntime()) {
+      return failClosedModeration("moderation_missing_api_key", error);
+    }
+    return degradedAllow("local_only_missing_openai_key", error);
   }
 
-  // 3) Circuit open => skip OpenAI entirely and serve local-only (fast).
   if (isCircuitOpen()) {
+    if (isProductionRuntime()) {
+      return moderationUnavailableResult("moderation_circuit_open");
+    }
     return allowResult({
       degraded: true,
       degradedReason: "local_only_circuit_open",
     });
   }
 
-  // 4) Try OpenAI. Success closes the circuit; failure trips it + degraded allow.
   try {
     const result = await runOpenAiModeration(apiKey, cleanText);
     recordSuccess();
     return result;
   } catch (error) {
     console.error("Server content safety check failed:", error);
-    recordFailure("openai_error", error);
-    return allowResult({
-      degraded: true,
-      degradedReason: "moderation_error_allowed_local_only",
-    });
+    if (isProductionRuntime()) {
+      return failClosedModeration("moderation_api_error", error);
+    }
+    return degradedAllow("moderation_error_allowed_local_only", error);
   }
 }
