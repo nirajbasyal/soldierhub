@@ -8,6 +8,7 @@ import { T } from "@/lib/theme";
 import * as PostsDB from "@/lib/db/posts";
 import { useApp } from "@/store/AppContext";
 import AppShell from "@/components/layout/AppShell";
+import Footer from "@/components/layout/Footer";
 import FeedHero from "@/components/feed/FeedHero";
 import CategoryStrip from "@/components/feed/CategoryStrip";
 import PostCard from "@/components/feed/PostCard";
@@ -576,6 +577,7 @@ export default function HomePage() {
           </aside>
         </div>
       </main>
+      <Footer />
     </AppShell>
   );
 }
