@@ -219,6 +219,18 @@ function PostImagePreview({ image, onOpen, alt }) {
     >
       <img
         src={image.url}
+        srcSet={
+          image.fullUrl && image.fullUrl !== image.url && image.width && image.fullWidth
+            ? `${image.url} ${image.width}w, ${image.fullUrl} ${image.fullWidth}w`
+            : undefined
+        }
+        sizes={
+          image.fullUrl && image.fullUrl !== image.url && image.width && image.fullWidth
+            ? "(max-width: 640px) 100vw, 640px"
+            : undefined
+        }
+        width={image.width || undefined}
+        height={image.height || undefined}
         alt={alt || "Image attached to this post"}
         loading="lazy"
         decoding="async"
