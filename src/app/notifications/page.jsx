@@ -79,7 +79,7 @@ export default function NotificationsPage() {
     notificationsLoading,
     notifications = [],
     markAllNotificationsRead,
-    loadNotifications,
+    reloadNotifications,
     loadMoreNotifications,
     hasMoreNotifications,
     loadingMoreNotifications,
@@ -107,8 +107,8 @@ export default function NotificationsPage() {
 
   useEffect(() => {
     if (!currentUser) return;
-    loadNotifications?.({ reset: true });
-  }, [currentUser, loadNotifications]);
+    reloadNotifications?.({ reset: true });
+  }, [currentUser, reloadNotifications]);
 
   useEffect(() => {
     if (!currentUser || notificationsLoading || !notifications.length) return;
