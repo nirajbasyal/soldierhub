@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { checkRateLimit, rateLimitResponse } from "@/lib/server/rateLimit";
 import { requireAdmin } from "@/lib/server/adminAuth";
-import { getOptionalServiceRoleClient, getServiceRoleStatus } from "@/lib/server/supabaseAdmin";
+import { getOptionalServiceRoleClient } from "@/lib/server/supabaseAdmin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -72,7 +72,6 @@ export async function POST(request) {
 
   const limit = cleanLimit(requestBody?.limit);
   const db = getOptionalServiceRoleClient() || admin.supabase;
-  const dbMode = getServiceRoleStatus();
 
   const { data: logs, error } = await db
     .from("profile_status_audit_log")
@@ -83,7 +82,7 @@ export async function POST(request) {
   if (error) {
     return NextResponse.json(
       { error: error.message || "Could not load audit logs." },
-      { status: 500, headers: { ...userRateLimit.headers, "Cache-Control": "no-store", "X-SoldierHub-Admin-DB": dbMode } }
+      { status: 500, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
     );
   }
 
@@ -99,12 +98,12 @@ export async function POST(request) {
 
     return NextResponse.json(
       { data: enrichedLogs },
-      { status: 200, headers: { ...userRateLimit.headers, "Cache-Control": "no-store", "X-SoldierHub-Admin-DB": dbMode } }
+      { status: 200, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
     );
   } catch (profileError) {
     return NextResponse.json(
       { error: profileError.message || "Could not load audit profile details." },
-      { status: 500, headers: { ...userRateLimit.headers, "Cache-Control": "no-store", "X-SoldierHub-Admin-DB": dbMode } }
+      { status: 500, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
     );
   }
 }
