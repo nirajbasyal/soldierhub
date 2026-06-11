@@ -242,7 +242,7 @@ function IntroPhase({ streak, questions, onStart, onStudy }) {
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl" style={{ backgroundColor: T.redBg, color: T.brandRed }}>
             <Target size={23} />
           </div>
-          <h2 className="text-xl font-serif font-bold" style={{ color: T.navy }}>Today's mission</h2>
+          <h2 className="text-xl font-serif font-bold" style={{ color: T.navy }}>Today&apos;s mission</h2>
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
           <Pill tone="red">{questions.length || DAILY_TARGET} questions</Pill>
