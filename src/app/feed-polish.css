@@ -35,6 +35,31 @@
 }
 
 /*
+  Mobile auth modal keyboard fix:
+  keep the final submit action visible while email/password inputs are focused.
+*/
+@media (max-width: 767px) {
+  .sh-modal-card:has(input:focus) {
+    max-height: calc(100dvh - 1rem) !important;
+  }
+
+  .sh-modal-card:has(input[type="password"]) input {
+    scroll-margin-bottom: 9rem;
+  }
+
+  .sh-modal-card:has(input[type="password"]) > div > div.flex.flex-col.gap-3 > div:last-child,
+  .sh-modal-card:has(input[type="password"]) > div > div.flex.flex-col.gap-2 > div:last-child {
+    position: sticky;
+    bottom: 0;
+    z-index: 30;
+    margin-left: -1rem;
+    margin-right: -1rem;
+    padding: 0.65rem 1rem calc(env(safe-area-inset-bottom, 0px) + 0.55rem);
+    background: linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.96) 28%, #ffffff 100%);
+  }
+}
+
+/*
   Temporary safety guard: the current PostCard component can show "edited" when
   system metadata changes updated_at even if the user never edited the post.
   Hide that misleading marker until the component can rely only on the explicit
