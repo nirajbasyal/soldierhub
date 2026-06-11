@@ -6,9 +6,8 @@ import { T } from "@/lib/theme";
  * Modal — centered dialog, ESC to close, body scroll lock.
  *
  * Layout: the outer flex wrapper ensures the modal never extends beyond the
- * viewport. The inner card uses max-h-[calc(100vh-2rem)] + overflow-y-auto
- * so even very tall forms (e.g. signup with bio) scroll INSIDE the modal
- * rather than getting cut off at the top/bottom of the viewport.
+ * viewport. The inner card uses max-height + overflow-y-auto so even very tall
+ * forms scroll inside the modal instead of getting cut off.
  */
 export default function Modal({ open, onClose, children, maxWidth = 480 }) {
   useEffect(() => {
@@ -26,7 +25,7 @@ export default function Modal({ open, onClose, children, maxWidth = 480 }) {
 
   return (
     <div
-      className="sh-modal-backdrop fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto"
+      className="sh-modal-backdrop fixed inset-0 z-[10000] flex min-h-[100dvh] items-center justify-center overflow-y-auto p-4"
       style={{
         backgroundColor: "rgba(11,28,44,0.45)",
         backdropFilter: "blur(7px)",
@@ -34,10 +33,10 @@ export default function Modal({ open, onClose, children, maxWidth = 480 }) {
       onClick={onClose}
     >
       <div
-        className="sh-modal-card w-full rounded-2xl shadow-2xl border my-auto"
+        className="sh-modal-card relative z-[10001] w-full rounded-2xl shadow-2xl border my-auto"
         style={{
           maxWidth,
-          maxHeight: "calc(100vh - 2rem)",
+          maxHeight: "calc(100dvh - 2rem)",
           backgroundColor: T.card,
           borderColor: T.border,
           overflowY: "auto",
