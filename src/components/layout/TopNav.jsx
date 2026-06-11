@@ -13,6 +13,7 @@ import {
   UserPlus,
 } from "lucide-react";
 import { T } from "@/lib/theme";
+import * as NotificationsDB from "@/lib/db/notifications";
 import { useApp } from "@/store/AppContext";
 import Avatar from "@/components/ui/Avatar";
 import Button from "@/components/ui/Button";
@@ -34,13 +35,13 @@ function getUserAvatarUrl(user) {
 export default function TopNav() {
   const router = useRouter();
   const [searchFocused, setSearchFocused] = useState(false);
+  const [quickUnreadCount, setQuickUnreadCount] = useState(null);
 
   const app = useApp() || {};
   const {
     currentUser,
     isAdmin = false,
     unreadCount = 0,
-    reloadNotifications,
     search = "",
     setSearch = () => {},
     setAuthModal = () => {},
@@ -54,7 +55,8 @@ export default function TopNav() {
   const firstName = displayName.split(" ")[0] || "Profile";
   const userAvatarUrl = getUserAvatarUrl(safeUser);
   const userStatus = safeUser?.verification_status || "pending";
-  const notificationCount = Math.max(0, Number(unreadCount) || 0);
+  const resolvedUnreadCount = quickUnreadCount !== null ? quickUnreadCount : unreadCount;
+  const notificationCount = Math.max(0, Number(resolvedUnreadCount) || 0);
   const showNotificationBadge =
     Boolean(safeUser) && userStatus === "verified" && notificationCount > 0;
   const notificationBadgeText = notificationCount > 99 ? "99+" : String(notificationCount);
@@ -64,9 +66,43 @@ export default function TopNav() {
   const rightSearchButtonColor = rightSearchButtonActive ? SEARCH_ACTIVE_COLOR : SEARCH_IDLE_COLOR;
 
   useEffect(() => {
-    if (!safeUser?.id || userStatus !== "verified") return;
-    reloadNotifications?.({ silent: true });
-  }, [reloadNotifications, safeUser?.id, userStatus]);
+    let cancelled = false;
+
+    if (!safeUser?.id || userStatus !== "verified") {
+      setQuickUnreadCount(null);
+      return undefined;
+    }
+
+    setQuickUnreadCount(null);
+
+    const refreshBadgeCount = async () => {
+      const { count, error } = await NotificationsDB.getUnreadCount(safeUser.id, { skipCache: true });
+      if (cancelled || error) return;
+      setQuickUnreadCount(Math.max(0, Number(count) || 0));
+    };
+
+    refreshBadgeCount();
+
+    const onFocus = () => refreshBadgeCount();
+    const onVisibilityChange = () => {
+      if (!document.hidden) refreshBadgeCount();
+    };
+
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [safeUser?.id, userStatus]);
+
+  useEffect(() => {
+    if (Number(unreadCount) === 0 && quickUnreadCount !== 0) {
+      setQuickUnreadCount(0);
+    }
+  }, [quickUnreadCount, unreadCount]);
 
   const goProfile = () => {
     if (!safeUser) return setAuthModal("login");
