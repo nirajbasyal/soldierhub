@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { checkRateLimit, rateLimitResponse } from "@/lib/server/rateLimit";
 import { requireAdmin } from "@/lib/server/adminAuth";
-import { getOptionalServiceRoleClient } from "@/lib/server/supabaseAdmin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -94,8 +93,7 @@ export async function POST(request) {
     );
   }
 
-  const db = getOptionalServiceRoleClient() || admin.supabase;
-  const { data, error } = await listAdminProfiles({ supabase: db, queue, limit });
+  const { data, error } = await listAdminProfiles({ supabase: admin.supabase, queue, limit });
 
   if (error) {
     return NextResponse.json(
