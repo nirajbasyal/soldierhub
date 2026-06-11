@@ -78,12 +78,12 @@ export default function NotificationsPage() {
     authLoading,
     notificationsLoading,
     notifications = [],
-    markAllNotificationsRead,
+    markNotificationsRead,
     reloadNotifications,
     loadMoreNotifications,
     hasMoreNotifications,
     loadingMoreNotifications,
-    unreadNotificationCount,
+    unreadCount,
   } = useApp();
   const [readSnapshotIds, setReadSnapshotIds] = useState(() => new Set());
   const hasMarkedInitialRead = useRef(false);
@@ -128,8 +128,8 @@ export default function NotificationsPage() {
     setReadSnapshotIds(new Set(unreadIds));
     lastNotificationSignature.current = notificationSignature;
     hasMarkedInitialRead.current = true;
-    markAllNotificationsRead?.({ silent: true });
-  }, [currentUser, markAllNotificationsRead, notificationSignature, notifications, notificationsLoading]);
+    markNotificationsRead?.();
+  }, [currentUser, markNotificationsRead, notificationSignature, notifications, notificationsLoading]);
 
   if (authLoading || notificationsLoading) return <NotificationsLoadingState />;
   if (!currentUser) return null;
@@ -157,9 +157,9 @@ export default function NotificationsPage() {
                   </p>
                 </div>
               </div>
-              {unreadNotificationCount > 0 && (
+              {unreadCount > 0 && (
                 <span className="rounded-full bg-[#C89B3C] px-3 py-1 text-xs font-black text-white shadow-sm">
-                  {unreadNotificationCount} new
+                  {unreadCount} new
                 </span>
               )}
             </div>
