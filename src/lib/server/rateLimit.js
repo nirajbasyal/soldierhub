@@ -5,6 +5,10 @@ const DEFAULT_LIMIT = 60;
 const MAX_TRACKED_KEYS = 5000;
 const SHARED_RATE_LIMIT_TIMEOUT_MS = Number(process.env.RATE_LIMIT_SHARED_TIMEOUT_MS || 700);
 
+function isProductionRuntime() {
+  return process.env.NODE_ENV === "production";
+}
+
 function getStore() {
   if (!globalThis.__soldierhubRateLimitStore) {
     globalThis.__soldierhubRateLimitStore = new Map();
@@ -65,6 +69,28 @@ function cleanupExpiredEntries(store, now) {
       store.delete(key);
     }
   }
+}
+
+function unavailableRateLimitResult(reason = "shared_rate_limiter_unavailable") {
+  const resetAt = Date.now() + 30 * 1000;
+
+  return {
+    allowed: false,
+    limit: 0,
+    remaining: 0,
+    retryAfter: 30,
+    resetAt,
+    source: "unavailable",
+    status: 503,
+    error: "Traffic protection is temporarily unavailable. Please try again shortly.",
+    reason,
+    headers: {
+      "X-RateLimit-Limit": "0",
+      "X-RateLimit-Remaining": "0",
+      "X-RateLimit-Reset": String(Math.ceil(resetAt / 1000)),
+      "X-RateLimit-Source": "unavailable",
+    },
+  };
 }
 
 function checkInMemoryRateLimit(
@@ -211,7 +237,12 @@ async function checkSharedRateLimit(
 }
 
 export async function checkRateLimit(request, options = {}) {
-  if (!getUpstashConfig()) {
+  const hasSharedStore = Boolean(getUpstashConfig());
+
+  if (!hasSharedStore) {
+    if (isProductionRuntime()) {
+      return unavailableRateLimitResult("missing_shared_rate_limiter_config");
+    }
     return checkInMemoryRateLimit(request, options);
   }
 
@@ -219,24 +250,32 @@ export async function checkRateLimit(request, options = {}) {
     const sharedResult = await checkSharedRateLimit(request, options);
     if (sharedResult) return sharedResult;
   } catch (error) {
-    console.error("Shared rate limiter failed; using local fallback:", error);
+    console.error("Shared rate limiter failed:", error);
+    if (isProductionRuntime()) {
+      return unavailableRateLimitResult("shared_rate_limiter_error");
+    }
   }
 
   return checkInMemoryRateLimit(request, options);
 }
 
 export function rateLimitResponse(result) {
+  const status = result.status || 429;
+  const isUnavailable = status === 503;
+
   return Response.json(
     {
-      error: "Too many requests. Please try again shortly.",
+      error: result.error || "Too many requests. Please try again shortly.",
       retryAfter: result.retryAfter,
+      ...(result.reason ? { reason: result.reason } : {}),
     },
     {
-      status: 429,
+      status,
       headers: {
         ...result.headers,
         "Retry-After": String(result.retryAfter),
         "Cache-Control": "no-store",
+        ...(isUnavailable ? { "X-SoldierHub-Protection": "rate-limit-unavailable" } : {}),
       },
     }
   );
