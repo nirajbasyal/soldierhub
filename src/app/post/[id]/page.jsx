@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import PostDetailView from "./PostDetailView";
 
@@ -18,7 +19,9 @@ function truncate(value, max = 160) {
   return `${text.slice(0, max - 1).trimEnd()}…`;
 }
 
-async function fetchPost(id) {
+// cache() dedupes the RPC between generateMetadata and the page render, so a
+// request fetches the post exactly once.
+const fetchPost = cache(async (id) => {
   if (!id) return null;
 
   try {
@@ -37,7 +40,7 @@ async function fetchPost(id) {
   } catch {
     return null;
   }
-}
+});
 
 export async function generateMetadata({ params }) {
   const { id } = await params;
@@ -83,6 +86,8 @@ export async function generateMetadata({ params }) {
   };
 }
 
-export default function PostDetailPage() {
-  return <PostDetailView />;
+export default async function PostDetailPage({ params }) {
+  const { id } = await params;
+  const post = await fetchPost(id);
+  return <PostDetailView initialPost={post} />;
 }

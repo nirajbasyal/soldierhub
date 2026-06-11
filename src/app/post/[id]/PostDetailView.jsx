@@ -50,13 +50,13 @@ function normalizePostRow(row = {}) {
   };
 }
 
-export default function PostDetailView() {
+export default function PostDetailView({ initialPost = null }) {
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
   const { posts = [], isLiveMode } = useApp();
-  const [post, setPost] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [post, setPost] = useState(() => (initialPost ? normalizePostRow(initialPost) : null));
+  const [loading, setLoading] = useState(!initialPost);
   const openRepliesDefault = searchParams?.get("replies") === "1";
   const openedFromNotification =
     openRepliesDefault || searchParams?.get("from") === "notifications";
@@ -71,6 +71,16 @@ export default function PostDetailView() {
     const found = posts.find((p) => getPostId(p) === id);
     if (found) {
       setPost(normalizePostRow(found));
+      setLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    // The server already fetched this post and passed it down — no client
+    // refetch needed unless the feed has a fresher copy (handled above).
+    if (initialPost && getPostId(initialPost) === id) {
+      setPost(normalizePostRow(initialPost));
       setLoading(false);
       return () => {
         cancelled = true;
@@ -103,7 +113,7 @@ export default function PostDetailView() {
     return () => {
       cancelled = true;
     };
-  }, [params?.id, posts, isLiveMode]);
+  }, [params?.id, posts, isLiveMode, initialPost]);
 
   const handleBack = () => {
     router.push(openedFromNotification ? "/notifications" : "/");
