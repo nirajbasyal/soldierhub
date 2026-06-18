@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Bell,
@@ -13,7 +13,6 @@ import {
   UserPlus,
 } from "lucide-react";
 import { T } from "@/lib/theme";
-import * as NotificationsDB from "@/lib/db/notifications";
 import { useApp } from "@/store/AppContext";
 import Avatar from "@/components/ui/Avatar";
 import Button from "@/components/ui/Button";
@@ -34,14 +33,15 @@ function getUserAvatarUrl(user) {
 
 export default function TopNav() {
   const router = useRouter();
+  const pathname = usePathname();
   const [searchFocused, setSearchFocused] = useState(false);
-  const [quickUnreadCount, setQuickUnreadCount] = useState(null);
 
   const app = useApp() || {};
   const {
     currentUser,
     isAdmin = false,
     unreadCount = 0,
+    refreshUnreadCount = () => {},
     search = "",
     setSearch = () => {},
     setAuthModal = () => {},
@@ -55,10 +55,10 @@ export default function TopNav() {
   const firstName = displayName.split(" ")[0] || "Profile";
   const userAvatarUrl = getUserAvatarUrl(safeUser);
   const userStatus = safeUser?.verification_status || "pending";
-  const resolvedUnreadCount = quickUnreadCount !== null ? quickUnreadCount : unreadCount;
-  const notificationCount = Math.max(0, Number(resolvedUnreadCount) || 0);
+  const isNotificationsPage = pathname?.startsWith("/notifications");
+  const notificationCount = Math.max(0, Number(unreadCount) || 0);
   const showNotificationBadge =
-    Boolean(safeUser) && userStatus === "verified" && notificationCount > 0;
+    Boolean(safeUser) && userStatus === "verified" && notificationCount > 0 && !isNotificationsPage;
   const notificationBadgeText = notificationCount > 99 ? "99+" : String(notificationCount);
   const hasSearchText = String(search || "").trim().length > 0;
   const searchIconColor = hasSearchText ? SEARCH_ACTIVE_COLOR : SEARCH_IDLE_COLOR;
@@ -66,22 +66,9 @@ export default function TopNav() {
   const rightSearchButtonColor = rightSearchButtonActive ? SEARCH_ACTIVE_COLOR : SEARCH_IDLE_COLOR;
 
   useEffect(() => {
-    let cancelled = false;
+    if (!safeUser?.id || userStatus !== "verified") return undefined;
 
-    if (!safeUser?.id || userStatus !== "verified") {
-      setQuickUnreadCount(null);
-      return undefined;
-    }
-
-    setQuickUnreadCount(null);
-
-    const refreshBadgeCount = async () => {
-      const { count, error } = await NotificationsDB.getUnreadCount(safeUser.id, { skipCache: true });
-      if (cancelled || error) return;
-      setQuickUnreadCount(Math.max(0, Number(count) || 0));
-    };
-
-    refreshBadgeCount();
+    const refreshBadgeCount = () => refreshUnreadCount(safeUser.id, { skipCache: true });
 
     const onFocus = () => refreshBadgeCount();
     const onVisibilityChange = () => {
@@ -92,17 +79,10 @@ export default function TopNav() {
     document.addEventListener("visibilitychange", onVisibilityChange);
 
     return () => {
-      cancelled = true;
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [safeUser?.id, userStatus]);
-
-  useEffect(() => {
-    if (Number(unreadCount) === 0 && quickUnreadCount !== 0) {
-      setQuickUnreadCount(0);
-    }
-  }, [quickUnreadCount, unreadCount]);
+  }, [safeUser?.id, userStatus, refreshUnreadCount]);
 
   const goProfile = () => {
     if (!safeUser) return setAuthModal("login");

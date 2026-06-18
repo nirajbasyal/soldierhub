@@ -133,6 +133,36 @@ function setCachedUnreadCount(userId, count) {
   };
 }
 
+const BADGE_COUNT_STORAGE_KEY = "soldierhub_unread_badge_count";
+
+// Persisted across reloads so the notification badge can paint instantly from
+// the last known value instead of waiting for a network round-trip.
+export function readCachedBadgeCount() {
+  if (typeof window === "undefined") return 0;
+  try {
+    const raw = window.localStorage.getItem(BADGE_COUNT_STORAGE_KEY);
+    if (!raw) return 0;
+    const parsed = JSON.parse(raw);
+    const count = Number(parsed?.count);
+    return Number.isFinite(count) && count > 0 ? count : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function writeCachedBadgeCount(count) {
+  if (typeof window === "undefined") return;
+  try {
+    const safeCount = Math.max(0, Number(count) || 0);
+    window.localStorage.setItem(
+      BADGE_COUNT_STORAGE_KEY,
+      JSON.stringify({ count: safeCount, savedAt: Date.now() })
+    );
+  } catch {
+    // Badge cache is only a first-paint speed boost. Ignore storage errors.
+  }
+}
+
 function uniqueValues(values = []) {
   return [...new Set(values.filter(Boolean))];
 }
