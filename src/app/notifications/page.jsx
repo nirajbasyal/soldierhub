@@ -158,36 +158,36 @@ export default function NotificationsPage() {
   return (
     <AppShell hideNav>
       <main className="min-h-screen bg-[#F3F6FA] px-4 pb-28 pt-5 md:pb-12 md:pt-8">
-        <div className="mx-auto flex w-full max-w-2xl flex-col gap-5">
-          <section className="rounded-[30px] border border-white/80 bg-white/85 p-5 shadow-sm backdrop-blur">
-            <div className="flex items-start gap-3">
+        <div className="mx-auto flex w-full max-w-2xl flex-col gap-4">
+          <section className="rounded-2xl border border-white/80 bg-white/90 px-4 py-3.5 shadow-sm backdrop-blur">
+            <div className="flex items-center gap-3">
               <CircularBackButton fallbackHref="/" />
-              <div className="flex min-w-0 flex-1 items-start gap-3">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#EEF3F8]">
-                  <Bell size={22} style={{ color: T.gold }} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: T.gold }}>
-                    Notifications
-                  </p>
-                  <h1 className="mt-1 text-2xl font-black tracking-tight" style={{ color: T.ink }}>
-                    Activity center
-                  </h1>
-                  <p className="mt-2 text-sm leading-relaxed" style={{ color: T.muted }}>
-                    Catch up on replies, upvotes, follows, and updates from your community.
-                  </p>
-                </div>
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#FDECF0]">
+                <Bell size={17} style={{ color: T.brandRed }} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h1 className="text-lg font-bold tracking-tight" style={{ color: T.navy }}>
+                  Notifications
+                </h1>
+                <p className="text-xs font-medium" style={{ color: T.textMuted }}>
+                  {unreadCount > 0
+                    ? `${unreadCount} unread ${unreadCount === 1 ? "update" : "updates"}`
+                    : "You're all caught up"}
+                </p>
               </div>
               {unreadCount > 0 && (
-                <span className="rounded-full bg-[#C89B3C] px-3 py-1 text-xs font-black text-white shadow-sm">
-                  {unreadCount} new
+                <span
+                  className="shrink-0 rounded-full px-2.5 py-1 text-xs font-bold text-white"
+                  style={{ backgroundColor: T.brandRed }}
+                >
+                  {unreadCount > 99 ? "99+" : unreadCount}
                 </span>
               )}
             </div>
           </section>
 
           {groupedNotifications.length === 0 ? (
-            <div className="rounded-[28px] border border-white/80 bg-white/80 p-8 shadow-sm backdrop-blur">
+            <div className="rounded-2xl border border-white/80 bg-white/80 p-8 shadow-sm backdrop-blur">
               <EmptyState
                 icon={Bell}
                 title={notificationsLoading ? "Loading activity..." : "You&apos;re all caught up"}
@@ -196,18 +196,18 @@ export default function NotificationsPage() {
             </div>
           ) : (
             <>
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-2">
                 {groupedNotifications.map((group) => <NotificationItem key={group.id} group={group} />)}
               </div>
 
               {hasMoreNotifications ? (
-                <div className="mt-5 flex justify-center">
+                <div className="mt-4 flex justify-center">
                   <button
                     type="button"
                     onClick={loadMoreNotifications}
                     disabled={loadingMoreNotifications}
-                    className="rounded-full border px-5 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
-                    style={{ backgroundColor: T.card, borderColor: T.border, color: T.ink }}
+                    className="rounded-full border px-5 py-2 text-sm font-semibold transition hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
+                    style={{ backgroundColor: T.card, borderColor: T.border, color: T.navy }}
                   >
                     {loadingMoreNotifications ? "Loading..." : "Load more notifications"}
                   </button>
@@ -228,34 +228,31 @@ function NotificationsLoadingState() {
     <AppShell hideNav>
       <main className="min-h-screen bg-[#F3F6FA] px-4 pb-28 pt-5 md:pb-12 md:pt-8">
         <div className="mx-auto w-full max-w-2xl">
-          <div className="mb-5 rounded-[28px] border border-white/80 bg-white/80 p-5 shadow-sm backdrop-blur">
+          <div className="mb-4 rounded-2xl border border-white/80 bg-white/90 px-4 py-3.5 shadow-sm backdrop-blur">
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#EEF3F8]">
-                <Bell size={22} style={{ color: T.gold }} />
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#FDECF0]">
+                <Bell size={17} style={{ color: T.brandRed }} />
               </div>
               <div className="min-w-0 flex-1">
-                <div className="mb-1 text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: T.gold }}>
+                <h1 className="text-lg font-bold tracking-tight" style={{ color: T.navy }}>
                   Notifications
-                </div>
-                <h1 className="text-2xl font-black tracking-tight" style={{ color: T.ink }}>
-                  Loading activity
                 </h1>
-                <p className="mt-1 text-sm font-medium" style={{ color: T.muted }}>
+                <p className="text-xs font-medium" style={{ color: T.textMuted }}>
                   Loading notifications...
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-2">
             {[1, 2, 3, 4].map((item) => (
-              <div key={item} className="rounded-[26px] border border-white/80 bg-white/75 p-4 shadow-sm backdrop-blur">
+              <div key={item} className="rounded-2xl border border-white/80 bg-white/75 px-3.5 py-3 shadow-sm backdrop-blur">
                 <div className="flex gap-3">
-                  <div className="h-11 w-11 shrink-0 animate-pulse rounded-2xl bg-[#E8EEF5]" />
+                  <div className="h-10 w-10 shrink-0 animate-pulse rounded-xl bg-[#E8EEF5]" />
                   <div className="min-w-0 flex-1">
-                    <div className="h-4 w-3/4 animate-pulse rounded-full bg-[#DDE6EF]" />
-                    <div className="mt-3 h-3 w-full animate-pulse rounded-full bg-[#E8EEF5]" />
-                    <div className="mt-2 h-3 w-2/3 animate-pulse rounded-full bg-[#E8EEF5]" />
+                    <div className="h-3.5 w-3/4 animate-pulse rounded-full bg-[#DDE6EF]" />
+                    <div className="mt-2 h-3 w-1/2 animate-pulse rounded-full bg-[#E8EEF5]" />
+                    <div className="mt-2 h-2.5 w-1/4 animate-pulse rounded-full bg-[#E8EEF5]" />
                   </div>
                 </div>
               </div>
