@@ -67,6 +67,10 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
 
   const focusComposerField = () => {
     safeRequestAnimationFrame(() => {
+      if (pageMode && isPhoneScreen) {
+        editorRef.current?.openLongEditor?.();
+        return;
+      }
       editorRef.current?.focus?.();
       syncFormatState();
     });
@@ -388,7 +392,9 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
 
       <ComposerCategoryPicker category={category} onSelectCategory={selectCategory} submitting={submitting} />
 
-      <ComposerToolbar activeFormats={activeFormats} applyFormatting={applyFormatting} submitting={submitting} />
+      {!(pageMode && isPhoneScreen) ? (
+        <ComposerToolbar activeFormats={activeFormats} applyFormatting={applyFormatting} submitting={submitting} />
+      ) : null}
 
       <ComposerImagePicker imageInputRef={imageInputRef} onImageSelected={handleImageChange} />
 
