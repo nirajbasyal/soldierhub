@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, CloudSun, Clock3, MapPin, Shirt } from "lucide-react";
 import { T } from "@/lib/theme";
 
-const WEATHER_CACHE_KEY = "soldierhub_fort_bliss_weather_v21";
+const WEATHER_CACHE_KEY = "soldierhub_fort_bliss_weather_v22";
 const OLD_WEATHER_CACHE_KEYS = [
   "soldierhub_fort_bliss_weather_v6",
   "soldierhub_fort_bliss_weather_v7",
@@ -21,6 +21,7 @@ const OLD_WEATHER_CACHE_KEYS = [
   "soldierhub_fort_bliss_weather_v18",
   "soldierhub_fort_bliss_weather_v19",
   "soldierhub_fort_bliss_weather_v20",
+  "soldierhub_fort_bliss_weather_v21",
 ];
 
 const WEATHER_CACHE_MAX_AGE = 60 * 1000;
@@ -119,20 +120,27 @@ function saveWeatherToCache(data) {
   }
 }
 
-function getCheckedLabel(weather) {
-  const checkedAt = weather?.checkedAt;
-  if (!checkedAt) return "Checking now";
+// Show how old the actual NWS observation is (not when we last fetched it).
+// Station observations update roughly hourly, so a reading can be ~45 min old
+// while still being the newest available — surfacing that prevents the temp
+// from looking "wrong" versus a phone's model-based current temp.
+function getObservedLabel(weather) {
+  const observedAt = weather?.observedAt;
+  if (!observedAt) return weather?.checkedAt ? "Updating" : "Checking now";
 
-  const checkedTime = new Date(checkedAt).getTime();
-  if (!Number.isFinite(checkedTime)) return "Checking now";
+  const observedTime = new Date(observedAt).getTime();
+  if (!Number.isFinite(observedTime)) return "Updating";
 
-  const diffSeconds = Math.max(0, Math.floor((Date.now() - checkedTime) / 1000));
-  const diffMinutes = Math.floor(diffSeconds / 60);
+  const clock = formatElPasoTime(new Date(observedTime));
+  const diffMinutes = Math.max(0, Math.floor((Date.now() - observedTime) / 60000));
 
-  if (diffSeconds < 20) return "Updated now";
-  if (diffSeconds < 60) return `Updated ${diffSeconds}s ago`;
-  if (diffMinutes === 1) return "Updated 1 min ago";
-  return `Updated ${diffMinutes} min ago`;
+  if (diffMinutes < 1) return `Observed ${clock} · just now`;
+  if (diffMinutes === 1) return `Observed ${clock} · 1 min ago`;
+  if (diffMinutes < 60) return `Observed ${clock} · ${diffMinutes} min ago`;
+
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours === 1) return `Observed ${clock} · 1 hr ago`;
+  return `Observed ${clock} · ${diffHours} hr ago`;
 }
 
 export default function MobileWeatherStrip() {
@@ -206,10 +214,17 @@ export default function MobileWeatherStrip() {
 
   const time = useMemo(() => formatElPasoTime(now), [now]);
   const date = useMemo(() => formatElPasoDate(now), [now]);
-  const checkedLabel = useMemo(() => getCheckedLabel(weather), [weather, now]);
+  const observedLabel = useMemo(() => getObservedLabel(weather), [weather, now]);
 
   const tempText = typeof weather?.tempF === "number" ? `${weather.tempF}°F` : status === "error" ? "Weather unavailable" : "Checking weather";
   const conditionText = weather?.condition && status !== "error" ? weather.condition : "";
+  const feelsLikeText =
+    typeof weather?.feelsLikeF === "number" &&
+    typeof weather?.tempF === "number" &&
+    weather.feelsLikeF !== weather.tempF &&
+    status !== "error"
+      ? `Feels ${weather.feelsLikeF}°F`
+      : "";
 
   const fallbackPtUniform = weather?.ptUniform || {
     label: "Current PT Uniform",
@@ -255,6 +270,12 @@ export default function MobileWeatherStrip() {
             </span>
             <span style={{ color: T.textSubtle }}>•</span>
             <span className="font-extrabold">{tempText}</span>
+            {feelsLikeText ? (
+              <>
+                <span style={{ color: T.textSubtle }}>•</span>
+                <span className="font-semibold" style={{ color: T.textMuted }}>{feelsLikeText}</span>
+              </>
+            ) : null}
             {conditionText ? (
               <>
                 <span style={{ color: T.textSubtle }}>•</span>
@@ -266,7 +287,7 @@ export default function MobileWeatherStrip() {
           <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10.5px] leading-4" style={{ color: T.textMuted }}>
             <span>{date}</span>
             <span>·</span>
-            <span>{checkedLabel}</span>
+            <span>{observedLabel}</span>
           </div>
 
           <div className="mt-0.5 text-[10px] font-bold leading-4 tracking-[0.01em]" style={{ color: T.textMuted }}>

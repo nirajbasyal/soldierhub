@@ -8,6 +8,11 @@ const NWS_BASE = "https://api.weather.gov";
 const STATION_ID = "KELP"; // El Paso International Airport
 const WEATHER_CACHE_TTL_MS = 60 * 1000;
 
+// Pull a few recent observations (newest first) instead of a single "latest"
+// so one null / QC-dropped reading does not blank the card or show a value
+// that is actually older than the prior valid observation.
+const RECENT_OBSERVATIONS_URL = `${NWS_BASE}/stations/${STATION_ID}/observations?limit=5`;
+
 // Fort Bliss / El Paso NWS gridpoint fallback for condition text
 // This is used only when station observation has no textDescription.
 const GRIDPOINT_HOURLY_URL = `${NWS_BASE}/gridpoints/EPZ/120,71/forecast/hourly`;
@@ -82,6 +87,37 @@ async function fetchNws(url) {
 function cToF(value) {
   if (typeof value !== "number") return null;
   return Math.round((value * 9) / 5 + 32);
+}
+
+function pickFreshObservation(featureCollection) {
+  const features = Array.isArray(featureCollection?.features)
+    ? featureCollection.features
+    : [];
+
+  // Features come back newest-first. Prefer the most recent observation that
+  // actually reports a temperature so a single null reading does not force the
+  // card into the "unavailable" state.
+  const withTemp = features.find(
+    (feature) => typeof feature?.properties?.temperature?.value === "number"
+  );
+
+  if (withTemp) return withTemp.properties;
+
+  // No temperature anywhere — still return the newest record so condition text
+  // and observedAt remain available.
+  return features[0]?.properties || null;
+}
+
+// NWS reports heatIndex when hot and windChill when cold (the other is null).
+// Either one is the "feels like" temperature; absent both it equals air temp.
+function getFeelsLikeC(observation) {
+  if (typeof observation?.heatIndex?.value === "number") {
+    return observation.heatIndex.value;
+  }
+  if (typeof observation?.windChill?.value === "number") {
+    return observation.windChill.value;
+  }
+  return null;
 }
 
 function msToMph(value) {
@@ -205,6 +241,7 @@ function buildUnavailableWeatherPayload() {
     base: "Fort Bliss",
     city: "El Paso, TX",
     tempF: null,
+    feelsLikeF: null,
     condition: "Condition updating",
     wind: null,
     humidity: null,
@@ -222,14 +259,14 @@ function buildUnavailableWeatherPayload() {
 }
 
 async function buildWeatherPayload() {
-  const [observationResult, hourlyResult] = await Promise.allSettled([
-    fetchNws(`${NWS_BASE}/stations/${STATION_ID}/observations/latest`),
+  const [observationsResult, hourlyResult] = await Promise.allSettled([
+    fetchNws(RECENT_OBSERVATIONS_URL),
     fetchNws(GRIDPOINT_HOURLY_URL),
   ]);
 
   const observation =
-    observationResult.status === "fulfilled"
-      ? observationResult.value?.properties || null
+    observationsResult.status === "fulfilled"
+      ? pickFreshObservation(observationsResult.value)
       : null;
 
   const hourlyPeriods =
@@ -238,6 +275,7 @@ async function buildWeatherPayload() {
       : [];
 
   const tempF = cToF(observation?.temperature?.value);
+  const feelsLikeF = cToF(getFeelsLikeC(observation));
   const windMph = msToMph(observation?.windSpeed?.value);
 
   const humidity =
@@ -263,12 +301,13 @@ async function buildWeatherPayload() {
     base: "Fort Bliss",
     city: "El Paso, TX",
     tempF,
+    feelsLikeF,
     condition,
     wind: windMph !== null ? `${windMph} mph` : null,
     humidity: humidity !== null ? `${humidity}%` : null,
     localTimeZone: "America/Denver",
     stationId: STATION_ID,
-    source: "NWS latest observation + hourly forecast fallback",
+    source: "NWS recent observations + hourly forecast fallback",
     observedAt,
     updatedAt: new Date().toISOString(),
     ptUniform: getPtUniform(tempF),
