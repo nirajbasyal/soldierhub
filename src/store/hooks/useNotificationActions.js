@@ -44,6 +44,7 @@ export function useNotificationActions({
       }
 
       setUnreadCount(0);
+      NotificationsDB.writeCachedBadgeCount(0);
       setNotifications((arr) => arr.map((n) => ({ ...n, read: true })));
       return { ok: true };
     }

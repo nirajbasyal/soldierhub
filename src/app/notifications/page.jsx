@@ -125,10 +125,31 @@ export default function NotificationsPage() {
       return;
     }
 
-    setReadSnapshotIds(new Set(unreadIds));
-    lastNotificationSignature.current = notificationSignature;
-    hasMarkedInitialRead.current = true;
-    markNotificationsRead?.();
+    // Keep the just-opened items visually highlighted for this session even
+    // once the server marks them read.
+    setReadSnapshotIds((previous) => {
+      const next = new Set(previous);
+      unreadIds.forEach((id) => next.add(id));
+      return next;
+    });
+
+    let cancelled = false;
+    (async () => {
+      const result = await markNotificationsRead?.();
+      if (cancelled) return;
+      if (result?.ok) {
+        lastNotificationSignature.current = notificationSignature;
+        hasMarkedInitialRead.current = true;
+      } else {
+        // The update failed (offline / rate limited). Allow another attempt
+        // on the next render so the badge does not stay stuck.
+        hasMarkedInitialRead.current = false;
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [currentUser, markNotificationsRead, notificationSignature, notifications, notificationsLoading]);
 
   if (authLoading) return <NotificationsLoadingState />;

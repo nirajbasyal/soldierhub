@@ -218,7 +218,11 @@ export function useDataLoader({
       return;
     }
     const { count, error } = await NotificationsDB.getUnreadCount(userId, { skipCache });
-    if (!error) setUnreadCount(Math.max(0, Number(count) || 0));
+    if (!error) {
+      const safeCount = Math.max(0, Number(count) || 0);
+      setUnreadCount(safeCount);
+      NotificationsDB.writeCachedBadgeCount(safeCount);
+    }
   }, [SUPA, setUnreadCount]);
 
   const refreshViewerStateForPosts = useCallback(async (postIds = []) => {
@@ -402,6 +406,8 @@ export function useDataLoader({
     if (cachedProfile) {
       setCurrentUser(cachedProfile);
       setAuthLoading(false);
+      // Paint the badge instantly from the last known count, then confirm.
+      setUnreadCount(NotificationsDB.readCachedBadgeCount());
       refreshUnreadCount(cachedProfile.id, { skipCache: true });
     }
     (async () => {
@@ -527,7 +533,11 @@ export function useDataLoader({
     if (getProfileStatus(currentUser) !== "verified") return;
     const unsubscribe = subscribeToMyNotifications(currentUser.id, (notification) => {
       if (notification && notification.read === false) {
-        setUnreadCount((currentCount) => Math.max(0, Number(currentCount) || 0) + 1);
+        setUnreadCount((currentCount) => {
+          const nextCount = Math.max(0, Number(currentCount) || 0) + 1;
+          NotificationsDB.writeCachedBadgeCount(nextCount);
+          return nextCount;
+        });
       } else {
         refreshUnreadCount(currentUser.id, { skipCache: true });
       }
@@ -548,6 +558,7 @@ export function useDataLoader({
     loadMorePosts,
     reloadNotifications,
     loadMoreNotifications,
+    refreshUnreadCount,
     reloadMyPosts,
     reloadPendingUsers,
     reloadVerifiedUsers,
