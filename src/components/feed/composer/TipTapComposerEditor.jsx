@@ -186,18 +186,24 @@ export default function TipTapComposerEditor({
     },
   });
 
-  // Move the caret to the very end and focus, then let ProseMirror scroll it
-  // into view. Used when the full-screen editor opens.
+  // Move the caret to the very end and focus. Mobile browsers reset the DOM
+  // selection to the start when the editor is re-attached into the overlay and
+  // again when the keyboard animates in, so we re-assert "end" a few times.
   const placeCaretAtEnd = useCallback(
     (tiptap) => {
       if (!tiptap) return;
-      const endPosition = Math.max(0, tiptap.state?.doc?.content?.size ?? 0);
-      tiptap.commands.setTextSelection(endPosition);
-      tiptap.commands.focus(endPosition, { scrollIntoView: true });
-      applyStoredMarks(tiptap);
-      rememberSelection(tiptap);
-      syncFormats(tiptap);
-      scrollCaretIntoView(tiptap);
+      const moveToEnd = () => {
+        if (!tiptap?.view) return;
+        tiptap.commands.focus("end", { scrollIntoView: true });
+        applyStoredMarks(tiptap);
+        rememberSelection(tiptap);
+        syncFormats(tiptap);
+        scrollCaretIntoView(tiptap);
+      };
+      moveToEnd();
+      window.requestAnimationFrame?.(moveToEnd);
+      window.setTimeout(moveToEnd, 90);
+      window.setTimeout(moveToEnd, 240);
     },
     [applyStoredMarks, rememberSelection, scrollCaretIntoView, syncFormats]
   );
