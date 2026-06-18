@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Loader2, Search, UserRound } from "lucide-react";
+import { ChevronRight, Loader2, Search, UserRound, X } from "lucide-react";
 import { T } from "@/lib/theme";
 import * as PostsDB from "@/lib/db/posts";
 import { searchVerifiedProfiles } from "@/lib/db/profiles";
@@ -58,34 +58,22 @@ function mergeUniqueById(currentRows = [], nextRows = []) {
 function SearchStatusCard({ title, body, icon: Icon = Search }) {
   return (
     <div
-      className="overflow-hidden rounded-[28px] border p-4 shadow-sm md:p-5"
-      style={{
-        background:
-          "radial-gradient(circle at 50% 0%, rgba(61,111,151,0.08) 0%, rgba(255,255,255,0.98) 46%, rgba(248,251,255,0.98) 100%)",
-        borderColor: "rgba(207,218,232,0.92)",
-        boxShadow: "0 14px 34px rgba(7,27,51,0.07)",
-      }}
+      className="rounded-2xl border bg-white/90 px-5 py-8 text-center shadow-sm backdrop-blur"
+      style={{ borderColor: T.borderSoft }}
     >
-      <div className="mx-auto flex max-w-sm flex-col items-center py-5 text-center md:py-7">
-        <div
-          className="mb-4 flex h-[60px] w-[60px] items-center justify-center rounded-[20px] border shadow-sm"
-          style={{
-            background: "linear-gradient(180deg, #FFFFFF 0%, #F3F7FC 100%)",
-            borderColor: "rgba(207,218,232,0.9)",
-            color: T.blue,
-            boxShadow: "0 12px 24px rgba(49,74,102,0.09)",
-          }}
-        >
-          <Icon size={28} strokeWidth={2.35} />
-        </div>
-
-        <h2 className="text-[20px] font-black tracking-[-0.04em]" style={{ color: T.text }}>
-          {title}
-        </h2>
-        <p className="mt-2 text-[14px] font-semibold leading-6" style={{ color: T.textSubtle }}>
-          {body}
-        </p>
+      <div
+        className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl"
+        style={{ backgroundColor: T.brandBlueSoft, color: T.blue }}
+      >
+        <Icon size={22} strokeWidth={2.3} />
       </div>
+
+      <h2 className="text-base font-bold tracking-tight" style={{ color: T.text }}>
+        {title}
+      </h2>
+      <p className="mx-auto mt-1.5 max-w-sm text-sm leading-6" style={{ color: T.textSubtle }}>
+        {body}
+      </p>
     </div>
   );
 }
@@ -98,13 +86,8 @@ function LoadMoreButton({ loading, disabled, onClick, label = "Load more" }) {
       type="button"
       onClick={onClick}
       disabled={loading || disabled}
-      className="mx-auto mt-2 inline-flex min-h-[42px] items-center justify-center rounded-full border px-5 text-sm font-extrabold shadow-sm transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
-      style={{
-        backgroundColor: "#FFFFFF",
-        borderColor: "rgba(207,218,232,0.92)",
-        color: T.blue,
-        boxShadow: "0 10px 22px rgba(7,27,51,0.06)",
-      }}
+      className="mx-auto mt-2 inline-flex min-h-[40px] items-center justify-center rounded-full border px-5 text-sm font-bold transition hover:shadow-sm active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+      style={{ backgroundColor: T.card, borderColor: T.border, color: T.blue }}
     >
       {loading ? <Loader2 size={15} className="mr-2 animate-spin" /> : null}
       {loading ? "Loading…" : label}
@@ -371,12 +354,12 @@ export default function SearchPage() {
     return (
       <div className="flex flex-col gap-2.5">
         {showTitle ? (
-          <div className="flex items-center justify-between px-2 pb-0.5">
-            <h2 className="text-[12px] font-black uppercase tracking-[0.18em]" style={{ color: T.textSubtle }}>
+          <div className="flex items-center justify-between px-1 pb-0.5">
+            <h2 className="text-[11px] font-bold uppercase tracking-[0.16em]" style={{ color: T.textSubtle }}>
               Posts
             </h2>
             {postLoading ? (
-              <span className="inline-flex items-center gap-1 text-xs font-semibold" style={{ color: T.textSubtle }}>
+              <span className="inline-flex items-center gap-1 text-xs font-medium" style={{ color: T.textSubtle }}>
                 <Loader2 size={12} className="animate-spin" /> Refreshing
               </span>
             ) : null}
@@ -384,7 +367,7 @@ export default function SearchPage() {
         ) : null}
 
         {postError ? (
-          <p className="px-2 text-xs font-semibold" style={{ color: SEARCH_ACTIVE_COLOR }}>
+          <p className="px-1 text-xs font-semibold" style={{ color: SEARCH_ACTIVE_COLOR }}>
             {postError}
           </p>
         ) : null}
@@ -422,18 +405,23 @@ export default function SearchPage() {
     if (!currentUser) {
       return (
         <div
-          className="rounded-[28px] border p-5 text-center shadow-sm"
-          style={{ backgroundColor: T.card, borderColor: T.border }}
+          className="rounded-2xl border bg-white/90 px-5 py-8 text-center shadow-sm backdrop-blur"
+          style={{ borderColor: T.borderSoft }}
         >
-          <UserRound className="mx-auto mb-3" size={32} style={{ color: T.navy }} />
-          <h2 className="text-lg font-extrabold" style={{ color: T.text }}>Sign in to search members</h2>
-          <p className="mx-auto mt-1 max-w-sm text-sm leading-6" style={{ color: T.textSubtle }}>
+          <div
+            className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl"
+            style={{ backgroundColor: T.brandBlueSoft, color: T.blue }}
+          >
+            <UserRound size={22} strokeWidth={2.3} />
+          </div>
+          <h2 className="text-base font-bold tracking-tight" style={{ color: T.text }}>Sign in to search members</h2>
+          <p className="mx-auto mt-1.5 max-w-sm text-sm leading-6" style={{ color: T.textSubtle }}>
             Member profile search is available to signed-in verified Soldier Hub users.
           </p>
           <button
             type="button"
             onClick={() => setAuthModal("login")}
-            className="mt-4 rounded-full px-5 py-2.5 text-sm font-extrabold text-white shadow-sm transition active:scale-[0.98]"
+            className="mt-4 rounded-full px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:shadow active:scale-[0.98]"
             style={{ backgroundColor: T.navy }}
           >
             Sign in
@@ -455,11 +443,11 @@ export default function SearchPage() {
     if (memberResults.length === 0 && memberLoading) {
       return (
         <div
-          className="rounded-[28px] border p-5 text-center shadow-sm"
-          style={{ backgroundColor: T.card, borderColor: T.border }}
+          className="rounded-2xl border bg-white/90 px-5 py-8 text-center shadow-sm backdrop-blur"
+          style={{ borderColor: T.borderSoft }}
         >
-          <Loader2 className="mx-auto animate-spin" size={26} style={{ color: T.navy }} />
-          <p className="mt-3 text-sm font-semibold" style={{ color: T.textSubtle }}>Searching members…</p>
+          <Loader2 className="mx-auto animate-spin" size={22} style={{ color: T.blue }} />
+          <p className="mt-3 text-sm font-medium" style={{ color: T.textSubtle }}>Searching members…</p>
         </div>
       );
     }
@@ -487,12 +475,12 @@ export default function SearchPage() {
     return (
       <div className="flex flex-col gap-2.5">
         {showTitle ? (
-          <div className="flex items-center justify-between px-2 pb-0.5">
-            <h2 className="text-[12px] font-black uppercase tracking-[0.18em]" style={{ color: T.textSubtle }}>
+          <div className="flex items-center justify-between px-1 pb-0.5">
+            <h2 className="text-[11px] font-bold uppercase tracking-[0.16em]" style={{ color: T.textSubtle }}>
               Members
             </h2>
             {memberLoading ? (
-              <span className="inline-flex items-center gap-1 text-xs font-semibold" style={{ color: T.textSubtle }}>
+              <span className="inline-flex items-center gap-1 text-xs font-medium" style={{ color: T.textSubtle }}>
                 <Loader2 size={12} className="animate-spin" /> Refreshing
               </span>
             ) : null}
@@ -500,42 +488,42 @@ export default function SearchPage() {
         ) : null}
 
         {memberError ? (
-          <p className="px-2 text-xs font-semibold" style={{ color: SEARCH_ACTIVE_COLOR }}>
+          <p className="px-1 text-xs font-semibold" style={{ color: SEARCH_ACTIVE_COLOR }}>
             {memberError}
           </p>
         ) : null}
 
-        <div className="flex flex-col gap-2.5">
+        <div className="flex flex-col gap-2">
           {memberResults.map((profile) => (
             <button
               key={profile.id}
               type="button"
               onClick={() => openProfile(profile)}
-              className="flex w-full items-center gap-3 rounded-[24px] border p-3.5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.99]"
-              style={{
-                background: "linear-gradient(180deg, #FFFFFF 0%, #F8FBFF 100%)",
-                borderColor: "rgba(207,218,232,0.92)",
-                boxShadow: "0 12px 26px rgba(7,27,51,0.055)",
-              }}
+              className="group flex w-full items-center gap-3 rounded-2xl border px-3.5 py-3 text-left transition hover:shadow-sm active:scale-[0.99]"
+              style={{ backgroundColor: T.card, borderColor: T.borderSoft }}
             >
               <Avatar
                 name={profile.full_name || "SoldierHub member"}
                 color={profile.avatar_color}
                 src={getProfileAvatarUrl(profile)}
-                size={48}
+                size={44}
               />
               <div className="min-w-0 flex-1">
-                <div className="truncate text-[15px] font-extrabold" style={{ color: T.text }}>
+                <div className="truncate text-sm font-bold" style={{ color: T.text }}>
                   {profile.full_name || "SoldierHub member"}
                 </div>
-                <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs font-semibold" style={{ color: T.textSubtle }}>
+                <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs font-medium" style={{ color: T.textSubtle }}>
                   <span>{profile.base || "Fort Bliss"}</span>
-                  {profile.match_type === "email" ? <span>• exact email match</span> : null}
+                  {profile.match_type === "email" ? <span>· exact email match</span> : null}
                 </div>
               </div>
-              <span className="text-xl font-light" style={{ color: T.textSubtle }}>
-                ›
-              </span>
+              <ChevronRight
+                size={16}
+                strokeWidth={2.4}
+                className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+                style={{ color: T.textSubtle }}
+                aria-hidden="true"
+              />
             </button>
           ))}
         </div>
@@ -576,7 +564,16 @@ export default function SearchPage() {
       );
     }
 
-    if (isCheckingResults) return null;
+    // Still fetching with nothing to show yet: render skeletons instead of a
+    // blank screen so the All tab does not flash empty between keystrokes.
+    if (isCheckingResults) {
+      return (
+        <div className="flex flex-col gap-3">
+          <PostSkeleton />
+          <PostSkeleton />
+        </div>
+      );
+    }
 
     return (
       <SearchStatusCard
@@ -591,32 +588,32 @@ export default function SearchPage() {
     <AppShell hideNav>
       <main className="mx-auto w-full max-w-[640px] px-0 pb-24 pt-0 sm:px-5 md:pt-4">
         <section
-          className="sticky top-0 z-30 border-b px-3 pb-0 pt-[max(10px,env(safe-area-inset-top))] backdrop-blur-xl sm:rounded-b-[24px] sm:border sm:px-4 sm:shadow-sm"
+          className="sticky top-0 z-30 border-b px-3 pb-2.5 pt-[max(10px,env(safe-area-inset-top))] backdrop-blur-xl sm:rounded-b-2xl sm:border sm:px-4 sm:shadow-sm"
           style={{
             backgroundColor: "rgba(255,255,255,0.96)",
-            borderColor: "rgba(207,218,232,0.92)",
-            boxShadow: "0 8px 22px rgba(7,27,51,0.05)",
+            borderColor: T.borderSoft,
+            boxShadow: "0 6px 18px rgba(7,27,51,0.04)",
           }}
         >
-          <div className="relative flex h-9 items-center justify-center">
-            <h1 className="text-[18px] font-black tracking-[-0.025em]" style={{ color: T.text }}>
-              Search Results
+          <div className="relative flex h-10 items-center justify-center">
+            <h1 className="text-base font-bold tracking-tight" style={{ color: T.text }}>
+              Search
             </h1>
             <button
               type="button"
               onClick={() => router.push("/")}
-              className="absolute right-0 rounded-full px-1.5 py-1 text-[15px] font-bold transition active:scale-[0.98]"
+              className="absolute right-0 rounded-full px-2 py-1 text-sm font-semibold transition active:scale-[0.98]"
               style={{ color: T.blue }}
             >
               Cancel
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="mt-1.5">
+          <form onSubmit={handleSubmit} className="mt-1">
             <div className="relative">
               <Search
                 size={17}
-                className="absolute left-3 top-1/2 -translate-y-1/2"
+                className="absolute left-3.5 top-1/2 -translate-y-1/2"
                 style={{ color: cleanQuery ? SEARCH_ACTIVE_COLOR : SEARCH_IDLE_COLOR }}
               />
               <input
@@ -626,18 +623,31 @@ export default function SearchPage() {
                 autoComplete="off"
                 inputMode="search"
                 enterKeyHint="search"
-                className="h-[38px] w-full rounded-[14px] border pl-9 pr-3 text-[16px] font-semibold outline-none transition placeholder:font-semibold"
+                className="h-11 w-full rounded-full border pl-10 pr-10 text-[16px] font-medium outline-none transition placeholder:font-medium"
                 style={{
-                  backgroundColor: "#F0F2F5",
-                  borderColor: "rgba(207,218,232,0.72)",
+                  backgroundColor: T.surfaceSoft,
+                  borderColor: T.borderSoft,
                   color: T.text,
-                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.78)",
                 }}
               />
+              {localQuery ? (
+                <button
+                  type="button"
+                  onClick={() => setLocalQuery("")}
+                  aria-label="Clear search"
+                  className="absolute right-2.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full transition active:scale-95"
+                  style={{ backgroundColor: "#E6ECF3", color: T.textSubtle }}
+                >
+                  <X size={13} strokeWidth={2.6} />
+                </button>
+              ) : null}
             </div>
           </form>
 
-          <div className="mt-1 grid grid-cols-3" style={{ borderColor: "rgba(207,218,232,0.92)" }}>
+          <div
+            className="mt-2 flex gap-1 rounded-full border p-1"
+            style={{ borderColor: T.borderSoft, backgroundColor: T.surface }}
+          >
             {searchTabs.map((tab) => {
               const active = activeTab === tab.key;
               return (
@@ -645,26 +655,24 @@ export default function SearchPage() {
                   key={tab.key}
                   type="button"
                   onClick={() => setTab(tab.key)}
-                  className="relative flex h-10 items-center justify-center gap-1 text-[15px] font-bold transition active:scale-[0.98]"
-                  style={{ color: active ? T.blue : "#7A7F87" }}
+                  className="relative flex flex-1 items-center justify-center gap-1.5 rounded-full py-1.5 text-[13px] font-bold transition active:scale-[0.98]"
+                  style={{
+                    backgroundColor: active ? "#FFFFFF" : "transparent",
+                    color: active ? T.blue : T.textSubtle,
+                    boxShadow: active ? "0 1px 4px rgba(7,27,51,0.10)" : "none",
+                  }}
                 >
                   <span>{tab.label}</span>
                   {cleanQuery.length >= 2 && tab.count > 0 ? (
                     <span
-                      className="rounded-full px-1 py-0.5 text-[9px] font-black"
+                      className="rounded-full px-1.5 py-0.5 text-[10px] font-black leading-none"
                       style={{
-                        backgroundColor: active ? T.brandBlueSoft : "#EEF3F8",
+                        backgroundColor: active ? T.brandBlueSoft : "#E6ECF3",
                         color: active ? T.blue : T.textSubtle,
                       }}
                     >
                       {tab.count > 99 ? "99+" : tab.count}
                     </span>
-                  ) : null}
-                  {active ? (
-                    <span
-                      className="absolute bottom-0 left-1/2 h-[3px] w-20 max-w-[76%] -translate-x-1/2 rounded-full"
-                      style={{ backgroundColor: T.blue }}
-                    />
                   ) : null}
                 </button>
               );
