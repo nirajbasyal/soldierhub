@@ -367,9 +367,9 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
 
   if (!open) {
     return (
-      <div role="button" tabIndex={0} onClick={() => setOpen(true)} className="flex w-full cursor-pointer items-center gap-3 rounded-[26px] border p-5" style={{ backgroundColor: T.card, borderColor: T.border }}>
-        <Avatar name={currentUser.full_name} color={currentUser.avatar_color} src={currentUser.avatar_url} size={46} />
-        <div className="min-w-0 flex-1 rounded-full border px-4 py-4" style={{ backgroundColor: "#F4F8FD", borderColor: T.border }}><div className="truncate text-[15px] font-medium" style={{ color: T.textMuted }}>What do you want to ask or share?</div></div>
+      <div role="button" tabIndex={0} onClick={() => setOpen(true)} className="flex w-full cursor-pointer items-center gap-3 rounded-2xl border p-3.5 transition hover:shadow-sm" style={{ backgroundColor: T.card, borderColor: T.border }}>
+        <Avatar name={currentUser.full_name} color={currentUser.avatar_color} src={currentUser.avatar_url} size={44} />
+        <div className="min-w-0 flex-1 rounded-full border px-4 py-3" style={{ backgroundColor: T.surfaceSoft, borderColor: T.borderSoft }}><div className="truncate text-[15px] font-medium" style={{ color: T.textMuted }}>What do you want to ask or share?</div></div>
         <Button variant="primary" icon={Plus}>Post</Button>
       </div>
     );
@@ -380,7 +380,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   const composerAvatarSrc = anonymous ? null : currentUser.avatar_url;
 
   return (
-    <div className={pageMode ? "relative flex flex-col rounded-[30px] border p-3.5 md:min-h-[500px] md:p-5" : "relative rounded-[26px] border p-4"} style={{ backgroundColor: T.card, borderColor: T.border }}>
+    <div className={pageMode ? "relative flex flex-col rounded-3xl border p-3.5 md:min-h-[500px] md:p-5" : "relative rounded-2xl border p-4"} style={{ backgroundColor: T.card, borderColor: T.border }}>
       <div className="mb-3 flex items-center gap-3">
         <Avatar name={composerDisplayName} color={composerDisplayColor} src={composerAvatarSrc} size={44} />
         <div className="min-w-0 flex-1">
