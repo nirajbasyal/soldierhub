@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  AlertTriangle,
   BookOpen,
   CheckCircle2,
   ChevronDown,
@@ -164,6 +165,19 @@ function ScoreHero({ summary, filteredCount, totalCount, title, subtitle }) {
       </div>
       <div className="mt-4 h-2 overflow-hidden rounded-full" style={{ backgroundColor: T.borderSoft }}>
         <div className="h-full rounded-full transition-all" style={{ width: `${progress}%`, backgroundColor: T.brandRed }} />
+      </div>
+    </Card>
+  );
+}
+
+function AccuracyNotice() {
+  return (
+    <Card className="px-3 py-2.5" style={{ backgroundColor: "rgba(255,255,255,0.72)", borderColor: T.borderSoft }}>
+      <div className="flex items-start gap-2">
+        <AlertTriangle size={13} className="mt-0.5 shrink-0" style={{ color: T.gold }} />
+        <p className="text-[11px] font-semibold leading-5" style={{ color: T.textMuted }}>
+          <span className="font-black" style={{ color: T.navy }}>Study notice:</span> SoldierHub does not guarantee every question or answer is accurate, current, or complete. Verify with the actual regulation, official publication, or your chain of command. If improvement is needed, send an update or delete request for admin review.
+        </p>
       </div>
     </Card>
   );
@@ -722,6 +736,7 @@ export default function BoardPrepStudyClient() {
           {!loading && !error && questions.length > 0 && !selectedDeck && (
             <>
               <ScoreHero summary={allSummary} filteredCount={questions.length} totalCount={questions.length} title="Overall study score" subtitle="all decks" />
+              <AccuracyNotice />
               <RequestPanel />
               <DeckSelection decks={decks} deckQuery={deckQuery} setDeckQuery={setDeckQuery} onSelect={selectDeck} />
             </>
@@ -730,6 +745,7 @@ export default function BoardPrepStudyClient() {
           {!loading && !error && questions.length > 0 && selectedDeck && (
             <>
               <ScoreHero summary={selectedSummary} filteredCount={filteredQuestions.length} totalCount={deckQuestions.length} title={`${selectedDeck.label} deck`} subtitle="draft saved" />
+              <AccuracyNotice />
               <SelectedDeckHeading deck={selectedDeck} />
               <div className="sticky top-0 z-20 -mx-1 rounded-b-[1.5rem] px-1 pb-2 pt-1" style={{ backgroundColor: T.bg }}>
                 <StudyControls searchQuery={searchQuery} setSearchQuery={setSearchQuery} filterOpen={filterOpen} setFilterOpen={setFilterOpen} statusFilter={statusFilter} setStatusFilter={setStatusFilter} showAll={showAll} setShowAll={setShowAll} resetScores={resetScores} />
