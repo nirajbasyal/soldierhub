@@ -34,13 +34,13 @@ export default function ProfileIdentityHero({
 }) {
   return (
     <div
-      className="relative min-h-[170px] overflow-hidden px-4 pb-12 pt-5 min-[560px]:min-h-[164px] min-[560px]:px-6 min-[560px]:pb-12 min-[560px]:pt-6"
+      className="relative min-h-[170px] overflow-visible px-4 pb-12 pt-5 min-[560px]:min-h-[164px] min-[560px]:px-6 min-[560px]:pb-12 min-[560px]:pt-6"
       style={{
         background:
           "radial-gradient(circle at 88% 43%, rgba(255,255,255,0.13), transparent 22%), radial-gradient(circle at 88% 43%, transparent 0 16%, rgba(255,255,255,0.15) 16.3% 16.9%, transparent 17.2% 100%), linear-gradient(135deg, #071B33 0%, #102E52 100%)",
       }}
     >
-      <div className="relative z-10 flex min-w-0 items-start gap-3.5 min-[560px]:gap-4">
+      <div className="relative z-30 flex min-w-0 items-start gap-3.5 min-[560px]:gap-4">
         <ExpandableProfileAvatar
           name={displayName}
           color={displayColor}
