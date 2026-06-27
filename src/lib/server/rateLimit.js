@@ -1,4 +1,5 @@
 import { createHash } from "crypto";
+import { NextResponse } from "next/server";
 
 const DEFAULT_WINDOW_MS = 60 * 1000;
 const DEFAULT_LIMIT = 60;
@@ -236,6 +237,27 @@ async function checkSharedRateLimit(
   };
 }
 
+export function rateLimitResponse(result = {}) {
+  const retryAfter = Math.max(1, Number(result.retryAfter) || 30);
+  const status = Number(result.status) || 429;
+
+  return NextResponse.json(
+    {
+      error: result.error || "Too many requests. Please slow down and try again.",
+      retryAfter,
+      reason: result.reason || null,
+    },
+    {
+      status,
+      headers: {
+        ...(result.headers || {}),
+        "Retry-After": String(retryAfter),
+        "Cache-Control": "no-store",
+      },
+    }
+  );
+}
+
 export async function checkRateLimit(request, options = {}) {
   const hasSharedStore = Boolean(getUpstashConfig());
 
@@ -257,26 +279,4 @@ export async function checkRateLimit(request, options = {}) {
   }
 
   return checkInMemoryRateLimit(request, options);
-}
-
-export function rateLimitResponse(result) {
-  const status = result.status || 429;
-  const isUnavailable = status === 503;
-
-  return Response.json(
-    {
-      error: result.error || "Too many requests. Please try again shortly.",
-      retryAfter: result.retryAfter,
-      ...(result.reason ? { reason: result.reason } : {}),
-    },
-    {
-      status,
-      headers: {
-        ...result.headers,
-        "Retry-After": String(result.retryAfter),
-        "Cache-Control": "no-store",
-        ...(isUnavailable ? { "X-SoldierHub-Protection": "rate-limit-unavailable" } : {}),
-      },
-    }
-  );
 }
