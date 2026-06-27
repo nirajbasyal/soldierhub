@@ -13,7 +13,6 @@ import {
   Send,
   ShieldCheck,
   User,
-  UserPlus,
   X,
 } from "lucide-react";
 import { T } from "@/lib/theme";
@@ -63,6 +62,14 @@ function FieldShell({ children, invalid = false, compact = false }) {
   );
 }
 
+function FieldError({ children }) {
+  return (
+    <p className="mt-1 text-xs font-semibold" style={{ color: T.red }}>
+      {children}
+    </p>
+  );
+}
+
 function EmailField({
   label,
   value,
@@ -95,16 +102,13 @@ function EmailField({
           value={value}
           onChange={onChange}
           placeholder={placeholder}
+          autoComplete="email"
           className={`${compact ? "h-10 rounded-xl sm:h-12 sm:rounded-2xl" : "h-12 rounded-2xl"} w-full border-0 bg-transparent pl-10 pr-3 text-sm outline-none placeholder:text-[#A8ABB2]`}
           style={{ color: T.text }}
         />
       </FieldShell>
 
-      {invalid && (
-        <p className="mt-1 text-xs font-semibold" style={{ color: T.red }}>
-          {errorText}
-        </p>
-      )}
+      {invalid && <FieldError>{errorText}</FieldError>}
     </label>
   );
 }
@@ -143,16 +147,65 @@ function PhoneField({
           value={value}
           onChange={onChange}
           placeholder={placeholder}
+          autoComplete="tel"
           className={`${compact ? "h-10 rounded-xl sm:h-12 sm:rounded-2xl" : "h-12 rounded-2xl"} w-full border-0 bg-transparent pl-10 pr-3 text-sm outline-none placeholder:text-[#A8ABB2]`}
           style={{ color: T.text }}
         />
       </FieldShell>
 
-      {invalid && (
-        <p className="mt-1 text-xs font-semibold" style={{ color: T.red }}>
-          {errorText}
-        </p>
-      )}
+      {invalid && <FieldError>{errorText}</FieldError>}
+    </label>
+  );
+}
+
+function PasswordField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  visible,
+  onToggleVisible,
+  autoComplete,
+  invalid = false,
+  compact = false,
+}) {
+  return (
+    <label className="block">
+      <span
+        className={`${compact ? "mb-1" : "mb-1.5"} block text-xs font-bold`}
+        style={{ color: T.textMuted }}
+      >
+        <RequiredLabel>{label}</RequiredLabel>
+      </span>
+
+      <FieldShell invalid={invalid} compact={compact}>
+        <span
+          className="absolute left-3 top-1/2 -translate-y-1/2"
+          style={{ color: invalid ? T.red : T.textSubtle }}
+        >
+          <Lock size={16} strokeWidth={2.25} />
+        </span>
+
+        <input
+          type={visible ? "text" : "password"}
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          autoComplete={autoComplete}
+          className={`${compact ? "h-10 rounded-xl sm:h-12 sm:rounded-2xl" : "h-12 rounded-2xl"} w-full border-0 bg-transparent pl-10 pr-11 text-sm outline-none placeholder:text-[#A8ABB2]`}
+          style={{ color: T.text }}
+        />
+
+        <button
+          type="button"
+          onClick={onToggleVisible}
+          className="absolute right-3 top-1/2 -translate-y-1/2"
+          style={{ color: T.textSubtle }}
+          aria-label={visible ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`}
+        >
+          {visible ? <EyeOff size={16} /> : <Eye size={16} />}
+        </button>
+      </FieldShell>
     </label>
   );
 }
@@ -191,13 +244,8 @@ export default function AuthModal() {
   const [resetSent, setResetSent] = useState(false);
 
   const trimmedEmail = email.trim().toLowerCase();
-
-  const emailIsInvalid =
-    trimmedEmail.length > 0 && !isValidEmail(trimmedEmail);
-
-  const phoneIsInvalid =
-    tab === "signup" && phone.length > 0 && phone.length !== 10;
-
+  const emailIsInvalid = trimmedEmail.length > 0 && !isValidEmail(trimmedEmail);
+  const phoneIsInvalid = tab === "signup" && phone.length > 0 && phone.length !== 10;
   const passwordsDoNotMatch =
     tab === "signup" &&
     confirmPassword.length > 0 &&
@@ -255,6 +303,8 @@ export default function AuthModal() {
   };
 
   const submit = async (options = {}) => {
+    if (submitting) return;
+
     setError("");
 
     const skipCommunityAgreement = options?.skipCommunityAgreement === true;
@@ -307,12 +357,8 @@ export default function AuthModal() {
 
       if (
         !isLiveMode &&
-        (users.some(
-          (u) => u.email === personalEmail || u.personal_email === personalEmail
-        ) ||
-          pendingUsers.some(
-            (u) => u.email === personalEmail || u.personal_email === personalEmail
-          ))
+        (users.some((u) => u.email === personalEmail || u.personal_email === personalEmail) ||
+          pendingUsers.some((u) => u.email === personalEmail || u.personal_email === personalEmail))
       ) {
         return setError("An account with that email already exists.");
       }
@@ -383,6 +429,24 @@ export default function AuthModal() {
     }
   };
 
+  const handleFormSubmit = (event) => {
+    event.preventDefault();
+    submit();
+  };
+
+  const handleCommunityAgreementSubmit = (event) => {
+    event.preventDefault();
+    setShowCommunityAgreement(false);
+    submit({ skipCommunityAgreement: true });
+  };
+
+  const switchTab = (nextTab) => {
+    setTab(nextTab);
+    setError("");
+    setResetSent(false);
+    setShowCommunityAgreement(false);
+  };
+
   const title =
     tab === "signup"
       ? "Create your account"
@@ -391,6 +455,18 @@ export default function AuthModal() {
       : "Welcome back";
 
   const compactSignup = tab === "signup";
+  const submitLabel =
+    submitting
+      ? tab === "forgot"
+        ? "Sending..."
+        : tab === "signup"
+        ? "Creating..."
+        : "Signing in..."
+      : tab === "signup"
+      ? "Review & continue"
+      : tab === "forgot"
+      ? "Send reset link"
+      : "Sign in";
 
   return (
     <>
@@ -437,6 +513,7 @@ export default function AuthModal() {
                 borderColor: T.borderSoft,
                 color: T.textMuted,
               }}
+              aria-label="Close auth modal"
             >
               <X size={18} />
             </button>
@@ -450,19 +527,14 @@ export default function AuthModal() {
                 borderColor: T.borderSoft,
               }}
             >
-              {["login", "signup"].map((k) => {
-                const active = tab === k;
+              {["login", "signup"].map((key) => {
+                const active = tab === key;
 
                 return (
                   <button
-                    key={k}
+                    key={key}
                     type="button"
-                    onClick={() => {
-                      setTab(k);
-                      setError("");
-                      setResetSent(false);
-                      setShowCommunityAgreement(false);
-                    }}
+                    onClick={() => switchTab(key)}
                     className={compactSignup ? "sh-tap h-9 rounded-xl text-sm font-extrabold transition-all sm:h-10" : "sh-tap h-10 rounded-xl text-sm font-extrabold transition-all"}
                     style={{
                       backgroundColor: active ? "#FFFFFF" : "transparent",
@@ -471,7 +543,7 @@ export default function AuthModal() {
                       border: active ? `1px solid ${T.borderSoft}` : "1px solid transparent",
                     }}
                   >
-                    {k === "login" ? "Sign in" : "Create account"}
+                    {key === "login" ? "Sign in" : "Create account"}
                   </button>
                 );
               })}
@@ -482,11 +554,8 @@ export default function AuthModal() {
             <button
               type="button"
               onClick={() => {
-                setTab("login");
+                switchTab("login");
                 setPassword("");
-                setError("");
-                setResetSent(false);
-                setShowCommunityAgreement(false);
               }}
               className="sh-tap mb-4 inline-flex h-9 items-center rounded-full border px-3 text-xs font-extrabold"
               style={{
@@ -499,7 +568,7 @@ export default function AuthModal() {
             </button>
           )}
 
-          <div className={compactSignup ? "flex flex-col gap-2 sm:gap-3" : "flex flex-col gap-3"}>
+          <form noValidate onSubmit={handleFormSubmit} className={compactSignup ? "flex flex-col gap-2 sm:gap-3" : "flex flex-col gap-3"}>
             {tab === "forgot" && (
               <div
                 className="rounded-2xl border px-3 py-3 text-sm leading-relaxed"
@@ -518,8 +587,9 @@ export default function AuthModal() {
                 label={<RequiredLabel>Full name</RequiredLabel>}
                 icon={User}
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(event) => setName(event.target.value)}
                 placeholder="Your full name"
+                autoComplete="name"
                 className="h-10 rounded-xl bg-transparent sm:h-12 sm:rounded-2xl"
               />
             )}
@@ -528,8 +598,8 @@ export default function AuthModal() {
               label={tab === "signup" ? "Personal email" : "Email"}
               required
               value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
+              onChange={(event) => {
+                setEmail(event.target.value);
                 setResetSent(false);
               }}
               placeholder="you@example.com"
@@ -542,8 +612,8 @@ export default function AuthModal() {
               <PhoneField
                 label="Phone number (optional)"
                 value={phone}
-                onChange={(e) => {
-                  const numbersOnly = e.target.value.replace(/\D/g, "");
+                onChange={(event) => {
+                  const numbersOnly = event.target.value.replace(/\D/g, "");
                   setPhone(numbersOnly);
                 }}
                 placeholder="9151234567"
@@ -554,53 +624,25 @@ export default function AuthModal() {
             )}
 
             {tab !== "forgot" && (
-              <label className="block">
-                <span
-                  className={`${compactSignup ? "mb-1" : "mb-1.5"} block text-xs font-bold`}
-                  style={{ color: T.textMuted }}
-                >
-                  Password <span style={{ color: T.red }}>*</span>
-                </span>
-
-                <FieldShell compact={compactSignup}>
-                  <span
-                    className="absolute left-3 top-1/2 -translate-y-1/2"
-                    style={{ color: T.textSubtle }}
-                  >
-                    <Lock size={16} strokeWidth={2.25} />
-                  </span>
-
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder={tab === "signup" ? "Create a password" : "Your password"}
-                    className={`${compactSignup ? "h-10 rounded-xl sm:h-12 sm:rounded-2xl" : "h-12 rounded-2xl"} w-full border-0 bg-transparent pl-10 pr-11 text-sm outline-none placeholder:text-[#A8ABB2]`}
-                    style={{ color: T.text }}
-                  />
-
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2"
-                    style={{ color: T.textSubtle }}
-                  >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </FieldShell>
-              </label>
+              <PasswordField
+                label="Password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder={tab === "signup" ? "Create a password" : "Your password"}
+                visible={showPassword}
+                onToggleVisible={() => setShowPassword((value) => !value)}
+                autoComplete={tab === "signup" ? "new-password" : "current-password"}
+                compact={compactSignup}
+              />
             )}
 
             {tab === "login" && (
-              <div className="flex justify-end -mt-1">
+              <div className="-mt-1 flex justify-end">
                 <button
                   type="button"
                   onClick={() => {
-                    setTab("forgot");
+                    switchTab("forgot");
                     setPassword("");
-                    setError("");
-                    setResetSent(false);
-                    setShowCommunityAgreement(false);
                   }}
                   className="text-xs font-extrabold hover:underline"
                   style={{ color: T.red }}
@@ -612,48 +654,23 @@ export default function AuthModal() {
 
             {tab === "signup" && (
               <>
-                <label className="block">
-                  <span className="mb-1 block text-xs font-bold sm:mb-1.5" style={{ color: T.textMuted }}>
-                    Confirm password <span style={{ color: T.red }}>*</span>
-                  </span>
+                <PasswordField
+                  label="Confirm password"
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  placeholder="Re-enter your password"
+                  visible={showConfirmPassword}
+                  onToggleVisible={() => setShowConfirmPassword((value) => !value)}
+                  autoComplete="new-password"
+                  invalid={passwordsDoNotMatch}
+                  compact={compactSignup}
+                />
 
-                  <FieldShell invalid={passwordsDoNotMatch} compact={compactSignup}>
-                    <span
-                      className="absolute left-3 top-1/2 -translate-y-1/2"
-                      style={{ color: passwordsDoNotMatch ? T.red : T.textSubtle }}
-                    >
-                      <Lock size={16} strokeWidth={2.25} />
-                    </span>
-
-                    <input
-                      type={showConfirmPassword ? "text" : "password"}
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Re-enter your password"
-                      className="h-10 w-full rounded-xl border-0 bg-transparent pl-10 pr-11 text-sm outline-none placeholder:text-[#A8ABB2] sm:h-12 sm:rounded-2xl"
-                      style={{ color: T.text }}
-                    />
-
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword((v) => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2"
-                      style={{ color: T.textSubtle }}
-                    >
-                      {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </FieldShell>
-
-                  {passwordsDoNotMatch && (
-                    <p className="mt-1 text-xs font-semibold" style={{ color: T.red }}>
-                      Passwords do not match.
-                    </p>
-                  )}
-                </label>
+                {passwordsDoNotMatch && <FieldError>Passwords do not match.</FieldError>}
 
                 <button
                   type="button"
-                  onClick={() => setShowBio((v) => !v)}
+                  onClick={() => setShowBio((value) => !value)}
                   className="sh-tap rounded-full px-1 text-left text-[11px] font-extrabold sm:text-xs"
                   style={{ color: T.navy }}
                 >
@@ -664,7 +681,7 @@ export default function AuthModal() {
                   <TextArea
                     label="Bio (optional)"
                     value={bio}
-                    onChange={(e) => setBio(e.target.value)}
+                    onChange={(event) => setBio(event.target.value)}
                     placeholder="Unit, role, interests, or anything helpful for the community."
                   />
                 )}
@@ -679,9 +696,9 @@ export default function AuthModal() {
                   <input
                     type="checkbox"
                     checked={legalAccepted}
-                    onChange={(e) => {
-                      setLegalAccepted(e.target.checked);
-                      if (e.target.checked && error.toLowerCase().includes("terms")) {
+                    onChange={(event) => {
+                      setLegalAccepted(event.target.checked);
+                      if (event.target.checked && error.toLowerCase().includes("terms")) {
                         setError("");
                       }
                     }}
@@ -736,23 +753,13 @@ export default function AuthModal() {
 
             <div className={compactSignup ? "sticky bottom-0 z-10 -mx-4 mt-0 bg-gradient-to-t from-white via-white/95 to-transparent px-4 pt-2 pb-0 sm:static sm:mx-0 sm:bg-transparent sm:px-0 sm:pt-0" : ""}>
               <Button
+                type="submit"
                 variant="primary"
                 icon={tab === "signup" ? ShieldCheck : tab === "forgot" ? Send : LogIn}
-                onClick={() => submit()}
                 disabled={submitting}
                 className={`${compactSignup ? "w-full rounded-xl sm:rounded-2xl" : "mt-1 w-full rounded-2xl"}`}
               >
-                {submitting
-                  ? tab === "forgot"
-                    ? "Sending..."
-                    : tab === "signup"
-                    ? "Creating..."
-                    : "Signing in..."
-                  : tab === "signup"
-                  ? "Review & continue"
-                  : tab === "forgot"
-                  ? "Send reset link"
-                  : "Sign in"}
+                {submitLabel}
               </Button>
 
               {tab === "signup" && (
@@ -767,13 +774,18 @@ export default function AuthModal() {
                 </div>
               )}
             </div>
-          </div>
+          </form>
         </div>
       </Modal>
 
       {showCommunityAgreement && (
         <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-slate-950/45 px-4 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-3xl border p-4 shadow-2xl" style={{ backgroundColor: "#FFFFFF", borderColor: T.borderSoft }}>
+          <form
+            noValidate
+            onSubmit={handleCommunityAgreementSubmit}
+            className="w-full max-w-sm rounded-3xl border p-4 shadow-2xl"
+            style={{ backgroundColor: "#FFFFFF", borderColor: T.borderSoft }}
+          >
             <div className="mb-3 flex items-start gap-3">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl" style={{ backgroundColor: "rgba(179,25,66,0.08)", color: T.red }}>
                 <ShieldCheck size={20} strokeWidth={2.5} />
@@ -804,11 +816,7 @@ export default function AuthModal() {
               </button>
 
               <button
-                type="button"
-                onClick={() => {
-                  setShowCommunityAgreement(false);
-                  submit({ skipCommunityAgreement: true });
-                }}
+                type="submit"
                 disabled={submitting}
                 className="sh-tap h-11 rounded-2xl text-sm font-extrabold text-white disabled:opacity-70"
                 style={{ backgroundColor: T.red }}
@@ -816,7 +824,7 @@ export default function AuthModal() {
                 {submitting ? "Creating..." : "Create account"}
               </button>
             </div>
-          </div>
+          </form>
         </div>
       )}
     </>
