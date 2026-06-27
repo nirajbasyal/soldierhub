@@ -155,3 +155,42 @@
 .soldierhub-profile-shell > section:first-of-type {
   border-radius: 26px !important;
 }
+
+/*
+  iPhone/Safari/WKWebView profile fix:
+  desktop should stay centered, but phone should not feel like a web card inside
+  another phone frame. On mobile, use the available viewport and neutralize the
+  feed-wide centering hacks inside the profile page only.
+*/
+@media (max-width: 767px) {
+  .soldierhub-profile-shell {
+    max-width: none !important;
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+    padding-top: calc(env(safe-area-inset-top, 0px) + 0.6rem) !important;
+  }
+
+  .soldierhub-profile-shell > section,
+  .soldierhub-profile-shell .sh-feed-post-list,
+  .soldierhub-profile-shell .sh-feed-post-list > article {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  .soldierhub-profile-shell .sh-feed-post-list {
+    left: auto !important;
+    transform: none !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  .soldierhub-profile-shell .sh-feed-post-list > article {
+    border-radius: 22px !important;
+  }
+
+  .soldierhub-profile-shell section.mt-6 {
+    margin-top: 0.9rem !important;
+  }
+}
