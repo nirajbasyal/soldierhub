@@ -1,5 +1,5 @@
 import { Loader2, UserCheck, UserPlus } from "lucide-react";
-import Avatar from "@/components/ui/Avatar";
+import ExpandableProfileAvatar from "@/components/profile/ExpandableProfileAvatar";
 import ShareProfileButton from "@/components/profile/ShareProfileButton";
 import ProfileVerifiedBadge from "@/components/profile/ProfileVerifiedBadge";
 
@@ -38,6 +38,7 @@ export default function VisitorProfileHero({
   if (!profile) return null;
 
   const bioText = limitBio(profile.bio);
+  const profileName = profile.full_name || "SoldierHub member";
 
   return (
     <section className="relative min-w-0 overflow-hidden rounded-[28px] border border-[#D5E2F2] bg-white shadow-[0_18px_42px_rgba(7,27,51,0.11)]">
@@ -49,14 +50,18 @@ export default function VisitorProfileHero({
         }}
       >
         <div className="relative z-10 flex min-w-0 items-start gap-3.5 min-[560px]:gap-4">
-          <div className="shrink-0 rounded-full shadow-[0_12px_28px_rgba(0,0,0,0.24)]">
-            <Avatar name={profile.full_name} color={profile.avatar_color} src={profile.avatar_url} size={76} />
-          </div>
+          <ExpandableProfileAvatar
+            name={profileName}
+            color={profile.avatar_color}
+            src={profile.avatar_url}
+            size={76}
+            buttonClassName="shadow-[0_12px_28px_rgba(0,0,0,0.24)] ring-offset-[#071B33] hover:scale-[1.03]"
+          />
 
           <div className="min-w-0 flex-1 pt-1 text-left">
             <div className="flex min-w-0 items-start justify-between gap-2">
-              <h1 className="flex min-w-0 items-start gap-1.5 text-2xl font-black tracking-[-0.04em] leading-tight text-white sm:text-3xl" title={profile.full_name}>
-                <span className="min-w-0 truncate">{profile.full_name}</span>
+              <h1 className="flex min-w-0 items-start gap-1.5 text-2xl font-black tracking-[-0.04em] leading-tight text-white sm:text-3xl" title={profileName}>
+                <span className="min-w-0 truncate">{profileName}</span>
                 <ProfileVerifiedBadge className="mt-1 sm:mt-1.5" />
               </h1>
               {refreshing ? <Loader2 size={15} className="mt-1 shrink-0 animate-spin text-white/80" /> : null}
@@ -99,7 +104,7 @@ export default function VisitorProfileHero({
           {isFollowing ? "Following" : "Follow"}
         </button>
 
-        <ShareProfileButton profileId={profileId} profileName={profile.full_name} pushToast={pushToast} />
+        <ShareProfileButton profileId={profileId} profileName={profileName} pushToast={pushToast} />
       </div>
     </section>
   );
