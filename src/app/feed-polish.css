@@ -230,3 +230,18 @@
     line-height: 1.22rem !important;
   }
 }
+
+/*
+  Emergency feed recovery:
+  hide the existing post image viewer if it gets stuck open. This prevents the
+  home feed from being trapped behind a dark overlay while preserving normal
+  post images in the feed cards.
+*/
+[aria-label="Post image viewer"] {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+body:has([aria-label="Post image viewer"]) {
+  overflow: auto !important;
+}
