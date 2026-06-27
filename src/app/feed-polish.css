@@ -230,3 +230,46 @@
     line-height: 1.22rem !important;
   }
 }
+
+/*
+  Post image viewer mobile fix:
+  the lightbox is rendered from inside each post card, while the app header and
+  bottom navigation live outside the card. On mobile Safari/WKWebView this can
+  make the viewer look like a dark blank layer behind app chrome. Force the
+  viewer to behave like a true full-screen media layer and hide chrome behind it.
+*/
+[aria-label="Post image viewer"] {
+  z-index: 2147483647 !important;
+  background: #03070d !important;
+  isolation: isolate !important;
+}
+
+[aria-label="Post image viewer"] img {
+  position: relative !important;
+  z-index: 2 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+[aria-label="Post image viewer"] > div:first-child {
+  z-index: 2147483647 !important;
+}
+
+body:has([aria-label="Post image viewer"]) .sticky.top-0.z-40,
+body:has([aria-label="Post image viewer"]) nav.fixed.bottom-0 {
+  display: none !important;
+}
+
+@media (max-width: 767px) {
+  [aria-label="Post image viewer"] {
+    inset: 0 !important;
+    min-height: 100dvh !important;
+    padding-top: env(safe-area-inset-top, 0px) !important;
+    padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+  }
+
+  [aria-label="Post image viewer"] > div:nth-child(2) {
+    padding-top: calc(env(safe-area-inset-top, 0px) + 64px) !important;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem) !important;
+  }
+}
