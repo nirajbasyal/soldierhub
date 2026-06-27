@@ -34,6 +34,7 @@ const MembersList = dynamic(() => import("@/components/admin/MembersList"), { lo
 const BlockedUsersList = dynamic(() => import("@/components/admin/BlockedUsersList"), { loading: managerLoading });
 const ResourceManager = dynamic(() => import("@/components/admin/ResourceManager"), { loading: managerLoading });
 const BoardPrepManager = dynamic(() => import("@/components/admin/BoardPrepManager"), { loading: managerLoading });
+const BoardPrepCategoryManager = dynamic(() => import("@/components/admin/BoardPrepCategoryManager"), { loading: managerLoading });
 const GateManager = dynamic(() => import("@/components/admin/GateManager"), { loading: managerLoading });
 const AuditLogs = dynamic(() => import("@/components/admin/AuditLogs"), { loading: managerLoading });
 
@@ -61,6 +62,7 @@ export default function AdminPage() {
   const [resourceCount, setResourceCount] = useState(0);
   const [gateCount, setGateCount] = useState(0);
   const [boardRequestCount, setBoardRequestCount] = useState(0);
+  const [boardRefreshKey, setBoardRefreshKey] = useState(0);
   const [auditCount, setAuditCount] = useState(0);
   const [mfaChecking, setMfaChecking] = useState(true);
   const [mfaAllowed, setMfaAllowed] = useState(false);
@@ -288,7 +290,12 @@ export default function AdminPage() {
                 {tab === "members" && <MembersList searchQuery={searchQuery} />}
                 {tab === "blocked" && <BlockedUsersList searchQuery={searchQuery} />}
                 {tab === "reported" && <ReportedPostsList />}
-                {tab === "board" && <BoardPrepManager onPendingRequestCountChange={setBoardRequestCount} />}
+                {tab === "board" && (
+                  <div className="space-y-5">
+                    <BoardPrepCategoryManager onCategoriesRenamed={() => setBoardRefreshKey((value) => value + 1)} />
+                    <BoardPrepManager key={boardRefreshKey} onPendingRequestCountChange={setBoardRequestCount} />
+                  </div>
+                )}
                 {tab === "gates" && <GateManager onCountChange={setGateCount} />}
                 {tab === "resources" && <ResourceManager onCountChange={setResourceCount} />}
                 {tab === "audit" && <AuditLogs onCountChange={setAuditCount} />}
