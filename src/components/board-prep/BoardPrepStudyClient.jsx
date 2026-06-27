@@ -172,14 +172,15 @@ function ScoreHero({ summary, filteredCount, totalCount, title, subtitle }) {
 
 function AccuracyNotice() {
   return (
-    <Card className="px-3 py-2.5" style={{ backgroundColor: "rgba(255,255,255,0.72)", borderColor: T.borderSoft }}>
-      <div className="flex items-start gap-2">
-        <AlertTriangle size={13} className="mt-0.5 shrink-0" style={{ color: T.gold }} />
-        <p className="text-[11px] font-semibold leading-5" style={{ color: T.textMuted }}>
-          <span className="font-black" style={{ color: T.navy }}>Study notice:</span> SoldierHub does not guarantee every question or answer is accurate, current, or complete. Verify with the actual regulation, official publication, or your chain of command. If improvement is needed, send an update or delete request for admin review.
-        </p>
-      </div>
-    </Card>
+    <div
+      className="-mt-1 flex items-start gap-1.5 rounded-xl border px-2 py-1 text-[10px] font-semibold leading-4 shadow-sm"
+      style={{ backgroundColor: "rgba(255,255,255,0.58)", borderColor: T.borderSoft, color: T.textMuted }}
+    >
+      <AlertTriangle size={11} className="mt-0.5 shrink-0" style={{ color: T.gold }} />
+      <p>
+        <span className="font-black" style={{ color: T.navy }}>Notice:</span> Soldier Hub questions may be inaccurate or outdated. Verify with official regs/publications and chain of command. Send update/delete requests for fixes.
+      </p>
+    </div>
   );
 }
 
@@ -745,7 +746,6 @@ export default function BoardPrepStudyClient() {
           {!loading && !error && questions.length > 0 && selectedDeck && (
             <>
               <ScoreHero summary={selectedSummary} filteredCount={filteredQuestions.length} totalCount={deckQuestions.length} title={`${selectedDeck.label} deck`} subtitle="draft saved" />
-              <AccuracyNotice />
               <SelectedDeckHeading deck={selectedDeck} />
               <div className="sticky top-0 z-20 -mx-1 rounded-b-[1.5rem] px-1 pb-2 pt-1" style={{ backgroundColor: T.bg }}>
                 <StudyControls searchQuery={searchQuery} setSearchQuery={setSearchQuery} filterOpen={filterOpen} setFilterOpen={setFilterOpen} statusFilter={statusFilter} setStatusFilter={setStatusFilter} showAll={showAll} setShowAll={setShowAll} resetScores={resetScores} />
