@@ -6,6 +6,7 @@ import MobileMenu from "./MobileMenu";
 import ScrollToTop from "./ScrollToTop";
 import AuthModal from "@/components/auth/AuthModal";
 import ToastHost from "@/components/ui/ToastHost";
+import MediaViewerProvider from "@/components/media/MediaViewerProvider";
 
 /**
  * AppShell renders the persistent chrome around page content.
@@ -17,7 +18,7 @@ export default function AppShell({ children, hideNav = false }) {
   const { authModal } = useApp();
 
   return (
-    <>
+    <MediaViewerProvider>
       {!hideNav && <TopNav />}
       {children}
       {!hideNav && <BottomNav />}
@@ -25,6 +26,6 @@ export default function AppShell({ children, hideNav = false }) {
       <ScrollToTop />
       <ToastHost />
       {authModal && <AuthModal />}
-    </>
+    </MediaViewerProvider>
   );
 }
