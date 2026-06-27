@@ -1,5 +1,5 @@
 import { Shield } from "lucide-react";
-import Avatar from "@/components/ui/Avatar";
+import ExpandableProfileAvatar from "@/components/profile/ExpandableProfileAvatar";
 import ProfileVerifiedBadge from "@/components/profile/ProfileVerifiedBadge";
 
 function AdminPill() {
@@ -41,9 +41,13 @@ export default function ProfileIdentityHero({
       }}
     >
       <div className="relative z-10 flex min-w-0 items-start gap-3.5 min-[560px]:gap-4">
-        <div className="shrink-0 rounded-full shadow-[0_12px_28px_rgba(0,0,0,0.24)]">
-          <Avatar name={displayName} color={displayColor} src={avatarUrl} size={76} />
-        </div>
+        <ExpandableProfileAvatar
+          name={displayName}
+          color={displayColor}
+          src={avatarUrl}
+          size={76}
+          buttonClassName="shadow-[0_12px_28px_rgba(0,0,0,0.24)] ring-offset-[#071B33] hover:scale-[1.03]"
+        />
 
         <div className="min-w-0 flex-1 pt-1 text-left">
           <div className="flex min-w-0 items-start justify-between gap-2">
