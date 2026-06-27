@@ -194,3 +194,39 @@
     margin-top: 0.9rem !important;
   }
 }
+
+/*
+  Board Prep mobile notice polish:
+  keep the warning visible, but make it feel like a small app hint instead of a
+  separate card that pushes category decks down the phone screen.
+*/
+@media (max-width: 767px) {
+  main:has(input[placeholder="Search category decks"]) div[class*="-mt-1"][class*="rounded-xl"][class*="text-[10px]"][class*="gap-1.5"] {
+    align-items: center !important;
+    margin-top: 0.45rem !important;
+    padding: 0.38rem 0.65rem !important;
+    border-radius: 18px !important;
+    border-color: rgba(207, 218, 232, 0.78) !important;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(248, 251, 255, 0.82)) !important;
+    box-shadow: 0 7px 15px rgba(7, 27, 51, 0.045) !important;
+  }
+
+  main:has(input[placeholder="Search category decks"]) div[class*="-mt-1"][class*="rounded-xl"][class*="text-[10px]"][class*="gap-1.5"] + * {
+    margin-top: 0.65rem !important;
+  }
+
+  main:has(input[placeholder="Search category decks"]) div[class*="-mt-1"][class*="rounded-xl"][class*="text-[10px]"][class*="gap-1.5"] svg {
+    width: 10px !important;
+    height: 10px !important;
+    margin-top: 0 !important;
+  }
+
+  main:has(input[placeholder="Search category decks"]) div[class*="-mt-1"][class*="rounded-xl"][class*="text-[10px]"][class*="gap-1.5"] p {
+    display: -webkit-box !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-line-clamp: 2 !important;
+    overflow: hidden !important;
+    font-size: 10px !important;
+    line-height: 1.22rem !important;
+  }
+}
