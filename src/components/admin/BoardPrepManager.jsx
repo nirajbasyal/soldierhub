@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { T } from "@/lib/theme";
 import { createClient } from "@/lib/supabase/client";
+import BoardPrepCategoryManager from "@/components/admin/BoardPrepCategoryManager";
 
 const EMPTY_FORM = {
   id: null,
@@ -555,6 +556,8 @@ export default function BoardPrepManager({ onPendingRequestCountChange } = {}) {
           </div>
         )}
       </SectionCard>
+
+      <BoardPrepCategoryManager onCategoriesRenamed={load} />
 
       <SectionCard className="scroll-mt-6">
         <div ref={editorRef}>
