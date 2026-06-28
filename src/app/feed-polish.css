@@ -245,3 +245,64 @@
 body:has([aria-label="Post image viewer"]) {
   overflow: auto !important;
 }
+
+/*
+  Board Prep active quiz action row polish:
+  keep Quit quiz and Study all questions directly attached under the blue quiz
+  hero, with readable text and Soldier Hub red action styling.
+*/
+main div[class*="space-y-4"] > div[class*="overflow-hidden"][class*="p-4"] + div[class*="p-2.5"] {
+  margin-top: -0.45rem !important;
+  padding: 0.42rem !important;
+  border-radius: 24px !important;
+  border-color: rgba(179, 25, 66, 0.18) !important;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(253, 246, 248, 0.96)) !important;
+  box-shadow: 0 12px 24px rgba(7, 27, 51, 0.055) !important;
+}
+
+main div[class*="space-y-4"] > div[class*="overflow-hidden"][class*="p-4"] + div[class*="p-2.5"] > div {
+  gap: 0.55rem !important;
+}
+
+main div[class*="space-y-4"] > div[class*="overflow-hidden"][class*="p-4"] + div[class*="p-2.5"] button {
+  min-height: 2.9rem !important;
+  height: auto !important;
+  padding: 0.68rem 0.7rem !important;
+  font-size: 0.9rem !important;
+  line-height: 1.1rem !important;
+  font-weight: 900 !important;
+  letter-spacing: -0.01em !important;
+}
+
+main div[class*="space-y-4"] > div[class*="overflow-hidden"][class*="p-4"] + div[class*="p-2.5"] button:first-child {
+  border-color: rgba(179, 25, 66, 0.32) !important;
+  background: #FDECF0 !important;
+  color: #B31942 !important;
+}
+
+main div[class*="space-y-4"] > div[class*="overflow-hidden"][class*="p-4"] + div[class*="p-2.5"] button:last-child {
+  border-color: #B31942 !important;
+  background: #B31942 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 10px 22px rgba(179, 25, 66, 0.24) !important;
+}
+
+main div[class*="space-y-4"] > div[class*="overflow-hidden"][class*="p-4"] + div[class*="p-2.5"] button svg {
+  width: 1.05rem !important;
+  height: 1.05rem !important;
+}
+
+@media (max-width: 767px) {
+  main div[class*="space-y-4"] > div[class*="overflow-hidden"][class*="p-4"] + div[class*="p-2.5"] {
+    margin-top: -0.6rem !important;
+    padding: 0.35rem !important;
+    border-radius: 22px !important;
+  }
+
+  main div[class*="space-y-4"] > div[class*="overflow-hidden"][class*="p-4"] + div[class*="p-2.5"] button {
+    min-height: 2.75rem !important;
+    padding: 0.6rem 0.45rem !important;
+    font-size: 0.82rem !important;
+    line-height: 1rem !important;
+  }
+}
