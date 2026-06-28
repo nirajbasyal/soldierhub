@@ -155,10 +155,7 @@ export function BoardPrepStatusBadge({ variant = "default", className = "", onCl
 
   const content = isMenu ? (
     <div className="flex min-w-0 flex-1 items-center gap-2">
-      <span
-        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full"
-        style={{ backgroundColor: badge.pillBg, color: badge.edge }}
-      >
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: badge.pillBg, color: badge.edge }}>
         <Icon size={13} strokeWidth={2.6} />
       </span>
       <span className="min-w-0 flex-1 truncate text-[11px] font-black" style={{ color: badge.edge }}>
@@ -170,28 +167,14 @@ export function BoardPrepStatusBadge({ variant = "default", className = "", onCl
     </div>
   ) : (
     <div className="flex min-w-0 flex-1 items-center gap-2.5">
-      <span
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
-        style={{ backgroundColor: badge.pillBg, color: badge.edge }}
-      >
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: badge.pillBg, color: badge.edge }}>
         <Icon size={18} strokeWidth={2.5} />
       </span>
-
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-black" style={{ color: T.navy }}>
-          {badge.title}
-        </span>
-        <span className="block truncate text-[11px] font-semibold" style={{ color: T.textMuted }}>
-          {badge.detail}
-        </span>
+        <span className="block truncate text-sm font-black" style={{ color: T.navy }}>{badge.title}</span>
+        <span className="block truncate text-[11px] font-semibold" style={{ color: T.textMuted }}>{badge.detail}</span>
       </span>
-
-      <span
-        className="shrink-0 rounded-full px-2 py-1 text-[10px] font-black tracking-[0.12em]"
-        style={{ backgroundColor: badge.pillBg, color: badge.edge }}
-      >
-        {badge.label}
-      </span>
+      <span className="shrink-0 rounded-full px-2 py-1 text-[10px] font-black tracking-[0.12em]" style={{ backgroundColor: badge.pillBg, color: badge.edge }}>{badge.label}</span>
     </div>
   );
 
@@ -199,11 +182,7 @@ export function BoardPrepStatusBadge({ variant = "default", className = "", onCl
   const sharedStyle = { background: badge.bg, borderColor: `${badge.edge}36` };
 
   if (onClick) {
-    return (
-      <button type="button" onClick={onClick} className={sharedClass} style={sharedStyle}>
-        {content}
-      </button>
-    );
+    return <button type="button" onClick={onClick} className={sharedClass} style={sharedStyle}>{content}</button>;
   }
 
   return <div className={sharedClass} style={sharedStyle}>{content}</div>;
@@ -220,33 +199,22 @@ export default function BoardPrepCard({ variant = "sidebar", className = "" }) {
   const compact = variant === "mobile";
   const status = useBoardPrepStatus();
   const showStreakBadge = status.signedIn;
-  const targetUrl = status.signedIn || status.loading ? "/tools/board-prep" : "/tools/board-prep/study";
+  const targetUrl = status.signedIn ? "/tools/board-prep" : "/tools/board-prep/study";
 
   if (compact) return <MobileFeedQuickActions />;
 
   return (
-    <button
-      type="button"
-      onClick={() => router.push(targetUrl)}
-      className={`w-full rounded-3xl border p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-md ${className}`}
-      style={{ backgroundColor: T.card, borderColor: T.border }}
-    >
+    <button type="button" onClick={() => router.push(targetUrl)} className={`w-full rounded-3xl border p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-md ${className}`} style={{ backgroundColor: T.card, borderColor: T.border }}>
       <div className="flex items-start gap-3">
-        <div
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl"
-          style={{ backgroundColor: T.redBg }}
-        >
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl" style={{ backgroundColor: T.redBg }}>
           <BookOpen size={20} style={{ color: T.brandRed }} strokeWidth={2.2} />
         </div>
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
-            <h3 className="text-lg font-semibold leading-none" style={{ color: T.navy }}>
-              Board Prep
-            </h3>
+            <h3 className="text-lg font-semibold leading-none" style={{ color: T.navy }}>Board Prep</h3>
             <ChevronRight size={18} style={{ color: T.textSubtle }} />
           </div>
-
           <p className="mt-1.5 text-xs leading-relaxed" style={{ color: T.textMuted }}>
             {showStreakBadge ? "Daily board quiz, streaks, and study cards." : "Study board questions and cards."}
           </p>
