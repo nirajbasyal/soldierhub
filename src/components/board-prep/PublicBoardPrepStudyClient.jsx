@@ -119,7 +119,7 @@ function ScoreHero({ summary, filteredCount, totalCount, title, subtitle, onRese
           className="mt-3 inline-flex h-9 items-center justify-center gap-2 rounded-2xl border px-3 text-xs font-black"
           style={{ borderColor: "rgba(179,25,66,0.28)", backgroundColor: T.redBg, color: T.brandRed }}
         >
-          <RotateCcw size={14} /> Reset public score
+          <RotateCcw size={14} /> Reset score
         </button>
       )}
     </Card>
