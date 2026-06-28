@@ -306,3 +306,74 @@ main div[class*="space-y-4"] > div[class*="overflow-hidden"][class*="p-4"] + div
     line-height: 1rem !important;
   }
 }
+
+/*
+  Board Prep active quiz final placement:
+  visually move Quit quiz and Study all questions below the question card and
+  above Request question fix, then make Study all questions the active red CTA.
+*/
+main div[class*="space-y-4"]:has(> div[class*="overflow-hidden"][class*="p-4"] + div[class*="p-2.5"] + div[class*="p-5"]) {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 1rem !important;
+}
+
+main div[class*="space-y-4"]:has(> div[class*="overflow-hidden"][class*="p-4"] + div[class*="p-2.5"] + div[class*="p-5"]) > * {
+  margin-top: 0 !important;
+}
+
+main div[class*="space-y-4"]:has(> div[class*="overflow-hidden"][class*="p-4"] + div[class*="p-2.5"] + div[class*="p-5"]) > div[class*="overflow-hidden"][class*="p-4"] {
+  order: 1 !important;
+}
+
+main div[class*="space-y-4"]:has(> div[class*="overflow-hidden"][class*="p-4"] + div[class*="p-2.5"] + div[class*="p-5"]) > div[class*="overflow-hidden"][class*="p-4"] + div[class*="p-2.5"] {
+  order: 3 !important;
+  margin-top: -0.1rem !important;
+  padding: 0.48rem !important;
+  border-radius: 24px !important;
+  border-color: rgba(179, 25, 66, 0.22) !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  box-shadow: 0 12px 24px rgba(7, 27, 51, 0.055) !important;
+}
+
+main div[class*="space-y-4"]:has(> div[class*="overflow-hidden"][class*="p-4"] + div[class*="p-2.5"] + div[class*="p-5"]) > div[class*="overflow-hidden"][class*="p-4"] + div[class*="p-2.5"] + div[class*="p-5"] {
+  order: 2 !important;
+}
+
+main div[class*="space-y-4"]:has(> div[class*="overflow-hidden"][class*="p-4"] + div[class*="p-2.5"] + div[class*="p-5"]) > div[class*="mt-4"] {
+  order: 4 !important;
+}
+
+main div[class*="space-y-4"]:has(> div[class*="overflow-hidden"][class*="p-4"] + div[class*="p-2.5"] + div[class*="p-5"]) > div[class*="overflow-hidden"][class*="p-4"] + div[class*="p-2.5"] button {
+  min-height: 3rem !important;
+  padding: 0.72rem 0.8rem !important;
+  font-size: 0.98rem !important;
+  line-height: 1.15rem !important;
+  font-weight: 950 !important;
+}
+
+main div[class*="space-y-4"]:has(> div[class*="overflow-hidden"][class*="p-4"] + div[class*="p-2.5"] + div[class*="p-5"]) > div[class*="overflow-hidden"][class*="p-4"] + div[class*="p-2.5"] button:first-child {
+  border-color: rgba(179, 25, 66, 0.38) !important;
+  background: #FDECF0 !important;
+  color: #B31942 !important;
+  box-shadow: none !important;
+}
+
+main div[class*="space-y-4"]:has(> div[class*="overflow-hidden"][class*="p-4"] + div[class*="p-2.5"] + div[class*="p-5"]) > div[class*="overflow-hidden"][class*="p-4"] + div[class*="p-2.5"] button:last-child {
+  border-color: #B31942 !important;
+  background: #B31942 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 12px 24px rgba(179, 25, 66, 0.24) !important;
+}
+
+@media (max-width: 767px) {
+  main div[class*="space-y-4"]:has(> div[class*="overflow-hidden"][class*="p-4"] + div[class*="p-2.5"] + div[class*="p-5"]) {
+    gap: 0.85rem !important;
+  }
+
+  main div[class*="space-y-4"]:has(> div[class*="overflow-hidden"][class*="p-4"] + div[class*="p-2.5"] + div[class*="p-5"]) > div[class*="overflow-hidden"][class*="p-4"] + div[class*="p-2.5"] button {
+    min-height: 2.85rem !important;
+    padding: 0.65rem 0.55rem !important;
+    font-size: 0.86rem !important;
+  }
+}
