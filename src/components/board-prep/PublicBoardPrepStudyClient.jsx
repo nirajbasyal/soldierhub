@@ -10,6 +10,7 @@ import {
   ChevronRight,
   Layers,
   PlusCircle,
+  RotateCcw,
   Search,
   ShieldCheck,
   XCircle,
@@ -73,6 +74,11 @@ function saveScores(scores) {
   localStorage.setItem(PUBLIC_SCORE_KEY, JSON.stringify(scores || {}));
 }
 
+function clearSavedScores() {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(PUBLIC_SCORE_KEY);
+}
+
 function getScoreSummary(scores, questions = []) {
   const validIds = new Set(questions.map((question) => question.id));
   const values = Object.entries(scores || {})
@@ -86,8 +92,9 @@ function getScoreSummary(scores, questions = []) {
   return { known, review, attempted, total, percent };
 }
 
-function ScoreHero({ summary, filteredCount, totalCount, title, subtitle }) {
+function ScoreHero({ summary, filteredCount, totalCount, title, subtitle, onReset }) {
   const progress = summary.total ? Math.round((summary.attempted / summary.total) * 100) : 0;
+  const hasScores = summary.attempted > 0;
 
   return (
     <Card className="overflow-hidden p-4" style={{ background: "linear-gradient(135deg, #FFFFFF 0%, #F7FBFF 48%, #EEF6FF 100%)", borderColor: "#D9E5F2" }}>
@@ -105,6 +112,16 @@ function ScoreHero({ summary, filteredCount, totalCount, title, subtitle }) {
       <div className="mt-4 h-2 overflow-hidden rounded-full" style={{ backgroundColor: T.borderSoft }}>
         <div className="h-full rounded-full transition-all" style={{ width: `${progress}%`, backgroundColor: T.brandRed }} />
       </div>
+      {hasScores && (
+        <button
+          type="button"
+          onClick={onReset}
+          className="mt-3 inline-flex h-9 items-center justify-center gap-2 rounded-2xl border px-3 text-xs font-black"
+          style={{ borderColor: "rgba(179,25,66,0.28)", backgroundColor: T.redBg, color: T.brandRed }}
+        >
+          <RotateCcw size={14} /> Reset public score
+        </button>
+      )}
     </Card>
   );
 }
@@ -232,9 +249,26 @@ function FlashCard({ question, index, showAll, score, onScore }) {
           </button>
         )}
         <div className="mt-3 grid grid-cols-2 gap-2">
-          <button type="button" onClick={() => onScore(question.id, "known")} className="flex h-11 items-center justify-center gap-2 rounded-2xl border text-sm font-black" style={{ borderColor: score === "known" ? "rgba(49,151,84,0.38)" : T.border, backgroundColor: score === "known" ? "#F3FBF6" : T.card, color: score === "known" ? T.success : T.navy }}><CheckCircle2 size={16} /> I knew it</button>
-          <button type="button" onClick={() => onScore(question.id, "review")} className="flex h-11 items-center justify-center gap-2 rounded-2xl border text-sm font-black" style={{ borderColor: score === "review" ? "rgba(185,28,28,0.30)" : T.border, backgroundColor: score === "review" ? T.dangerBg : T.card, color: score === "review" ? T.danger : T.navy }}><XCircle size={16} /> Need review</button>
+          <button
+            type="button"
+            aria-pressed={score === "known"}
+            onClick={() => onScore(question.id, "known")}
+            className="flex h-11 items-center justify-center gap-2 rounded-2xl border text-sm font-black"
+            style={{ borderColor: score === "known" ? "rgba(49,151,84,0.38)" : T.border, backgroundColor: score === "known" ? "#F3FBF6" : T.card, color: score === "known" ? T.success : T.navy }}
+          >
+            <CheckCircle2 size={16} /> I knew it
+          </button>
+          <button
+            type="button"
+            aria-pressed={score === "review"}
+            onClick={() => onScore(question.id, "review")}
+            className="flex h-11 items-center justify-center gap-2 rounded-2xl border text-sm font-black"
+            style={{ borderColor: score === "review" ? "rgba(185,28,28,0.30)" : T.border, backgroundColor: score === "review" ? T.dangerBg : T.card, color: score === "review" ? T.danger : T.navy }}
+          >
+            <XCircle size={16} /> Need review
+          </button>
         </div>
+        {score && <p className="mt-2 text-center text-[11px] font-semibold" style={{ color: T.textSubtle }}>Tap the selected button again to clear it.</p>}
       </div>
     </Card>
   );
@@ -295,10 +329,22 @@ export default function PublicBoardPrepStudyClient({ initialQuestions = [], init
 
   function handleScore(questionId, value) {
     setScores((current) => {
-      const next = { ...current, [questionId]: value };
+      const next = { ...current };
+
+      if (next[questionId] === value) {
+        delete next[questionId];
+      } else {
+        next[questionId] = value;
+      }
+
       saveScores(next);
       return next;
     });
+  }
+
+  function resetScores() {
+    setScores({});
+    clearSavedScores();
   }
 
   return (
@@ -310,7 +356,7 @@ export default function PublicBoardPrepStudyClient({ initialQuestions = [], init
 
           {!initialError && questions.length > 0 && !selectedDeck && (
             <>
-              <ScoreHero summary={allSummary} filteredCount={questions.length} totalCount={questions.length} title="Overall study score" subtitle="public study" />
+              <ScoreHero summary={allSummary} filteredCount={questions.length} totalCount={questions.length} title="Overall study score" subtitle="public study" onReset={resetScores} />
               <AccuracyNotice />
               <PublicRequestPrompt />
               <Card className="p-4" style={{ background: `linear-gradient(135deg, ${T.navy}, #163b63)`, borderColor: "rgba(255,255,255,0.12)" }}>
@@ -331,7 +377,7 @@ export default function PublicBoardPrepStudyClient({ initialQuestions = [], init
 
           {!initialError && questions.length > 0 && selectedDeck && (
             <>
-              <ScoreHero summary={selectedSummary} filteredCount={filteredQuestions.length} totalCount={deckQuestions.length} title={`${selectedDeck.label} deck`} subtitle="public study" />
+              <ScoreHero summary={selectedSummary} filteredCount={filteredQuestions.length} totalCount={deckQuestions.length} title={`${selectedDeck.label} deck`} subtitle="public study" onReset={resetScores} />
               <Card className="p-4" style={{ backgroundColor: T.surface }}>
                 <p className="text-[11px] font-black uppercase tracking-[0.18em]" style={{ color: T.brandRed }}>Studying</p>
                 <h2 className="mt-1 text-2xl font-serif font-black leading-tight" style={{ color: T.navy }}>{selectedDeck.label}</h2>
