@@ -56,6 +56,32 @@ function getCategoryLabel(question) {
   return question?.category?.trim() || "General";
 }
 
+function getQuestionSourcePublication(question) {
+  return (
+    question?.source_publication ||
+    question?.sourcePublication ||
+    question?.regulation ||
+    question?.publication ||
+    question?.source ||
+    null
+  );
+}
+
+function getDeckPublicationLabel(deckQuestions = []) {
+  const publications = [
+    ...new Set(
+      deckQuestions
+        .map((question) => String(getQuestionSourcePublication(question) || "").trim())
+        .filter(Boolean)
+    ),
+  ];
+
+  if (publications.length === 0) return null;
+  if (publications.length === 1) return publications[0];
+
+  return `${publications[0]} +${publications.length - 1} more`;
+}
+
 function getScoreSummary(scores, questions = []) {
   const validIds = new Set(questions.map((question) => question.id));
   const values = Object.entries(scores || {})
@@ -432,6 +458,8 @@ function DeckCard({ deck, onSelect }) {
   const notScored = Math.max(deck.total - deck.summary.attempted, 0);
   const progress = deck.total ? Math.round((deck.summary.attempted / deck.total) * 100) : 0;
   const isAll = deck.key === ALL_DECK_KEY;
+  const questionCountText = `${deck.total} question${deck.total === 1 ? "" : "s"}`;
+  const metaText = isAll || !deck.publicationLabel ? questionCountText : `${questionCountText} · ${deck.publicationLabel}`;
 
   return (
     <button
@@ -445,12 +473,14 @@ function DeckCard({ deck, onSelect }) {
       }}
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl" style={{ backgroundColor: isAll ? T.redBg : T.blueSoft, color: isAll ? T.brandRed : T.blue }}>
+        <div className="flex min-w-0 flex-1 items-start gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl" style={{ backgroundColor: isAll ? T.redBg : T.blueSoft, color: isAll ? T.brandRed : T.blue }}>
             <Layers size={20} />
           </div>
-          <h3 className="line-clamp-2 text-lg font-black leading-snug" style={{ color: T.navy }}>{deck.label}</h3>
-          <p className="mt-1 text-xs font-semibold" style={{ color: T.textMuted }}>{deck.total} question{deck.total === 1 ? "" : "s"}</p>
+          <div className="min-w-0 flex-1 pt-0.5">
+            <h3 className="line-clamp-2 text-lg font-black leading-tight" style={{ color: T.navy }}>{deck.label}</h3>
+            <p className="mt-1 truncate text-xs font-semibold" style={{ color: T.textMuted }} title={metaText}>{metaText}</p>
+          </div>
         </div>
         <ChevronRight size={20} className="mt-1 shrink-0 transition group-hover:translate-x-0.5" style={{ color: T.textSubtle }} />
       </div>
@@ -470,7 +500,7 @@ function DeckSelection({ decks, deckQuery, setDeckQuery, onSelect }) {
   const filteredDecks = useMemo(() => {
     const search = deckQuery.trim().toLowerCase();
     if (!search) return decks;
-    return decks.filter((deck) => deck.label.toLowerCase().includes(search));
+    return decks.filter((deck) => [deck.label, deck.publicationLabel].filter(Boolean).join(" ").toLowerCase().includes(search));
   }, [decks, deckQuery]);
 
   return (
@@ -622,12 +652,13 @@ export default function BoardPrepStudyClient() {
         label,
         questions: deckQuestions,
         total: deckQuestions.length,
+        publicationLabel: getDeckPublicationLabel(deckQuestions),
         summary: getScoreSummary(scores, deckQuestions),
       }))
       .sort((a, b) => a.label.localeCompare(b.label));
 
     return [
-      { key: ALL_DECK_KEY, label: "All questions", questions, total: questions.length, summary: getScoreSummary(scores, questions) },
+      { key: ALL_DECK_KEY, label: "All questions", questions, total: questions.length, publicationLabel: null, summary: getScoreSummary(scores, questions) },
       ...categoryDecks,
     ];
   }, [questions, scores]);
