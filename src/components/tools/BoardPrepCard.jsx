@@ -210,25 +210,30 @@ export function BoardPrepStatusBadge({ variant = "default", className = "", onCl
 }
 
 /**
- * Sidebar card promoting the daily Board Prep quiz.
+ * Sidebar card promoting Board Prep.
+ * Public visitors go straight to Study all questions and do not see Daily Streak.
+ * Signed-in users keep the Daily Quiz / streak entry point.
  * The mobile feed variant renders a compact quick-action row below the feed hero.
  */
 export default function BoardPrepCard({ variant = "sidebar", className = "" }) {
   const router = useRouter();
   const compact = variant === "mobile";
+  const status = useBoardPrepStatus();
+  const showStreakBadge = status.signedIn;
+  const targetUrl = status.signedIn || status.loading ? "/tools/board-prep" : "/tools/board-prep/study";
 
   if (compact) return <MobileFeedQuickActions />;
 
   return (
     <button
       type="button"
-      onClick={() => router.push("/tools/board-prep")}
-      className={`w-full rounded-3xl border text-left transition-all hover:-translate-y-0.5 hover:shadow-md p-4 ${className}`}
+      onClick={() => router.push(targetUrl)}
+      className={`w-full rounded-3xl border p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-md ${className}`}
       style={{ backgroundColor: T.card, borderColor: T.border }}
     >
       <div className="flex items-start gap-3">
         <div
-          className="h-11 w-11 flex shrink-0 items-center justify-center rounded-2xl"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl"
           style={{ backgroundColor: T.redBg }}
         >
           <BookOpen size={20} style={{ color: T.brandRed }} strokeWidth={2.2} />
@@ -243,14 +248,16 @@ export default function BoardPrepCard({ variant = "sidebar", className = "" }) {
           </div>
 
           <p className="mt-1.5 text-xs leading-relaxed" style={{ color: T.textMuted }}>
-            Daily board quiz, streaks, and study cards.
+            {showStreakBadge ? "Daily board quiz, streaks, and study cards." : "Study board questions and cards."}
           </p>
         </div>
       </div>
 
-      <div className="mt-3">
-        <BoardPrepStatusBadge />
-      </div>
+      {showStreakBadge && (
+        <div className="mt-3">
+          <BoardPrepStatusBadge />
+        </div>
+      )}
     </button>
   );
 }
