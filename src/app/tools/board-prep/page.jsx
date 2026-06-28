@@ -287,13 +287,23 @@ function ExhaustedPhase({ message, onRestart, onStudy, onBack }) {
 
 function QuizExitActions({ onQuit, onStudy }) {
   return (
-    <Card className="p-2.5" style={{ backgroundColor: "rgba(255,255,255,0.84)" }}>
+    <Card className="p-2.5" style={{ backgroundColor: "rgba(255,255,255,0.96)", borderColor: "rgba(179,25,66,0.22)" }}>
       <div className="grid grid-cols-2 gap-2">
-        <button type="button" onClick={onQuit} className="flex h-10 items-center justify-center gap-2 rounded-2xl border text-xs font-black" style={{ borderColor: T.border, backgroundColor: T.surface, color: T.textMuted }}>
-          <XCircle size={15} /> Quit quiz
+        <button
+          type="button"
+          onClick={onQuit}
+          className="flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border px-3 py-3 text-sm font-black"
+          style={{ borderColor: "rgba(179,25,66,0.38)", backgroundColor: T.redBg, color: T.brandRed }}
+        >
+          <XCircle size={18} /> Quit quiz
         </button>
-        <button type="button" onClick={onStudy} className="flex h-10 items-center justify-center gap-2 rounded-2xl border text-xs font-black" style={{ borderColor: "rgba(37,99,145,0.25)", backgroundColor: T.blueSoft, color: T.navy }}>
-          <BookOpen size={15} /> Study all questions
+        <button
+          type="button"
+          onClick={onStudy}
+          className="flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border px-3 py-3 text-sm font-black text-white shadow-sm"
+          style={{ borderColor: T.brandRed, backgroundColor: T.brandRed, boxShadow: "0 10px 22px rgba(179,25,66,0.22)" }}
+        >
+          <BookOpen size={18} /> Study all questions
         </button>
       </div>
     </Card>
@@ -310,7 +320,6 @@ function QuestionPhase({ question, questionIndex, selected, result, submitting, 
   return (
     <div className="space-y-4">
       <Hero streak={streak} answeredCount={answeredCount} practice={practice} totalQuestions={totalQuestions} />
-      <QuizExitActions onQuit={onQuit} onStudy={onStudy} />
       <Card className="p-5">
         <div className="mb-4">
           <div className="mb-3 flex items-center justify-between gap-3">
@@ -350,6 +359,7 @@ function QuestionPhase({ question, questionIndex, selected, result, submitting, 
           </>
         )}
       </Card>
+      <QuizExitActions onQuit={onQuit} onStudy={onStudy} />
       <RequestCard currentQuestion={question} />
     </div>
   );
