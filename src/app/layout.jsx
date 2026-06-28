@@ -11,7 +11,7 @@ const SITE_TITLE = "SoldierHub — Fort Bliss & El Paso Military Community";
 const SITE_DESCRIPTION =
   "SoldierHub is an independent, unofficial Fort Bliss and El Paso military community platform for local questions, PCS help, BAH tools, gate information, resources, and community support.";
 const SITE_TAGLINE = "Ask, share, and support the Fort Bliss community.";
-const BRAND_ICON = "/brand/soldierhub-favicon.svg?v=20260518";
+const BRAND_ICON = "/brand/soldierhub-favicon.svg?v=20260628";
 
 const siteSchema = {
   "@context": "https://schema.org",
@@ -71,7 +71,7 @@ const siteSchema = {
     name: SITE_NAME,
     alternateName: "Soldier Hub",
     url: SITE_URL,
-    logo: `${SITE_URL}/brand/soldierhub-favicon.svg`,
+    logo: `${SITE_URL}/brand/soldierhub-favicon.svg?v=20260628`,
   },
   disambiguatingDescription:
     "SoldierHub is an independent, unofficial community platform and is not affiliated with, endorsed by, or operated by the U.S. Government, Department of Defense, Department of the Army, Fort Bliss, or any military installation.",
@@ -128,11 +128,8 @@ export const metadata = {
   },
 
   icons: {
-    icon: [
-      { url: BRAND_ICON, type: "image/svg+xml", sizes: "any" },
-      { url: "/brand/soldierhub-favicon.svg?v=20260518", type: "image/svg+xml" },
-    ],
-    shortcut: [BRAND_ICON],
+    icon: [{ url: BRAND_ICON, type: "image/svg+xml", sizes: "any" }],
+    shortcut: [{ url: BRAND_ICON, type: "image/svg+xml", sizes: "any" }],
     apple: [{ url: BRAND_ICON, sizes: "512x512", type: "image/svg+xml" }],
   },
 
