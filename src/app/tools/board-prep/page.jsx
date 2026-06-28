@@ -287,26 +287,29 @@ function ExhaustedPhase({ message, onRestart, onStudy, onBack }) {
 
 function QuizExitActions({ onQuit, onStudy }) {
   return (
-    <Card className="p-2.5" style={{ backgroundColor: "rgba(255,255,255,0.96)", borderColor: "rgba(179,25,66,0.22)" }}>
-      <div className="grid grid-cols-2 gap-2">
+    <div
+      className="sh-board-prep-quiz-actions rounded-[1.35rem] border p-2 shadow-sm"
+      style={{ backgroundColor: "rgba(255,255,255,0.96)", borderColor: "rgba(179,25,66,0.18)", boxShadow: "0 8px 18px rgba(7,27,51,0.045)" }}
+    >
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <button
           type="button"
           onClick={onQuit}
-          className="flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border px-3 py-3 text-sm font-black"
-          style={{ borderColor: "rgba(179,25,66,0.38)", backgroundColor: T.redBg, color: T.brandRed }}
+          className="order-2 flex min-h-[44px] w-full items-center justify-center gap-2 whitespace-nowrap rounded-2xl border px-3 py-2.5 text-[14px] font-black sm:order-1"
+          style={{ borderColor: "rgba(179,25,66,0.36)", backgroundColor: T.redBg, color: T.brandRed }}
         >
-          <XCircle size={18} /> Quit quiz
+          <XCircle size={17} /> Quit quiz
         </button>
         <button
           type="button"
           onClick={onStudy}
-          className="flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border px-3 py-3 text-sm font-black text-white shadow-sm"
-          style={{ borderColor: T.brandRed, backgroundColor: T.brandRed, boxShadow: "0 10px 22px rgba(179,25,66,0.22)" }}
+          className="order-1 flex min-h-[46px] w-full items-center justify-center gap-2 whitespace-nowrap rounded-2xl border px-3 py-2.5 text-[14px] font-black text-white shadow-sm sm:order-2"
+          style={{ borderColor: T.brandRed, backgroundColor: T.brandRed, boxShadow: "0 10px 20px rgba(179,25,66,0.20)" }}
         >
-          <BookOpen size={18} /> Study all questions
+          <BookOpen size={17} /> Study all questions
         </button>
       </div>
-    </Card>
+    </div>
   );
 }
 
