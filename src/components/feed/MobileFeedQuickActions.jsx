@@ -66,7 +66,7 @@ function MobileAction({ icon: Icon, title, subtitle, href, disabled = false, bad
 export default function MobileFeedQuickActions() {
   return (
     <div className="grid grid-cols-2 gap-2 lg:hidden" aria-label="Quick tools">
-      <MobileAction icon={BookOpen} title="Board Prep" subtitle="Daily quiz" href="/tools/board-prep" />
+      <MobileAction icon={BookOpen} title="Board Prep" subtitle="Study questions" href="/tools/board-prep/study" />
       <MobileAction icon={Link2} title="Resources" subtitle="Helpful links" disabled badge="Soon" />
     </div>
   );
