@@ -66,8 +66,18 @@ async function loadPublicQuestions() {
 export default async function BoardPrepStudyPage() {
   const user = await getCurrentUser();
 
-  if (user) return <BoardPrepStudyClient />;
+  if (user) {
+    return (
+      <section className="sh-board-study sh-board-study--signed-in">
+        <BoardPrepStudyClient />
+      </section>
+    );
+  }
 
   const { data, error } = await loadPublicQuestions();
-  return <PublicBoardPrepStudyClient initialQuestions={data} initialError={error} />;
+  return (
+    <section className="sh-board-study sh-board-study--public">
+      <PublicBoardPrepStudyClient initialQuestions={data} initialError={error} />
+    </section>
+  );
 }
