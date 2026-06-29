@@ -33,12 +33,6 @@
   box-shadow: 0 14px 30px rgba(7, 27, 51, 0.14) !important;
 }
 
-.sh-board-study .rounded-\[1\.65rem\].border.shadow-sm[style*="071B33"] *,
-.sh-board-study .rounded-\[1\.65rem\].border.shadow-sm[style*="#071B33"] *,
-.sh-board-study .rounded-\[1\.65rem\].border.shadow-sm[style*="163b63"] * {
-  color: inherit;
-}
-
 .sh-board-study input[placeholder="Search category decks"],
 .sh-board-study input[placeholder="Search this deck"] {
   caret-color: var(--sh-study-red) !important;
