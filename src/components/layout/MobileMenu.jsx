@@ -29,7 +29,7 @@ function getPathnameOnly(path = "") {
   return String(path || "").split("?")[0] || "/";
 }
 
-function BoardPrepMenuCard({ onClick }) {
+function BoardPrepMenuCard({ onClick, signedIn = false }) {
   return (
     <button
       type="button"
@@ -52,11 +52,13 @@ function BoardPrepMenuCard({ onClick }) {
             </div>
           </div>
           <div className="text-xs mt-0.5" style={{ color: T.textSubtle }}>
-            Daily promotion board questions
+            {signedIn ? "Daily quiz, streaks, and study cards" : "Study all board questions"}
           </div>
-          <div className="mt-2">
-            <BoardPrepStatusBadge variant="menu" />
-          </div>
+          {signedIn && (
+            <div className="mt-2">
+              <BoardPrepStatusBadge variant="menu" />
+            </div>
+          )}
         </div>
 
         <ChevronRight size={16} style={{ color: T.textSubtle }} className="shrink-0" />
@@ -77,6 +79,8 @@ export default function MobileMenu() {
     setAuthModal,
     handleLogout,
   } = useApp();
+
+  const boardPrepPath = currentUser ? "/tools/board-prep" : "/tools/board-prep/study";
 
   useEffect(() => {
     if (!mobileMenu) return;
@@ -256,7 +260,7 @@ export default function MobileMenu() {
                 onClick={() => go("/tools/gates")}
               />
 
-              <BoardPrepMenuCard onClick={() => go("/tools/board-prep")} />
+              <BoardPrepMenuCard signedIn={Boolean(currentUser)} onClick={() => go(boardPrepPath)} />
 
               <MenuItem
                 icon={Activity}
