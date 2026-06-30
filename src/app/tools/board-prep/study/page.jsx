@@ -37,7 +37,7 @@ async function getCurrentUser() {
   return user;
 }
 
-async function loadPublicQuestions() {
+async function loadStudyQuestions() {
   const supabase = createServiceRoleClient();
   if (!supabase) {
     return {
@@ -56,7 +56,7 @@ async function loadPublicQuestions() {
     .limit(MAX_PUBLIC_STUDY_QUESTIONS);
 
   if (error) {
-    console.error("public board prep study load failed:", error);
+    console.error("board prep study load failed:", error);
     return { data: [], error: "Could not load Board Prep questions." };
   }
 
@@ -65,16 +65,16 @@ async function loadPublicQuestions() {
 
 export default async function BoardPrepStudyPage() {
   const user = await getCurrentUser();
+  const { data, error } = await loadStudyQuestions();
 
   if (user) {
     return (
       <section className="sh-board-study sh-board-study--signed-in">
-        <BoardPrepStudyClient />
+        <BoardPrepStudyClient initialQuestions={data} initialError={error} />
       </section>
     );
   }
 
-  const { data, error } = await loadPublicQuestions();
   return (
     <section className="sh-board-study sh-board-study--public">
       <PublicBoardPrepStudyClient initialQuestions={data} initialError={error} />
