@@ -6,6 +6,7 @@ const CURRENT_USER_PROFILE_FIELDS =
   "id, full_name, email, personal_email, phone, bio, avatar_color, avatar_url, role, verification_status, base, created_at, updated_at";
 
 const CREDENTIAL_KEY = ["pass", "word"].join("");
+const MIN_PASSWORD_LENGTH = 10;
 
 function getAuthRedirectUrl(path = "/auth/callback") {
   const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
@@ -19,6 +20,22 @@ function getAuthRedirectUrl(path = "/auth/callback") {
   }
 
   return undefined;
+}
+
+function validateEmail(email) {
+  if (!email) return "Email is required.";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return "Please enter a valid email address.";
+  return null;
+}
+
+function validatePassword(secret, { allowEmpty = false } = {}) {
+  if (!secret) return allowEmpty ? null : "Password is required.";
+  if (secret.length < MIN_PASSWORD_LENGTH) {
+    return `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`;
+  }
+  if (/^(.)\1+$/.test(secret)) return "Password is too easy to guess.";
+  if (/password|soldierhub|qwerty|123456|abcdef/i.test(secret)) return "Password is too common.";
+  return null;
 }
 
 /**
@@ -41,6 +58,15 @@ export async function signUp(input = {}) {
   const cleanFullName = input.fullName?.trim() || "";
   const cleanPhone = input.phone?.trim() || "";
   const cleanBio = input.bio?.trim() || "";
+  const emailError = validateEmail(cleanEmail);
+  const passwordError = validatePassword(input[CREDENTIAL_KEY]);
+
+  if (emailError || passwordError) {
+    return {
+      data: null,
+      error: { message: emailError || passwordError },
+    };
+  }
 
   const { data, error } = await supabase.auth.signUp({
     email: cleanEmail,
@@ -71,6 +97,14 @@ export async function signIn(input = {}) {
   }
 
   const cleanEmail = input.email?.trim().toLowerCase() || "";
+  const emailError = validateEmail(cleanEmail);
+
+  if (emailError) {
+    return {
+      data: null,
+      error: { message: emailError },
+    };
+  }
 
   const { data, error } = await supabase.auth.signInWithPassword({
     email: cleanEmail,
@@ -104,20 +138,16 @@ export async function getCurrentUser() {
     };
   }
 
-  // Faster first paint: getSession reads the local Supabase session instead of
-  // making a full auth validation request before the profile query.
   const {
-    data: { session },
-    error: sessionError,
-  } = await supabase.auth.getSession();
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
 
-  const user = session?.user || null;
-
-  if (sessionError || !user) {
+  if (userError || !user) {
     return {
       user: null,
       profile: null,
-      error: sessionError || null,
+      error: userError || null,
     };
   }
 
@@ -161,6 +191,14 @@ export async function resendSignupConfirmation(email) {
   }
 
   const cleanEmail = email?.trim().toLowerCase() || "";
+  const emailError = validateEmail(cleanEmail);
+
+  if (emailError) {
+    return {
+      data: null,
+      error: { message: emailError },
+    };
+  }
 
   const { data, error } = await supabase.auth.resend({
     type: "signup",
@@ -184,6 +222,14 @@ export async function resetPasswordForEmail(email) {
   }
 
   const cleanEmail = email?.trim().toLowerCase() || "";
+  const emailError = validateEmail(cleanEmail);
+
+  if (emailError) {
+    return {
+      data: null,
+      error: { message: emailError },
+    };
+  }
 
   const { data, error } = await supabase.auth["reset" + "PasswordForEmail"](cleanEmail, {
     redirectTo: getAuthRedirectUrl("/auth/callback?next=/reset-" + "password"),
@@ -199,6 +245,15 @@ export async function updatePassword(newSecret) {
     return {
       data: null,
       error: { message: "Supabase not configured" },
+    };
+  }
+
+  const passwordError = validatePassword(newSecret);
+
+  if (passwordError) {
+    return {
+      data: null,
+      error: { message: passwordError },
     };
   }
 
