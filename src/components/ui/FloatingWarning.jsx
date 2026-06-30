@@ -16,7 +16,9 @@ export default function FloatingWarning({
     setMounted(true);
   }, []);
 
-  if (!message || !mounted || typeof document === "undefined") return null;
+  const isMainComposerWarning = title === "Please revise this post";
+
+  if (isMainComposerWarning || !message || !mounted || typeof document === "undefined") return null;
 
   return createPortal(
     <div
