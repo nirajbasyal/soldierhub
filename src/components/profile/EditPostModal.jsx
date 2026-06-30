@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { AlertTriangle, Check, Edit3, X } from "lucide-react";
 import { T } from "@/lib/theme";
 import { moderateAsync } from "@/lib/moderation-client";
@@ -37,6 +38,37 @@ function preparePostBodyForEditor(body = "") {
   return looksLikeHtml(body) ? sanitizeComposerHtml(body) : escapePlainTextToHtml(body);
 }
 
+function TopEditNotice({ message }) {
+  if (!message || typeof document === "undefined") return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-x-0 top-0 flex justify-center px-3 pt-[max(0.75rem,env(safe-area-inset-top))]"
+      style={{ zIndex: 2147483647, pointerEvents: "none" }}
+    >
+      <div
+        role="alert"
+        aria-live="assertive"
+        className="flex w-full max-w-[680px] items-start gap-2 rounded-2xl border px-4 py-3 text-sm font-extrabold shadow-2xl"
+        style={{
+          backgroundColor: "rgba(253,236,240,0.99)",
+          borderColor: "#F3C7D1",
+          color: "#B31942",
+          pointerEvents: "auto",
+          boxShadow: "0 18px 45px rgba(120, 17, 52, 0.22)",
+        }}
+      >
+        <AlertTriangle size={18} className="mt-0.5 shrink-0" />
+        <div className="min-w-0">
+          <div className="text-xs uppercase tracking-[0.12em]">Please revise this edit</div>
+          <div className="mt-1 break-words leading-5">{message}</div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 export default function EditPostModal({ post, onClose, onSave }) {
   const [category, setCategory] = useState(post.category);
   const [body, setBody] = useState(() => preparePostBodyForEditor(post.body || ""));
@@ -47,7 +79,6 @@ export default function EditPostModal({ post, onClose, onSave }) {
   const [structured, setStructured] = useState(false);
 
   const editorRef = useRef(null);
-  const errorRef = useRef(null);
   const bodyRef = useRef(body);
   const plainTextRef = useRef("");
 
@@ -57,7 +88,6 @@ export default function EditPostModal({ post, onClose, onSave }) {
     setError(message || "Could not save changes.");
 
     safeRequestAnimationFrame(() => {
-      errorRef.current?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
       if (focusEditor) editorRef.current?.focus?.({ preventScroll: true });
     });
   };
@@ -167,116 +197,106 @@ export default function EditPostModal({ post, onClose, onSave }) {
   };
 
   return (
-    <Modal open onClose={onClose} maxWidth={680}>
-      <div className="relative overflow-hidden rounded-[28px]" style={{ backgroundColor: T.card }}>
-        <button
-          type="button"
-          onClick={onClose}
-          disabled={submitting}
-          aria-label="Close edit post"
-          className="absolute right-4 top-4 z-30 flex h-9 w-9 items-center justify-center rounded-full border transition active:scale-[0.98] disabled:opacity-50"
-          style={{ backgroundColor: "#F4F8FD", borderColor: T.borderSoft, color: T.textSubtle }}
-        >
-          <X size={16} strokeWidth={2.7} />
-        </button>
-
-        <div className="p-4 md:p-6">
-          <div
-            className="mb-4 rounded-[26px] border p-4 pr-12"
-            style={{
-              background: "linear-gradient(135deg, rgba(238,243,247,0.98), rgba(253,254,255,0.98))",
-              borderColor: T.borderSoft,
-            }}
+    <>
+      <TopEditNotice message={error} />
+      <Modal open onClose={onClose} maxWidth={680}>
+        <div className="relative overflow-hidden rounded-[28px]" style={{ backgroundColor: T.card }}>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            aria-label="Close edit post"
+            className="absolute right-4 top-4 z-30 flex h-9 w-9 items-center justify-center rounded-full border transition active:scale-[0.98] disabled:opacity-50"
+            style={{ backgroundColor: "#F4F8FD", borderColor: T.borderSoft, color: T.textSubtle }}
           >
+            <X size={16} strokeWidth={2.7} />
+          </button>
+
+          <div className="p-4 md:p-6">
             <div
-              className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-extrabold uppercase tracking-[0.12em]"
-              style={{ backgroundColor: "#FFFFFF", borderColor: T.borderSoft, color: T.navy }}
-            >
-              <Edit3 size={14} />
-              Edit post
-            </div>
-
-            <h3 className="mt-3 text-2xl font-extrabold tracking-[-0.03em] md:text-3xl" style={{ color: T.navy }}>
-              Update your post
-            </h3>
-
-            <p className="mt-1 text-sm leading-6" style={{ color: T.textMuted }}>
-              Keep the post helpful, clean, and easy to read for the Soldier Hub community.
-            </p>
-          </div>
-
-          {error && (
-            <div
-              ref={errorRef}
-              role="alert"
-              aria-live="assertive"
-              className="sticky top-0 z-20 mb-4 flex items-start gap-2 rounded-2xl border px-3 py-3 text-sm font-semibold shadow-lg"
-              style={{ backgroundColor: "rgba(253,236,240,0.98)", borderColor: "#F3C7D1", color: "#B31942" }}
-            >
-              <AlertTriangle size={16} className="mt-0.5 shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          <ComposerCategoryPicker
-            category={category}
-            onSelectCategory={selectCategory}
-            submitting={submitting}
-          />
-
-          <ComposerToolbar
-            activeFormats={activeFormats}
-            applyFormatting={applyFormatting}
-            submitting={submitting}
-          />
-
-          <div
-            className="relative rounded-[24px] border px-3 py-3 md:px-4"
-            style={{ backgroundColor: "#FDFEFF", borderColor: T.borderSoft }}
-          >
-            <ComposerEditor
-              editorRef={editorRef}
-              body={body}
-              plainText={plainText}
-              structured={structured}
-              selectedImage={null}
-              imageProcessing={false}
-              submitting={submitting}
-              clearedDraft={null}
-              pageMode={false}
-              onClearText={() => {
-                if (editorRef.current) editorRef.current.innerHTML = "";
-                bodyRef.current = "";
-                plainTextRef.current = "";
-                setBody("");
-                setPlainText("");
-                setStructured(false);
-                setActiveFormats({});
+              className="mb-4 rounded-[26px] border p-4 pr-12"
+              style={{
+                background: "linear-gradient(135deg, rgba(238,243,247,0.98), rgba(253,254,255,0.98))",
+                borderColor: T.borderSoft,
               }}
-              onRestoreText={() => {}}
-              onRemoveImage={() => {}}
-              onChange={handleEditorChange}
-              onFormatChange={handleFormatChange}
-              onFocus={syncFormatState}
-              onPointerDown={() => {}}
-              onInput={syncEditorState}
-              onBeforeInput={() => {}}
-              onKeyDown={() => {}}
-              onKeyUp={syncFormatState}
-              onMouseUp={syncFormatState}
-            />
-          </div>
+            >
+              <div
+                className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-extrabold uppercase tracking-[0.12em]"
+                style={{ backgroundColor: "#FFFFFF", borderColor: T.borderSoft, color: T.navy }}
+              >
+                <Edit3 size={14} />
+                Edit post
+              </div>
 
-          <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <Button variant="ghost" onClick={onClose} disabled={submitting}>
-              Cancel
-            </Button>
-            <Button variant="primary" onClick={submit} icon={Check} disabled={submitting || !canSave}>
-              {submitting ? "Saving…" : "Save changes"}
-            </Button>
+              <h3 className="mt-3 text-2xl font-extrabold tracking-[-0.03em] md:text-3xl" style={{ color: T.navy }}>
+                Update your post
+              </h3>
+
+              <p className="mt-1 text-sm leading-6" style={{ color: T.textMuted }}>
+                Keep the post helpful, clean, and easy to read for the Soldier Hub community.
+              </p>
+            </div>
+
+            <ComposerCategoryPicker
+              category={category}
+              onSelectCategory={selectCategory}
+              submitting={submitting}
+            />
+
+            <ComposerToolbar
+              activeFormats={activeFormats}
+              applyFormatting={applyFormatting}
+              submitting={submitting}
+            />
+
+            <div
+              className="relative rounded-[24px] border px-3 py-3 md:px-4"
+              style={{ backgroundColor: "#FDFEFF", borderColor: T.borderSoft }}
+            >
+              <ComposerEditor
+                editorRef={editorRef}
+                body={body}
+                plainText={plainText}
+                structured={structured}
+                selectedImage={null}
+                imageProcessing={false}
+                submitting={submitting}
+                clearedDraft={null}
+                pageMode={false}
+                onClearText={() => {
+                  if (editorRef.current) editorRef.current.innerHTML = "";
+                  bodyRef.current = "";
+                  plainTextRef.current = "";
+                  setBody("");
+                  setPlainText("");
+                  setStructured(false);
+                  setActiveFormats({});
+                }}
+                onRestoreText={() => {}}
+                onRemoveImage={() => {}}
+                onChange={handleEditorChange}
+                onFormatChange={handleFormatChange}
+                onFocus={syncFormatState}
+                onPointerDown={() => {}}
+                onInput={syncEditorState}
+                onBeforeInput={() => {}}
+                onKeyDown={() => {}}
+                onKeyUp={syncFormatState}
+                onMouseUp={syncFormatState}
+              />
+            </div>
+
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <Button variant="ghost" onClick={onClose} disabled={submitting}>
+                Cancel
+              </Button>
+              <Button variant="primary" onClick={submit} icon={Check} disabled={submitting || !canSave}>
+                {submitting ? "Saving…" : "Save changes"}
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
-    </Modal>
+      </Modal>
+    </>
   );
 }
