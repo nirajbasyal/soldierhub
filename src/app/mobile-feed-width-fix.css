@@ -48,3 +48,27 @@
     }
   }
 }
+
+/*
+  Tablet correction: the phone edge-to-edge override above is too wide on tablets.
+  Keep phones close to the edge, but let tablet post cards follow the same centered
+  feed column as the weather, hero, quick actions, and category strip.
+*/
+@media (min-width: 640px) and (max-width: 767px) {
+  body .sh-feed-post-list {
+    left: auto !important;
+    transform: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+
+  body .sh-feed-post-list > article {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    border-radius: 22px !important;
+  }
+}
