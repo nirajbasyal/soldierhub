@@ -1,7 +1,6 @@
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import "./feed-polish.css";
-import "./board-prep-study-polish.css";
 import "./production-polish.css";
 import "./mobile-feed-width-fix.css";
 import Providers from "./providers";
