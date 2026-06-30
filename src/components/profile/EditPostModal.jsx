@@ -194,7 +194,13 @@ export default function EditPostModal({ post, onClose, onSave }) {
 
   return (
     <Modal open onClose={onClose} maxWidth={680}>
-      <div className="relative overflow-hidden rounded-[28px]" style={{ backgroundColor: T.card }}>
+      <FloatingWarning
+        message={error}
+        title="Please revise this edit"
+        bottomOffset="calc(env(safe-area-inset-bottom, 0px) + 6.25rem)"
+      />
+
+      <div className="relative rounded-[28px]" style={{ backgroundColor: T.card }}>
         <button
           type="button"
           onClick={onClose}
@@ -206,7 +212,7 @@ export default function EditPostModal({ post, onClose, onSave }) {
           <X size={16} strokeWidth={2.7} />
         </button>
 
-        <div className="p-4 md:p-6">
+        <div className="p-4 pb-0 md:p-6 md:pb-0">
           <div
             className="mb-4 rounded-[26px] border p-4 pr-12"
             style={{
@@ -280,21 +286,23 @@ export default function EditPostModal({ post, onClose, onSave }) {
               onMouseUp={syncFormatState}
             />
           </div>
+        </div>
 
-          <FloatingWarning
-            message={error}
-            title="Please revise this edit"
-            className="mt-4"
-          />
-
-          <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <Button variant="ghost" onClick={onClose} disabled={submitting}>
-              Cancel
-            </Button>
-            <Button variant="primary" onClick={submit} icon={Check} disabled={submitting || !canSave}>
-              {submitting ? "Saving…" : "Save changes"}
-            </Button>
-          </div>
+        <div
+          className="sticky bottom-0 z-20 mt-5 flex flex-col gap-2 border-t px-4 py-3 sm:flex-row sm:justify-end md:px-6"
+          style={{
+            backgroundColor: "rgba(255,255,255,0.96)",
+            borderColor: T.borderSoft,
+            WebkitBackdropFilter: "blur(12px)",
+            backdropFilter: "blur(12px)",
+          }}
+        >
+          <Button variant="ghost" onClick={onClose} disabled={submitting}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={submit} icon={Check} disabled={submitting || !canSave}>
+            {submitting ? "Saving…" : "Save changes"}
+          </Button>
         </div>
       </div>
     </Modal>
