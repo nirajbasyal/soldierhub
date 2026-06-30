@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { BookOpen, Link2 } from "lucide-react";
 import { T } from "@/lib/theme";
+import { useApp } from "@/store/AppContext";
 
 function MobileAction({ icon: Icon, title, subtitle, href, disabled = false, badge, tone = "default" }) {
   const isPrimary = tone === "primary";
@@ -79,9 +80,12 @@ function MobileAction({ icon: Icon, title, subtitle, href, disabled = false, bad
 }
 
 export default function MobileFeedQuickActions() {
+  const { currentUser } = useApp();
+  const boardPrepHref = currentUser ? "/tools/board-prep" : "/tools/board-prep/study";
+
   return (
     <div className="grid grid-cols-2 gap-2 lg:hidden" aria-label="Quick tools">
-      <MobileAction icon={BookOpen} title="Board Prep" subtitle="Study questions" href="/tools/board-prep/study" tone="primary" />
+      <MobileAction icon={BookOpen} title="Board Prep" subtitle="Study questions" href={boardPrepHref} tone="primary" />
       <MobileAction icon={Link2} title="Resources" subtitle="Helpful links" disabled badge="Soon" tone="secondary" />
     </div>
   );
