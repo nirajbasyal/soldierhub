@@ -47,10 +47,20 @@ export default function EditPostModal({ post, onClose, onSave }) {
   const [structured, setStructured] = useState(false);
 
   const editorRef = useRef(null);
+  const errorRef = useRef(null);
   const bodyRef = useRef(body);
   const plainTextRef = useRef("");
 
   const canSave = useMemo(() => plainText.trim().length > 0, [plainText]);
+
+  const showError = (message, { focusEditor = false } = {}) => {
+    setError(message || "Could not save changes.");
+
+    safeRequestAnimationFrame(() => {
+      errorRef.current?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+      if (focusEditor) editorRef.current?.focus?.({ preventScroll: true });
+    });
+  };
 
   const syncEditorState = () => {
     const editor = editorRef.current;
@@ -131,16 +141,14 @@ export default function EditPostModal({ post, onClose, onSave }) {
     const cleanedPlainText = plainTextRef.current.trim();
 
     if (!cleanedPlainText) {
-      setError("Post body is required.");
-      editorRef.current?.focus?.({ preventScroll: true });
+      showError("Post body is required.", { focusEditor: true });
       return;
     }
 
     const m = await moderateAsync(cleanedPlainText);
 
     if (!m.allowed) {
-      setError(m.reason);
-      editorRef.current?.focus?.({ preventScroll: true });
+      showError(m.reason || "This content may violate Soldier Hub community safety rules. Please revise it and try again.");
       return;
     }
 
@@ -154,7 +162,7 @@ export default function EditPostModal({ post, onClose, onSave }) {
     setSubmitting(false);
 
     if (result?.ok === false) {
-      setError(result.error || "Could not save changes.");
+      showError(result.error || "Could not save changes.");
     }
   };
 
@@ -166,7 +174,7 @@ export default function EditPostModal({ post, onClose, onSave }) {
           onClick={onClose}
           disabled={submitting}
           aria-label="Close edit post"
-          className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full border transition active:scale-[0.98] disabled:opacity-50"
+          className="absolute right-4 top-4 z-30 flex h-9 w-9 items-center justify-center rounded-full border transition active:scale-[0.98] disabled:opacity-50"
           style={{ backgroundColor: "#F4F8FD", borderColor: T.borderSoft, color: T.textSubtle }}
         >
           <X size={16} strokeWidth={2.7} />
@@ -196,6 +204,19 @@ export default function EditPostModal({ post, onClose, onSave }) {
               Keep the post helpful, clean, and easy to read for the Soldier Hub community.
             </p>
           </div>
+
+          {error && (
+            <div
+              ref={errorRef}
+              role="alert"
+              aria-live="assertive"
+              className="sticky top-0 z-20 mb-4 flex items-start gap-2 rounded-2xl border px-3 py-3 text-sm font-semibold shadow-lg"
+              style={{ backgroundColor: "rgba(253,236,240,0.98)", borderColor: "#F3C7D1", color: "#B31942" }}
+            >
+              <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
 
           <ComposerCategoryPicker
             category={category}
@@ -245,16 +266,6 @@ export default function EditPostModal({ post, onClose, onSave }) {
               onMouseUp={syncFormatState}
             />
           </div>
-
-          {error && (
-            <div
-              className="mt-3 flex items-start gap-2 rounded-2xl border px-3 py-2 text-xs"
-              style={{ backgroundColor: "rgba(253,236,240,0.95)", borderColor: "#F3C7D1", color: "#B31942" }}
-            >
-              <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
 
           <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
             <Button variant="ghost" onClick={onClose} disabled={submitting}>
