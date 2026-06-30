@@ -105,7 +105,6 @@ export default function EditPostModal({ post, onClose, onSave }) {
     setBody(cleanHtml);
     setPlainText(cleanText);
     setStructured(isStructured);
-    setError("");
     safeRequestAnimationFrame(syncFormatState);
   };
 
@@ -271,6 +270,7 @@ export default function EditPostModal({ post, onClose, onSave }) {
                   setPlainText("");
                   setStructured(false);
                   setActiveFormats({});
+                  setError("");
                 }}
                 onRestoreText={() => {}}
                 onRemoveImage={() => {}}
