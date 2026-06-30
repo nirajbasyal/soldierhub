@@ -444,7 +444,7 @@ export default function TipTapComposerEditor({
 
   return (
     <div
-      className="soldierhub-normal-editor relative overflow-visible px-1 py-2 md:px-1.5 md:py-2.5"
+      className={`soldierhub-normal-editor ${pageMode ? "soldierhub-normal-editor--page-mode" : "soldierhub-normal-editor--inline-mode"} relative overflow-visible px-1 py-2 md:px-1.5 md:py-2.5`}
       style={{ backgroundColor: "transparent" }}
       suppressHydrationWarning
       onPointerDownCapture={handleCompactPreviewPointerDown}
@@ -500,12 +500,12 @@ export default function TipTapComposerEditor({
         .soldierhub-normal-editor,
         .soldierhub-normal-editor > div,
         .soldierhub-normal-editor .ProseMirror { background: transparent !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; outline: 0 !important; }
-        .soldierhub-normal-editor .ProseMirror { width: 100%; max-height: 170px; min-height: 170px; margin: 0 !important; padding: 2px 8px 2px 0 !important; color: ${T.text}; white-space: pre-wrap; overflow-wrap: anywhere; overflow-y: auto; -webkit-overflow-scrolling: touch; scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: rgba(63,95,125,0.24) transparent; }
+        .soldierhub-normal-editor .ProseMirror { width: 100%; max-height: 170px; min-height: 170px; margin: 0 !important; padding: 2px 8px 2px 0 !important; color: ${T.text}; caret-color: ${T.text}; white-space: pre-wrap; overflow-wrap: anywhere; overflow-y: auto; -webkit-overflow-scrolling: touch; scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: rgba(63,95,125,0.24) transparent; }
         .soldierhub-normal-editor .ProseMirror::-webkit-scrollbar { width: 6px; }
         .soldierhub-normal-editor .ProseMirror::-webkit-scrollbar-track { background: transparent; }
         .soldierhub-normal-editor .ProseMirror::-webkit-scrollbar-thumb { background-color: rgba(63,95,125,0.22); border-radius: 999px; border: 2px solid transparent; background-clip: content-box; }
-        @media (max-width: 640px) { .soldierhub-normal-editor .ProseMirror { max-height: 170px; overflow-y: auto; -webkit-overflow-scrolling: touch; caret-color: transparent; cursor: pointer; user-select: none; touch-action: pan-y; overscroll-behavior: contain; } .soldierhub-normal-editor .ProseMirror::-webkit-scrollbar { width: 4px; } }
-        @media (min-width: 641px) { .soldierhub-normal-editor .ProseMirror { max-height: none; overflow-y: visible; user-select: text; caret-color: auto; cursor: text; } }
+        @media (max-width: 640px) { .soldierhub-normal-editor--page-mode .ProseMirror { max-height: 170px; overflow-y: auto; -webkit-overflow-scrolling: touch; caret-color: transparent; cursor: pointer; user-select: none; touch-action: pan-y; overscroll-behavior: contain; } .soldierhub-normal-editor--inline-mode .ProseMirror { max-height: 170px; overflow-y: auto; -webkit-overflow-scrolling: touch; caret-color: ${T.text}; cursor: text; user-select: text; touch-action: auto; overscroll-behavior: contain; } .soldierhub-normal-editor .ProseMirror::-webkit-scrollbar { width: 4px; } }
+        @media (min-width: 641px) { .soldierhub-normal-editor .ProseMirror { max-height: none; overflow-y: visible; user-select: text; caret-color: ${T.text}; cursor: text; } }
         .soldierhub-normal-editor .ProseMirror p.is-editor-empty:first-child::before { content: attr(data-placeholder); float: left; color: #a8abb2; pointer-events: none; height: 0; }
       `}</style>
     </div>
