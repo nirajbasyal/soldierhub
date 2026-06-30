@@ -2,12 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Lock, Pencil, Plus, X } from "lucide-react";
+import { Lock, Pencil, Plus, X } from "lucide-react";
 import { T } from "@/lib/theme";
 import { moderateAsync } from "@/lib/moderation-client";
 import { useApp } from "@/store/AppContext";
 import Avatar from "@/components/ui/Avatar";
 import Button from "@/components/ui/Button";
+import FloatingWarning from "@/components/ui/FloatingWarning";
 import ComposerActionBar from "./ComposerActionBar";
 import ComposerCategoryPicker from "./ComposerCategoryPicker";
 import ComposerEditor from "./ComposerEditor";
@@ -30,6 +31,7 @@ const PUBLISH_SCROLL_KEY = "soldierhub_scroll_to_latest_post";
 const COMPOSE_SUBMIT_EVENT = "soldierhub-compose-submit";
 const COMPOSE_STATE_EVENT = "soldierhub-compose-state";
 const ANONYMOUS_NOTICE_MS = 4600;
+const WARNING_AUTO_HIDE_MS = 5200;
 
 export default function PostComposer({ startOpen = false, pageMode = false }) {
   const router = useRouter();
@@ -57,11 +59,34 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
   const submittingValueRef = useRef(submitting);
   const didInitialPageModePassRef = useRef(false);
   const anonymousNoticeTimeoutRef = useRef(null);
+  const warningTimeoutRef = useRef(null);
+  const warningBaselineTextRef = useRef(null);
 
   const canPublish = useMemo(() => plainText.trim().length > 0, [plainText]);
   const syncFormatState = () => setActiveFormats(editorRef.current?.getActiveFormats?.() || {});
+
+  const clearWarningTimer = () => {
+    if (warningTimeoutRef.current) {
+      window.clearTimeout(warningTimeoutRef.current);
+      warningTimeoutRef.current = null;
+    }
+  };
+
+  const clearInlineSubmitError = () => {
+    clearWarningTimer();
+    warningBaselineTextRef.current = null;
+    setError("");
+  };
+
   const showInlineSubmitError = (message) => {
-    setError(message);
+    clearWarningTimer();
+    warningBaselineTextRef.current = plainTextValueRef.current.trim();
+    setError(message || "Could not create post. Try again.");
+
+    if (typeof window !== "undefined") {
+      warningTimeoutRef.current = window.setTimeout(clearInlineSubmitError, WARNING_AUTO_HIDE_MS);
+    }
+
     safeRequestAnimationFrame(syncFormatState);
   };
 
@@ -90,7 +115,6 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     setDraftStatus("");
     bodyValueRef.current = cleanHtml;
     plainTextValueRef.current = cleanText;
-    setError("");
     safeRequestAnimationFrame(syncFormatState);
     touchDraftVersion();
   };
@@ -107,7 +131,11 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     setClearedTextDraft(null);
     bodyValueRef.current = cleanHtml;
     plainTextValueRef.current = cleanText;
-    setError("");
+
+    if (warningBaselineTextRef.current !== null && cleanText !== warningBaselineTextRef.current) {
+      clearInlineSubmitError();
+    }
+
     touchDraftVersion();
   };
 
@@ -131,7 +159,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     handleImageSelected,
     uploadSelectedImage,
     setImageStatus,
-  } = useComposerImage({ submittingValueRef, setError, setOpen, focusComposerField });
+  } = useComposerImage({ submittingValueRef, setError: showInlineSubmitError, setOpen, focusComposerField });
 
   const canPublishWithImageFinal = useMemo(() => plainText.trim().length > 0 || Boolean(selectedImage), [plainText, selectedImage]);
 
@@ -162,6 +190,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
 
   useEffect(() => () => {
     if (anonymousNoticeTimeoutRef.current) window.clearTimeout(anonymousNoticeTimeoutRef.current);
+    clearWarningTimer();
   }, []);
 
   useEffect(() => {
@@ -208,7 +237,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
 
   const handleImageChange = async (event) => {
     const result = await handleImageSelected(event);
-    if (result?.ok === false) setError(result.error || "Could not prepare this image. Please try another photo.");
+    if (result?.ok === false) showInlineSubmitError(result.error || "Could not prepare this image. Please try another photo.");
   };
 
   const showTemporaryAnonymousNotice = () => {
@@ -248,6 +277,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     setStructured(false);
     bodyValueRef.current = "";
     plainTextValueRef.current = "";
+    clearInlineSubmitError();
     touchDraftVersion();
   };
 
@@ -270,6 +300,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     bodyValueRef.current = restoredBody;
     plainTextValueRef.current = restoredText;
     setClearedTextDraft(null);
+    clearInlineSubmitError();
     touchDraftVersion();
     focusComposerField();
   };
@@ -279,7 +310,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     clearSelectedImage();
     setAnonymous(false);
     hideTemporaryAnonymousNotice();
-    setError("");
+    clearInlineSubmitError();
     setClearedTextDraft(null);
     clearDraftState();
     setOpen(startOpen);
@@ -302,7 +333,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
 
   const submit = async () => {
     if (submittingValueRef.current || imageProcessing) return;
-    setError("");
+    clearInlineSubmitError();
     syncEditorState();
     const cleanedText = plainTextValueRef.current.trim();
     const cleanedBody = sanitizeComposerHtml(bodyValueRef.current);
@@ -416,7 +447,7 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
       />
 
       {imageNotice ? <div className="mt-2 rounded-2xl border px-3 py-2 text-[11px] font-semibold" style={{ backgroundColor: "#FFF8E8", borderColor: "rgba(232,160,32,0.28)", color: "#7A5412" }}>{imageNotice}</div> : null}
-      {error && <div className="my-3 flex items-start gap-2 rounded-xl px-3 py-2 text-xs" style={{ backgroundColor: T.redBg, color: T.red }}><AlertTriangle size={14} className="mt-0.5 shrink-0" /><span>{error}</span></div>}
+      <FloatingWarning message={error} title="Please revise this post" className="my-3" />
 
       <div className="mt-2 md:mt-3">
         <ComposerActionBar pageMode={pageMode} anonymous={anonymous} showAnonymousNotice={showAnonymousNotice} anonymousNotice={ANONYMOUS_NOTICE} onToggleAnonymous={toggleAnonymous} selectedImage={selectedImage} imageProcessing={imageProcessing} onOpenImagePicker={openImagePicker} canPublish={canPublishWithImageFinal || canPublish} submitting={submitting} onSubmit={submit} draftSaved={draftSaved} draftStatus={draftStatus} onSaveDraft={handleSaveDraft} />
