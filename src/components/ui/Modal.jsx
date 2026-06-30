@@ -4,13 +4,18 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { T } from "@/lib/theme";
 
+const MODAL_BACKDROP_Z_INDEX = 9000;
+const MODAL_CARD_Z_INDEX = 9001;
+
 /**
  * Modal — centered dialog, ESC to close, body scroll lock.
  *
  * Production/mobile-safe behavior:
  * - Uses a React portal so dialogs render directly under document.body instead
  *   of being trapped inside feed cards, transformed parents, or scroll panels.
- * - Uses a very high z-index so bottom navigation/header never covers dialogs.
+ * - Uses a high app-level z-index so bottom navigation/header never covers dialogs.
+ * - Leaves headroom above the base modal for nested confirmation dialogs such as
+ *   the account-creation final review overlay.
  * - Uses dynamic viewport units so mobile browser chrome does not push the card
  *   off-screen.
  * - Restores the previous body overflow value on close instead of blindly
@@ -49,7 +54,7 @@ export default function Modal({ open, onClose, children, maxWidth = 480 }) {
     <div
       className="sh-modal-backdrop fixed inset-0 flex min-h-[100dvh] items-center justify-center overflow-y-auto overscroll-contain px-3 py-6 sm:p-4"
       style={{
-        zIndex: 2147483000,
+        zIndex: MODAL_BACKDROP_Z_INDEX,
         backgroundColor: "rgba(11,28,44,0.45)",
         WebkitBackdropFilter: "blur(7px)",
         backdropFilter: "blur(7px)",
@@ -60,7 +65,7 @@ export default function Modal({ open, onClose, children, maxWidth = 480 }) {
       <div
         className="sh-modal-card relative w-full rounded-2xl border shadow-2xl"
         style={{
-          zIndex: 2147483001,
+          zIndex: MODAL_CARD_Z_INDEX,
           maxWidth,
           maxHeight: "calc(100dvh - 3rem)",
           backgroundColor: T.card,
