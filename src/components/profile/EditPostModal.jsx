@@ -81,10 +81,17 @@ export default function EditPostModal({ post, onClose, onSave }) {
   const editorRef = useRef(null);
   const bodyRef = useRef(body);
   const plainTextRef = useRef("");
+  const rejectedPlainTextRef = useRef("");
 
   const canSave = useMemo(() => plainText.trim().length > 0, [plainText]);
 
+  const clearError = () => {
+    rejectedPlainTextRef.current = "";
+    setError("");
+  };
+
   const showError = (message, { focusEditor = false } = {}) => {
+    rejectedPlainTextRef.current = plainTextRef.current.trim();
     setError(message || "Could not save changes.");
 
     safeRequestAnimationFrame(() => {
@@ -122,7 +129,7 @@ export default function EditPostModal({ post, onClose, onSave }) {
     setBody(nextBody);
     setPlainText(plainSource);
     setCategory(post.category);
-    setError("");
+    clearError();
 
     safeRequestAnimationFrame(() => {
       if (editorRef.current) {
@@ -143,7 +150,10 @@ export default function EditPostModal({ post, onClose, onSave }) {
     setBody(cleanHtml);
     setPlainText(cleanText);
     setStructured(Boolean(nextStructured));
-    setError("");
+
+    if (rejectedPlainTextRef.current && cleanText !== rejectedPlainTextRef.current) {
+      clearError();
+    }
   };
 
   const handleFormatChange = (nextFormats) => {
@@ -163,7 +173,7 @@ export default function EditPostModal({ post, onClose, onSave }) {
   };
 
   const submit = async () => {
-    setError("");
+    clearError();
     syncEditorState();
 
     const cleanedBody = sanitizeComposerHtml(bodyRef.current).trim();
@@ -270,7 +280,7 @@ export default function EditPostModal({ post, onClose, onSave }) {
                   setPlainText("");
                   setStructured(false);
                   setActiveFormats({});
-                  setError("");
+                  clearError();
                 }}
                 onRestoreText={() => {}}
                 onRemoveImage={() => {}}
