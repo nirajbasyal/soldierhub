@@ -7,6 +7,8 @@ const CURRENT_USER_PROFILE_FIELDS =
 
 const CREDENTIAL_KEY = ["pass", "word"].join("");
 const MIN_PASSWORD_LENGTH = 10;
+const EXISTING_ACCOUNT_MESSAGE =
+  "This email already has an account. Please sign in instead. If your account was rejected or revoked, sign in to see your account status or contact support.";
 
 function getAuthRedirectUrl(path = "/auth/callback") {
   const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
@@ -36,6 +38,14 @@ function validatePassword(secret, { allowEmpty = false } = {}) {
   if (/^(.)\1+$/.test(secret)) return "Password is too easy to guess.";
   if (/password|soldierhub|qwerty|123456|abcdef/i.test(secret)) return "Password is too common.";
   return null;
+}
+
+function isRepeatedSignupResponse(data) {
+  return Boolean(
+    data?.user &&
+      Array.isArray(data.user.identities) &&
+      data.user.identities.length === 0
+  );
 }
 
 /**
@@ -83,7 +93,19 @@ export async function signUp(input = {}) {
     },
   });
 
-  return { data, error };
+  if (error) return { data, error };
+
+  if (isRepeatedSignupResponse(data)) {
+    return {
+      data: null,
+      error: {
+        message: EXISTING_ACCOUNT_MESSAGE,
+        code: "account_exists",
+      },
+    };
+  }
+
+  return { data, error: null };
 }
 
 export async function signIn(input = {}) {
