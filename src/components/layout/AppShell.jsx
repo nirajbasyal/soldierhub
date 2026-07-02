@@ -4,7 +4,7 @@ import TopNav from "./TopNav";
 import BottomNav from "./BottomNav";
 import MobileMenu from "./MobileMenu";
 import ScrollToTop from "./ScrollToTop";
-import AuthModal from "@/components/auth/AuthModal";
+import AuthModal from "@/components/auth/AuthModalV2";
 import ToastHost from "@/components/ui/ToastHost";
 import MediaViewerProvider from "@/components/media/MediaViewerProvider";
 
