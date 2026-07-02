@@ -6,6 +6,8 @@ import * as ProfilesDB from "@/lib/db/profiles";
 import { getProfileStatus } from "../utils/appHelpers";
 
 const MIN_SECRET_LENGTH = 10;
+const EXISTING_ACCOUNT_MESSAGE =
+  "This email already has an account. Please sign in or use Resend confirmation email if you have not confirmed it yet.";
 
 function getSignupSecretError(secret) {
   if (!secret) return "Password is required.";
@@ -13,6 +15,10 @@ function getSignupSecretError(secret) {
   if (/^(.)\1+$/.test(secret)) return "Password is too easy to guess.";
   if (/password|soldierhub|qwerty|123456|abcdef/i.test(secret)) return "Password is too common.";
   return null;
+}
+
+function isRepeatedSupabaseSignup(data) {
+  return data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0;
 }
 
 function clearLocalAuthCaches() {
@@ -88,10 +94,24 @@ export function useAuthActions({
           return { ok: false, error: error.message };
         }
 
+        if (isRepeatedSupabaseSignup(data)) {
+          pushToast(EXISTING_ACCOUNT_MESSAGE, "error");
+          return { ok: false, error: EXISTING_ACCOUNT_MESSAGE, code: "account_exists" };
+        }
+
         pushToast("Account created. Please check your email to confirm your address.", "info");
         sendToPendingReview({ email: cleanEmail, name: cleanName, found: 1, status: "pending", replace: true });
         setAuthModal(null);
         return { ok: true, data };
+      }
+
+      const alreadyExists = [...users, ...pendingUsers, ...blockedUsers].some(
+        (profile) => profile?.email === cleanEmail || profile?.personal_email === cleanEmail
+      );
+
+      if (alreadyExists) {
+        pushToast(EXISTING_ACCOUNT_MESSAGE, "error");
+        return { ok: false, error: EXISTING_ACCOUNT_MESSAGE, code: "account_exists" };
       }
 
       const newUser = {
@@ -123,7 +143,7 @@ export function useAuthActions({
 
       return { ok: true };
     },
-    [SUPA, pushToast, sendToPendingReview, setAuthModal, setCurrentUser, setPendingUsers, setUsers]
+    [SUPA, blockedUsers, pendingUsers, pushToast, sendToPendingReview, setAuthModal, setCurrentUser, setPendingUsers, setUsers, users]
   );
 
   const handleLogin = useCallback(
