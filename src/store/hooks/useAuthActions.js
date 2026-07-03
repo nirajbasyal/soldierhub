@@ -21,6 +21,11 @@ function isRepeatedSupabaseSignup(data) {
   return data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0;
 }
 
+function isUnconfirmedEmailError(error) {
+  const message = String(error?.message || error || "").toLowerCase();
+  return message.includes("email not confirmed") || message.includes("email_not_confirmed") || message.includes("confirm your email");
+}
+
 function clearLocalAuthCaches() {
   if (typeof window === "undefined") return;
 
@@ -91,7 +96,7 @@ export function useAuthActions({
 
         if (error) {
           pushToast(error.message, "error");
-          return { ok: false, error: error.message };
+          return { ok: false, error: error.message, code: error.code };
         }
 
         if (isRepeatedSupabaseSignup(data)) {
@@ -150,10 +155,10 @@ export function useAuthActions({
     async (email, password, onError) => {
       const cleanEmail = email?.trim().toLowerCase() || "";
 
-      const routeToPending = ({ profile, status, found = 1 }) => {
+      const routeToPending = ({ profile, status, found = 1, emailOverride = "", nameOverride = "" }) => {
         sendToPendingReview({
-          email: cleanEmail || profile?.email || profile?.personal_email || "",
-          name: profile?.full_name || "",
+          email: emailOverride || cleanEmail || profile?.email || profile?.personal_email || "",
+          name: nameOverride || profile?.full_name || "",
           found,
           status,
           replace: true,
@@ -164,6 +169,10 @@ export function useAuthActions({
       if (SUPA) {
         const { data, error } = await Auth.signIn({ email: cleanEmail, password });
         if (error) {
+          if (isUnconfirmedEmailError(error)) {
+            routeToPending({ profile: null, status: "pending", found: 1, emailOverride: cleanEmail });
+            return { ok: true, code: "email_unconfirmed" };
+          }
           onError && onError(error.message);
           return { ok: false, error: error.message };
         }
