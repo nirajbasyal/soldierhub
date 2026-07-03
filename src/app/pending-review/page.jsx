@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
@@ -31,11 +31,7 @@ function StatusIcon({ type = "pending" }) {
       className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border sm:h-16 sm:w-16"
       style={{
         backgroundColor: isDanger ? "#FFF1F4" : isSuccess ? "#EEF7F2" : "#EEF4FB",
-        borderColor: isDanger
-          ? "rgba(179,25,66,0.18)"
-          : isSuccess
-          ? "rgba(34,120,83,0.16)"
-          : "rgba(63,95,125,0.18)",
+        borderColor: isDanger ? "rgba(179,25,66,0.18)" : isSuccess ? "rgba(34,120,83,0.16)" : "rgba(63,95,125,0.18)",
       }}
     >
       <Icon size={28} strokeWidth={2.25} style={{ color: isDanger ? T.red : isSuccess ? "#227853" : T.navy }} />
@@ -52,11 +48,7 @@ function StepCard({ icon: Icon, title, body, tone = "neutral" }) {
       className="rounded-2xl border p-4 text-left sm:p-5"
       style={{
         backgroundColor: isDanger ? "#FFF6F8" : isSuccess ? "#F2F8F5" : "#F7FAFD",
-        borderColor: isDanger
-          ? "rgba(179,25,66,0.22)"
-          : isSuccess
-          ? "rgba(34,120,83,0.2)"
-          : "rgba(63,95,125,0.18)",
+        borderColor: isDanger ? "rgba(179,25,66,0.22)" : isSuccess ? "rgba(34,120,83,0.2)" : "rgba(63,95,125,0.18)",
       }}
     >
       <div className="flex gap-3">
@@ -64,11 +56,7 @@ function StepCard({ icon: Icon, title, body, tone = "neutral" }) {
           className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border"
           style={{
             backgroundColor: "rgba(255,255,255,0.78)",
-            borderColor: isDanger
-              ? "rgba(179,25,66,0.18)"
-              : isSuccess
-              ? "rgba(34,120,83,0.18)"
-              : "rgba(63,95,125,0.18)",
+            borderColor: isDanger ? "rgba(179,25,66,0.18)" : isSuccess ? "rgba(34,120,83,0.18)" : "rgba(63,95,125,0.18)",
             color: isDanger ? T.red : isSuccess ? "#227853" : T.navy,
           }}
         >
@@ -89,7 +77,6 @@ function StepCard({ icon: Icon, title, body, tone = "neutral" }) {
 
 function EmailBadge({ email }) {
   if (!email) return null;
-
   return (
     <div
       className="mt-4 flex min-w-0 items-center justify-center gap-2 rounded-2xl border px-3 py-3 text-sm"
@@ -103,20 +90,13 @@ function EmailBadge({ email }) {
 
 function SuccessNotice() {
   return (
-    <div
-      className="mt-5 rounded-2xl border px-4 py-3 text-left"
-      style={{ backgroundColor: "#F2F8F5", borderColor: "rgba(34,120,83,0.22)" }}
-      role="status"
-      aria-live="polite"
-    >
+    <div className="mt-5 rounded-2xl border px-4 py-3 text-left" style={{ backgroundColor: "#F2F8F5", borderColor: "rgba(34,120,83,0.22)" }} role="status" aria-live="polite">
       <div className="flex gap-3">
         <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: "rgba(34,120,83,0.1)", color: "#227853" }}>
           <CheckCircle2 size={18} strokeWidth={2.5} />
         </div>
         <div>
-          <p className="text-[15px] font-extrabold" style={{ color: "#1F6F4D" }}>
-            Re-review request submitted
-          </p>
+          <p className="text-[15px] font-extrabold" style={{ color: "#1F6F4D" }}>Re-review request submitted</p>
           <p className="mt-1 text-[13px] leading-6" style={{ color: T.textMuted }}>
             Your account is now back in pending admin review. An admin can review and verify it again.
           </p>
@@ -132,17 +112,18 @@ function LoadingCard() {
       <div className="flex flex-1 items-center justify-center px-4 py-8">
         <section className="w-full max-w-[520px] rounded-[28px] border px-5 py-8 text-center shadow-sm sm:px-8" style={{ backgroundColor: "rgba(255,255,255,0.96)", borderColor: "rgba(63,95,125,0.16)" }}>
           <StatusIcon type="pending" />
-          <h1 className="mt-5 text-3xl font-black tracking-[-0.03em]" style={{ color: T.navy }}>
-            Checking your account
-          </h1>
-          <p className="mt-2 text-sm leading-6" style={{ color: T.textMuted }}>
-            Please wait while Soldier Hub checks your review status.
-          </p>
+          <h1 className="mt-5 text-3xl font-black tracking-[-0.03em]" style={{ color: T.navy }}>Checking your account</h1>
+          <p className="mt-2 text-sm leading-6" style={{ color: T.textMuted }}>Please wait while Soldier Hub checks your review status.</p>
         </section>
       </div>
       <Footer />
     </main>
   );
+}
+
+function extractCooldownSeconds(message = "") {
+  const match = String(message).match(/after\s+(\d+)\s+seconds?/i);
+  return match ? Number(match[1]) : 0;
 }
 
 function PendingReviewContent() {
@@ -166,6 +147,7 @@ function PendingReviewContent() {
   const [loggingOut, setLoggingOut] = useState(false);
   const [resending, setResending] = useState(false);
   const [resendMessage, setResendMessage] = useState("");
+  const [resendCooldownSeconds, setResendCooldownSeconds] = useState(0);
   const [rereviewPhone, setRereviewPhone] = useState("");
   const [rereviewing, setRereviewing] = useState(false);
   const [rereviewMessage, setRereviewMessage] = useState("");
@@ -179,10 +161,24 @@ function PendingReviewContent() {
   const hasPhoneOnFile = cleanRereviewPhone.length === 10;
   const phoneInvalid = !hasPhoneOnFile && rereviewPhone.trim().length > 0 && cleanRereviewPhone.length !== 10;
   const showRereviewSuccess = rereviewSubmitted || rereviewSuccessFromUrl;
+  const canResend = !resending && resendCooldownSeconds <= 0;
 
   useEffect(() => {
     if (rereviewSuccessFromUrl) setRereviewSubmitted(true);
   }, [rereviewSuccessFromUrl]);
+
+  useEffect(() => {
+    if (resendCooldownSeconds <= 0) return undefined;
+    const timer = window.setInterval(() => {
+      setResendCooldownSeconds((seconds) => Math.max(0, seconds - 1));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [resendCooldownSeconds]);
+
+  useEffect(() => {
+    if (resendCooldownSeconds <= 0) return;
+    setResendMessage(`For security purposes, you can request another confirmation email in ${resendCooldownSeconds} seconds.`);
+  }, [resendCooldownSeconds]);
 
   const safeSignOut = async () => {
     if (supabase) await supabase.auth.signOut();
@@ -196,10 +192,7 @@ function PendingReviewContent() {
         setProfileStatus(statusFromUrl || "pending");
         if (!supabase) return;
 
-        const {
-          data: { user },
-          error,
-        } = await supabase.auth.getUser();
+        const { data: { user }, error } = await supabase.auth.getUser();
 
         if (error || !user) {
           setHasUserSession(false);
@@ -264,15 +257,8 @@ function PendingReviewContent() {
 
   const verifyPendingStatusAfterRereview = async () => {
     if (!supabase) return { ok: false, error: "Supabase is not configured." };
-
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user?.id) {
-      return { ok: false, error: "Please sign in with this same account first, then request re-review." };
-    }
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user?.id) return { ok: false, error: "Please sign in with this same account first, then request re-review." };
 
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
@@ -280,13 +266,8 @@ function PendingReviewContent() {
       .eq("id", user.id)
       .maybeSingle();
 
-    if (profileError || !profile) {
-      return { ok: false, error: profileError?.message || "Could not confirm your profile status." };
-    }
-
-    if (profile.verification_status !== "pending") {
-      return { ok: false, error: "Re-review did not move this account to pending. Please sign out, sign back in with the same account, and try again." };
-    }
+    if (profileError || !profile) return { ok: false, error: profileError?.message || "Could not confirm your profile status." };
+    if (profile.verification_status !== "pending") return { ok: false, error: "Re-review did not move this account to pending. Please sign out, sign back in with the same account, and try again." };
 
     setCurrentEmail(profile.email || profile.personal_email || user.email || currentEmail);
     setCurrentName(profile.full_name || currentName);
@@ -308,24 +289,19 @@ function PendingReviewContent() {
       }
 
       setRereviewing(true);
-
       if (supabase) {
-        const { error: rpcError } = await supabase.rpc("request_profile_rereview", {
-          p_phone: cleanRereviewPhone,
-        });
-
+        const { error: rpcError } = await supabase.rpc("request_profile_rereview", { p_phone: cleanRereviewPhone });
         if (rpcError) {
           setRereviewMessage(rpcError.message || "Could not request re-review. Please contact admin.");
           return;
         }
-
         const verified = await verifyPendingStatusAfterRereview();
         if (!verified.ok) {
           setRereviewMessage(verified.error || "Could not confirm re-review status. Please contact admin.");
           return;
         }
       } else {
-        const result = await requestRereview({ phone: cleanRereviewPhone });
+        const result = await requestRereview?.({ email: currentEmail, phone: cleanRereviewPhone });
         if (result?.ok === false) {
           setRereviewMessage(result.error || "Could not request re-review. Please contact admin.");
           return;
@@ -360,6 +336,7 @@ function PendingReviewContent() {
         setResendMessage("Email address was not found. Please sign in again.");
         return;
       }
+      if (!canResend) return;
 
       setResending(true);
       setResendMessage("");
@@ -367,15 +344,19 @@ function PendingReviewContent() {
         type: "signup",
         email: currentEmail,
         options: {
-          emailRedirectTo: `${window.location.origin}/pending-review?found=1&status=pending&email=${encodeURIComponent(currentEmail)}&name=${encodeURIComponent(currentName || "")}`,
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=/pending-review`,
         },
       });
 
       if (error) {
-        setResendMessage(error.message);
+        const cooldown = extractCooldownSeconds(error.message);
+        if (cooldown > 0) setResendCooldownSeconds(cooldown);
+        setResendMessage(cooldown > 0 ? `For security purposes, you can request another confirmation email in ${cooldown} seconds.` : error.message);
         return;
       }
-      setResendMessage("Confirmation email sent again. Please check your inbox.");
+
+      setResendCooldownSeconds(60);
+      setResendMessage("Confirmation email sent again. Please check inbox, spam, promotions, and junk folders.");
     } catch (error) {
       console.error("Resend confirmation failed:", error);
       setResendMessage("Unable to resend confirmation email. Please try again.");
@@ -387,27 +368,9 @@ function PendingReviewContent() {
   const found = foundFromUrl || hasUserSession || isAccessBlocked;
   if (checking) return <LoadingCard />;
 
-  const title = isRejected
-    ? "Profile not approved"
-    : isRevoked
-    ? "Access removed"
-    : found
-    ? isApproved
-      ? "Account approved"
-      : emailVerified
-      ? "Email verified. Review pending"
-      : "Verify your email"
-    : "Account not found";
-
-  const subtitle = isAccessBlocked
-    ? "You can request another review or contact admin for help."
-    : found
-    ? isApproved
-      ? "Your Soldier Hub account is ready."
-      : emailVerified
-      ? "Your profile is waiting for admin review."
-      : "One more step before admin review starts."
-    : "Please sign in with your existing account or contact admin.";
+  const title = isRejected ? "Profile not approved" : isRevoked ? "Access removed" : found ? isApproved ? "Account approved" : emailVerified ? "Email verified. Review pending" : "Verify your email" : "Account not found";
+  const subtitle = isAccessBlocked ? "You can request another review or contact admin for help." : found ? isApproved ? "Your Soldier Hub account is ready." : emailVerified ? "Your profile is waiting for admin review." : "One more step before admin review starts." : "Please sign in with your existing account or contact admin.";
+  const resendButtonLabel = resending ? "Sending..." : resendCooldownSeconds > 0 ? `Try again in ${resendCooldownSeconds}s` : "Resend confirmation email";
 
   return (
     <main className="flex min-h-screen flex-col" style={{ backgroundColor: "#EAF2FA" }}>
@@ -434,31 +397,14 @@ function PendingReviewContent() {
                 <p className="mt-1.5 text-[13px] leading-6" style={{ color: T.textMuted }}>{hasPhoneOnFile ? "Your phone number is already saved. Requesting re-review will move your account back to pending admin review." : "Add optional information below. This will move your account back to pending admin review."}</p>
                 {hasPhoneOnFile ? (
                   <div className="mt-4 rounded-2xl border px-3 py-3" style={{ backgroundColor: "#F7FAFD", borderColor: "rgba(63,95,125,0.18)" }}>
-                    <div className="flex items-center gap-2">
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: "rgba(63,95,125,0.1)", color: T.navy }}><Phone size={17} /></span>
-                      <div className="min-w-0">
-                        <p className="text-[11px] font-black uppercase tracking-[0.14em]" style={{ color: T.textMuted }}>Phone on file</p>
-                        <p className="mt-0.5 text-sm font-extrabold" style={{ color: T.text }}>{cleanRereviewPhone}</p>
-                      </div>
-                    </div>
+                    <div className="flex items-center gap-2"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: "rgba(63,95,125,0.1)", color: T.navy }}><Phone size={17} /></span><div className="min-w-0"><p className="text-[11px] font-black uppercase tracking-[0.14em]" style={{ color: T.textMuted }}>Phone on file</p><p className="mt-0.5 text-sm font-extrabold" style={{ color: T.text }}>{cleanRereviewPhone}</p></div></div>
                   </div>
                 ) : (
-                  <label className="mt-4 block">
-                    <span className="mb-1.5 block text-xs font-bold" style={{ color: T.textMuted }}>Phone number optional</span>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2" style={{ color: phoneInvalid ? T.red : T.textSubtle }}><Phone size={17} /></span>
-                      <input type="tel" inputMode="numeric" maxLength={10} value={rereviewPhone} onChange={(event) => setRereviewPhone(event.target.value.replace(/\D/g, ""))} placeholder="9151234567" className="h-12 w-full rounded-2xl border bg-white pl-11 pr-3 text-[16px] outline-none" style={{ borderColor: phoneInvalid ? T.red : "rgba(63,95,125,0.22)", color: T.text }} />
-                    </div>
-                    {phoneInvalid ? <p className="mt-1.5 text-xs font-semibold" style={{ color: T.red }}>Please enter a valid 10-digit phone number.</p> : null}
-                  </label>
+                  <label className="mt-4 block"><span className="mb-1.5 block text-xs font-bold" style={{ color: T.textMuted }}>Phone number optional</span><div className="relative"><span className="absolute left-4 top-1/2 -translate-y-1/2" style={{ color: phoneInvalid ? T.red : T.textSubtle }}><Phone size={17} /></span><input type="tel" inputMode="numeric" maxLength={10} value={rereviewPhone} onChange={(event) => setRereviewPhone(event.target.value.replace(/\D/g, ""))} placeholder="9151234567" className="h-12 w-full rounded-2xl border bg-white pl-11 pr-3 text-[16px] outline-none" style={{ borderColor: phoneInvalid ? T.red : "rgba(63,95,125,0.22)", color: T.text }} /></div>{phoneInvalid ? <p className="mt-1.5 text-xs font-semibold" style={{ color: T.red }}>Please enter a valid 10-digit phone number.</p> : null}</label>
                 )}
                 {rereviewMessage ? <p className="mt-3 text-xs leading-6" style={{ color: T.textMuted }}>{rereviewMessage}</p> : null}
               </div>
-              <div className="mt-6 flex flex-col gap-2.5">
-                <Button variant="primary" icon={RefreshCw} onClick={handleRequestRereview} disabled={rereviewing || phoneInvalid}>{rereviewing ? "Submitting..." : "Request re-review"}</Button>
-                <Button variant="ghost" icon={Mail} onClick={handleContactAdmin}>Contact admin</Button>
-                <Button variant="ghost" icon={ArrowLeft} onClick={handleBackToFeed}>Browse the feed</Button>
-              </div>
+              <div className="mt-6 flex flex-col gap-2.5"><Button variant="primary" icon={RefreshCw} onClick={handleRequestRereview} disabled={rereviewing || phoneInvalid}>{rereviewing ? "Submitting..." : "Request re-review"}</Button><Button variant="ghost" icon={Mail} onClick={handleContactAdmin}>Contact admin</Button><Button variant="ghost" icon={ArrowLeft} onClick={handleBackToFeed}>Browse the feed</Button></div>
             </>
           ) : found ? (
             <>
@@ -468,9 +414,9 @@ function PendingReviewContent() {
                 <StepCard icon={isApproved ? CheckCircle2 : Clock} tone={isApproved ? "success" : "neutral"} title={isApproved ? "Step 2: Admin verification approved" : "Step 2: Wait for admin verification"} body={isApproved ? "Your Soldier Hub account has been approved. You can now browse the feed and use verified member features." : emailVerified ? "Your Soldier Hub profile is waiting for admin review. Once approved, you will be able to post, comment, message, and use verified member features." : "After your email is verified, an admin will review your Soldier Hub profile. Posting, commenting, and messaging will unlock after approval."} />
               </div>
               <EmailBadge email={currentEmail} />
-              {resendMessage ? <p className="mt-3 text-xs leading-6" style={{ color: T.textMuted }}>{resendMessage}</p> : null}
+              {resendMessage ? <p className="mt-3 text-xs leading-6" style={{ color: T.textMuted }} aria-live="polite">{resendMessage}</p> : null}
               <div className="mt-6 flex flex-col gap-2.5">
-                {!emailVerified && isLiveMode ? <Button variant="primary" icon={RefreshCw} onClick={handleResendConfirmation} disabled={resending}>{resending ? "Sending..." : "Resend confirmation email"}</Button> : null}
+                {!emailVerified && isLiveMode ? <Button variant="primary" icon={RefreshCw} onClick={handleResendConfirmation} disabled={!canResend}>{resendButtonLabel}</Button> : null}
                 <Button variant={emailVerified || isApproved ? "primary" : "ghost"} icon={ArrowLeft} onClick={() => router.push("/")}>Browse the feed</Button>
                 {emailVerified && !isApproved ? <Button variant="ghost" icon={LogOut} onClick={handleLogout} disabled={loggingOut}>{loggingOut ? "Logging out..." : "Log out"}</Button> : null}
               </div>
@@ -478,11 +424,7 @@ function PendingReviewContent() {
           ) : (
             <>
               <EmailBadge email={currentEmail} />
-              <div className="mt-6 flex flex-col gap-2.5">
-                <Button variant="primary" icon={Mail} onClick={() => setAuthModal("login")}>Sign in</Button>
-                <Button variant="ghost" icon={Mail} onClick={handleContactAdmin}>Contact admin</Button>
-                <Button variant="ghost" icon={ArrowLeft} onClick={() => router.push("/")}>Browse the feed</Button>
-              </div>
+              <div className="mt-6 flex flex-col gap-2.5"><Button variant="primary" icon={Mail} onClick={() => setAuthModal("login")}>Sign in</Button><Button variant="ghost" icon={Mail} onClick={handleContactAdmin}>Contact admin</Button><Button variant="ghost" icon={ArrowLeft} onClick={() => router.push("/")}>Browse the feed</Button></div>
             </>
           )}
         </section>
