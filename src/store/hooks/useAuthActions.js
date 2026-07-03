@@ -7,7 +7,7 @@ import { getProfileStatus } from "../utils/appHelpers";
 
 const MIN_SECRET_LENGTH = 10;
 const EXISTING_ACCOUNT_MESSAGE =
-  "This email already has an account. Please sign in or use Resend confirmation email if you have not confirmed it yet.";
+  "This email already has an account. Please sign in or verify your email instead.";
 
 function getSignupSecretError(secret) {
   if (!secret) return "Password is required.";
@@ -24,6 +24,30 @@ function isRepeatedSupabaseSignup(data) {
 function isUnconfirmedEmailError(error) {
   const message = String(error?.message || error || "").toLowerCase();
   return message.includes("email not confirmed") || message.includes("email_not_confirmed") || message.includes("confirm your email");
+}
+
+async function checkSignupEmailStatus(email) {
+  const response = await fetch("/api/auth/signup-email-status", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+
+  let payload = null;
+  try {
+    payload = await response.json();
+  } catch {
+    payload = null;
+  }
+
+  if (!response.ok) {
+    return {
+      ok: false,
+      error: payload?.error || "Could not verify this email. Please try again.",
+    };
+  }
+
+  return { ok: true, data: payload || {} };
 }
 
 function clearLocalAuthCaches() {
@@ -85,6 +109,18 @@ export function useAuthActions({
       }
 
       if (SUPA) {
+        const emailStatus = await checkSignupEmailStatus(cleanEmail);
+        if (!emailStatus.ok) {
+          pushToast(emailStatus.error, "error");
+          return { ok: false, error: emailStatus.error };
+        }
+
+        if (emailStatus.data?.exists) {
+          const message = emailStatus.data.message || EXISTING_ACCOUNT_MESSAGE;
+          pushToast(message, "error");
+          return { ok: false, error: message, code: "account_exists" };
+        }
+
         const { data, error } = await Auth.signUp({
           email: cleanEmail,
           password: signupSecret,
