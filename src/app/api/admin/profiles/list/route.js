@@ -29,6 +29,12 @@ async function listAdminProfiles({ supabase, queue, limit }) {
 
   if (!rpcResult.error) return { data: rpcResult.data || [], error: null };
 
+  // Pending queue must be email-confirmed. Do not fallback to a plain profiles
+  // query because that would show unconfirmed signups to admins.
+  if (queue === "pending") {
+    return { data: [], error: rpcResult.error };
+  }
+
   if (queue === "blocked") {
     const fallback = await supabase
       .from("profiles")
