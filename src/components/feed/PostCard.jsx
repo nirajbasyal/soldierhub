@@ -801,7 +801,7 @@ export default function PostCard({ post, openRepliesDefault = false }) {
                   {editedPost ? (
                     <>
                       <span className="text-[10px] leading-none" style={{ color: "rgba(102,112,133,0.45)" }}>•</span>
-                      <span className="text-[11px] font-semibold leading-none" style={{ color: "rgba(102,112,133,0.62)" }} title={postUpdatedAt ? `Edited ${new Date(postUpdatedAt).toLocaleString()}` : "Edited"}>
+                      <span className="text-[11px] font-semibold leading-none" style={{ color: "rgba(102,112,133,0.62)" }} title="Edited post">
                         edited
                       </span>
                     </>

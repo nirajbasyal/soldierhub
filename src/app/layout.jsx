@@ -1,4 +1,5 @@
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 import "./feed-polish.css";
 import "./board-prep-question-cards.css";
@@ -186,6 +187,7 @@ export default function RootLayout({ children }) {
         />
         <Providers>{children}</Providers>
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

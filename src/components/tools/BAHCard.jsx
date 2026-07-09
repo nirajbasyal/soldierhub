@@ -49,6 +49,7 @@ function DependencyButton({ active, children, onClick }) {
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={active}
       className="rounded-2xl px-3 py-2 text-sm font-bold transition active:scale-[0.98]"
       style={{
         backgroundColor: active ? T.navy : "rgba(255,255,255,0.94)",
@@ -113,11 +114,12 @@ export default function BAHCard() {
 
       {/* Rank chooser */}
       <div className="mt-4">
-        <label className="text-[11px] font-extrabold uppercase tracking-[0.14em]" style={{ color: T.textSubtle }}>
+        <label htmlFor="bah-rank" className="text-[11px] font-extrabold uppercase tracking-[0.14em]" style={{ color: T.textSubtle }}>
           Choose Rank
         </label>
 
         <select
+          id="bah-rank"
           value={rank}
           onChange={(e) => setRank(e.target.value)}
           className="mt-2 w-full rounded-2xl border px-3 py-3 text-sm font-bold outline-none transition focus:ring-4"

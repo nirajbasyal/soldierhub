@@ -138,12 +138,16 @@ function GateRow({ gate, status }) {
 }
 
 export default function GateHoursCard() {
-  const [now, setNow] = useState(new Date());
+  // Keep the server render and the browser's first render deterministic. Using
+  // `new Date()` as the initial value can cross a minute boundary between SSR
+  // and hydration, which causes React to discard and regenerate this subtree.
+  const [now, setNow] = useState(null);
   const [gates, setGates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
+    setNow(new Date());
     const timer = setInterval(() => setNow(new Date()), 60 * 1000);
     return () => clearInterval(timer);
   }, []);
@@ -167,8 +171,8 @@ export default function GateHoursCard() {
     };
   }, []);
 
-  const elPasoNow = useMemo(() => getElPasoParts(now), [now]);
-  const localTime = useMemo(() => formatElPasoTime(now), [now]);
+  const elPasoNow = useMemo(() => (now ? getElPasoParts(now) : null), [now]);
+  const localTime = useMemo(() => (now ? formatElPasoTime(now) : "--:--"), [now]);
 
   return (
     <div
@@ -229,7 +233,11 @@ export default function GateHoursCard() {
           <GateRow
             key={gate.id || gate.name}
             gate={gate}
-            status={getGateStatus(gate, elPasoNow)}
+            status={
+              elPasoNow
+                ? getGateStatus(gate, elPasoNow)
+                : { open: false, text: "Checking" }
+            }
           />
         ))}
       </div>

@@ -2,6 +2,14 @@ import { withSentryConfig } from "@sentry/nextjs";
 
 const isProduction = process.env.NODE_ENV === "production";
 
+const scriptSources = [
+  "'self'",
+  "'unsafe-inline'",
+  !isProduction ? "'unsafe-eval'" : "",
+  "blob:",
+  "https://static.cloudflareinsights.com",
+].filter(Boolean);
+
 const cspDirectives = [
   "default-src 'self'",
   "base-uri 'self'",
@@ -13,7 +21,7 @@ const cspDirectives = [
   "font-src 'self' data: https://fonts.gstatic.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://static.cloudflareinsights.com",
+  `script-src ${scriptSources.join(" ")}`,
   "script-src-elem 'self' 'unsafe-inline' https://static.cloudflareinsights.com",
   "worker-src 'self' blob:",
   "frame-src 'none'",

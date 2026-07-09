@@ -5,6 +5,11 @@ const TEST_POST_ID = process.env.TEST_POST_ID || "";
 const USERS = Math.max(1, Number(process.env.USERS || 25));
 const DURATION_SECONDS = Math.max(10, Number(process.env.DURATION_SECONDS || 120));
 const THINK_TIME_MS = Math.max(250, Number(process.env.THINK_TIME_MS || 1500));
+const MAX_FAILURE_RATE_PERCENT = Math.max(
+  0,
+  Number(process.env.MAX_FAILURE_RATE_PERCENT || 1)
+);
+const MAX_P95_MS = Math.max(1, Number(process.env.MAX_P95_MS || 1500));
 
 const results = [];
 const startedAt = Date.now();
@@ -149,9 +154,22 @@ function printSummary() {
     }
   }
 
+  const p95 = percentile(durations, 95);
+  const passedFailureRate = failureRate < MAX_FAILURE_RATE_PERCENT;
+  const passedLatency = p95 < MAX_P95_MS;
+
+  console.log("\nLaunch gate");
+  console.log("-----------");
   console.log(
-    "\nTarget for early launch: failed < 1%, p95 < 1500ms for Supabase RPC, and no repeated 403/500 errors."
+    `Failure rate: ${passedFailureRate ? "PASS" : "FAIL"} (${failureRate.toFixed(2)}% < ${MAX_FAILURE_RATE_PERCENT}%)`
   );
+  console.log(
+    `Overall p95: ${passedLatency ? "PASS" : "FAIL"} (${p95}ms < ${MAX_P95_MS}ms)`
+  );
+
+  if (!total || !passedFailureRate || !passedLatency) {
+    process.exitCode = 1;
+  }
 }
 
 console.log("Starting SoldierHub load test...");
