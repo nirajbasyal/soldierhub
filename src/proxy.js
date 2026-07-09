@@ -1,12 +1,26 @@
 import { NextResponse } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 
+function redirectPendingEmailLink(request) {
+  const url = request.nextUrl;
+
+  if (url.pathname !== "/pending-review" || !url.searchParams.has("code")) {
+    return null;
+  }
+
+  const callbackUrl = url.clone();
+  callbackUrl.pathname = "/auth/callback";
+  return NextResponse.redirect(callbackUrl);
+}
+
 function isUuidLike(value = "") {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
 export async function proxy(request) {
   const path = request.nextUrl.pathname;
+  const pendingRedirect = redirectPendingEmailLink(request);
+  if (pendingRedirect) return pendingRedirect;
 
   if (path === "/") {
     const sharedPostId = request.nextUrl.searchParams.get("post");
@@ -26,19 +40,16 @@ export async function proxy(request) {
     return NextResponse.next();
   }
 
-  const { response, supabase } = await updateSession(request);
+  const { response, supabase, userId } = await updateSession(request);
 
   if (path.startsWith("/admin")) {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
+    if (!supabase || !userId) {
       return NextResponse.redirect(new URL("/", request.url));
     }
     const { data: profile } = await supabase
       .from("profiles")
       .select("role")
-      .eq("id", user.id)
+      .eq("id", userId)
       .single();
     if (profile?.role !== "admin") {
       return NextResponse.redirect(new URL("/", request.url));

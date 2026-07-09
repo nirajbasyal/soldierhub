@@ -368,7 +368,7 @@ export default function AuthModalV2() {
 
   return (
     <>
-      <Modal open onClose={close} maxWidth={500}>
+      <Modal open onClose={close} maxWidth={500} ariaLabelledBy="auth-modal-title">
         <div className={compactSignup ? "px-4 py-3 sm:p-5" : "p-4 md:p-5"}>
           <div className="mb-3 flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
@@ -376,13 +376,13 @@ export default function AuthModalV2() {
                 <span className="text-[24px] font-black leading-none tracking-[-0.04em]" style={{ color: T.navy }}>Soldier</span>
                 <span className="text-[24px] font-black leading-none tracking-[-0.04em]" style={{ color: T.red }}>Hub</span>
               </div>
-              <h2 className="text-xl font-black tracking-[-0.03em] sm:text-2xl" style={{ color: T.navy }}>{title}</h2>
+              <h2 id="auth-modal-title" className="text-xl font-black tracking-[-0.03em] sm:text-2xl" style={{ color: T.navy }}>{title}</h2>
               <p className="mt-1 hidden max-w-[360px] text-sm leading-6 sm:block" style={{ color: T.textMuted }}>{subtitle}</p>
             </div>
             <button
               type="button"
               onClick={close}
-              className="sh-tap flex h-9 w-9 shrink-0 items-center justify-center rounded-full border"
+              className="sh-tap flex h-11 w-11 shrink-0 items-center justify-center rounded-full border"
               style={{ backgroundColor: "rgba(248,250,253,0.96)", borderColor: T.borderSoft, color: T.textMuted }}
               aria-label="Close auth modal"
             >
@@ -573,7 +573,12 @@ export default function AuthModalV2() {
       </Modal>
 
       {showAgreement && (
-        <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-slate-950/45 px-4 backdrop-blur-sm">
+        <div
+          className="fixed inset-0 z-[10001] flex items-center justify-center bg-slate-950/45 px-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="community-agreement-title"
+        >
           <form
             noValidate
             onSubmit={(event) => {
@@ -589,7 +594,7 @@ export default function AuthModalV2() {
                 <ShieldCheck size={20} strokeWidth={2.5} />
               </span>
               <div>
-                <h3 className="text-base font-black tracking-[-0.02em]" style={{ color: T.navy }}>Final step before creating account</h3>
+                <h3 id="community-agreement-title" className="text-base font-black tracking-[-0.02em]" style={{ color: T.navy }}>Final step before creating account</h3>
                 <p className="mt-1 text-sm font-semibold leading-6" style={{ color: T.textMuted }}>
                   Review the community agreement. Your account will be created after you tap Create account below.
                 </p>

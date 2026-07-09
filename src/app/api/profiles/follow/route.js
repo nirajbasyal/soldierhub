@@ -85,46 +85,6 @@ async function getFollowSummaryForApi(supabase, profileId, viewerId) {
   return normalizeSummary(countRow, Boolean(followingRow));
 }
 
-async function createFollowNotification({ supabase, targetProfileId, actorUserId, actorName }) {
-  if (!supabase || !targetProfileId || !actorUserId || targetProfileId === actorUserId) return;
-
-  const { data: existingNotification } = await supabase
-    .from("notifications")
-    .select("id")
-    .eq("recipient_user_id", targetProfileId)
-    .eq("actor_user_id", actorUserId)
-    .eq("type", "follow")
-    .maybeSingle();
-
-  if (existingNotification?.id) {
-    const { error: updateError } = await supabase
-      .from("notifications")
-      .update({
-        read: false,
-        actor_name_cached: actorName || "Someone",
-        post_title_cached: "followed your profile",
-        created_at: new Date().toISOString(),
-      })
-      .eq("id", existingNotification.id);
-
-    if (updateError) console.error("Update follow notification failed:", updateError);
-    return;
-  }
-
-  const { error } = await supabase.from("notifications").insert([
-    {
-      recipient_user_id: targetProfileId,
-      actor_user_id: actorUserId,
-      actor_name_cached: actorName || "Someone",
-      type: "follow",
-      post_title_cached: "followed your profile",
-      read: false,
-    },
-  ]);
-
-  if (error) console.error("Create follow notification failed:", error);
-}
-
 export async function POST(request) {
   const ipRateLimit = await checkRateLimit(request, {
     keyPrefix: "profiles-follow-ip",
@@ -273,15 +233,6 @@ export async function POST(request) {
         { status: 500, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
       );
     }
-  }
-
-  if (data) {
-    await createFollowNotification({
-      supabase,
-      targetProfileId,
-      actorUserId: user.id,
-      actorName: profile.full_name || user.email || "Someone",
-    });
   }
 
   const [summary, viewer_summary] = await Promise.all([

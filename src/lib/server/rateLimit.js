@@ -4,7 +4,14 @@ import { NextResponse } from "next/server";
 const DEFAULT_WINDOW_MS = 60 * 1000;
 const DEFAULT_LIMIT = 60;
 const MAX_TRACKED_KEYS = 5000;
-const SHARED_RATE_LIMIT_TIMEOUT_MS = Number(process.env.RATE_LIMIT_SHARED_TIMEOUT_MS || 700);
+const SHARED_RATE_LIMIT_TIMEOUT_MS = Math.max(
+  300,
+  Number(process.env.RATE_LIMIT_SHARED_TIMEOUT_MS || 1200)
+);
+const SHARED_RATE_LIMIT_RETRIES = Math.max(
+  0,
+  Math.min(2, Number(process.env.RATE_LIMIT_SHARED_RETRIES || 1))
+);
 
 function isProductionRuntime() {
   return process.env.NODE_ENV === "production";
@@ -154,10 +161,7 @@ function getUpstashConfig() {
   return { url, token };
 }
 
-async function runUpstashPipeline(commands) {
-  const config = getUpstashConfig();
-  if (!config) return null;
-
+async function fetchUpstashPipeline(config, commands) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), SHARED_RATE_LIMIT_TIMEOUT_MS);
 
@@ -192,6 +196,32 @@ async function runUpstashPipeline(commands) {
   } finally {
     clearTimeout(timeout);
   }
+}
+
+function isRetryableSharedStoreError(error) {
+  return error?.name === "AbortError" || error instanceof TypeError;
+}
+
+async function runUpstashPipeline(commands) {
+  const config = getUpstashConfig();
+  if (!config) return null;
+
+  let lastError = null;
+
+  for (let attempt = 0; attempt <= SHARED_RATE_LIMIT_RETRIES; attempt += 1) {
+    try {
+      return await fetchUpstashPipeline(config, commands);
+    } catch (error) {
+      lastError = error;
+      const shouldRetry =
+        attempt < SHARED_RATE_LIMIT_RETRIES && isRetryableSharedStoreError(error);
+
+      if (!shouldRetry) break;
+      await new Promise((resolve) => setTimeout(resolve, 50 * (attempt + 1)));
+    }
+  }
+
+  throw lastError || new Error("Shared rate limiter failed.");
 }
 
 async function checkSharedRateLimit(
@@ -272,7 +302,15 @@ export async function checkRateLimit(request, options = {}) {
     const sharedResult = await checkSharedRateLimit(request, options);
     if (sharedResult) return sharedResult;
   } catch (error) {
-    console.error("Shared rate limiter failed:", error);
+    console.error(
+      JSON.stringify({
+        level: "error",
+        message: "Shared rate limiter failed",
+        error: error?.message || String(error),
+        timeoutMs: SHARED_RATE_LIMIT_TIMEOUT_MS,
+        retries: SHARED_RATE_LIMIT_RETRIES,
+      })
+    );
     if (isProductionRuntime()) {
       return unavailableRateLimitResult("shared_rate_limiter_error");
     }
