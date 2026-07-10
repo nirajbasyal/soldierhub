@@ -1,5 +1,8 @@
-/* Auth-only field label color. Visual change only; no auth or Supabase behavior is modified. */
-[aria-labelledby="auth-modal-title"] label > span:first-child,
-[aria-labelledby="auth-modal-title"] label > span:first-child > span:first-child {
-  color: #98A2B3 !important;
+/* Auth-only placeholder typography. Visual change only; no auth or Supabase behavior is modified. */
+[aria-labelledby="auth-modal-title"] input::placeholder,
+[aria-labelledby="auth-modal-title"] textarea::placeholder {
+  color: #B8C0CC !important;
+  font-size: 0.875rem !important;
+  font-weight: 400 !important;
+  opacity: 1;
 }
