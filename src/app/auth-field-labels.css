@@ -1,0 +1,5 @@
+/* Auth-only field label color. Visual change only; no auth or Supabase behavior is modified. */
+[aria-labelledby="auth-modal-title"] label > span:first-child,
+[aria-labelledby="auth-modal-title"] label > span:first-child > span:first-child {
+  color: #98A2B3 !important;
+}
