@@ -336,7 +336,7 @@ export default function MobileWeatherStrip() {
       }}
       aria-label="Fort Bliss weather and PT uniform"
     >
-      <div className="pointer-events-none absolute inset-0 opacity-100 md:left-[26%] md:right-0 md:w-[74%]">
+      <div className="pointer-events-none absolute inset-0 opacity-100 md:left-[34%] md:right-0 md:w-[66%]">
         <WeatherBackdrop night={night} />
       </div>
       <div
@@ -351,8 +351,8 @@ export default function MobileWeatherStrip() {
         className="pointer-events-none absolute inset-0 hidden md:block"
         style={{
           background: night
-            ? "linear-gradient(90deg, rgba(7,24,56,0.99) 0%, rgba(7,24,56,0.96) 48%, rgba(8,29,66,0.64) 67%, rgba(8,29,66,0.08) 100%)"
-            : "linear-gradient(90deg, rgba(255,255,255,0.99) 0%, rgba(255,255,255,0.97) 48%, rgba(255,255,255,0.68) 67%, rgba(255,255,255,0.08) 100%)",
+            ? "linear-gradient(90deg, rgba(7,24,56,0.98) 0%, rgba(7,24,56,0.94) 47%, rgba(8,29,66,0.48) 68%, rgba(8,29,66,0.05) 100%)"
+            : "linear-gradient(90deg, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.94) 47%, rgba(255,255,255,0.48) 68%, rgba(255,255,255,0.04) 100%)",
         }}
       />
 
