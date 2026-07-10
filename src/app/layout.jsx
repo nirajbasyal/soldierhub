@@ -5,6 +5,7 @@ import "./feed-polish.css";
 import "./board-prep-question-cards.css";
 import "./production-polish.css";
 import "./auth-field-labels.css";
+import "./weather-card-desktop.css";
 import "./mobile-feed-width-fix.css";
 import Providers from "./providers";
 
