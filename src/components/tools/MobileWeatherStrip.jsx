@@ -324,14 +324,14 @@ export default function MobileWeatherStrip() {
   const secondaryText = night ? "rgba(232,239,255,0.76)" : T.textMuted;
   const subtleText = night ? "rgba(205,218,247,0.56)" : T.textSubtle;
   const accent = night ? "#7E9BFF" : "#0A66C2";
-  const ptSurface = night ? "rgba(19,45,88,0.64)" : "rgba(255,255,255,0.72)";
+  const ptSurface = night ? "rgba(19,45,88,0.78)" : "rgba(255,255,255,0.90)";
   const ptBorder = night ? "rgba(137,162,224,0.24)" : "rgba(210,224,240,0.95)";
 
   return (
     <section
       className="relative overflow-hidden rounded-[16px] border px-3 py-2.5 shadow-sm"
       style={{
-        backgroundColor: night ? "#0A1E43" : "#DFF0FF",
+        backgroundColor: night ? "#0A1E43" : "#F7FBFF",
         borderColor: night ? "rgba(85,111,177,0.34)" : "rgba(198,214,233,0.9)",
         boxShadow: night ? "0 10px 24px rgba(4,15,36,0.18)" : "0 8px 18px rgba(11,28,44,0.055)",
       }}
@@ -344,8 +344,8 @@ export default function MobileWeatherStrip() {
         className="pointer-events-none absolute inset-0"
         style={{
           background: night
-            ? "linear-gradient(180deg, rgba(5,20,48,0.34) 0%, rgba(7,27,61,0.22) 52%, rgba(5,20,48,0.38) 100%)"
-            : "linear-gradient(180deg, rgba(255,255,255,0.26) 0%, rgba(255,255,255,0.14) 52%, rgba(255,255,255,0.30) 100%)",
+            ? "linear-gradient(90deg, rgba(7,24,56,0.96) 0%, rgba(8,29,66,0.90) 44%, rgba(8,29,66,0.58) 66%, rgba(8,29,66,0.10) 100%)"
+            : "linear-gradient(90deg, rgba(255,255,255,0.97) 0%, rgba(255,255,255,0.93) 43%, rgba(255,255,255,0.66) 65%, rgba(255,255,255,0.12) 100%)",
         }}
       />
 
@@ -353,7 +353,7 @@ export default function MobileWeatherStrip() {
         <div
           className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border"
           style={{
-            backgroundColor: night ? "rgba(255,255,255,0.96)" : "rgba(255,255,255,0.86)",
+            backgroundColor: night ? "rgba(255,255,255,0.96)" : "rgba(255,255,255,0.9)",
             borderColor: night ? "rgba(255,255,255,0.82)" : "#C9D9EE",
           }}
         >
@@ -415,7 +415,7 @@ export default function MobileWeatherStrip() {
       <div
         className="relative z-10 mt-2 overflow-hidden rounded-[13px] border transition-colors"
         style={{
-          backgroundColor: ptOpen ? (night ? "rgba(17,42,83,0.78)" : "rgba(247,250,254,0.82)") : ptSurface,
+          backgroundColor: ptOpen ? (night ? "rgba(17,42,83,0.88)" : "rgba(247,250,254,0.96)") : ptSurface,
           borderColor: ptBorder,
           backdropFilter: "blur(8px)",
         }}
@@ -467,7 +467,7 @@ export default function MobileWeatherStrip() {
               <div
                 className="mt-2 rounded-xl border px-2.5 py-2 text-[12px] leading-snug"
                 style={{
-                  backgroundColor: night ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.76)",
+                  backgroundColor: night ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.94)",
                   borderColor: night ? "rgba(145,169,228,0.22)" : "#DCE7F4",
                   color: night ? "rgba(238,243,255,0.84)" : T.text,
                 }}
