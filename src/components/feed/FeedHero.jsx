@@ -8,14 +8,14 @@ function HeroPill({ icon: Icon, children, tone = "blue" }) {
 
   return (
     <span
-      className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-extrabold shadow-sm md:gap-2 md:px-4 md:py-2 md:text-sm"
+      className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10.5px] font-extrabold shadow-sm md:gap-1.5 md:px-3 md:py-1.5 md:text-[11px]"
       style={{
-        backgroundColor: isRed ? "rgba(179,25,66,0.07)" : "rgba(30,78,140,0.065)",
-        borderColor: isRed ? "rgba(179,25,66,0.18)" : "rgba(30,78,140,0.16)",
+        backgroundColor: isRed ? "rgba(179,25,66,0.08)" : "rgba(30,78,140,0.07)",
+        borderColor: isRed ? "rgba(179,25,66,0.16)" : "rgba(30,78,140,0.14)",
         color: isRed ? T.brandRed : T.brandBlue,
       }}
     >
-      {Icon ? <Icon size={14} className="md:h-4 md:w-4" strokeWidth={2.5} aria-hidden="true" /> : null}
+      {Icon ? <Icon size={12} className="md:h-[13px] md:w-[13px]" strokeWidth={2.45} aria-hidden="true" /> : null}
       {children}
     </span>
   );
@@ -24,78 +24,80 @@ function HeroPill({ icon: Icon, children, tone = "blue" }) {
 function ElPasoDesertIllustration() {
   return (
     <svg
-      viewBox="0 0 520 330"
+      viewBox="0 0 560 300"
       className="h-full w-full"
       aria-hidden="true"
       focusable="false"
-      preserveAspectRatio="xMidYMid meet"
+      preserveAspectRatio="xMidYMid slice"
     >
       <defs>
+        <linearGradient id="desertSky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#FFF9F2" />
+          <stop offset="100%" stopColor="#FFFDFB" />
+        </linearGradient>
         <linearGradient id="desertSun" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#FFD98A" />
-          <stop offset="100%" stopColor="#F4B45E" />
+          <stop offset="0%" stopColor="#FFD99A" />
+          <stop offset="100%" stopColor="#F4B86B" />
         </linearGradient>
-        <linearGradient id="desertMesaRear" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#F6B3A3" />
-          <stop offset="100%" stopColor="#DF7B6D" />
+        <linearGradient id="mesaBack" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#F6C4B4" />
+          <stop offset="100%" stopColor="#E89B88" />
         </linearGradient>
-        <linearGradient id="desertMesaFront" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#E99A7A" />
-          <stop offset="100%" stopColor="#C85B4A" />
+        <linearGradient id="mesaFront" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#EDB095" />
+          <stop offset="100%" stopColor="#D77E67" />
         </linearGradient>
-        <linearGradient id="sandFade" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#F8D9B5" stopOpacity="0.88" />
-          <stop offset="100%" stopColor="#FFF8F1" stopOpacity="0.08" />
+        <linearGradient id="sand" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#F7D8B5" />
+          <stop offset="100%" stopColor="#FFF9F2" />
         </linearGradient>
-        <linearGradient id="desertFade" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0" />
-          <stop offset="18%" stopColor="#FFFFFF" stopOpacity="0.12" />
+        <linearGradient id="artFade" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="#FFFFFF" stopOpacity="1" />
+          <stop offset="24%" stopColor="#FFFFFF" stopOpacity="0.86" />
+          <stop offset="52%" stopColor="#FFFFFF" stopOpacity="0.24" />
           <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
         </linearGradient>
       </defs>
 
-      <g opacity="0.52" fill="#F2B77F">
-        <path d="M86 58c12-14 35-14 47 0 9-8 25-7 32 3 9 0 16 6 17 14H72c1-8 7-14 14-17Z" />
-        <path d="M306 101c9-10 25-10 34 0 7-6 19-5 24 3 7 0 12 4 13 10h-82c1-6 5-11 11-13Z" />
+      <rect width="560" height="300" fill="url(#desertSky)" />
+
+      <g fill="#E9B783" opacity="0.38">
+        <path d="M315 52c10-12 28-12 38 0 8-7 21-6 27 2 7 0 13 5 14 12h-92c1-7 6-12 13-14Z" />
+        <path d="M439 87c8-9 22-9 30 0 6-5 16-4 21 2 6 0 10 4 11 9h-72c1-5 5-9 10-11Z" />
       </g>
 
-      <circle cx="300" cy="155" r="47" fill="url(#desertSun)" opacity="0.92" />
+      <circle cx="425" cy="139" r="34" fill="url(#desertSun)" opacity="0.72" />
 
-      <path d="M30 211 111 163 169 196 227 145 284 181 350 132 424 170 505 124 520 240H0Z" fill="url(#desertMesaRear)" opacity="0.77" />
-      <path d="M0 242 72 205 135 224 210 177 277 221 352 180 426 219 520 174V276H0Z" fill="url(#desertMesaFront)" opacity="0.84" />
-      <path d="M0 257c91-35 183-8 257-15 104-10 168-42 263-13v101H0Z" fill="url(#sandFade)" />
+      <path d="M122 211 208 163 278 197 341 150 400 187 455 151 518 178 560 148V236H122Z" fill="url(#mesaBack)" opacity="0.62" />
+      <path d="M91 235 176 199 244 221 325 178 386 218 457 185 520 216 560 193V258H91Z" fill="url(#mesaFront)" opacity="0.68" />
+      <path d="M82 245c99-24 186-6 260-10 85-5 145-27 218-13v78H82Z" fill="url(#sand)" opacity="0.88" />
 
-      <g fill="#46533F">
-        <rect x="391" y="86" width="24" height="154" rx="12" />
-        <rect x="366" y="121" width="14" height="72" rx="7" />
-        <rect x="422" y="117" width="14" height="73" rx="7" />
-        <rect x="369" y="148" width="36" height="14" rx="7" />
-        <rect x="405" y="151" width="28" height="14" rx="7" />
+      <g fill="#5C684F" opacity="0.86">
+        <rect x="474" y="91" width="19" height="132" rx="9.5" />
+        <rect x="452" y="123" width="11" height="58" rx="5.5" />
+        <rect x="503" y="119" width="11" height="61" rx="5.5" />
+        <rect x="455" y="148" width="31" height="11" rx="5.5" />
+        <rect x="485" y="149" width="25" height="11" rx="5.5" />
 
-        <rect x="255" y="183" width="12" height="74" rx="6" />
-        <rect x="238" y="198" width="9" height="35" rx="4.5" />
-        <rect x="266" y="196" width="9" height="33" rx="4.5" />
-        <rect x="242" y="215" width="22" height="9" rx="4.5" />
-        <rect x="262" y="211" width="16" height="9" rx="4.5" />
+        <rect x="366" y="176" width="10" height="59" rx="5" />
+        <rect x="352" y="188" width="8" height="29" rx="4" />
+        <rect x="376" y="187" width="8" height="28" rx="4" />
+        <rect x="355" y="204" width="19" height="8" rx="4" />
+        <rect x="372" y="200" width="14" height="8" rx="4" />
 
-        <rect x="164" y="198" width="10" height="63" rx="5" />
-        <rect x="151" y="211" width="8" height="30" rx="4" />
-        <rect x="174" y="211" width="8" height="27" rx="4" />
-        <rect x="153" y="226" width="20" height="8" rx="4" />
-        <rect x="170" y="221" width="14" height="8" rx="4" />
+        <rect x="291" y="194" width="8" height="48" rx="4" />
+        <rect x="280" y="203" width="7" height="24" rx="3.5" />
+        <rect x="299" y="204" width="7" height="22" rx="3.5" />
+        <rect x="283" y="214" width="14" height="7" rx="3.5" />
+        <rect x="296" y="211" width="11" height="7" rx="3.5" />
       </g>
 
-      <g fill="#9A4F3F" opacity="0.9">
-        <ellipse cx="347" cy="248" rx="21" ry="11" />
-        <ellipse cx="444" cy="263" rx="19" ry="10" />
+      <g fill="#81906B" opacity="0.55">
+        <path d="M413 251c4-16 7-16 10 0 4-13 7-13 9 2-9 2-15 2-19-2Z" />
+        <path d="M536 259c4-16 7-16 9 0 4-12 7-12 9 2-9 2-14 2-18-2Z" />
       </g>
-      <g fill="#6E7F58" opacity="0.8">
-        <path d="M321 271c5-22 9-22 13 0 6-18 10-18 12 2-13 4-20 4-25-2Z" />
-        <path d="M467 281c5-19 9-19 12 0 5-15 9-15 11 2-12 3-18 3-23-2Z" />
-        <path d="M205 275c5-18 8-18 11 0 5-14 8-14 10 2-10 3-16 3-21-2Z" />
-      </g>
-      <ellipse cx="457" cy="276" rx="18" ry="10" fill="#C7A58F" opacity="0.85" />
-      <rect x="0" y="0" width="520" height="330" fill="url(#desertFade)" />
+
+      <rect width="560" height="300" fill="url(#artFade)" />
     </svg>
   );
 }
@@ -105,38 +107,37 @@ export default function FeedHero({ currentUser, postCount = 0 }) {
 
   return (
     <section
-      className="relative mb-0 overflow-hidden rounded-[24px] border px-4 py-4 shadow-[0_10px_26px_rgba(7,27,51,0.055)] md:rounded-[28px] md:px-8 md:py-7 md:shadow-[0_16px_38px_rgba(7,27,51,0.07)]"
+      className="relative mb-0 overflow-hidden rounded-[22px] border px-3.5 py-3 shadow-[0_10px_24px_rgba(7,27,51,0.06)] md:rounded-[24px] md:px-5 md:py-5 md:shadow-[0_14px_34px_rgba(7,27,51,0.075)]"
       style={{
         background:
-          "linear-gradient(180deg, rgba(255,255,255,0.995) 0%, rgba(249,251,254,0.985) 100%)",
+          "linear-gradient(180deg, rgba(255,255,255,0.995) 0%, rgba(252,250,247,0.985) 100%)",
         borderColor: T.border,
       }}
     >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_82%_58%,rgba(248,188,146,0.13),transparent_33%)]" />
-      <div className="pointer-events-none absolute bottom-0 right-[-7%] h-[74%] w-[50%] opacity-95 sm:right-0 sm:h-[82%] sm:w-[46%] md:h-[92%] md:w-[48%]">
+      <div className="pointer-events-none absolute inset-0 opacity-[0.46] sm:opacity-[0.5] md:opacity-[0.58]">
         <ElPasoDesertIllustration />
       </div>
-      <div className="pointer-events-none absolute inset-y-0 left-[50%] right-0 bg-gradient-to-r from-white/55 via-white/10 to-transparent sm:left-[48%] md:left-[44%]" />
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.94)_52%,rgba(255,255,255,0.48)_78%,rgba(255,255,255,0.16)_100%)] md:bg-[linear-gradient(90deg,rgba(255,255,255,0.99)_0%,rgba(255,255,255,0.92)_48%,rgba(255,255,255,0.34)_74%,rgba(255,255,255,0.08)_100%)]" />
 
       <div className="relative z-10">
-        <div className="mb-3 flex flex-wrap items-center gap-2 md:mb-5">
+        <div className="mb-2 flex flex-wrap items-center gap-2 md:mb-3">
           <div
-            className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-extrabold shadow-sm md:gap-2 md:px-4 md:py-2 md:text-sm"
+            className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-extrabold shadow-sm md:gap-2 md:px-3 md:py-1.5 md:text-xs"
             style={{
-              backgroundColor: "rgba(255,255,255,0.9)",
+              backgroundColor: "rgba(255,255,255,0.88)",
               borderColor: T.borderSoft,
               color: T.brandNavy,
             }}
           >
-            <MapPin size={14} className="md:h-4 md:w-4" style={{ color: T.brandRed }} aria-hidden="true" />
+            <MapPin size={12} className="md:h-3.5 md:w-3.5" style={{ color: T.brandRed }} aria-hidden="true" />
             <span>Fort Bliss</span>
-            <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: "rgba(179,25,66,0.38)" }} />
+            <span className="h-1 w-1 rounded-full" style={{ backgroundColor: "rgba(179,25,66,0.45)" }} />
             <span style={{ color: T.textSecondary }}>El Paso, TX</span>
           </div>
         </div>
 
-        <div className="relative max-w-[72%] sm:max-w-[68%] md:max-w-[64%]">
-          <h1 className="text-[25px] font-black leading-[1.05] tracking-[-0.035em] md:text-[40px] md:leading-[1.06]" style={{ color: T.brandNavy }}>
+        <div className="max-w-4xl">
+          <h1 className="text-[20px] font-black leading-[1.08] tracking-tight md:text-[32px] md:leading-[1.12]" style={{ color: T.brandNavy }}>
             {currentUser ? (
               <>Welcome back, {firstName}.</>
             ) : (
@@ -144,7 +145,7 @@ export default function FeedHero({ currentUser, postCount = 0 }) {
             )}
           </h1>
 
-          <p className="mt-3 text-[14px] font-medium leading-[1.7] md:mt-5 md:text-[19px] md:leading-[1.65]" style={{ color: T.textSecondary }}>
+          <p className="mt-1.5 max-w-3xl text-[12.5px] font-semibold leading-5 md:mt-2.5 md:text-[15px] md:leading-6" style={{ color: T.textSecondary }}>
             {currentUser ? (
               <>Catch up on what your community is asking, sharing, and solving today.</>
             ) : (
@@ -155,12 +156,12 @@ export default function FeedHero({ currentUser, postCount = 0 }) {
             )}
           </p>
 
-          <p className="mt-3 text-[12px] font-medium leading-[1.7] md:mt-5 md:text-[15px] md:leading-[1.65]" style={{ color: T.textMuted }}>
+          <p className="mt-1.5 max-w-3xl text-[10.5px] font-semibold leading-4 md:mt-2 md:text-xs md:leading-5" style={{ color: T.textMuted }}>
             Independent, unofficial community platform. No rank-pulling culture — respectful help only.
           </p>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-2 md:mt-6 md:gap-3">
+        <div className="mt-2.5 flex flex-wrap items-center gap-1.5 md:mt-3.5 md:gap-2">
           <HeroPill tone="red" icon={TrendingUp}>
             {postCount} discussions
           </HeroPill>
