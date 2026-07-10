@@ -139,22 +139,21 @@ function getObservedLabel(weather) {
   const observedTime = new Date(observedAt).getTime();
   if (!Number.isFinite(observedTime)) return "Updating";
 
-  const clock = formatElPasoTime(new Date(observedTime));
   const diffMinutes = Math.max(0, Math.floor((Date.now() - observedTime) / 60000));
 
-  if (diffMinutes < 1) return `Observed ${clock} · just now`;
-  if (diffMinutes === 1) return `Observed ${clock} · 1 min ago`;
-  if (diffMinutes < 60) return `Observed ${clock} · ${diffMinutes} min ago`;
+  if (diffMinutes < 1) return "Updated just now";
+  if (diffMinutes === 1) return "Updated 1 min ago";
+  if (diffMinutes < 60) return `Updated ${diffMinutes} min ago`;
 
   const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours === 1) return `Observed ${clock} · 1 hr ago`;
-  return `Observed ${clock} · ${diffHours} hr ago`;
+  if (diffHours === 1) return "Updated 1 hr ago";
+  return `Updated ${diffHours} hr ago`;
 }
 
 function WeatherBackdrop({ night }) {
   if (night) {
     return (
-      <svg viewBox="0 0 720 300" className="h-full w-full" aria-hidden="true" preserveAspectRatio="xMidYMid slice">
+      <svg viewBox="0 0 720 300" className="h-full w-full" aria-hidden="true" preserveAspectRatio="xMaxYMid slice">
         <defs>
           <linearGradient id="nightSky" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0%" stopColor="#071A3B" />
@@ -193,7 +192,7 @@ function WeatherBackdrop({ night }) {
   }
 
   return (
-    <svg viewBox="0 0 720 300" className="h-full w-full" aria-hidden="true" preserveAspectRatio="xMidYMid slice">
+    <svg viewBox="0 0 720 300" className="h-full w-full" aria-hidden="true" preserveAspectRatio="xMaxYMid slice">
       <defs>
         <linearGradient id="daySky" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor="#D9EEFF" />
@@ -337,15 +336,23 @@ export default function MobileWeatherStrip() {
       }}
       aria-label="Fort Bliss weather and PT uniform"
     >
-      <div className="pointer-events-none absolute inset-0 opacity-100">
+      <div className="pointer-events-none absolute inset-0 opacity-100 md:left-[26%] md:right-0 md:w-[74%]">
         <WeatherBackdrop night={night} />
       </div>
       <div
-        className="pointer-events-none absolute inset-0"
+        className="pointer-events-none absolute inset-0 md:hidden"
         style={{
           background: night
             ? "linear-gradient(90deg, rgba(7,24,56,0.96) 0%, rgba(8,29,66,0.90) 44%, rgba(8,29,66,0.58) 66%, rgba(8,29,66,0.10) 100%)"
             : "linear-gradient(90deg, rgba(255,255,255,0.97) 0%, rgba(255,255,255,0.93) 43%, rgba(255,255,255,0.66) 65%, rgba(255,255,255,0.12) 100%)",
+        }}
+      />
+      <div
+        className="pointer-events-none absolute inset-0 hidden md:block"
+        style={{
+          background: night
+            ? "linear-gradient(90deg, rgba(7,24,56,0.99) 0%, rgba(7,24,56,0.96) 48%, rgba(8,29,66,0.64) 67%, rgba(8,29,66,0.08) 100%)"
+            : "linear-gradient(90deg, rgba(255,255,255,0.99) 0%, rgba(255,255,255,0.97) 48%, rgba(255,255,255,0.68) 67%, rgba(255,255,255,0.08) 100%)",
         }}
       />
 
