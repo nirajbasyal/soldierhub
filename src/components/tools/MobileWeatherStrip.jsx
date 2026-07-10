@@ -6,27 +6,10 @@ import { T } from "@/lib/theme";
 
 const WEATHER_CACHE_KEY = "soldierhub_fort_bliss_weather_v22";
 const OLD_WEATHER_CACHE_KEYS = [
-  "soldierhub_fort_bliss_weather_v6",
-  "soldierhub_fort_bliss_weather_v7",
-  "soldierhub_fort_bliss_weather_v8",
-  "soldierhub_fort_bliss_weather_v9",
-  "soldierhub_fort_bliss_weather_v10",
-  "soldierhub_fort_bliss_weather_v11",
-  "soldierhub_fort_bliss_weather_v12",
-  "soldierhub_fort_bliss_weather_v13",
-  "soldierhub_fort_bliss_weather_v14",
-  "soldierhub_fort_bliss_weather_v15",
-  "soldierhub_fort_bliss_weather_v16",
-  "soldierhub_fort_bliss_weather_v17",
-  "soldierhub_fort_bliss_weather_v18",
-  "soldierhub_fort_bliss_weather_v19",
-  "soldierhub_fort_bliss_weather_v20",
-  "soldierhub_fort_bliss_weather_v21",
+  "soldierhub_fort_bliss_weather_v6", "soldierhub_fort_bliss_weather_v7", "soldierhub_fort_bliss_weather_v8", "soldierhub_fort_bliss_weather_v9", "soldierhub_fort_bliss_weather_v10", "soldierhub_fort_bliss_weather_v11", "soldierhub_fort_bliss_weather_v12", "soldierhub_fort_bliss_weather_v13", "soldierhub_fort_bliss_weather_v14", "soldierhub_fort_bliss_weather_v15", "soldierhub_fort_bliss_weather_v16", "soldierhub_fort_bliss_weather_v17", "soldierhub_fort_bliss_weather_v18", "soldierhub_fort_bliss_weather_v19", "soldierhub_fort_bliss_weather_v20", "soldierhub_fort_bliss_weather_v21",
 ];
-
 const WEATHER_CACHE_MAX_AGE = 60 * 1000;
 const WEATHER_CACHE_STALE_AFTER = 10 * 60 * 1000;
-
 const PT_UNIFORM_RULES = [
   { key: "summer-apfu", min: 61, max: Infinity, title: "Summer APFU", detail: "Short sleeve + shorts" },
   { key: "long-sleeve-shorts", min: 50, max: 60, title: "Long sleeve + shorts", detail: "Long sleeve shirt + shorts" },
@@ -39,23 +22,19 @@ function formatElPasoTime(date) {
   if (!date) return "--:--";
   return new Intl.DateTimeFormat("en-US", { timeZone: "America/Denver", hour: "numeric", minute: "2-digit" }).format(date);
 }
-
 function formatElPasoDate(date) {
   if (!date) return "";
   return new Intl.DateTimeFormat("en-US", { timeZone: "America/Denver", weekday: "short", month: "short", day: "numeric" }).format(date);
 }
-
 function isElPasoNight(date) {
   if (!date) return false;
   const hour = Number(new Intl.DateTimeFormat("en-US", { timeZone: "America/Denver", hour: "numeric", hourCycle: "h23" }).format(date));
   return hour < 6 || hour >= 19;
 }
-
 function getPtUniformRule(tempF) {
   if (typeof tempF !== "number") return null;
   return PT_UNIFORM_RULES.find((rule) => tempF >= rule.min && tempF <= rule.max);
 }
-
 function getPtGuidance(tempF, fallback) {
   const current = getPtUniformRule(tempF);
   if (!current) return fallback;
@@ -67,14 +46,7 @@ function getPtGuidance(tempF, fallback) {
   if (colder) recommendations.push({ type: "colder", label: `${colder.max}°F or colder`, title: colder.title, detail: colder.detail });
   return { label: "Current PT Uniform", title: current.title, detail: current.detail, recommendations };
 }
-
-function clearOldWeatherCache() {
-  try {
-    if (typeof window === "undefined") return;
-    OLD_WEATHER_CACHE_KEYS.forEach((key) => window.localStorage.removeItem(key));
-  } catch {}
-}
-
+function clearOldWeatherCache() { try { if (typeof window === "undefined") return; OLD_WEATHER_CACHE_KEYS.forEach((key) => window.localStorage.removeItem(key)); } catch {} }
 function getCachedWeather() {
   try {
     if (typeof window === "undefined") return null;
@@ -83,23 +55,11 @@ function getCachedWeather() {
     if (!cached) return null;
     const parsed = JSON.parse(cached);
     if (!parsed?.data || !parsed?.savedAt) return null;
-    if (Date.now() - parsed.savedAt > WEATHER_CACHE_STALE_AFTER) {
-      window.localStorage.removeItem(WEATHER_CACHE_KEY);
-      return null;
-    }
+    if (Date.now() - parsed.savedAt > WEATHER_CACHE_STALE_AFTER) { window.localStorage.removeItem(WEATHER_CACHE_KEY); return null; }
     return parsed;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
-
-function saveWeatherToCache(data) {
-  try {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(WEATHER_CACHE_KEY, JSON.stringify({ data, savedAt: Date.now() }));
-  } catch {}
-}
-
+function saveWeatherToCache(data) { try { if (typeof window === "undefined") return; window.localStorage.setItem(WEATHER_CACHE_KEY, JSON.stringify({ data, savedAt: Date.now() })); } catch {} }
 function getObservedLabel(weather) {
   const observedAt = weather?.observedAt;
   if (!observedAt) return weather?.checkedAt ? "Updating" : "Checking now";
@@ -225,6 +185,4 @@ export default function MobileWeatherStrip() {
   );
 }
 
-function recommendationsFromGuidance(items) {
-  return items.filter(Boolean).slice(0, 1);
-}
+function recommendationsFromGuidance(items) { return items.filter(Boolean).slice(0, 1); }
