@@ -1,119 +1,120 @@
-/* Desktop-only weather card scaling so the laptop experience matches the approved mobile visual language. */
-@media (min-width: 768px) {
+/* Weather card scales by its own width, not by browser width.
+   This prevents narrow laptop feed columns from receiving oversized desktop typography. */
+section[aria-label="Fort Bliss weather and PT uniform"] {
+  container-type: inline-size;
+}
+
+/* Only use the large reference-card treatment when the weather card itself is wide. */
+@container (min-width: 720px) {
   section[aria-label="Fort Bliss weather and PT uniform"] {
-    min-height: 360px;
-    border-radius: 28px;
-    padding: 26px 30px 28px;
+    border-radius: 24px;
+    padding: 20px 24px 22px;
   }
 
   section[aria-label="Fort Bliss weather and PT uniform"] > div:nth-child(1) {
-    left: 34% !important;
+    left: 32% !important;
     right: 0 !important;
-    width: 66% !important;
+    width: 68% !important;
   }
 
   section[aria-label="Fort Bliss weather and PT uniform"] > div:nth-child(4) {
-    gap: 18px;
+    gap: 14px;
   }
 
   section[aria-label="Fort Bliss weather and PT uniform"] > div:nth-child(4) > div:first-child {
-    width: 68px;
-    height: 68px;
-    margin-top: 2px;
-    border-radius: 22px;
+    width: 56px;
+    height: 56px;
+    margin-top: 1px;
+    border-radius: 18px;
   }
 
   section[aria-label="Fort Bliss weather and PT uniform"] > div:nth-child(4) > div:first-child svg {
-    width: 34px;
-    height: 34px;
-  }
-
-  section[aria-label="Fort Bliss weather and PT uniform"] > div:nth-child(4) > div:nth-child(2) > div:first-child {
-    gap: 12px;
+    width: 27px;
+    height: 27px;
   }
 
   section[aria-label="Fort Bliss weather and PT uniform"] > div:nth-child(4) h2 {
-    font-size: 34px;
-    line-height: 1.05;
-    letter-spacing: -0.035em;
+    font-size: 28px;
+    line-height: 1.08;
+    letter-spacing: -0.03em;
   }
 
   section[aria-label="Fort Bliss weather and PT uniform"] > div:nth-child(4) h2 + span {
-    gap: 7px;
-    font-size: 20px;
+    gap: 6px;
+    font-size: 17px;
     line-height: 1.2;
   }
 
   section[aria-label="Fort Bliss weather and PT uniform"] > div:nth-child(4) h2 + span svg {
-    width: 20px;
-    height: 20px;
+    width: 17px;
+    height: 17px;
   }
 
   section[aria-label="Fort Bliss weather and PT uniform"] > div:nth-child(4) > div:nth-child(2) > div:nth-child(2) {
-    margin-top: 18px;
-    column-gap: 16px;
-    row-gap: 6px;
-    font-size: 25px;
+    margin-top: 12px;
+    column-gap: 12px;
+    row-gap: 4px;
+    font-size: 20px;
     line-height: 1.25;
   }
 
   section[aria-label="Fort Bliss weather and PT uniform"] > div:nth-child(4) > div:nth-child(2) > div:nth-child(2) svg {
-    width: 21px;
-    height: 21px;
+    width: 18px;
+    height: 18px;
   }
 
   section[aria-label="Fort Bliss weather and PT uniform"] > div:nth-child(4) > div:nth-child(2) > div:nth-child(3) {
-    margin-top: 16px;
-    column-gap: 12px;
-    font-size: 18px;
+    margin-top: 10px;
+    column-gap: 9px;
+    font-size: 15px;
     line-height: 1.35;
   }
 
   section[aria-label="Fort Bliss weather and PT uniform"] > div:nth-child(4) > div:nth-child(2) > div:nth-child(4) {
-    margin-top: 10px;
-    font-size: 18px;
+    margin-top: 7px;
+    font-size: 15px;
     line-height: 1.35;
   }
 
   section[aria-label="Fort Bliss weather and PT uniform"] > div:nth-child(5) {
-    margin-top: 24px;
-    border-radius: 24px;
+    margin-top: 18px;
+    border-radius: 20px;
   }
 
   section[aria-label="Fort Bliss weather and PT uniform"] > div:nth-child(5) > button {
-    min-height: 112px;
-    padding: 18px 26px;
+    min-height: 88px;
+    padding: 14px 20px;
   }
 
   section[aria-label="Fort Bliss weather and PT uniform"] > div:nth-child(5) > button > span:first-child {
-    gap: 18px;
+    gap: 14px;
   }
 
   section[aria-label="Fort Bliss weather and PT uniform"] > div:nth-child(5) > button > span:first-child > span:first-child {
-    width: 64px;
-    height: 64px;
-    border-radius: 22px;
+    width: 50px;
+    height: 50px;
+    border-radius: 17px;
   }
 
   section[aria-label="Fort Bliss weather and PT uniform"] > div:nth-child(5) > button > span:first-child > span:first-child svg {
-    width: 32px;
-    height: 32px;
+    width: 25px;
+    height: 25px;
   }
 
   section[aria-label="Fort Bliss weather and PT uniform"] > div:nth-child(5) > button > span:first-child > span:nth-child(2) > span:first-child {
-    font-size: 18px;
+    font-size: 15px;
     line-height: 1.2;
-    letter-spacing: 0.13em;
+    letter-spacing: 0.12em;
   }
 
   section[aria-label="Fort Bliss weather and PT uniform"] > div:nth-child(5) > button > span:first-child > span:nth-child(2) > span:nth-child(2) {
-    margin-top: 5px;
-    font-size: 30px;
-    line-height: 1.05;
+    margin-top: 3px;
+    font-size: 24px;
+    line-height: 1.08;
   }
 
   section[aria-label="Fort Bliss weather and PT uniform"] > div:nth-child(5) > button > svg {
-    width: 30px;
-    height: 30px;
+    width: 24px;
+    height: 24px;
   }
 }
