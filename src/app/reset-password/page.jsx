@@ -1,12 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, CheckCircle2, Eye, EyeOff, Lock } from "lucide-react";
 import { T } from "@/lib/theme";
+import { getSignupPasswordPolicy } from "@/lib/auth/passwordPolicy";
 import { updatePassword } from "@/lib/supabase/auth";
 import AppShell from "@/components/layout/AppShell";
 import Button from "@/components/ui/Button";
+
+function FieldMessage({ success = false, children }) {
+  if (!children) return null;
+  const Icon = success ? CheckCircle2 : AlertTriangle;
+
+  return (
+    <p
+      className="mt-1.5 flex items-start gap-1.5 text-xs font-medium leading-5"
+      style={{ color: success ? T.green : T.red }}
+      aria-live="polite"
+    >
+      <Icon size={14} strokeWidth={2.5} className="mt-0.5 shrink-0" />
+      <span>{children}</span>
+    </p>
+  );
+}
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -19,22 +36,22 @@ export default function ResetPasswordPage() {
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  const passwordPolicy = useMemo(() => getSignupPasswordPolicy(password), [password]);
+  const passwordInvalid = passwordPolicy.state === "error";
+  const passwordValid = passwordPolicy.state === "success";
+  const confirmMismatch = confirmPassword.length > 0 && password !== confirmPassword;
+  const confirmValid =
+    confirmPassword.length > 0 && passwordValid && password === confirmPassword;
+  const canSubmit =
+    !submitting && passwordValid && confirmPassword.length > 0 && !confirmMismatch;
+
   const submit = async () => {
     setError("");
     setSuccess(false);
 
-    if (!password) {
-      return setError("New password is required.");
-    }
-
-    if (password.length < 6) {
-      return setError("Password must be at least 6 characters.");
-    }
-
-    if (!confirmPassword) {
-      return setError("Confirm password is required.");
-    }
-
+    if (!password) return setError("New password is required.");
+    if (passwordInvalid) return setError(passwordPolicy.message);
+    if (!confirmPassword) return setError("Confirm password is required.");
     if (password !== confirmPassword) {
       return setError("New password and confirm password must match.");
     }
@@ -60,6 +77,9 @@ export default function ResetPasswordPage() {
       setSubmitting(false);
     }
   };
+
+  const passwordBorder = passwordInvalid ? T.red : passwordValid ? T.green : T.border;
+  const confirmBorder = confirmMismatch ? T.red : confirmValid ? T.green : T.border;
 
   return (
     <AppShell hideNav>
@@ -97,28 +117,50 @@ export default function ResetPasswordPage() {
               </span>
 
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: T.textSubtle }}>
+                <span
+                  className="absolute left-3 top-1/2 -translate-y-1/2"
+                  style={{ color: passwordInvalid ? T.red : passwordValid ? T.green : T.textSubtle }}
+                >
                   <Lock size={16} strokeWidth={2.25} />
                 </span>
 
                 <input
                   type={showPassword ? "text" : "password"}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(event) => {
+                    setPassword(event.target.value);
+                    setError("");
+                    setSuccess(false);
+                  }}
                   placeholder="New password"
-                  className="w-full h-11 rounded-xl border text-sm outline-none placeholder:text-[#A8ABB2] pl-10 pr-10"
-                  style={{ backgroundColor: T.card, borderColor: T.border, color: T.text }}
+                  autoComplete="new-password"
+                  aria-invalid={passwordInvalid || undefined}
+                  className="w-full h-11 rounded-xl border text-sm font-normal outline-none placeholder:text-[#A8ABB2] pl-10 pr-10"
+                  style={{
+                    backgroundColor: passwordValid ? T.greenBg : T.card,
+                    borderColor: passwordBorder,
+                    color: T.text,
+                    WebkitTextFillColor: T.text,
+                    boxShadow: passwordInvalid
+                      ? "0 0 0 3px rgba(179,25,66,0.07)"
+                      : passwordValid
+                      ? "0 0 0 3px rgba(36,113,81,0.08)"
+                      : "none",
+                  }}
                 />
 
                 <button
                   type="button"
-                  onClick={() => setShowPassword((v) => !v)}
+                  onClick={() => setShowPassword((value) => !value)}
                   className="absolute right-3 top-1/2 -translate-y-1/2"
                   style={{ color: T.textSubtle }}
+                  aria-label={showPassword ? "Hide new password" : "Show new password"}
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
+
+              <FieldMessage success={passwordValid}>{passwordPolicy.message}</FieldMessage>
             </label>
 
             <label className="block">
@@ -127,28 +169,56 @@ export default function ResetPasswordPage() {
               </span>
 
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: T.textSubtle }}>
+                <span
+                  className="absolute left-3 top-1/2 -translate-y-1/2"
+                  style={{ color: confirmMismatch ? T.red : confirmValid ? T.green : T.textSubtle }}
+                >
                   <Lock size={16} strokeWidth={2.25} />
                 </span>
 
                 <input
                   type={showConfirmPassword ? "text" : "password"}
                   value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  onChange={(event) => {
+                    setConfirmPassword(event.target.value);
+                    setError("");
+                    setSuccess(false);
+                  }}
                   placeholder="Re-enter new password"
-                  className="w-full h-11 rounded-xl border text-sm outline-none placeholder:text-[#A8ABB2] pl-10 pr-10"
-                  style={{ backgroundColor: T.card, borderColor: T.border, color: T.text }}
+                  autoComplete="new-password"
+                  aria-invalid={confirmMismatch || undefined}
+                  className="w-full h-11 rounded-xl border text-sm font-normal outline-none placeholder:text-[#A8ABB2] pl-10 pr-10"
+                  style={{
+                    backgroundColor: confirmValid ? T.greenBg : T.card,
+                    borderColor: confirmBorder,
+                    color: T.text,
+                    WebkitTextFillColor: T.text,
+                    boxShadow: confirmMismatch
+                      ? "0 0 0 3px rgba(179,25,66,0.07)"
+                      : confirmValid
+                      ? "0 0 0 3px rgba(36,113,81,0.08)"
+                      : "none",
+                  }}
                 />
 
                 <button
                   type="button"
-                  onClick={() => setShowConfirmPassword((v) => !v)}
+                  onClick={() => setShowConfirmPassword((value) => !value)}
                   className="absolute right-3 top-1/2 -translate-y-1/2"
                   style={{ color: T.textSubtle }}
+                  aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
                 >
                   {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
+
+              <FieldMessage success={confirmValid}>
+                {confirmMismatch
+                  ? "Passwords do not match."
+                  : confirmValid
+                  ? "Passwords match."
+                  : ""}
+              </FieldMessage>
             </label>
 
             {error && (
@@ -175,7 +245,7 @@ export default function ResetPasswordPage() {
               variant="primary"
               icon={Lock}
               onClick={submit}
-              disabled={submitting}
+              disabled={!canSubmit}
               className="w-full mt-1"
             >
               {submitting ? "Updating..." : "Update password"}
