@@ -10,6 +10,7 @@ import {
   X,
 } from "lucide-react";
 import { T } from "@/lib/theme";
+import { getSignupPasswordPolicy } from "@/lib/auth/passwordPolicy";
 import { useApp } from "@/store/AppContext";
 import * as Auth from "@/lib/supabase/auth";
 import * as Follows from "@/lib/supabase/follows";
@@ -92,6 +93,19 @@ export default function ProfileHeader() {
   const [passwordError, setPasswordError] = useState("");
   const [passwordSuccess, setPasswordSuccess] = useState("");
   const [passwordSaving, setPasswordSaving] = useState(false);
+  const [resetSending, setResetSending] = useState(false);
+  const [resetMessage, setResetMessage] = useState("");
+
+  const newPasswordPolicy = useMemo(
+    () => getSignupPasswordPolicy(newPassword),
+    [newPassword]
+  );
+  const newPasswordInvalid = newPasswordPolicy.state === "error";
+  const newPasswordValid = newPasswordPolicy.state === "success";
+  const confirmPasswordMismatch =
+    confirmPassword.length > 0 && newPassword !== confirmPassword;
+  const confirmPasswordValid =
+    confirmPassword.length > 0 && newPasswordValid && newPassword === confirmPassword;
 
   useEffect(() => {
     if (!currentUser) return;
@@ -159,6 +173,7 @@ export default function ProfileHeader() {
     setConfirmPassword("");
     setPasswordError("");
     setPasswordSuccess("");
+    setResetMessage("");
   };
 
   const activeAvatarSrc = avatarImage?.previewUrl || avatarUrl || "";
@@ -267,9 +282,35 @@ export default function ProfileHeader() {
     setShowPasswordForm(false);
   };
 
+  const handleForgotPassword = async () => {
+    setPasswordError("");
+    setPasswordSuccess("");
+    setResetMessage("");
+
+    if (!displayEmail || displayEmail === "Verified email") {
+      setPasswordError("Could not find your verified email. Please refresh and try again.");
+      return;
+    }
+
+    try {
+      setResetSending(true);
+      const result = await Auth.resetPasswordForEmail(displayEmail);
+      if (result.error) {
+        setPasswordError(result.error.message || "Could not send password reset email.");
+        return;
+      }
+      setResetMessage("Password reset email sent. Check your inbox and spam folder.");
+    } catch (error) {
+      setPasswordError(error?.message || "Could not send password reset email.");
+    } finally {
+      setResetSending(false);
+    }
+  };
+
   const changePassword = async () => {
     setPasswordError("");
     setPasswordSuccess("");
+    setResetMessage("");
 
     if (!displayEmail || displayEmail === "Verified email") {
       setPasswordError("Could not find your verified email. Please refresh and try again.");
@@ -281,8 +322,8 @@ export default function ProfileHeader() {
       return;
     }
 
-    if (newPassword.length < 6) {
-      setPasswordError("New password must be at least 6 characters.");
+    if (newPasswordInvalid) {
+      setPasswordError(newPasswordPolicy.message);
       return;
     }
 
@@ -488,10 +529,60 @@ export default function ProfileHeader() {
               </div>
 
               <div className="grid gap-3">
-                <TextInput label="Current password" type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} autoComplete="current-password" />
-                <TextInput label="New password" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} autoComplete="new-password" />
-                <TextInput label="Confirm new password" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} autoComplete="new-password" />
+                <div>
+                  <TextInput
+                    label="Current password"
+                    type="password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    autoComplete="current-password"
+                  />
+                  <div className="mt-1 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={handleForgotPassword}
+                      disabled={resetSending}
+                      className="text-xs font-semibold hover:underline disabled:opacity-60"
+                      style={{ color: T.red }}
+                    >
+                      {resetSending ? "Sending reset link…" : "Forgot password?"}
+                    </button>
+                  </div>
+                </div>
+
+                <TextInput
+                  label="New password"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => {
+                    setNewPassword(e.target.value);
+                    if (passwordError.toLowerCase().includes("password")) setPasswordError("");
+                  }}
+                  autoComplete="new-password"
+                  error={newPasswordInvalid ? newPasswordPolicy.message : ""}
+                  success={newPasswordValid ? newPasswordPolicy.message : ""}
+                />
+
+                <TextInput
+                  label="Confirm new password"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  autoComplete="new-password"
+                  error={confirmPasswordMismatch ? "Passwords do not match." : ""}
+                  success={confirmPasswordValid ? "Passwords match." : ""}
+                />
               </div>
+
+              {resetMessage ? (
+                <div
+                  className="mt-3 flex items-start gap-2 rounded-2xl border px-3 py-2 text-xs"
+                  style={{ backgroundColor: T.greenBg, borderColor: "rgba(36,113,81,0.2)", color: T.green }}
+                >
+                  <Check size={14} className="mt-0.5 shrink-0" />
+                  {resetMessage}
+                </div>
+              ) : null}
 
               {passwordError ? (
                 <div
@@ -506,7 +597,7 @@ export default function ProfileHeader() {
               {passwordSuccess ? (
                 <div
                   className="mt-3 flex items-start gap-2 rounded-2xl border px-3 py-2 text-xs"
-                  style={{ backgroundColor: "rgba(220,232,247,0.95)", borderColor: "#BCD0EA", color: T.blue }}
+                  style={{ backgroundColor: T.greenBg, borderColor: "rgba(36,113,81,0.2)", color: T.green }}
                 >
                   <Check size={14} className="mt-0.5 shrink-0" />
                   {passwordSuccess}
@@ -514,7 +605,19 @@ export default function ProfileHeader() {
               ) : null}
 
               <div className="mt-3 grid grid-cols-1 gap-2 min-[420px]:grid-cols-2">
-                <Button variant="ghost" onClick={changePassword} icon={KeyRound} disabled={passwordSaving}>
+                <Button
+                  variant="ghost"
+                  onClick={changePassword}
+                  icon={KeyRound}
+                  disabled={
+                    passwordSaving ||
+                    newPasswordInvalid ||
+                    confirmPasswordMismatch ||
+                    !currentPassword ||
+                    !newPassword ||
+                    !confirmPassword
+                  }
+                >
                   {passwordSaving ? "Updating…" : "Update password"}
                 </Button>
                 <Button variant="ghost" onClick={closePasswordForm}>
