@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, CloudSun, Clock3, MapPin, Shirt } from "lucide-react";
+import { ChevronDown, Clock3, MapPin, MoonStar, Shirt, Sun } from "lucide-react";
 import { T } from "@/lib/theme";
 
 const WEATHER_CACHE_KEY = "soldierhub_fort_bliss_weather_v22";
@@ -52,6 +52,18 @@ function formatElPasoDate(date) {
     month: "short",
     day: "numeric",
   }).format(date);
+}
+
+function isElPasoNight(date) {
+  if (!date) return false;
+  const hour = Number(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Denver",
+      hour: "numeric",
+      hourCycle: "h23",
+    }).format(date)
+  );
+  return hour < 6 || hour >= 19;
 }
 
 function getPtUniformRule(tempF) {
@@ -120,10 +132,6 @@ function saveWeatherToCache(data) {
   }
 }
 
-// Show how old the actual NWS observation is (not when we last fetched it).
-// Station observations update roughly hourly, so a reading can be ~45 min old
-// while still being the newest available — surfacing that prevents the temp
-// from looking "wrong" versus a phone's model-based current temp.
 function getObservedLabel(weather) {
   const observedAt = weather?.observedAt;
   if (!observedAt) return weather?.checkedAt ? "Updating" : "Checking now";
@@ -141,6 +149,81 @@ function getObservedLabel(weather) {
   const diffHours = Math.floor(diffMinutes / 60);
   if (diffHours === 1) return `Observed ${clock} · 1 hr ago`;
   return `Observed ${clock} · ${diffHours} hr ago`;
+}
+
+function WeatherBackdrop({ night }) {
+  if (night) {
+    return (
+      <svg viewBox="0 0 720 300" className="h-full w-full" aria-hidden="true" preserveAspectRatio="xMidYMid slice">
+        <defs>
+          <linearGradient id="nightSky" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#071A3B" />
+            <stop offset="58%" stopColor="#12346B" />
+            <stop offset="100%" stopColor="#091A3A" />
+          </linearGradient>
+          <linearGradient id="nightMesaBack" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#3C4D88" />
+            <stop offset="100%" stopColor="#1C2F60" />
+          </linearGradient>
+          <linearGradient id="nightMesaFront" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#233B70" />
+            <stop offset="100%" stopColor="#0C214B" />
+          </linearGradient>
+          <radialGradient id="moonGlow">
+            <stop offset="0%" stopColor="#FFF7D6" stopOpacity="0.82" />
+            <stop offset="100%" stopColor="#FFF7D6" stopOpacity="0" />
+          </radialGradient>
+        </defs>
+        <rect width="720" height="300" fill="url(#nightSky)" />
+        <circle cx="612" cy="66" r="54" fill="url(#moonGlow)" />
+        <circle cx="612" cy="66" r="22" fill="#FFF4CF" />
+        <g fill="#DCE6FF" opacity="0.86">
+          <circle cx="310" cy="31" r="1.4" /><circle cx="366" cy="58" r="1.2" /><circle cx="448" cy="27" r="1.5" />
+          <circle cx="518" cy="49" r="1.1" /><circle cx="563" cy="24" r="1.3" /><circle cx="668" cy="35" r="1.2" />
+          <circle cx="404" cy="92" r="1.1" /><circle cx="539" cy="89" r="1.4" />
+        </g>
+        <g fill="#6B70A8" opacity="0.45">
+          <path d="M535 91c9-11 26-11 35 0 8-7 21-6 27 3 8 0 14 5 15 12h-90c1-7 6-12 13-15Z" />
+          <path d="M628 109c8-9 22-9 30 0 6-6 17-5 22 2 6 0 11 4 12 10h-75c1-6 5-10 11-12Z" />
+        </g>
+        <path d="M235 235 338 159 393 201 462 146 516 184 575 128 638 168 720 111V300H235Z" fill="url(#nightMesaBack)" opacity="0.9" />
+        <path d="M174 264 291 201 365 234 442 181 510 224 588 171 650 214 720 174V300H174Z" fill="url(#nightMesaFront)" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 720 300" className="h-full w-full" aria-hidden="true" preserveAspectRatio="xMidYMid slice">
+      <defs>
+        <linearGradient id="daySky" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#D9EEFF" />
+          <stop offset="58%" stopColor="#9DD3FA" />
+          <stop offset="100%" stopColor="#F6FAFF" />
+        </linearGradient>
+        <linearGradient id="dayMesaBack" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#CFE2F2" />
+          <stop offset="100%" stopColor="#70A4D3" />
+        </linearGradient>
+        <linearGradient id="dayMesaFront" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#9BC5E2" />
+          <stop offset="100%" stopColor="#4C8CBF" />
+        </linearGradient>
+        <radialGradient id="sunGlow">
+          <stop offset="0%" stopColor="#FFF3A9" stopOpacity="0.96" />
+          <stop offset="100%" stopColor="#FFF3A9" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      <rect width="720" height="300" fill="url(#daySky)" />
+      <circle cx="614" cy="68" r="58" fill="url(#sunGlow)" />
+      <circle cx="614" cy="68" r="25" fill="#FFD75B" />
+      <g fill="#FFFFFF" opacity="0.8">
+        <path d="M465 75c10-12 28-12 38 0 8-7 21-6 27 2 8 0 14 5 15 12h-94c1-7 7-12 14-14Z" />
+        <path d="M640 104c9-10 24-10 33 0 7-6 18-5 24 2 7 0 12 4 13 10h-82c1-6 5-10 12-12Z" />
+      </g>
+      <path d="M220 238 327 162 385 202 455 151 511 186 572 132 638 171 720 118V300H220Z" fill="url(#dayMesaBack)" opacity="0.82" />
+      <path d="M165 268 286 206 360 236 438 184 508 226 587 177 651 218 720 179V300H165Z" fill="url(#dayMesaFront)" opacity="0.92" />
+    </svg>
+  );
 }
 
 export default function MobileWeatherStrip() {
@@ -215,6 +298,7 @@ export default function MobileWeatherStrip() {
   const time = useMemo(() => formatElPasoTime(now), [now]);
   const date = useMemo(() => formatElPasoDate(now), [now]);
   const observedLabel = useMemo(() => getObservedLabel(weather), [weather, now]);
+  const night = useMemo(() => isElPasoNight(now), [now]);
 
   const tempText = typeof weather?.tempF === "number" ? `${weather.tempF}°F` : status === "error" ? "Weather unavailable" : "Checking weather";
   const conditionText = weather?.condition && status !== "error" ? weather.condition : "";
@@ -236,68 +320,90 @@ export default function MobileWeatherStrip() {
   const ptUniform = getPtGuidance(weather?.tempF, fallbackPtUniform);
   const recommendations = Array.isArray(ptUniform.recommendations) ? recommendationsFromGuidance(ptUniform.recommendations) : [];
 
+  const primaryText = night ? "#F8FAFF" : T.navy;
+  const secondaryText = night ? "rgba(232,239,255,0.76)" : T.textMuted;
+  const subtleText = night ? "rgba(205,218,247,0.56)" : T.textSubtle;
+  const accent = night ? "#7E9BFF" : "#0A66C2";
+  const ptSurface = night ? "rgba(19,45,88,0.76)" : "rgba(255,255,255,0.88)";
+  const ptBorder = night ? "rgba(137,162,224,0.24)" : "rgba(210,224,240,0.95)";
+
   return (
     <section
-      className="rounded-[16px] border px-3 py-2.5 shadow-sm"
+      className="relative overflow-hidden rounded-[16px] border px-3 py-2.5 shadow-sm"
       style={{
-        backgroundColor: "rgba(255,255,255,0.97)",
-        borderColor: "rgba(198,214,233,0.9)",
-        boxShadow: "0 8px 18px rgba(11,28,44,0.045)",
+        backgroundColor: night ? "#0A1E43" : "#DFF0FF",
+        borderColor: night ? "rgba(85,111,177,0.34)" : "rgba(198,214,233,0.9)",
+        boxShadow: night ? "0 10px 24px rgba(4,15,36,0.18)" : "0 8px 18px rgba(11,28,44,0.055)",
       }}
       aria-label="Fort Bliss weather and PT uniform"
     >
-      <div className="flex items-start gap-2.5">
+      <div className="pointer-events-none absolute inset-0 opacity-100">
+        <WeatherBackdrop night={night} />
+      </div>
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background: night
+            ? "linear-gradient(90deg, rgba(7,24,56,0.98) 0%, rgba(8,29,66,0.88) 57%, rgba(8,29,66,0.26) 100%)"
+            : "linear-gradient(90deg, rgba(255,255,255,0.97) 0%, rgba(255,255,255,0.86) 56%, rgba(255,255,255,0.18) 100%)",
+        }}
+      />
+
+      <div className="relative z-10 flex items-start gap-2.5">
         <div
           className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border"
-          style={{ backgroundColor: "#EEF5FD", borderColor: "#C9D9EE" }}
+          style={{
+            backgroundColor: night ? "rgba(255,255,255,0.96)" : "rgba(255,255,255,0.86)",
+            borderColor: night ? "rgba(255,255,255,0.82)" : "#C9D9EE",
+          }}
         >
-          <CloudSun size={17} style={{ color: T.blue }} strokeWidth={2.35} />
+          {night ? <MoonStar size={17} style={{ color: "#667EF2" }} strokeWidth={2.35} /> : <Sun size={17} style={{ color: "#F2B522" }} strokeWidth={2.35} />}
         </div>
 
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-center gap-1.5">
-            <h2 className="truncate text-[15px] font-extrabold leading-5 tracking-[-0.025em]" style={{ color: T.navy }}>
+            <h2 className="truncate text-[15px] font-extrabold leading-5 tracking-[-0.025em]" style={{ color: primaryText }}>
               Fort Bliss
             </h2>
-            <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-bold" style={{ color: T.textSubtle }}>
+            <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-bold" style={{ color: secondaryText }}>
               <MapPin size={11} /> El Paso, TX
             </span>
           </div>
 
-          <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[12px] leading-4" style={{ color: T.text }}>
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[12px] leading-4" style={{ color: primaryText }}>
             <span className="inline-flex items-center gap-1 font-bold tabular-nums">
-              <Clock3 size={11} /> {time}
+              <Clock3 size={11} style={{ color: accent }} /> {time}
             </span>
-            <span style={{ color: T.textSubtle }}>•</span>
+            <span style={{ color: subtleText }}>•</span>
             <span className="font-extrabold">{tempText}</span>
             {feelsLikeText ? (
               <>
-                <span style={{ color: T.textSubtle }}>•</span>
-                <span className="font-semibold" style={{ color: T.textMuted }}>{feelsLikeText}</span>
+                <span style={{ color: subtleText }}>•</span>
+                <span className="font-semibold" style={{ color: secondaryText }}>{feelsLikeText}</span>
               </>
             ) : null}
             {conditionText ? (
               <>
-                <span style={{ color: T.textSubtle }}>•</span>
+                <span style={{ color: subtleText }}>•</span>
                 <span className="max-w-[9rem] truncate font-semibold">{conditionText}</span>
               </>
             ) : null}
           </div>
 
-          <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10.5px] leading-4" style={{ color: T.textMuted }}>
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10.5px] leading-4" style={{ color: secondaryText }}>
             <span>{date}</span>
             <span>·</span>
             <span>{observedLabel}</span>
           </div>
 
-          <div className="mt-0.5 text-[10px] font-bold leading-4 tracking-[0.01em]" style={{ color: T.textMuted }}>
+          <div className="mt-0.5 text-[10px] font-bold leading-4 tracking-[0.01em]" style={{ color: secondaryText }}>
             Powered by:{" "}
             <a
               href="https://www.weather.gov/epz/"
               target="_blank"
               rel="noopener noreferrer"
               className="font-extrabold no-underline"
-              style={{ color: T.blue }}
+              style={{ color: accent }}
               aria-label="Open National Weather Service forecast"
             >
               National Weather Service
@@ -307,10 +413,11 @@ export default function MobileWeatherStrip() {
       </div>
 
       <div
-        className="mt-2 overflow-hidden rounded-[13px] border transition-colors"
+        className="relative z-10 mt-2 overflow-hidden rounded-[13px] border transition-colors"
         style={{
-          backgroundColor: ptOpen ? "#F7FAFE" : "#FAFCFF",
-          borderColor: "rgba(210,224,240,0.95)",
+          backgroundColor: ptOpen ? (night ? "rgba(17,42,83,0.9)" : "rgba(247,250,254,0.96)") : ptSurface,
+          borderColor: ptBorder,
+          backdropFilter: "blur(8px)",
         }}
       >
         <button
@@ -321,16 +428,19 @@ export default function MobileWeatherStrip() {
         >
           <span className="flex min-w-0 items-center gap-2">
             <span
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border bg-white"
-              style={{ borderColor: "#D4E1F1" }}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border"
+              style={{
+                backgroundColor: "rgba(255,255,255,0.96)",
+                borderColor: night ? "rgba(255,255,255,0.78)" : "#D4E1F1",
+              }}
             >
               <Shirt size={15} style={{ color: T.navy }} strokeWidth={2.35} />
             </span>
             <span className="min-w-0">
-              <span className="block text-[10px] font-extrabold uppercase tracking-[0.12em]" style={{ color: T.blue }}>
+              <span className="block text-[10px] font-extrabold uppercase tracking-[0.12em]" style={{ color: accent }}>
                 PT Uniform
               </span>
-              <span className="block truncate text-[13px] font-extrabold leading-4" style={{ color: T.navy }}>
+              <span className="block truncate text-[13px] font-extrabold leading-4" style={{ color: primaryText }}>
                 {ptUniform.title}
               </span>
             </span>
@@ -339,7 +449,7 @@ export default function MobileWeatherStrip() {
           <ChevronDown
             size={17}
             className="shrink-0 transition-transform duration-200"
-            style={{ color: T.textSubtle, transform: ptOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+            style={{ color: night ? "rgba(235,241,255,0.78)" : T.textSubtle, transform: ptOpen ? "rotate(180deg)" : "rotate(0deg)" }}
             strokeWidth={2.5}
           />
         </button>
@@ -347,15 +457,22 @@ export default function MobileWeatherStrip() {
         {ptOpen ? (
           <div
             className="border-t px-3 pb-3 pt-2 text-[13px] leading-snug"
-            style={{ borderColor: "rgba(210,224,240,0.95)", color: T.text }}
+            style={{ borderColor: ptBorder, color: primaryText }}
           >
-            <div className="font-semibold" style={{ color: T.navy }}>
+            <div className="font-semibold" style={{ color: primaryText }}>
               {ptUniform.detail}
             </div>
 
             {recommendations.length > 0 ? (
-              <div className="mt-2 rounded-xl border bg-white px-2.5 py-2 text-[12px] leading-snug" style={{ borderColor: "#DCE7F4" }}>
-                <span className="font-extrabold" style={{ color: T.navy }}>
+              <div
+                className="mt-2 rounded-xl border px-2.5 py-2 text-[12px] leading-snug"
+                style={{
+                  backgroundColor: night ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.94)",
+                  borderColor: night ? "rgba(145,169,228,0.22)" : "#DCE7F4",
+                  color: night ? "rgba(238,243,255,0.84)" : T.text,
+                }}
+              >
+                <span className="font-extrabold" style={{ color: primaryText }}>
                   {recommendations[0].type === "colder" ? "If colder" : "If warmer"}:
                 </span>{" "}
                 {recommendations[0].label} — {recommendations[0].title}
@@ -363,7 +480,7 @@ export default function MobileWeatherStrip() {
             ) : null}
 
             {status === "error" && !weather ? (
-              <div className="mt-2 text-xs" style={{ color: T.textSubtle }}>
+              <div className="mt-2 text-xs" style={{ color: secondaryText }}>
                 Weather could not load right now. Time is still shown.
               </div>
             ) : null}
