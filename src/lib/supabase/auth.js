@@ -48,12 +48,6 @@ function isRepeatedSignupResponse(data) {
   );
 }
 
-/**
- * Auth helpers — thin wrappers over Supabase auth that match the shapes
- * AppContext expects. All functions return { data, error } so callers can
- * handle success and failure uniformly.
- */
-
 export async function signUp(input = {}) {
   const supabase = createClient();
 
@@ -253,8 +247,8 @@ export async function resetPasswordForEmail(email) {
     };
   }
 
-  const { data, error } = await supabase.auth["reset" + "PasswordForEmail"](cleanEmail, {
-    redirectTo: getAuthRedirectUrl("/auth/callback?next=/reset-" + "password"),
+  const { data, error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+    redirectTo: getAuthRedirectUrl("/auth/reset-callback"),
   });
 
   return { data, error };
