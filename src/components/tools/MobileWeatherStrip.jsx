@@ -391,10 +391,10 @@ export default function MobileWeatherStrip() {
               </>
             ) : null}
             {conditionText ? (
-              <>
+              <span className="md:hidden">
                 <span style={{ color: subtleText }}>•</span>
-                <span className="min-w-0 truncate font-semibold">{conditionText}</span>
-              </>
+                <span className="ml-1.5 min-w-0 truncate font-semibold">{conditionText}</span>
+              </span>
             ) : null}
           </div>
 
@@ -463,8 +463,14 @@ export default function MobileWeatherStrip() {
         </button>
 
         {ptOpen ? (
-          <div className="border-t px-3 pb-3 pt-2 text-[13px] leading-snug" style={{ borderColor: ptBorder, color: primaryText }}>
-            <div className="font-semibold" style={{ color: primaryText }}>{ptUniform.detail}</div>
+          <div
+            className="border-t px-3 pb-3 pt-2 text-[13px] leading-snug"
+            style={{ borderColor: ptBorder, color: primaryText }}
+          >
+            <div className="font-semibold" style={{ color: primaryText }}>
+              {ptUniform.detail}
+            </div>
+
             {recommendations.length > 0 ? (
               <div
                 className="mt-2 rounded-xl border px-2.5 py-2 text-[12px] leading-snug"
@@ -480,6 +486,7 @@ export default function MobileWeatherStrip() {
                 {recommendations[0].label} — {recommendations[0].title}
               </div>
             ) : null}
+
             {status === "error" && !weather ? (
               <div className="mt-2 text-xs" style={{ color: secondaryText }}>
                 Weather could not load right now. Time is still shown.
