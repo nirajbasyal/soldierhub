@@ -139,22 +139,21 @@ function getObservedLabel(weather) {
   const observedTime = new Date(observedAt).getTime();
   if (!Number.isFinite(observedTime)) return "Updating";
 
-  const clock = formatElPasoTime(new Date(observedTime));
   const diffMinutes = Math.max(0, Math.floor((Date.now() - observedTime) / 60000));
 
-  if (diffMinutes < 1) return `Observed ${clock} · just now`;
-  if (diffMinutes === 1) return `Observed ${clock} · 1 min ago`;
-  if (diffMinutes < 60) return `Observed ${clock} · ${diffMinutes} min ago`;
+  if (diffMinutes < 1) return "Updated just now";
+  if (diffMinutes === 1) return "Updated 1 min ago";
+  if (diffMinutes < 60) return `Updated ${diffMinutes} min ago`;
 
   const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours === 1) return `Observed ${clock} · 1 hr ago`;
-  return `Observed ${clock} · ${diffHours} hr ago`;
+  if (diffHours === 1) return "Updated 1 hr ago";
+  return `Updated ${diffHours} hr ago`;
 }
 
 function WeatherBackdrop({ night }) {
   if (night) {
     return (
-      <svg viewBox="0 0 720 300" className="h-full w-full" aria-hidden="true" preserveAspectRatio="xMidYMid slice">
+      <svg viewBox="0 0 720 300" className="h-full w-full" aria-hidden="true" preserveAspectRatio="xMaxYMid slice">
         <defs>
           <linearGradient id="nightSky" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0%" stopColor="#071A3B" />
@@ -193,7 +192,7 @@ function WeatherBackdrop({ night }) {
   }
 
   return (
-    <svg viewBox="0 0 720 300" className="h-full w-full" aria-hidden="true" preserveAspectRatio="xMidYMid slice">
+    <svg viewBox="0 0 720 300" className="h-full w-full" aria-hidden="true" preserveAspectRatio="xMaxYMid slice">
       <defs>
         <linearGradient id="daySky" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor="#D9EEFF" />
@@ -337,15 +336,23 @@ export default function MobileWeatherStrip() {
       }}
       aria-label="Fort Bliss weather and PT uniform"
     >
-      <div className="pointer-events-none absolute inset-0 opacity-100">
+      <div className="pointer-events-none absolute inset-0 opacity-100 md:left-[34%] md:right-0 md:w-[66%]">
         <WeatherBackdrop night={night} />
       </div>
       <div
-        className="pointer-events-none absolute inset-0"
+        className="pointer-events-none absolute inset-0 md:hidden"
         style={{
           background: night
             ? "linear-gradient(90deg, rgba(7,24,56,0.96) 0%, rgba(8,29,66,0.90) 44%, rgba(8,29,66,0.58) 66%, rgba(8,29,66,0.10) 100%)"
             : "linear-gradient(90deg, rgba(255,255,255,0.97) 0%, rgba(255,255,255,0.93) 43%, rgba(255,255,255,0.66) 65%, rgba(255,255,255,0.12) 100%)",
+        }}
+      />
+      <div
+        className="pointer-events-none absolute inset-0 hidden md:block"
+        style={{
+          background: night
+            ? "linear-gradient(90deg, rgba(7,24,56,0.98) 0%, rgba(7,24,56,0.94) 47%, rgba(8,29,66,0.48) 68%, rgba(8,29,66,0.05) 100%)"
+            : "linear-gradient(90deg, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.94) 47%, rgba(255,255,255,0.48) 68%, rgba(255,255,255,0.04) 100%)",
         }}
       />
 
@@ -360,43 +367,44 @@ export default function MobileWeatherStrip() {
           {night ? <MoonStar size={17} style={{ color: "#667EF2" }} strokeWidth={2.35} /> : <Sun size={17} style={{ color: "#F2B522" }} strokeWidth={2.35} />}
         </div>
 
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 overflow-hidden">
           <div className="flex min-w-0 items-center gap-1.5">
-            <h2 className="truncate text-[15px] font-extrabold leading-5 tracking-[-0.025em]" style={{ color: primaryText }}>
+            <h2 className="shrink-0 text-[15px] font-extrabold leading-5 tracking-[-0.025em]" style={{ color: primaryText }}>
               Fort Bliss
             </h2>
-            <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-bold" style={{ color: secondaryText }}>
-              <MapPin size={11} /> El Paso, TX
+            <span className="inline-flex min-w-0 items-center gap-1 text-[11px] font-bold" style={{ color: secondaryText }}>
+              <MapPin size={11} className="shrink-0" />
+              <span className="truncate">El Paso, TX</span>
             </span>
           </div>
 
-          <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[12px] leading-4" style={{ color: primaryText }}>
-            <span className="inline-flex items-center gap-1 font-bold tabular-nums">
+          <div className="mt-0.5 flex flex-nowrap items-center gap-x-1.5 overflow-hidden text-[12px] leading-4" style={{ color: primaryText }}>
+            <span className="inline-flex shrink-0 items-center gap-1 font-bold tabular-nums">
               <Clock3 size={11} style={{ color: accent }} /> {time}
             </span>
             <span style={{ color: subtleText }}>•</span>
-            <span className="font-extrabold">{tempText}</span>
+            <span className="shrink-0 font-extrabold">{tempText}</span>
             {feelsLikeText ? (
               <>
                 <span style={{ color: subtleText }}>•</span>
-                <span className="font-semibold" style={{ color: secondaryText }}>{feelsLikeText}</span>
+                <span className="shrink-0 font-semibold" style={{ color: secondaryText }}>{feelsLikeText}</span>
               </>
             ) : null}
             {conditionText ? (
-              <>
+              <span className="md:hidden">
                 <span style={{ color: subtleText }}>•</span>
-                <span className="max-w-[9rem] truncate font-semibold">{conditionText}</span>
-              </>
+                <span className="ml-1.5 min-w-0 truncate font-semibold">{conditionText}</span>
+              </span>
             ) : null}
           </div>
 
-          <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10.5px] leading-4" style={{ color: secondaryText }}>
-            <span>{date}</span>
+          <div className="mt-0.5 flex flex-nowrap items-center gap-x-1.5 overflow-hidden text-[10.5px] leading-4" style={{ color: secondaryText }}>
+            <span className="shrink-0">{date}</span>
             <span>·</span>
-            <span>{observedLabel}</span>
+            <span className="truncate">{observedLabel}</span>
           </div>
 
-          <div className="mt-0.5 text-[10px] font-bold leading-4 tracking-[0.01em]" style={{ color: secondaryText }}>
+          <div className="mt-0.5 truncate text-[10px] font-bold leading-4 tracking-[0.01em]" style={{ color: secondaryText }}>
             Powered by:{" "}
             <a
               href="https://www.weather.gov/epz/"
