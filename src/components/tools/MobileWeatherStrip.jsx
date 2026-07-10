@@ -324,7 +324,7 @@ export default function MobileWeatherStrip() {
   const secondaryText = night ? "rgba(232,239,255,0.76)" : T.textMuted;
   const subtleText = night ? "rgba(205,218,247,0.56)" : T.textSubtle;
   const accent = night ? "#7E9BFF" : "#0A66C2";
-  const ptSurface = night ? "rgba(19,45,88,0.76)" : "rgba(255,255,255,0.88)";
+  const ptSurface = night ? "rgba(19,45,88,0.64)" : "rgba(255,255,255,0.72)";
   const ptBorder = night ? "rgba(137,162,224,0.24)" : "rgba(210,224,240,0.95)";
 
   return (
@@ -344,8 +344,8 @@ export default function MobileWeatherStrip() {
         className="pointer-events-none absolute inset-0"
         style={{
           background: night
-            ? "linear-gradient(90deg, rgba(7,24,56,0.98) 0%, rgba(8,29,66,0.88) 57%, rgba(8,29,66,0.26) 100%)"
-            : "linear-gradient(90deg, rgba(255,255,255,0.97) 0%, rgba(255,255,255,0.86) 56%, rgba(255,255,255,0.18) 100%)",
+            ? "linear-gradient(180deg, rgba(5,20,48,0.34) 0%, rgba(7,27,61,0.22) 52%, rgba(5,20,48,0.38) 100%)"
+            : "linear-gradient(180deg, rgba(255,255,255,0.26) 0%, rgba(255,255,255,0.14) 52%, rgba(255,255,255,0.30) 100%)",
         }}
       />
 
@@ -415,7 +415,7 @@ export default function MobileWeatherStrip() {
       <div
         className="relative z-10 mt-2 overflow-hidden rounded-[13px] border transition-colors"
         style={{
-          backgroundColor: ptOpen ? (night ? "rgba(17,42,83,0.9)" : "rgba(247,250,254,0.96)") : ptSurface,
+          backgroundColor: ptOpen ? (night ? "rgba(17,42,83,0.78)" : "rgba(247,250,254,0.82)") : ptSurface,
           borderColor: ptBorder,
           backdropFilter: "blur(8px)",
         }}
@@ -467,7 +467,7 @@ export default function MobileWeatherStrip() {
               <div
                 className="mt-2 rounded-xl border px-2.5 py-2 text-[12px] leading-snug"
                 style={{
-                  backgroundColor: night ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.94)",
+                  backgroundColor: night ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.76)",
                   borderColor: night ? "rgba(145,169,228,0.22)" : "#DCE7F4",
                   color: night ? "rgba(238,243,255,0.84)" : T.text,
                 }}
