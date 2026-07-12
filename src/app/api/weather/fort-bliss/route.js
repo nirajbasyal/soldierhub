@@ -5,18 +5,12 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const NWS_BASE = "https://api.weather.gov";
-const STATION_ID = "KELP"; // El Paso International Airport
+const STATION_ID = "KELP";
 const WEATHER_CACHE_TTL_MS = 60 * 1000;
+const OBSERVATION_MAX_AGE_MS = 90 * 60 * 1000;
 
-// Pull a few recent observations (newest first) instead of a single "latest"
-// so one null / QC-dropped reading does not blank the card or show a value
-// that is actually older than the prior valid observation.
 const RECENT_OBSERVATIONS_URL = `${NWS_BASE}/stations/${STATION_ID}/observations?limit=5`;
-
-// Fort Bliss / El Paso NWS gridpoint fallback for condition text
-// This is used only when station observation has no textDescription.
 const GRIDPOINT_HOURLY_URL = `${NWS_BASE}/gridpoints/EPZ/120,71/forecast/hourly`;
-
 const USER_AGENT =
   process.env.NWS_USER_AGENT || "SoldierHub/1.0 (https://soldierhub.com)";
 
@@ -74,7 +68,7 @@ async function fetchNws(url) {
       "User-Agent": USER_AGENT,
       Accept: "application/geo+json",
     },
-    next: { revalidate: 60 },
+    cache: "no-store",
   });
 
   if (!response.ok) {
@@ -89,27 +83,40 @@ function cToF(value) {
   return Math.round((value * 9) / 5 + 32);
 }
 
+function msToMph(value) {
+  if (typeof value !== "number") return null;
+  return Math.round(value * 2.23694);
+}
+
+function cleanCondition(value) {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.toLowerCase() === "null" || trimmed.toLowerCase() === "undefined") {
+    return null;
+  }
+  return trimmed;
+}
+
 function pickFreshObservation(featureCollection) {
   const features = Array.isArray(featureCollection?.features)
     ? featureCollection.features
     : [];
 
-  // Features come back newest-first. Prefer the most recent observation that
-  // actually reports a temperature so a single null reading does not force the
-  // card into the "unavailable" state.
   const withTemp = features.find(
     (feature) => typeof feature?.properties?.temperature?.value === "number"
   );
 
-  if (withTemp) return withTemp.properties;
-
-  // No temperature anywhere — still return the newest record so condition text
-  // and observedAt remain available.
-  return features[0]?.properties || null;
+  return withTemp?.properties || features[0]?.properties || null;
 }
 
-// NWS reports heatIndex when hot and windChill when cold (the other is null).
-// Either one is the "feels like" temperature; absent both it equals air temp.
+function getObservationAgeMs(observation) {
+  const timestamp = observation?.timestamp;
+  if (!timestamp) return Infinity;
+  const observedTime = new Date(timestamp).getTime();
+  if (!Number.isFinite(observedTime)) return Infinity;
+  return Math.max(0, Date.now() - observedTime);
+}
+
 function getFeelsLikeC(observation) {
   if (typeof observation?.heatIndex?.value === "number") {
     return observation.heatIndex.value;
@@ -118,11 +125,6 @@ function getFeelsLikeC(observation) {
     return observation.windChill.value;
   }
   return null;
-}
-
-function msToMph(value) {
-  if (typeof value !== "number") return null;
-  return Math.round(value * 2.23694);
 }
 
 function getPtUniformRule(tempF) {
@@ -140,28 +142,16 @@ function getPtUniformRule(tempF) {
   );
 }
 
-function buildWarmerLabel(rule) {
-  return `If your phone shows ${rule.min}°F or above`;
-}
-
-function buildColderLabel(rule) {
-  return `If your phone shows ${rule.max}°F or lower`;
-}
-
 function getPtUniform(tempF) {
   const current = getPtUniformRule(tempF);
 
   if (typeof tempF !== "number") {
-    return {
-      ...current,
-      recommendations: [],
-    };
+    return { ...current, recommendations: [] };
   }
 
   const currentIndex = PT_UNIFORM_RULES.findIndex(
     (rule) => rule.key === current.key
   );
-
   const warmer = currentIndex > 0 ? PT_UNIFORM_RULES[currentIndex - 1] : null;
   const colder =
     currentIndex >= 0 && currentIndex < PT_UNIFORM_RULES.length - 1
@@ -170,13 +160,10 @@ function getPtUniform(tempF) {
 
   const recommendations = [];
 
-  // The 10-degree buffer is only used in the background to decide whether
-  // a nearby uniform category is close enough to mention. The UI shows the
-  // actual cutoff temperature so users can compare with their phone weather.
   if (warmer && warmer.min - tempF <= 10) {
     recommendations.push({
       type: "warmer",
-      label: buildWarmerLabel(warmer),
+      label: `If your phone shows ${warmer.min}°F or above`,
       title: warmer.title,
       detail: warmer.detail,
       range: warmer.range,
@@ -186,7 +173,7 @@ function getPtUniform(tempF) {
   if (colder && tempF - colder.max <= 10) {
     recommendations.push({
       type: "colder",
-      label: buildColderLabel(colder),
+      label: `If your phone shows ${colder.max}°F or lower`,
       title: colder.title,
       detail: colder.detail,
       range: colder.range,
@@ -200,21 +187,8 @@ function getPtUniform(tempF) {
   };
 }
 
-function cleanCondition(value) {
-  if (typeof value !== "string") return null;
-
-  const trimmed = value.trim();
-
-  if (!trimmed) return null;
-  if (trimmed.toLowerCase() === "null") return null;
-  if (trimmed.toLowerCase() === "undefined") return null;
-
-  return trimmed;
-}
-
 function getCachedWeather() {
-  if (!weatherCache.data) return null;
-  if (Date.now() > weatherCache.expiresAt) return null;
+  if (!weatherCache.data || Date.now() > weatherCache.expiresAt) return null;
   return weatherCache.data;
 }
 
@@ -230,14 +204,14 @@ function weatherHeaders(rateLimitHeaders, cacheStatus, cacheControlOverride) {
     ...rateLimitHeaders,
     "Cache-Control":
       cacheControlOverride ||
-      "public, max-age=0, s-maxage=60, stale-while-revalidate=300",
+      "public, max-age=0, s-maxage=60, stale-while-revalidate=60",
     "X-SoldierHub-Cache": cacheStatus,
   };
 }
 
 function buildUnavailableWeatherPayload() {
   return {
-    error: "Current NWS observation unavailable.",
+    error: "Current NWS weather unavailable.",
     base: "Fort Bliss",
     city: "El Paso, TX",
     tempF: null,
@@ -247,7 +221,8 @@ function buildUnavailableWeatherPayload() {
     humidity: null,
     localTimeZone: "America/Denver",
     stationId: STATION_ID,
-    source: "NWS latest observation + hourly forecast fallback",
+    source: "National Weather Service",
+    dataOrigin: "unavailable",
     observedAt: null,
     updatedAt: new Date().toISOString(),
     ptUniform: {
@@ -274,28 +249,44 @@ async function buildWeatherPayload() {
       ? hourlyResult.value?.properties?.periods || []
       : [];
 
-  const tempF = cToF(observation?.temperature?.value);
-  const feelsLikeF = cToF(getFeelsLikeC(observation));
-  const windMph = msToMph(observation?.windSpeed?.value);
+  const currentHour = hourlyPeriods[0] || null;
+  const observationTempF = cToF(observation?.temperature?.value);
+  const observationIsFresh =
+    observationTempF !== null &&
+    getObservationAgeMs(observation) <= OBSERVATION_MAX_AGE_MS;
 
-  const humidity =
-    typeof observation?.relativeHumidity?.value === "number"
-      ? Math.round(observation.relativeHumidity.value)
+  const hourlyTempF =
+    typeof currentHour?.temperature === "number"
+      ? Math.round(currentHour.temperature)
       : null;
 
-  const stationCondition = cleanCondition(observation?.textDescription);
-  const hourlyCondition = cleanCondition(hourlyPeriods?.[0]?.shortForecast);
+  const useObservation = observationIsFresh || hourlyTempF === null;
+  const tempF = useObservation ? observationTempF : hourlyTempF;
 
-  const condition = stationCondition || hourlyCondition || "Condition updating";
-  const observedAt = observation?.timestamp || null;
+  const stationCondition = cleanCondition(observation?.textDescription);
+  const hourlyCondition = cleanCondition(currentHour?.shortForecast);
+  const condition = useObservation
+    ? stationCondition || hourlyCondition || "Condition updating"
+    : hourlyCondition || stationCondition || "Condition updating";
 
   if (tempF === null) {
     return {
       ...buildUnavailableWeatherPayload(),
       condition,
-      observedAt,
+      observedAt: observation?.timestamp || currentHour?.startTime || null,
     };
   }
+
+  const feelsLikeF = useObservation
+    ? cToF(getFeelsLikeC(observation))
+    : tempF;
+  const windMph = useObservation
+    ? msToMph(observation?.windSpeed?.value)
+    : null;
+  const humidity =
+    useObservation && typeof observation?.relativeHumidity?.value === "number"
+      ? Math.round(observation.relativeHumidity.value)
+      : null;
 
   return {
     base: "Fort Bliss",
@@ -307,8 +298,11 @@ async function buildWeatherPayload() {
     humidity: humidity !== null ? `${humidity}%` : null,
     localTimeZone: "America/Denver",
     stationId: STATION_ID,
-    source: "NWS recent observations + hourly forecast fallback",
-    observedAt,
+    source: "National Weather Service",
+    dataOrigin: useObservation ? "station-observation" : "hourly-forecast",
+    observedAt: useObservation
+      ? observation?.timestamp || null
+      : currentHour?.startTime || new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     ptUniform: getPtUniform(tempF),
   };
@@ -326,7 +320,6 @@ export async function GET(request) {
   }
 
   const cachedWeather = getCachedWeather();
-
   if (cachedWeather) {
     return NextResponse.json(cachedWeather, {
       headers: weatherHeaders(rateLimit.headers, "HIT"),
