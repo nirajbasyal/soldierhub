@@ -11,6 +11,8 @@ const OBSERVATION_MAX_AGE_MS = 90 * 60 * 1000;
 
 const RECENT_OBSERVATIONS_URL = `${NWS_BASE}/stations/${STATION_ID}/observations?limit=5`;
 const GRIDPOINT_HOURLY_URL = `${NWS_BASE}/gridpoints/EPZ/120,71/forecast/hourly`;
+const MAPCLICK_FALLBACK_URL =
+  "https://forecast.weather.gov/MapClick.php?lat=31.8128&lon=-106.4213&FcstType=json";
 const USER_AGENT =
   process.env.NWS_USER_AGENT || "SoldierHub/1.0 (https://soldierhub.com)";
 
@@ -62,11 +64,11 @@ const PT_UNIFORM_RULES = [
   },
 ];
 
-async function fetchNws(url) {
+async function fetchNws(url, accept = "application/geo+json") {
   const response = await fetch(url, {
     headers: {
       "User-Agent": USER_AGENT,
-      Accept: "application/geo+json",
+      Accept: accept,
     },
     cache: "no-store",
   });
@@ -86,6 +88,13 @@ function cToF(value) {
 function msToMph(value) {
   if (typeof value !== "number") return null;
   return Math.round(value * 2.23694);
+}
+
+function toFiniteNumber(value) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value !== "string") return null;
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function cleanCondition(value) {
@@ -233,10 +242,58 @@ function buildUnavailableWeatherPayload() {
   };
 }
 
+function buildMapClickPayload(mapClick) {
+  const current = mapClick?.currentobservation || {};
+  const forecastTemps = Array.isArray(mapClick?.data?.temperature)
+    ? mapClick.data.temperature
+    : [];
+  const forecastConditions = Array.isArray(mapClick?.data?.weather)
+    ? mapClick.data.weather
+    : [];
+
+  const currentTemp = toFiniteNumber(current.Temp);
+  const forecastTemp = toFiniteNumber(forecastTemps[0]);
+  const tempF = currentTemp ?? forecastTemp;
+
+  if (tempF === null) return null;
+
+  const feelsLikeF =
+    toFiniteNumber(current.HeatIndex) ??
+    toFiniteNumber(current.WindChill) ??
+    tempF;
+  const humidity = toFiniteNumber(current.Relh);
+  const windMph = toFiniteNumber(current.Winds);
+  const condition =
+    cleanCondition(current.Weather) ||
+    cleanCondition(forecastConditions[0]) ||
+    "Condition updating";
+  const observedAt = current.Date
+    ? new Date(current.Date).toISOString()
+    : new Date().toISOString();
+
+  return {
+    base: "Fort Bliss",
+    city: "El Paso, TX",
+    tempF: Math.round(tempF),
+    feelsLikeF: Math.round(feelsLikeF),
+    condition,
+    wind: windMph !== null ? `${Math.round(windMph)} mph` : null,
+    humidity: humidity !== null ? `${Math.round(humidity)}%` : null,
+    localTimeZone: "America/Denver",
+    stationId: STATION_ID,
+    source: "National Weather Service",
+    dataOrigin: "nws-mapclick-fallback",
+    observedAt,
+    updatedAt: new Date().toISOString(),
+    ptUniform: getPtUniform(Math.round(tempF)),
+  };
+}
+
 async function buildWeatherPayload() {
-  const [observationsResult, hourlyResult] = await Promise.allSettled([
+  const [observationsResult, hourlyResult, mapClickResult] = await Promise.allSettled([
     fetchNws(RECENT_OBSERVATIONS_URL),
     fetchNws(GRIDPOINT_HOURLY_URL),
+    fetchNws(MAPCLICK_FALLBACK_URL, "application/json"),
   ]);
 
   const observation =
@@ -269,42 +326,55 @@ async function buildWeatherPayload() {
     ? stationCondition || hourlyCondition || "Condition updating"
     : hourlyCondition || stationCondition || "Condition updating";
 
-  if (tempF === null) {
+  if (tempF !== null) {
+    const feelsLikeF = useObservation
+      ? cToF(getFeelsLikeC(observation))
+      : tempF;
+    const windMph = useObservation
+      ? msToMph(observation?.windSpeed?.value)
+      : null;
+    const humidity =
+      useObservation && typeof observation?.relativeHumidity?.value === "number"
+        ? Math.round(observation.relativeHumidity.value)
+        : null;
+
     return {
-      ...buildUnavailableWeatherPayload(),
+      base: "Fort Bliss",
+      city: "El Paso, TX",
+      tempF,
+      feelsLikeF,
       condition,
-      observedAt: observation?.timestamp || currentHour?.startTime || null,
+      wind: windMph !== null ? `${windMph} mph` : null,
+      humidity: humidity !== null ? `${humidity}%` : null,
+      localTimeZone: "America/Denver",
+      stationId: STATION_ID,
+      source: "National Weather Service",
+      dataOrigin: useObservation ? "station-observation" : "hourly-forecast",
+      observedAt: useObservation
+        ? observation?.timestamp || null
+        : currentHour?.startTime || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      ptUniform: getPtUniform(tempF),
     };
   }
 
-  const feelsLikeF = useObservation
-    ? cToF(getFeelsLikeC(observation))
-    : tempF;
-  const windMph = useObservation
-    ? msToMph(observation?.windSpeed?.value)
-    : null;
-  const humidity =
-    useObservation && typeof observation?.relativeHumidity?.value === "number"
-      ? Math.round(observation.relativeHumidity.value)
-      : null;
+  if (mapClickResult.status === "fulfilled") {
+    const fallbackPayload = buildMapClickPayload(mapClickResult.value);
+    if (fallbackPayload) return fallbackPayload;
+  }
+
+  const failures = [observationsResult, hourlyResult, mapClickResult]
+    .filter((result) => result.status === "rejected")
+    .map((result) => result.reason?.message || "Unknown NWS error");
+
+  if (failures.length > 0) {
+    console.error("Fort Bliss weather sources failed:", failures);
+  }
 
   return {
-    base: "Fort Bliss",
-    city: "El Paso, TX",
-    tempF,
-    feelsLikeF,
+    ...buildUnavailableWeatherPayload(),
     condition,
-    wind: windMph !== null ? `${windMph} mph` : null,
-    humidity: humidity !== null ? `${humidity}%` : null,
-    localTimeZone: "America/Denver",
-    stationId: STATION_ID,
-    source: "National Weather Service",
-    dataOrigin: useObservation ? "station-observation" : "hourly-forecast",
-    observedAt: useObservation
-      ? observation?.timestamp || null
-      : currentHour?.startTime || new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    ptUniform: getPtUniform(tempF),
+    observedAt: observation?.timestamp || currentHour?.startTime || null,
   };
 }
 
