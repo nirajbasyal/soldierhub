@@ -281,6 +281,38 @@ begin
 end;
 $$;
 
+-- Capture the legacy owner/admin post deletion helper before its permissions
+-- are restricted below. The safer delete_own_post RPC remains the client API.
+create or replace function public.delete_post(p_post_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_author_id uuid;
+begin
+  select author_id
+  into v_author_id
+  from public.posts
+  where id = p_post_id;
+
+  if v_author_id is null then
+    return;
+  end if;
+
+  if auth.uid() <> v_author_id and not public.is_admin() then
+    raise exception 'You do not have permission to delete this post.';
+  end if;
+
+  delete from public.notifications where post_id = p_post_id;
+  delete from public.comments where post_id = p_post_id;
+  delete from public.reports where post_id = p_post_id;
+  delete from public.upvotes where post_id = p_post_id;
+  delete from public.posts where id = p_post_id;
+end;
+$$;
+
 -- Harden RPC/function permissions with an explicit allowlist.
 -- This migration does not change function bodies. It removes inherited PUBLIC
 -- execute access and grants each SECURITY DEFINER function only to the roles
