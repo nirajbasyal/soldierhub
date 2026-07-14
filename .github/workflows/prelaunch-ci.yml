@@ -7,6 +7,29 @@ on:
     branches: [main]
 
 jobs:
+  migration-rebuild:
+    name: Rebuild database from migrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.109.1
+
+      - name: Initialize local Supabase config
+        run: supabase init
+
+      - name: Start local database and apply migrations
+        run: supabase start -x studio,imgproxy,inbucket,edge-runtime,functions,analytics,vector
+
+      - name: Rebuild from a clean database
+        run: supabase db reset
+
   build:
     name: Lint and build
     runs-on: ubuntu-latest

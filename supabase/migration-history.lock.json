@@ -1,0 +1,298 @@
+{
+  "format": 1,
+  "productionVerifiedThrough": "20260714144013",
+  "migrations": [
+    {
+      "file": "20260501000000_step01_baseline_core_schema.sql",
+      "sha256": "42ae05ab0434605020c2d7ec0bbe85c3c6794385e54d87c09b9867eed6df4702"
+    },
+    {
+      "file": "20260515000100_profile_follows.sql",
+      "sha256": "1bc31c57828f64c25ed7ea94dd86b5000a2f9388c2a6ff5f26149b21efe3a505"
+    },
+    {
+      "file": "20260517000100_fix_function_grant_signatures.sql",
+      "sha256": "ea0337de8a3b8e3fd34f4eb2cd4f84f3796a2b30701b19d564509418ebd74a89"
+    },
+    {
+      "file": "20260517000200_add_batched_comments_rpc.sql",
+      "sha256": "4105864ebdf2c80ecfc5fee41c9f170fe3fc654772b32e2e3da68d59bb4f0cc6"
+    },
+    {
+      "file": "20260518000100_notifications_upvote_trigger.sql",
+      "sha256": "a264b039f38091c4c9fbee8ad4cef2f7b3b54abeb94b1b0762ae67a49420110d"
+    },
+    {
+      "file": "20260522140000_add_post_image_fields.sql",
+      "sha256": "b41271fd0a2ae1d5ed66a416e3247a3610ed3cef2a86c24a468302ba2ab48ced"
+    },
+    {
+      "file": "20260522190000_add_profile_avatar_url.sql",
+      "sha256": "5a5287f016688b6de120a0dfab33df37f8d70b326e5cfba7077192f614438b96"
+    },
+    {
+      "file": "20260522203000_return_comment_avatar_urls.sql",
+      "sha256": "94f0f283d8c3e242d639fd09251d556e1b7861b6e5338ca708157cf6af9a6ea7"
+    },
+    {
+      "file": "20260524000100_optimize_rls_policies.sql",
+      "sha256": "742acff15b0143d52b0ade0f07203a77df09338c9468f3ea455b853952158a61"
+    },
+    {
+      "file": "20260524000200_fix_profiles_update_rls_recursion.sql",
+      "sha256": "b09f4f97cc80168ffdbd315dd2846892b1eb70af9f0bbd4388ccb9e1f0b4bc8f"
+    },
+    {
+      "file": "20260524000230_optimize_follow_loading.sql",
+      "sha256": "06bdf477a74c3ff55d7744f2568e8e6d53d993c82ef2765f6b8a22b4263c6ed1"
+    },
+    {
+      "file": "20260524000300_optimize_feed_viewer_state.sql",
+      "sha256": "b6bb03f537576fa7ada671b39998aaf3d7fb8aa8ecbcf7a0e80668a410059100"
+    },
+    {
+      "file": "20260525000100_database_index_permission_cleanup.sql",
+      "sha256": "0e7ce5c7566b443ae6dd095d645c556bd2397895c558723737913b5cb33f039b"
+    },
+    {
+      "file": "20260525000200_rls_privacy_hardening.sql",
+      "sha256": "4be9d0888f9a6952d9b22a048e9aa8b933bee685ebf47694fca6c84ed7ed7881"
+    },
+    {
+      "file": "20260525000300_notifications_hydrated_rpc.sql",
+      "sha256": "d859a2727e0b142c78fdee6e77edf5b15fffe85c584e3a185263aa390b9a4c22"
+    },
+    {
+      "file": "20260525000400_public_profile_identity_rpc.sql",
+      "sha256": "2e38cccfe6f622e5f9b5b8bafa89772e39e57919905223b980eb6d713346847a"
+    },
+    {
+      "file": "20260525000500_post_image_thumbnails.sql",
+      "sha256": "4116e1a006e5d1f72f35ba2f1970f580a91edbd68806106a578f4efb7a493aaa"
+    },
+    {
+      "file": "20260525000600_post_counters.sql",
+      "sha256": "c3d52aac788effb07e8a9048be72367c810cba554ce6e95bc80ffbc670f31ad6"
+    },
+    {
+      "file": "20260527000100_fix_signup_profile_trigger.sql",
+      "sha256": "8634db85b47fd123f6233a138834468140794d5e59196536ba40daf50a0c1d0f"
+    },
+    {
+      "file": "20260527000200_remove_military_email_from_profiles.sql",
+      "sha256": "b74aa5ff8e7d91619113519b6b77725c00dd1da0e291b316b90e82b717da887d"
+    },
+    {
+      "file": "20260527000300_fast_admin_profile_queues.sql",
+      "sha256": "951966f7215ed57e2bbab3d3ee5648123d321b6e450690c8163b7b26cd257980"
+    },
+    {
+      "file": "20260527000400_fast_follow_counts_and_lists.sql",
+      "sha256": "700e95462a708af52c0388d0f4572027f0b03c129150abe768a8117c653699f9"
+    },
+    {
+      "file": "20260527000500_secure_profile_lookup.sql",
+      "sha256": "aea500a161ff12337f0a6d06069470155ed92488786f8dbc334abda4ea31b346"
+    },
+    {
+      "file": "20260530000100_get_latest_public_post_marker.sql",
+      "sha256": "fdf792232bb7e6a0ffe8cbb9888c433c9be4b4550b63f4920ab767b9aea1c099"
+    },
+    {
+      "file": "20260530000130_search_profiles_by_name.sql",
+      "sha256": "63b32cbc7a3f236485b3fab5deb45d8af2be853a81d2d2aea0c225bc01fac2b9"
+    },
+    {
+      "file": "20260530000200_fix_profile_email_search_rpc.sql",
+      "sha256": "19f6813b6129bc70d17aea2a74ca2957c9221acb22aaef4b0a779ad7e8ae1a4e"
+    },
+    {
+      "file": "20260531000100_search_posts_pagination.sql",
+      "sha256": "da9760737103ab0d1bc7d0536d86b6cd52981aca154d2b51f481bab4ce2c72d1"
+    },
+    {
+      "file": "20260531000200_get_public_post_by_id.sql",
+      "sha256": "8ba0b1f340bfa46e860a673c0280ebd8119dff39758d195e7b1b519a1a2560b6"
+    },
+    {
+      "file": "20260604000100_fix_profile_follows_rls.sql",
+      "sha256": "9496951a5cd2edeb4dd2ae5b4fe3839049ba3594196ce99681eb2b56e5ec90f0"
+    },
+    {
+      "file": "20260606161941_cleanup_profile_follows_rls_duplicates.sql",
+      "sha256": "4e82a8b734da62fc5ae2a05d55c5aab1cb0bd812fadec659b411df4544b8a798"
+    },
+    {
+      "file": "20260606163304_stage1_profile_status_precheck_marker.sql",
+      "sha256": "4a45092ccf992ea92250053a80b931b787924ba61648f420555511b84f10ab6c"
+    },
+    {
+      "file": "20260606163313_stage1_profiles_make_is_verified_use_verification_status.sql",
+      "sha256": "60ebb19057b028c4dd6b19183b5ebdd772f9197e04864198b20b2ab2adb117fd"
+    },
+    {
+      "file": "20260606163329_stage1_profiles_sync_existing_status_values.sql",
+      "sha256": "d2293661022b6ab5e6300265fcf4d0c2b619b026ed72a43941c3ccebe15cf52b"
+    },
+    {
+      "file": "20260606163339_stage1_profiles_status_mirror_trigger_function.sql",
+      "sha256": "bc693109630919317d7808d5f8c58de778e0ed6379d3fe967873196407ac8db1"
+    },
+    {
+      "file": "20260606163347_stage1_profiles_status_mirror_trigger.sql",
+      "sha256": "f31569937b8796de5dc2a9954e0356f86debbe619b51c5152afc45a2d2c6b1ea"
+    },
+    {
+      "file": "20260606163357_stage1_profiles_admin_queue_uses_verification_status.sql",
+      "sha256": "c36cb02bfc25a0fb0bc029e0ab7ab7c46bf27cf27ee360e4b17ca5eac8c5bfa8"
+    },
+    {
+      "file": "20260606163408_stage1_profiles_admin_status_write_functions.sql",
+      "sha256": "25da9e70bb66b7028fae7c3068cf3c3ac127f6b2b5468849737c89080b4b4e13"
+    },
+    {
+      "file": "20260606163418_stage1_profiles_comment_functions_use_verification_status.sql",
+      "sha256": "c559501d3d01a8562464071159a21a2e13fbcdd8388f7f1ddb60db3c43fc6af2"
+    },
+    {
+      "file": "20260606163428_stage1_profiles_delete_comment_uses_verification_status.sql",
+      "sha256": "85b2256f89b2ae2d35b1c01ac5103e4c4b90c75d3c054f14d513116c1345812e"
+    },
+    {
+      "file": "20260606163438_stage1_profiles_search_functions_use_verification_status.sql",
+      "sha256": "8ab1fe03bbf4dab2451538bafce5f6fd53e531d63752d8e72bf3927c9e8c8063"
+    },
+    {
+      "file": "20260606163451_stage1_profiles_name_search_uses_verification_status.sql",
+      "sha256": "49c91833af692c2f8d3b518754badc860b27cc2f367622a92697b9aaefabecc3"
+    },
+    {
+      "file": "20260606163509_stage1_profile_views_use_verification_status.sql",
+      "sha256": "72a07c6a6e0e67940d174c6c6b83eae96fedab8912e3918fef71be7a403a5a81"
+    },
+    {
+      "file": "20260606181010_stage2b_remove_profiles_status_dependencies.sql",
+      "sha256": "68f4436ef97a21193a26e4e3a818cf2792b1a1d6c3f621c64107f12201060e84"
+    },
+    {
+      "file": "20260606184604_stage2c_drop_profiles_status.sql",
+      "sha256": "c3647863964ac505110e1c47a3f6a29adcad4cd1de762aecb943691f9ce97434"
+    },
+    {
+      "file": "20260606201052_harden_rpc_permissions_allowlist.sql",
+      "sha256": "a432b46f6719346472c8a4c2da20e143749ab655cc9ec3ac320821201c8b3102"
+    },
+    {
+      "file": "20260606204207_consolidate_posts_comments_rls_policies.sql",
+      "sha256": "894dac1cc46b7eadcedbea7277d7ed9894d7a110e21b7a6c55d3494711c59957"
+    },
+    {
+      "file": "20260606204601_consolidate_profiles_reports_rls_policies.sql",
+      "sha256": "c7347fb03ba0b3cc8a916cc0f3ebb9ace4847ffebec4049ac4bcd011743b4a73"
+    },
+    {
+      "file": "20260606204735_consolidate_upvotes_select_rls_policy.sql",
+      "sha256": "9c69b744d4f0028b17465ae3b7290123f07d2ff4e72a385a194762b722146b26"
+    },
+    {
+      "file": "20260607102430_board_prep_core_schema_seed.sql",
+      "sha256": "166081a46b9da13f1792a72a0b440e83c276853d4b90dd20ad026956bcc02264"
+    },
+    {
+      "file": "20260607122805_board_prep_score_range_minus3.sql",
+      "sha256": "8370717d408b0b238dbe2b8f362607cd4b7318b92d41b20554d3942deaee958b"
+    },
+    {
+      "file": "20260607130459_fix_board_questions_admin_write_permissions.sql",
+      "sha256": "64273b126c94974d426b394f2ea5e66d4eb86eb74d08fa352fe5270ac610a367"
+    },
+    {
+      "file": "20260607192827_board_prep_flashcard_admin_support_marker.sql",
+      "sha256": "2336bc0fd3642ec9a4c55d0f6a4749b6ab29ea42feb93abf8b1fb0bf75811d02"
+    },
+    {
+      "file": "20260607195815_allow_admin_delete_board_question_requests.sql",
+      "sha256": "85598f263391db76177f9a1b1b4c01b4c377ff2b2815f5dc3d511c9660751aa8"
+    },
+    {
+      "file": "20260607201300_add_board_memory_items.sql",
+      "sha256": "70e3e6045aa56b4bbb03ec99db5a44a1c0eb09e8eabaf47751b1582f93c4ead6"
+    },
+    {
+      "file": "20260608135302_optimize_board_prep_load_queries.sql",
+      "sha256": "7401e92d1d1bf6d6351b13d822575a87dbc01377ed66cf1200cf0163184c7d40"
+    },
+    {
+      "file": "20260609095520_post_moderation_audit_fields.sql",
+      "sha256": "d15c76421facde37ae0e81e02ffbf83ac53c7374e4b56b929763ac2e0e7cfbab"
+    },
+    {
+      "file": "20260609150448_create_public_gate_hours_manager.sql",
+      "sha256": "308ea596b185e39a3c51af333b26e497d0611d5fca0a4941c2af4ca69a16004c"
+    },
+    {
+      "file": "20260609154317_fix_gates_public_read_policy.sql",
+      "sha256": "c6af6839ef408b4a728f9b7c347ee835e938454bb9f63ba5bc2d2f97ed773fb2"
+    },
+    {
+      "file": "20260610010340_add_board_prep_fk_covering_indexes.sql",
+      "sha256": "e84b9b242ed07cfab2ed0b23b8927ff53aee1b531d445613c770563d1c8178e1"
+    },
+    {
+      "file": "20260610010452_lock_security_definer_search_path.sql",
+      "sha256": "30657076256cd7e8f6252e205afc9a0a8dca88bdd0f171f4203c3bda6c7c90b3"
+    },
+    {
+      "file": "20260610010812_add_profile_status_audit_log.sql",
+      "sha256": "1f3649e5e83bea6c542d012df7bd7d7fd3069be900281825b1dd57efa65ccdb9"
+    },
+    {
+      "file": "20260610010913_revoke_audit_trigger_rpc_execute.sql",
+      "sha256": "47ca5905fe7083d22a923d405efeda17a05d8dfe3d8eb617035e60520a6d7f1f"
+    },
+    {
+      "file": "20260610013041_revoke_admin_profile_rpc_from_authenticated.sql",
+      "sha256": "efe72c0b8b490c2083ee1c537a52acefa2f37d1aad5fbca92c2ffe9e9d218a7d"
+    },
+    {
+      "file": "20260610013314_restore_authenticated_admin_profile_rpc_until_service_role_verified.sql",
+      "sha256": "da6be707664a322683aeffa325c7aa4555556db79ec9cdca55d43819ede12e65"
+    },
+    {
+      "file": "20260610020706_fix_profile_sensitive_fields_trigger_status_reference.sql",
+      "sha256": "ede0193a545de3f6295fdb8a90bb57dc59c7d26cefba898d80bbd3f4fe413c3e"
+    },
+    {
+      "file": "20260610020939_allow_service_role_profile_status_updates.sql",
+      "sha256": "9ad9d493ce49b5d6fcb99d703dbfec00a93b438506ef014065ef809bfe946b35"
+    },
+    {
+      "file": "20260610120823_harden_request_profile_rereview_row_count.sql",
+      "sha256": "155d91757e39c682463f3c852778707141a21945f92d539c6247eeb6055d0e40"
+    },
+    {
+      "file": "20260610142300_allow_owner_rereview_status_transition.sql",
+      "sha256": "24c605c01844a11e4fc5f079f32baba073f710768dd6c531450f97ed6dd097c0"
+    },
+    {
+      "file": "20260611042658_add_avatar_url_to_get_public_posts.sql",
+      "sha256": "a8c28bff36a30d024755e2b3e43e767bd1cfd048bb1b6608b6b31c8089ed6236"
+    },
+    {
+      "file": "20260630195956_harden_auth_rpc_permissions.sql",
+      "sha256": "9489848414b9f276af357228ff02560577b330360cdd7797e82f7aaaba6c941c"
+    },
+    {
+      "file": "20260703021641_admin_pending_requires_confirmed_email.sql",
+      "sha256": "b1efef6e7ff6eeba779ae46724dc4bbdf0db4caa04bdd9ed3b065255398773f4"
+    },
+    {
+      "file": "20260714134949_enforce_moderated_content_writes.sql",
+      "sha256": "b974dc87c7360058f9623e2da59c2f9c1f92f0a66733dfc9d148cd20410a20e3"
+    },
+    {
+      "file": "20260714144013_harden_follow_notifications.sql",
+      "sha256": "0881f94adf3bc005d05856ba687ee5729c3f76a86f80fceeef179d58cdc99c18"
+    }
+  ]
+}
