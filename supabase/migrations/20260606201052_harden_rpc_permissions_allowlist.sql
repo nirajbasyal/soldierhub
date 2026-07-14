@@ -1,5 +1,144 @@
 begin;
 
+-- This function already existed in production when the permission allowlist
+-- was applied, but its original creation was missing from migration history.
+-- Capture it here before changing its grants so clean rebuilds match live.
+create or replace function public.search_public_posts_keyset(
+  p_query text,
+  p_limit integer default 20,
+  p_cursor_rank integer default null::integer,
+  p_cursor_created_at timestamptz default null::timestamptz,
+  p_cursor_id uuid default null::uuid
+)
+returns table(
+  id uuid,
+  author_id uuid,
+  category text,
+  body text,
+  anonymous boolean,
+  status text,
+  edited boolean,
+  created_at timestamptz,
+  updated_at timestamptz,
+  author_name text,
+  author_color text,
+  upvote_count bigint,
+  comment_count bigint,
+  report_count bigint,
+  image_url text,
+  image_key text,
+  image_width integer,
+  image_height integer,
+  image_size integer,
+  image_thumbnail_url text,
+  image_thumbnail_key text,
+  image_thumbnail_width integer,
+  image_thumbnail_height integer,
+  image_thumbnail_size integer,
+  relevance_rank integer
+)
+language plpgsql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  clean_query text := lower(trim(coalesce(p_query, '')));
+  safe_limit integer := least(greatest(coalesce(p_limit, 20), 1), 50);
+begin
+  if length(clean_query) < 2 then
+    return;
+  end if;
+
+  return query
+  with matched as (
+    select
+      p.id,
+      p.author_id,
+      p.author_name_cached,
+      p.author_color_cached,
+      p.category,
+      p.body,
+      p.anonymous,
+      p.status,
+      p.edited,
+      p.created_at,
+      p.updated_at,
+      coalesce(p.upvote_count, 0)::bigint as upvote_count,
+      coalesce(p.comment_count, 0)::bigint as comment_count,
+      coalesce(p.report_count, 0)::bigint as report_count,
+      p.image_url,
+      p.image_key,
+      p.image_width,
+      p.image_height,
+      p.image_size,
+      p.image_thumbnail_url,
+      p.image_thumbnail_key,
+      p.image_thumbnail_width,
+      p.image_thumbnail_height,
+      p.image_thumbnail_size,
+      (
+        (case when lower(coalesce(p.category, '')) = clean_query then 0 else 4 end)
+        + (case when lower(coalesce(p.category, '')) like clean_query || '%' then 0 else 2 end)
+        + (case
+          when p.anonymous is false
+            and lower(coalesce(p.author_name_cached, '')) like clean_query || '%'
+          then 0 else 1
+        end)
+      )::integer as relevance_rank
+    from public.posts p
+    where p.status in ('active', 'reported')
+      and (
+        lower(coalesce(p.body, '')) like '%' || clean_query || '%'
+        or lower(coalesce(p.category, '')) like '%' || clean_query || '%'
+        or (
+          p.anonymous is false
+          and lower(coalesce(p.author_name_cached, '')) like '%' || clean_query || '%'
+        )
+      )
+  )
+  select
+    m.id,
+    case when m.anonymous then null else m.author_id end as author_id,
+    m.category,
+    m.body,
+    m.anonymous,
+    m.status,
+    m.edited,
+    m.created_at,
+    m.updated_at,
+    case when m.anonymous then null else m.author_name_cached end as author_name,
+    case when m.anonymous then null else m.author_color_cached end as author_color,
+    m.upvote_count,
+    m.comment_count,
+    m.report_count,
+    m.image_url,
+    m.image_key,
+    m.image_width,
+    m.image_height,
+    m.image_size,
+    m.image_thumbnail_url,
+    m.image_thumbnail_key,
+    m.image_thumbnail_width,
+    m.image_thumbnail_height,
+    m.image_thumbnail_size,
+    m.relevance_rank
+  from matched m
+  where (
+    p_cursor_rank is null
+    or p_cursor_created_at is null
+    or p_cursor_id is null
+    or m.relevance_rank > p_cursor_rank
+    or (
+      m.relevance_rank = p_cursor_rank
+      and (m.created_at, m.id) < (p_cursor_created_at, p_cursor_id)
+    )
+  )
+  order by m.relevance_rank asc, m.created_at desc, m.id desc
+  limit safe_limit;
+end;
+$$;
+
 -- Harden RPC/function permissions with an explicit allowlist.
 -- This migration does not change function bodies. It removes inherited PUBLIC
 -- execute access and grants each SECURITY DEFINER function only to the roles
