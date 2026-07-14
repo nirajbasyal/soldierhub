@@ -36,7 +36,7 @@
     },
     {
       "file": "20260524000100_optimize_rls_policies.sql",
-      "sha256": "742acff15b0143d52b0ade0f07203a77df09338c9468f3ea455b853952158a61"
+      "sha256": "bc4dec3435efeaf33bd4fe0cf5d520699ba6576848fcaa744e01e313f99e8b83"
     },
     {
       "file": "20260524000200_fix_profiles_update_rls_recursion.sql",

@@ -398,6 +398,88 @@ grant select on public.profile_follow_counts to anon, authenticated;
 -- Table grants
 grant select, insert, delete on public.profile_follows to authenticated;
 
+create or replace function public.create_visitor_report(
+  p_post_id uuid,
+  p_visitor_key text,
+  p_reason text default ''
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_hash text;
+  v_inserted int;
+begin
+  if p_post_id is null then
+    return jsonb_build_object('ok', false, 'error', 'Missing post id.');
+  end if;
+
+  if p_visitor_key is null or length(trim(p_visitor_key)) < 10 then
+    return jsonb_build_object('ok', false, 'error', 'Missing visitor key.');
+  end if;
+
+  if not exists (
+    select 1
+    from public.posts
+    where id = p_post_id
+      and status in ('active', 'reported')
+  ) then
+    return jsonb_build_object('ok', false, 'error', 'Post not found.');
+  end if;
+
+  v_hash := encode(
+    extensions.digest(convert_to(trim(p_visitor_key), 'UTF8'), 'sha256'),
+    'hex'
+  );
+
+  insert into public.visitor_reports (post_id, visitor_key_hash, reason)
+  values (
+    p_post_id,
+    v_hash,
+    left(coalesce(p_reason, ''), 500)
+  )
+  on conflict (post_id, visitor_key_hash) do nothing;
+
+  get diagnostics v_inserted = row_count;
+
+  if v_inserted > 0 then
+    update public.posts
+    set status = 'reported'
+    where id = p_post_id
+      and status = 'active';
+  end if;
+
+  return jsonb_build_object(
+    'ok', true,
+    'already_reported', v_inserted = 0
+  );
+end;
+$$;
+
+create or replace function public.restore_reported_post(p_post_id uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  if not public.is_admin() then
+    return jsonb_build_object('ok', false, 'error', 'Unauthorized.');
+  end if;
+
+  delete from public.reports where post_id = p_post_id;
+  delete from public.visitor_reports where post_id = p_post_id;
+
+  update public.posts
+  set status = 'active'
+  where id = p_post_id;
+
+  return jsonb_build_object('ok', true);
+end;
+$$;
+
 -- Function grants from the current database policy source of truth.
 revoke all on function public.get_public_posts(integer, timestamp with time zone, uuid) from public;
 revoke all on function public.create_visitor_report(uuid, text, text) from public;
