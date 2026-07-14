@@ -166,6 +166,67 @@ begin
 end;
 $$;
 
+-- Record the signed-in report toggle that was already present in production
+-- before the allowlist migration referenced its signature.
+create or replace function public.toggle_post_report(
+  p_post_id uuid,
+  p_reason text default ''::text
+)
+returns table(reported boolean, report_count bigint, post_status text)
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_user_id uuid := auth.uid();
+  v_already_reported boolean;
+  v_report_count bigint;
+  v_status text;
+begin
+  if v_user_id is null then
+    raise exception 'You must be signed in to report a post.';
+  end if;
+
+  select exists (
+    select 1
+    from public.reports
+    where post_id = p_post_id
+      and user_id = v_user_id
+  ) into v_already_reported;
+
+  if v_already_reported then
+    delete from public.reports
+    where post_id = p_post_id
+      and user_id = v_user_id;
+  else
+    insert into public.reports (post_id, user_id, reason)
+    values (p_post_id, v_user_id, coalesce(p_reason, ''))
+    on conflict (post_id, user_id) do nothing;
+  end if;
+
+  select count(*)
+  from public.reports
+  where post_id = p_post_id
+  into v_report_count;
+
+  if v_report_count > 0 then
+    v_status := 'reported';
+  else
+    v_status := 'active';
+  end if;
+
+  update public.posts
+  set status = v_status
+  where id = p_post_id;
+
+  return query
+  select
+    not v_already_reported as reported,
+    v_report_count as report_count,
+    v_status as post_status;
+end;
+$$;
+
 -- Harden RPC/function permissions with an explicit allowlist.
 -- This migration does not change function bodies. It removes inherited PUBLIC
 -- execute access and grants each SECURITY DEFINER function only to the roles
