@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { checkRateLimit, rateLimitResponse } from "@/lib/server/rateLimit";
 import { checkContentSafety } from "@/lib/server/contentSafety";
+import { requireServiceRoleClient } from "@/lib/server/supabaseAdmin";
 import { CATEGORIES } from "@/lib/constants";
 
 export const runtime = "nodejs";
@@ -147,7 +148,7 @@ async function getOwnedPost({ supabase, postId, userId }) {
   return { data, error: null, status: 200 };
 }
 
-async function updatePost({ supabase, postId, updates, moderationFields = {} }) {
+async function updatePost({ writeClient, postId, userId, updates, moderationFields = {} }) {
   const allowed = {
     body: updates.body !== undefined ? cleanText(updates.body) : undefined,
     category: updates.category !== undefined ? cleanPostCategory(updates.category) : undefined,
@@ -159,10 +160,11 @@ async function updatePost({ supabase, postId, updates, moderationFields = {} }) 
     if (allowed[key] === undefined) delete allowed[key];
   });
 
-  const { data, error } = await supabase
+  const { data, error } = await writeClient
     .from("posts")
     .update(allowed)
     .eq("id", postId)
+    .eq("author_id", userId)
     .select(POST_SELECT)
     .maybeSingle();
 
@@ -288,7 +290,23 @@ export async function POST(request) {
       moderationFields = getModerationFields(safety);
     }
 
-    const { data, error } = await updatePost({ supabase, postId, updates, moderationFields });
+    const contentWriter = requireServiceRoleClient();
+
+    if (!contentWriter.ok) {
+      console.error("Update post service database access is not configured.");
+      return NextResponse.json(
+        { error: "Post editing is temporarily unavailable. Please try again shortly." },
+        { status: 503, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
+      );
+    }
+
+    const { data, error } = await updatePost({
+      writeClient: contentWriter.supabase,
+      postId,
+      userId: user.id,
+      updates,
+      moderationFields,
+    });
 
     if (error || !data) {
       return NextResponse.json(

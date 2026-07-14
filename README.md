@@ -144,12 +144,12 @@ The local rule-based filter in `src/lib/moderation.js` runs on every post. To ad
 
 A few things that matter for a community app — already wired into this codebase:
 
-- **Row Level Security on every table.** Anonymous users can browse posts and comments; only verified users can write; only post authors and admins can edit/delete; only admins see pending users and reports.
+- **Row Level Security on every table.** Anonymous users can browse posts and comments; content writes go through authenticated server routes; only post authors can edit, only post authors/admins can delete, and only admins see pending users and reports.
 - **`profiles` table is private.** Only the user themselves and admins can read profile rows (which contain emails). Public components use the `public_profiles` view (only id, name, bio, avatar) or denormalized cached fields on posts/comments.
 - **Anonymous posts are anonymous at the API level, not just visually.** When a user posts anonymously, the database trigger blanks the cached author fields. The public `posts_with_meta` view returns `null` for `author_id` on anonymous posts. The underlying `posts` table has **no public SELECT policy** — only authors (own rows), admins, and the view itself can read it. So a snooper cannot bypass the view by querying `posts` directly. Even with browser dev tools, no one can see who wrote an anonymous post — except the author themselves and admins.
-- **Authors cannot bypass moderation via direct API calls.** The RLS UPDATE policy on `posts` prevents authors from changing `status`, `author_id`, `anonymous`, or the cached author fields — even if they bypass the UI and call Supabase directly.
+- **Authors cannot bypass moderation via direct Data API calls.** Browser roles cannot insert or update post/comment content, and the legacy comment writer RPC is server-only. The server routes verify the JWT and profile, apply rate limits, validate media ownership, run moderation, and then write with a server-only credential.
 - **`security_invoker = true`** on `posts_with_meta` and `my_posts_with_meta` — prevents the views from bypassing RLS on the underlying tables.
-- **No service role key in the browser.** The service role bypasses RLS entirely; it should only be used in server routes when truly needed. By default, this app does not use it at all — it's not in `.env.example` for that reason.
+- **No service role key in the browser.** `SUPABASE_SERVICE_ROLE_KEY` is required by protected server routes, but it is never prefixed with `NEXT_PUBLIC_` or imported by Client Components. Browser-held Supabase credentials cannot write moderated content directly.
 - **Admin "remove member" is a soft disable** (sets `verification_status='rejected'`). The auth account stays, but they can't post. Reversible by re-verifying.
 - **Moderation runs via `/api/moderate`** for every post, comment, and edit. Local rules run first; if `MODERATION_API_KEY` is set, OpenAI moderation runs after. Falls back to local-only if the network is flaky.
 

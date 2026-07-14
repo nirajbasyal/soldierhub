@@ -34,6 +34,7 @@ Set these in Vercel for **Production**, **Preview**, and **Development** unless 
 | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase public/publishable anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Required server-only key for moderated post/comment writes and protected account checks. Never expose it with a `NEXT_PUBLIC_` prefix |
 | `NEXT_PUBLIC_SITE_URL` | `https://soldierhub.com` in production |
 | `NWS_USER_AGENT` | Weather API contact string, for example `SoldierHub/1.0 (https://soldierhub.com)` |
 | `SOLDIERHUB_ADMIN_EMAILS` | Comma-separated private admin allow-list |
@@ -51,7 +52,7 @@ Set these in Vercel for **Production**, **Preview**, and **Development** unless 
 
 Important: the app code uses `R2_PUBLIC_URL`. Do **not** use the old `NEXT_PUBLIC_R2_PUBLIC_BASE_URL` name for production upload config.
 
-Do **not** add `SUPABASE_SERVICE_ROLE_KEY` to Vercel unless a server route actually needs it. The service role bypasses RLS and should not be stored without a real use case.
+`SUPABASE_SERVICE_ROLE_KEY` is required in Vercel Production and Preview for the protected server routes. Scope it only to the Soldier Hub project, never expose it to browser code, and rotate it immediately if it is ever logged or committed.
 
 ## Supabase setup
 
