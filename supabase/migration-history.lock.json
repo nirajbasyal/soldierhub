@@ -168,7 +168,7 @@
     },
     {
       "file": "20260606163509_stage1_profile_views_use_verification_status.sql",
-      "sha256": "72a07c6a6e0e67940d174c6c6b83eae96fedab8912e3918fef71be7a403a5a81"
+      "sha256": "ee69d7423187e8bcc42dc85a3b718d9b28a738ec3a89e10bca24f3b84e18abe2"
     },
     {
       "file": "20260606181010_stage2b_remove_profiles_status_dependencies.sql",

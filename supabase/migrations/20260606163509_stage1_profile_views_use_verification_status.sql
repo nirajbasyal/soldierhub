@@ -1,3 +1,6 @@
+drop view if exists public.public_profiles;
+drop view if exists public.profile_follow_counts;
+
 create or replace view public.public_profiles as
 select
   id,
@@ -27,6 +30,9 @@ left join (
   group by follower_id
 ) following on following.follower_id = p.id
 where p.verification_status = 'verified';
+
+grant select on public.public_profiles to anon, authenticated;
+grant select on public.profile_follow_counts to anon, authenticated;
 
 create index if not exists profiles_verification_status_created_idx
 on public.profiles (verification_status, created_at desc, id desc);
