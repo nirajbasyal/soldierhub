@@ -227,6 +227,60 @@ begin
 end;
 $$;
 
+-- Production also had this trigger helper before it was first referenced by
+-- the allowlist. A later migration adds the trigger and its uniqueness guard.
+create or replace function public.create_follow_notification()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_actor_name text;
+begin
+  if new.follower_id is null
+    or new.following_id is null
+    or new.follower_id = new.following_id
+  then
+    return new;
+  end if;
+
+  select coalesce(p.full_name, 'Someone')
+  into v_actor_name
+  from public.profiles p
+  where p.id = new.follower_id;
+
+  insert into public.notifications (
+    recipient_user_id,
+    actor_user_id,
+    actor_name_cached,
+    type,
+    post_title_cached,
+    read,
+    created_at
+  )
+  values (
+    new.following_id,
+    new.follower_id,
+    coalesce(v_actor_name, 'Someone'),
+    'follow',
+    'followed your profile',
+    false,
+    now()
+  )
+  on conflict (recipient_user_id, actor_user_id, type)
+    where type = 'follow'
+  do update
+  set
+    read = false,
+    actor_name_cached = excluded.actor_name_cached,
+    post_title_cached = excluded.post_title_cached,
+    created_at = excluded.created_at;
+
+  return new;
+end;
+$$;
+
 -- Harden RPC/function permissions with an explicit allowlist.
 -- This migration does not change function bodies. It removes inherited PUBLIC
 -- execute access and grants each SECURITY DEFINER function only to the roles
