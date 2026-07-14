@@ -96,6 +96,32 @@ $$;
 
 grant execute on function public.get_public_posts(integer, timestamp with time zone, uuid) to anon, authenticated;
 
+create or replace function public.count_post_reports(p_post_id uuid)
+returns bigint
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select
+    coalesce(
+      (select count(*) from public.reports r where r.post_id = p_post_id),
+      0
+    )
+    +
+    coalesce(
+      (
+        select count(*)
+        from public.visitor_reports vr
+        where vr.post_id = p_post_id
+      ),
+      0
+    );
+$$;
+
+drop view if exists public.posts_with_meta;
+drop view if exists public.my_posts_with_meta;
+
 create or replace view public.posts_with_meta
 with (security_invoker='true') as
 select
@@ -162,3 +188,6 @@ select
   p.image_height,
   p.image_size
 from public.posts p;
+
+grant select on public.posts_with_meta to anon, authenticated;
+grant select on public.my_posts_with_meta to authenticated;

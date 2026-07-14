@@ -12,6 +12,7 @@
     "start": "next start",
     "lint": "eslint .",
     "test": "node --test tests/*.test.mjs",
+    "migrations:lock": "node scripts/update-migration-lock.mjs",
     "load:test": "node tests/load/soldierhub-load-test.mjs"
   },
   "dependencies": {

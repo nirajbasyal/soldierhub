@@ -10,6 +10,14 @@ Soldier Hub is an independent, unofficial community platform and is not affiliat
 
 For a brand-new Supabase project, rebuild the database by applying every timestamped SQL file in `supabase/migrations/` from oldest to newest.
 
+`supabase/migration-history.lock.json` makes that history immutable. CI checks
+every migration filename and SHA-256 digest so duplicate versions, renamed
+files, deleted files, and edits to applied SQL fail before merge.
+
+CI also starts a disposable local Supabase stack and runs `supabase db reset`.
+This proves the complete chain can rebuild an empty database before a change is
+allowed onto `main`.
+
 The first baseline migration creates the core database foundation. Later migrations evolve it to the current production shape.
 
 The migration chain must recreate every database object the app needs:
@@ -109,6 +117,25 @@ Example:
 ```
 
 Do not start a real migration filename with only `step1_`. The timestamp must stay first so Supabase can run files in order.
+
+Every version must contain exactly 14 digits and must be unique. After creating
+or intentionally changing the migration set, refresh the lock:
+
+```bash
+npm run migrations:lock
+```
+
+After a production push, record the newest version verified in production:
+
+```bash
+npm run migrations:lock -- 20260714144013
+supabase migration list --linked
+```
+
+The local and remote columns must contain the same versions. Do not apply a
+production migration under a different timestamp. If an emergency or dashboard
+change creates a remote-only version, fetch that exact history immediately and
+reconcile it before another migration is added.
 
 ## Rebuild a brand-new Supabase project from GitHub
 

@@ -1,15 +1,3 @@
--- ============================================================================
--- Board Prep core schema + seed sync marker
--- ============================================================================
--- Applied to live Supabase after the preview app showed:
---   Could not find the table 'public.board_questions' in the schema cache
---
--- This migration is intentionally idempotent. It creates the Board Prep tables,
--- policies, indexes, grants, and starter question bank when missing. If earlier
--- branch migrations already created the objects, this safely upserts the same
--- production-ready foundation and reloads PostgREST schema cache.
--- ============================================================================
-
 begin;
 
 create extension if not exists pgcrypto with schema extensions;
@@ -229,6 +217,7 @@ with check (
   )
 );
 
+-- Grants for PostgREST authenticated access. RLS still controls rows.
 grant select on public.board_questions to authenticated;
 grant select, insert, update on public.board_sessions to authenticated;
 grant select, insert, update on public.board_question_requests to authenticated;
