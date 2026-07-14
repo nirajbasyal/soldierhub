@@ -12,7 +12,7 @@
     },
     {
       "file": "20260517000100_fix_function_grant_signatures.sql",
-      "sha256": "ea0337de8a3b8e3fd34f4eb2cd4f84f3796a2b30701b19d564509418ebd74a89"
+      "sha256": "36b4ffd74cf55744154bb6a884e1016ec92dc9994ebd8eb6624ef93416b5c6fa"
     },
     {
       "file": "20260517000200_add_batched_comments_rpc.sql",

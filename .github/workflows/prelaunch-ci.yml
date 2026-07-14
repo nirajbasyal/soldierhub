@@ -25,7 +25,7 @@ jobs:
         run: supabase init
 
       - name: Start local database and apply migrations
-        run: supabase start -x studio,imgproxy,inbucket,edge-runtime,functions,analytics,vector
+        run: supabase start -x studio,imgproxy,mailpit,edge-runtime,logflare,vector,supavisor
 
       - name: Rebuild from a clean database
         run: supabase db reset
