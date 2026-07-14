@@ -29,7 +29,8 @@
     "next": "^16.2.10",
     "openai": "^6.35.0",
     "react": "^19.2.7",
-    "react-dom": "^19.2.7"
+    "react-dom": "^19.2.7",
+    "sanitize-html": "2.17.6"
   },
   "devDependencies": {
     "autoprefixer": "^10.4.20",

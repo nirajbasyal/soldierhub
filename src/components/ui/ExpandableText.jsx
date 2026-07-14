@@ -2,25 +2,10 @@
 
 import { useMemo, useState } from "react";
 import { T } from "@/lib/theme";
-
-const ALLOWED_RICH_TEXT_TAGS = new Set([
-  "A",
-  "B",
-  "BLOCKQUOTE",
-  "BR",
-  "DIV",
-  "EM",
-  "I",
-  "LI",
-  "OL",
-  "P",
-  "STRONG",
-  "UL",
-]);
+import { sanitizeRichTextHtml } from "@/lib/sanitizeRichTextHtml.mjs";
 
 const URL_PATTERN = /((?:https?:\/\/|www\.)[^\s<>"']+)/gi;
 const TRAILING_URL_PUNCTUATION = /[.,!?;:)\]}]+$/;
-const EMPTY_BLOCK_TAGS = new Set(["DIV", "P", "BLOCKQUOTE", "LI"]);
 
 function looksLikeHtml(text = "") {
   return /<\/?(a|p|div|strong|em|ul|ol|li|blockquote|br)\b/i.test(String(text));
@@ -67,144 +52,6 @@ function getCompactLinkLabel(rawUrl = "") {
   } catch {
     return String(rawUrl || "");
   }
-}
-
-function isEmptyRichTextNode(node) {
-  if (!node) return true;
-
-  if (node.nodeType === Node.TEXT_NODE) {
-    return !(node.textContent || "").replace(/\u200B/g, "").replace(/\u00a0/g, " ").trim();
-  }
-
-  if (node.nodeType !== Node.ELEMENT_NODE) return true;
-
-  const tagName = node.tagName?.toUpperCase();
-
-  if (tagName === "BR") return true;
-  if (tagName === "IMG" || tagName === "VIDEO" || tagName === "IFRAME") return false;
-
-  return !(node.textContent || "").replace(/\u200B/g, "").replace(/\u00a0/g, " ").trim();
-}
-
-function trimEmptyTrailingBlocks(root) {
-  if (!root) return;
-
-  let changed = true;
-
-  while (changed) {
-    changed = false;
-
-    while (root.lastChild && isEmptyRichTextNode(root.lastChild)) {
-      root.removeChild(root.lastChild);
-      changed = true;
-    }
-
-    const lastElement = root.lastElementChild;
-    const tagName = lastElement?.tagName?.toUpperCase();
-
-    if (lastElement && EMPTY_BLOCK_TAGS.has(tagName) && isEmptyRichTextNode(lastElement)) {
-      lastElement.remove();
-      changed = true;
-    }
-  }
-}
-
-function appendTextWithSmartLinks(outputDoc, parent, text = "") {
-  const value = String(text || "");
-  if (!value) return;
-
-  URL_PATTERN.lastIndex = 0;
-  let lastIndex = 0;
-  let match;
-
-  while ((match = URL_PATTERN.exec(value)) !== null) {
-    if (match.index > lastIndex) {
-      parent.appendChild(outputDoc.createTextNode(value.slice(lastIndex, match.index)));
-    }
-
-    const rawToken = match[0];
-    const { url, suffix } = splitUrlAndTrailingPunctuation(rawToken);
-    const href = normalizeHref(url);
-
-    if (href) {
-      const link = outputDoc.createElement("a");
-      link.setAttribute("href", href);
-      link.setAttribute("target", "_blank");
-      link.setAttribute("rel", "noopener noreferrer nofollow");
-      link.appendChild(outputDoc.createTextNode(getCompactLinkLabel(href)));
-      parent.appendChild(link);
-    } else {
-      parent.appendChild(outputDoc.createTextNode(rawToken));
-    }
-
-    if (suffix) {
-      parent.appendChild(outputDoc.createTextNode(suffix));
-    }
-
-    lastIndex = match.index + rawToken.length;
-  }
-
-  if (lastIndex < value.length) {
-    parent.appendChild(outputDoc.createTextNode(value.slice(lastIndex)));
-  }
-}
-
-function sanitizeRichTextHtml(html = "") {
-  if (typeof window === "undefined" || typeof DOMParser === "undefined") {
-    return String(html || "");
-  }
-
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(`<div>${html || ""}</div>`, "text/html");
-  const sourceRoot = doc.body.firstElementChild;
-  const outputDoc = document.implementation.createHTMLDocument("soldierhub-post");
-  const outputRoot = outputDoc.createElement("div");
-
-  const cleanNode = (node, parent) => {
-    if (node.nodeType === Node.TEXT_NODE) {
-      if (parent.tagName?.toUpperCase() === "A") {
-        parent.appendChild(outputDoc.createTextNode(node.textContent || ""));
-      } else {
-        appendTextWithSmartLinks(outputDoc, parent, node.textContent || "");
-      }
-      return;
-    }
-
-    if (node.nodeType !== Node.ELEMENT_NODE) return;
-
-    const tagName = node.tagName?.toUpperCase();
-
-    if (!ALLOWED_RICH_TEXT_TAGS.has(tagName)) {
-      Array.from(node.childNodes).forEach((child) => cleanNode(child, parent));
-      return;
-    }
-
-    if (tagName === "A") {
-      const href = normalizeHref(node.getAttribute("href") || node.textContent || "");
-      if (!href) {
-        Array.from(node.childNodes).forEach((child) => cleanNode(child, parent));
-        return;
-      }
-
-      const link = outputDoc.createElement("a");
-      link.setAttribute("href", href);
-      link.setAttribute("target", "_blank");
-      link.setAttribute("rel", "noopener noreferrer nofollow");
-      link.appendChild(outputDoc.createTextNode(getCompactLinkLabel(href)));
-      parent.appendChild(link);
-      return;
-    }
-
-    const normalizedTag = tagName === "B" ? "strong" : tagName === "I" ? "em" : tagName.toLowerCase();
-    const nextElement = outputDoc.createElement(normalizedTag);
-    Array.from(node.childNodes).forEach((child) => cleanNode(child, nextElement));
-    parent.appendChild(nextElement);
-  };
-
-  Array.from(sourceRoot?.childNodes || []).forEach((child) => cleanNode(child, outputRoot));
-  trimEmptyTrailingBlocks(outputRoot);
-
-  return outputRoot.innerHTML.trim();
 }
 
 function htmlToPlainText(html = "") {
