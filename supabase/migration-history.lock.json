@@ -16,7 +16,7 @@
     },
     {
       "file": "20260517000200_add_batched_comments_rpc.sql",
-      "sha256": "4105864ebdf2c80ecfc5fee41c9f170fe3fc654772b32e2e3da68d59bb4f0cc6"
+      "sha256": "4b5fe8444c24d695b4ac8492543f921b588438d611c1e5934dc08e104e79e241"
     },
     {
       "file": "20260518000100_notifications_upvote_trigger.sql",

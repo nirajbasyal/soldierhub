@@ -13,6 +13,28 @@
 
 begin;
 
+create or replace function public.get_anonymous_post_label(p_post_id uuid)
+returns text
+language sql
+immutable
+set search_path = public
+as $$
+  select 'Anonymous' ||
+    lpad(
+      (
+        coalesce(
+          (
+            select sum(ascii(substr(p_post_id::text, i, 1)) * i)
+            from generate_series(1, length(p_post_id::text)) as s(i)
+          ),
+          0
+        )::bigint % 10000
+      )::text,
+      4,
+      '0'
+    );
+$$;
+
 create or replace function public.get_public_comments_for_posts(
   target_post_ids uuid[],
   per_post_limit integer default 50
