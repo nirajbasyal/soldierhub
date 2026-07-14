@@ -119,6 +119,9 @@ as $$
     );
 $$;
 
+drop view if exists public.posts_with_meta;
+drop view if exists public.my_posts_with_meta;
+
 create or replace view public.posts_with_meta
 with (security_invoker='true') as
 select
@@ -185,3 +188,6 @@ select
   p.image_height,
   p.image_size
 from public.posts p;
+
+grant select on public.posts_with_meta to anon, authenticated;
+grant select on public.my_posts_with_meta to authenticated;
