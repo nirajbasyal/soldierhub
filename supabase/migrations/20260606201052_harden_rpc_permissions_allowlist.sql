@@ -313,6 +313,117 @@ begin
 end;
 $$;
 
+-- Capture the remaining production trigger helpers that the allowlist
+-- referenced before their definitions were present in repository history.
+create or replace function public.tg_cache_author_fields()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  pname text;
+  pcolor text;
+begin
+  if new.anonymous then
+    new.author_name_cached := null;
+    new.author_color_cached := null;
+  else
+    select full_name, avatar_color
+    into pname, pcolor
+    from public.profiles
+    where id = new.author_id;
+
+    new.author_name_cached := pname;
+    new.author_color_cached := pcolor;
+  end if;
+
+  return new;
+end;
+$$;
+
+create or replace function public.tg_cache_comment_author()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  pname text;
+  pcolor text;
+begin
+  select full_name, avatar_color
+  into pname, pcolor
+  from public.profiles
+  where id = new.author_id;
+
+  new.author_name_cached := pname;
+  new.author_color_cached := pcolor;
+  return new;
+end;
+$$;
+
+create or replace function public.tg_mark_post_reported()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  update public.posts
+  set status = 'reported'
+  where id = new.post_id
+    and status = 'active';
+
+  return new;
+end;
+$$;
+
+create or replace function public.tg_notify_on_comment()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  post_author uuid;
+  actor_name_local text;
+begin
+  select author_id
+  into post_author
+  from public.posts
+  where id = new.post_id;
+
+  if post_author is null or post_author = new.author_id then
+    return new;
+  end if;
+
+  select full_name
+  into actor_name_local
+  from public.profiles
+  where id = new.author_id;
+
+  insert into public.notifications (
+    recipient_user_id,
+    actor_user_id,
+    actor_name_cached,
+    type,
+    post_id,
+    comment_id
+  )
+  values (
+    post_author,
+    new.author_id,
+    actor_name_local,
+    'comment',
+    new.post_id,
+    new.id
+  );
+
+  return new;
+end;
+$$;
+
 -- Harden RPC/function permissions with an explicit allowlist.
 -- This migration does not change function bodies. It removes inherited PUBLIC
 -- execute access and grants each SECURITY DEFINER function only to the roles
