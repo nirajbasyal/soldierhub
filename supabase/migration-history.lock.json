@@ -180,7 +180,7 @@
     },
     {
       "file": "20260606201052_harden_rpc_permissions_allowlist.sql",
-      "sha256": "53ae053099cc98d9e12f195289eccbcc26024190f7078b9d639becde2476f2c2"
+      "sha256": "e508ec472a98240e2b444fd78f1c50b4dd52312f59413b2f4b087f216aa4a01d"
     },
     {
       "file": "20260606204207_consolidate_posts_comments_rls_policies.sql",

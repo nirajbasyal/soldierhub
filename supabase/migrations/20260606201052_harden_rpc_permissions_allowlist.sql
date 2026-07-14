@@ -139,6 +139,33 @@ begin
 end;
 $$;
 
+-- This owner/admin deletion RPC likewise predated the recorded allowlist in
+-- production but was absent from the repository's migration history.
+create or replace function public.delete_own_post(p_post_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  deleted_count integer := 0;
+begin
+  if auth.uid() is null then
+    return false;
+  end if;
+
+  delete from public.posts p
+  where p.id = p_post_id
+    and (
+      p.author_id = auth.uid()
+      or public.is_admin()
+    );
+
+  get diagnostics deleted_count = row_count;
+  return deleted_count > 0;
+end;
+$$;
+
 -- Harden RPC/function permissions with an explicit allowlist.
 -- This migration does not change function bodies. It removes inherited PUBLIC
 -- execute access and grants each SECURITY DEFINER function only to the roles
