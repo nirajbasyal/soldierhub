@@ -24,7 +24,7 @@
     },
     {
       "file": "20260522140000_add_post_image_fields.sql",
-      "sha256": "b41271fd0a2ae1d5ed66a416e3247a3610ed3cef2a86c24a468302ba2ab48ced"
+      "sha256": "a227d302d7d601ea5f7d6db67dd7ae5f1fcb219d4389a6da890294b851711bd0"
     },
     {
       "file": "20260522190000_add_profile_avatar_url.sql",
