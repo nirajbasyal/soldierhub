@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { checkRateLimit, rateLimitResponse } from "@/lib/server/rateLimit";
 import { checkContentSafety } from "@/lib/server/contentSafety";
+import { requireServiceRoleClient } from "@/lib/server/supabaseAdmin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -72,6 +73,24 @@ function attachAuthorProfileToComment(comment, profile, userId) {
       comment.author_avatar_url_cached || comment.author_avatar_url || authorAvatarUrl,
     profile_avatar_url: comment.profile_avatar_url || authorAvatarUrl,
     avatar_url: comment.avatar_url || authorAvatarUrl,
+    viewer_is_author: true,
+  };
+}
+
+function protectAnonymousPostAuthor(comment, post, userId) {
+  if (!comment || post?.anonymous !== true || post?.author_id !== userId) return comment;
+
+  return {
+    ...comment,
+    author_id: null,
+    author_user_id: null,
+    author_name_cached: "Anonymous",
+    author_color_cached: "#5C6470",
+    author_avatar_url: null,
+    author_avatar_url_cached: null,
+    profile_avatar_url: null,
+    avatar_url: null,
+    is_anonymous_author: true,
     viewer_is_author: true,
   };
 }
@@ -170,10 +189,43 @@ export async function POST(request) {
     );
   }
 
-  const { data, error } = await supabase.rpc("create_comment_safe", {
-    p_post_id: postId,
-    p_body: body,
-  });
+  const contentWriter = requireServiceRoleClient();
+
+  if (!contentWriter.ok) {
+    console.error("Create comment service database access is not configured.");
+    return NextResponse.json(
+      { error: "Commenting is temporarily unavailable. Please try again shortly." },
+      { status: 503, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
+    );
+  }
+
+  const { data: post, error: postError } = await contentWriter.supabase
+    .from("posts")
+    .select("id, author_id, anonymous, status")
+    .eq("id", postId)
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (postError) {
+    console.error("Create comment post lookup failed:", postError);
+    return NextResponse.json(
+      { error: "Could not verify this post. Please try again." },
+      { status: 500, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
+    );
+  }
+
+  if (!post) {
+    return NextResponse.json(
+      { error: "This post is no longer available for comments." },
+      { status: 404, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
+    );
+  }
+
+  const { data, error } = await contentWriter.supabase
+    .from("comments")
+    .insert({ post_id: postId, author_id: user.id, body })
+    .select("id, post_id, body, created_at")
+    .single();
 
   if (error) {
     console.error("Create comment API failed:", error);
@@ -183,7 +235,11 @@ export async function POST(request) {
     );
   }
 
-  const comment = attachAuthorProfileToComment(getCommentPayload(data), profile, user.id);
+  const comment = protectAnonymousPostAuthor(
+    attachAuthorProfileToComment(getCommentPayload(data), profile, user.id),
+    post,
+    user.id
+  );
 
   return NextResponse.json(
     { comment },

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { checkRateLimit, rateLimitResponse } from "@/lib/server/rateLimit";
 import { checkContentSafety } from "@/lib/server/contentSafety";
+import { requireServiceRoleClient } from "@/lib/server/supabaseAdmin";
 import { CATEGORIES } from "@/lib/constants";
 
 export const runtime = "nodejs";
@@ -325,7 +326,17 @@ export async function POST(request) {
     ...(image || {}),
   };
 
-  const { data, error } = await supabase
+  const contentWriter = requireServiceRoleClient();
+
+  if (!contentWriter.ok) {
+    console.error("Create post service database access is not configured.");
+    return NextResponse.json(
+      { error: "Posting is temporarily unavailable. Please try again shortly." },
+      { status: 503, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
+    );
+  }
+
+  const { data, error } = await contentWriter.supabase
     .from("posts")
     .insert(payload)
     .select(POST_SELECT)
