@@ -2,6 +2,23 @@ import { withSentryConfig } from "@sentry/nextjs";
 
 const isProduction = process.env.NODE_ENV === "production";
 
+function getLoopbackSupabaseSources(value) {
+  try {
+    const url = new URL(value || "");
+    if (!["127.0.0.1", "localhost"].includes(url.hostname)) return [];
+    if (!["http:", "https:"].includes(url.protocol)) return [];
+
+    const websocketProtocol = url.protocol === "https:" ? "wss:" : "ws:";
+    return [url.origin, `${websocketProtocol}//${url.host}`];
+  } catch {
+    return [];
+  }
+}
+
+const loopbackSupabaseSources = getLoopbackSupabaseSources(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+);
+
 const scriptSources = [
   "'self'",
   "'unsafe-inline'",
@@ -29,6 +46,7 @@ const cspDirectives = [
     "connect-src 'self'",
     "https://*.supabase.co",
     "wss://*.supabase.co",
+    ...loopbackSupabaseSources,
     "https://api.weather.gov",
     "https://*.r2.cloudflarestorage.com",
     "https://*.r2.dev",
@@ -37,7 +55,7 @@ const cspDirectives = [
     "https://vitals.vercel-insights.com",
     "https://static.cloudflareinsights.com",
   ].join(" "),
-  isProduction ? "upgrade-insecure-requests" : "",
+  isProduction && loopbackSupabaseSources.length === 0 ? "upgrade-insecure-requests" : "",
 ].filter(Boolean);
 
 const contentSecurityPolicy = cspDirectives.join("; ");
