@@ -303,7 +303,7 @@
       "sha256": "65c25d8847291c43d76c72f368e31d0e25b73b2ec7e5a901c45336d9cae9fbe6"
     },
     {
-      "file": "20260715154252_enforce_admin_mfa_boundaries.sql",
+      "file": "20260715162535_enforce_admin_server_boundaries.sql",
       "sha256": "a86f6db1f44feb81404ada4e5b519b30296b92649b0e14c11c3dfe429bc28b4e"
     }
   ]

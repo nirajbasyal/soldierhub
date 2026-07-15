@@ -78,7 +78,7 @@ These should not be directly executable by `anon` or `authenticated`. They are f
 
 The current permission allowlist migration is:
 
-`supabase/migrations/20260715154252_enforce_admin_mfa_boundaries.sql`
+`supabase/migrations/20260715162535_enforce_admin_server_boundaries.sql`
 
 It revokes broad execute access and grants each exposed RPC intentionally.
 

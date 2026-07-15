@@ -74,7 +74,7 @@ test("admin post moderation and deletion use the MFA-gated server route", () => 
 
 test("database admin privileges are available only through protected service-role routes", () => {
   const migrationName = readdirSync(join(root, "supabase/migrations")).find((name) =>
-    name.endsWith("_enforce_admin_mfa_boundaries.sql"),
+    name.endsWith("_enforce_admin_server_boundaries.sql"),
   );
   assert.ok(migrationName, "admin MFA boundary migration is missing");
   const migration = read(`supabase/migrations/${migrationName}`);
