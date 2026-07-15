@@ -18,6 +18,10 @@ CI also starts a disposable local Supabase stack and runs `supabase db reset`.
 This proves the complete chain can rebuild an empty database before a change is
 allowed onto `main`.
 
+The same launch workflow then creates real local Auth users and runs Data API,
+RLS-abuse, Next.js API, upload-signing, admin TOTP/AAL2, and Playwright browser
+tests. See `tests/README.md` for the coverage matrix and local commands.
+
 The first baseline migration creates the core database foundation. Later migrations evolve it to the current production shape.
 
 The migration chain must recreate every database object the app needs:

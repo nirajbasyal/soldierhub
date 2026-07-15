@@ -293,6 +293,14 @@
     {
       "file": "20260714144013_harden_follow_notifications.sql",
       "sha256": "0881f94adf3bc005d05856ba687ee5729c3f76a86f80fceeef179d58cdc99c18"
+    },
+    {
+      "file": "20260715125700_restore_service_role_content_permissions.sql",
+      "sha256": "969644c21e3f8dabd93d51a8f216a757d777e988276ad3ebae14915fc5bc5893"
+    },
+    {
+      "file": "20260715130500_enforce_profile_sensitive_fields_trigger.sql",
+      "sha256": "65c25d8847291c43d76c72f368e31d0e25b73b2ec7e5a901c45336d9cae9fbe6"
     }
   ]
 }

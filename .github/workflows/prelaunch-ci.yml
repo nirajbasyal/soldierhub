@@ -30,6 +30,131 @@ jobs:
       - name: Rebuild from a clean database
         run: supabase db reset
 
+  security-integration:
+    name: Auth, RLS, API, upload, MFA, and browser tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      APP_BASE_URL: http://127.0.0.1:3000
+      PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+      SOLDIERHUB_ADMIN_EMAILS: integration-admin@soldierhub.test
+      R2_ACCOUNT_ID: integration-account
+      R2_ACCESS_KEY_ID: integration-access-key
+      R2_SECRET_ACCESS_KEY: integration-secret-key
+      R2_BUCKET_NAME: soldierhub-integration
+      R2_PUBLIC_URL: https://media.soldierhub.test
+      UPSTASH_REDIS_REST_URL: http://127.0.0.1:8079
+      UPSTASH_REDIS_REST_TOKEN: integration-rate-limit-token
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.109.1
+
+      - name: Initialize local Supabase config
+        run: supabase init
+
+      - name: Enable local TOTP MFA
+        shell: bash
+        run: |
+          sed -i '/^\[auth\.mfa\.totp\]/,/^\[/ {
+            s/^enroll_enabled = false$/enroll_enabled = true/
+            s/^verify_enabled = false$/verify_enabled = true/
+          }' supabase/config.toml
+          grep -A 2 '^\[auth\.mfa\.totp\]' supabase/config.toml
+
+      - name: Start disposable Supabase stack
+        run: supabase start -x studio,imgproxy,mailpit,edge-runtime,logflare,vector,supavisor
+
+      - name: Export local Supabase credentials
+        shell: bash
+        run: |
+          eval "$(supabase status -o env)"
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+            echo "TEST_SUPABASE_URL=$API_URL"
+            echo "TEST_SUPABASE_ANON_KEY=$ANON_KEY"
+            echo "TEST_SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+          } >> "$GITHUB_ENV"
+
+      - name: Run authenticated Data API and RLS abuse tests
+        run: npm run test:integration:db
+
+      - name: Build the production application against local Supabase
+        run: npm run build
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run API and browser end-to-end tests
+        shell: bash
+        run: |
+          mkdir -p test-results
+          node tests/integration/helpers/upstash-stub.mjs > test-results/rate-limiter.log 2>&1 &
+          LIMITER_PID=$!
+          npm run start -- -p 3000 > test-results/server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" "$LIMITER_PID" 2>/dev/null || true' EXIT
+
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:8079/health > /dev/null; then
+              break
+            fi
+            if ! kill -0 "$LIMITER_PID" 2>/dev/null; then
+              cat test-results/rate-limiter.log
+              exit 1
+            fi
+            sleep 1
+          done
+
+          curl --fail --silent http://127.0.0.1:8079/health > /dev/null
+
+          for attempt in {1..60}; do
+            if curl --fail --silent http://127.0.0.1:3000 > /dev/null; then
+              break
+            fi
+            if ! kill -0 "$SERVER_PID" 2>/dev/null; then
+              cat test-results/server.log
+              exit 1
+            fi
+            sleep 1
+          done
+
+          curl --fail --silent http://127.0.0.1:3000 > /dev/null
+          npm run test:integration:api
+          npm run test:e2e
+
+      - name: Upload integration diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-diagnostics
+          path: |
+            test-results
+            playwright-report
+          if-no-files-found: ignore
+
+      - name: Stop disposable Supabase stack
+        if: always()
+        run: supabase stop --no-backup
+
   build:
     name: Lint and build
     runs-on: ubuntu-latest

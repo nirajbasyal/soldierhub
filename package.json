@@ -12,6 +12,10 @@
     "start": "next start",
     "lint": "eslint .",
     "test": "node --test tests/*.test.mjs",
+    "test:integration": "node --test --test-concurrency=1 tests/integration/*.test.mjs",
+    "test:integration:db": "node --test --test-concurrency=1 tests/integration/supabase-authz.test.mjs",
+    "test:integration:api": "node --test --test-concurrency=1 tests/integration/app-api.test.mjs",
+    "test:e2e": "playwright test",
     "migrations:lock": "node scripts/update-migration-lock.mjs",
     "load:test": "node tests/load/soldierhub-load-test.mjs"
   },
@@ -34,6 +38,7 @@
     "sanitize-html": "2.17.6"
   },
   "devDependencies": {
+    "@playwright/test": "1.61.1",
     "autoprefixer": "^10.4.20",
     "eslint": "^9.0.0",
     "eslint-config-next": "^16.2.10",
