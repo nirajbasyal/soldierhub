@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { checkRateLimit, rateLimitResponse } from "@/lib/server/rateLimit";
-import { requireAdmin } from "@/lib/server/adminAuth";
+import { requireAdminService } from "@/lib/server/adminAuth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -79,7 +79,7 @@ export async function POST(request) {
 
   if (!ipRateLimit.allowed) return rateLimitResponse(ipRateLimit);
 
-  const admin = await requireAdmin(request);
+  const admin = await requireAdminService(request);
 
   if (!admin.ok) {
     return NextResponse.json(

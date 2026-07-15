@@ -299,7 +299,7 @@ export default function PublicBoardPrepStudyClient({ initialQuestions = [], init
   }, [questions, scores]);
 
   const selectedDeck = useMemo(() => (selectedDeckKey ? decks.find((deck) => deck.key === selectedDeckKey) || null : null), [decks, selectedDeckKey]);
-  const deckQuestions = selectedDeck?.questions || [];
+  const deckQuestions = useMemo(() => selectedDeck?.questions || [], [selectedDeck]);
   const allSummary = useMemo(() => getScoreSummary(scores, questions), [scores, questions]);
   const selectedSummary = useMemo(() => getScoreSummary(scores, deckQuestions), [scores, deckQuestions]);
 

@@ -1,5 +1,23 @@
 import { NextResponse } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
+import { buildContentSecurityPolicy } from "@/lib/security/contentSecurityPolicy.mjs";
+
+function secureRequest(request) {
+  const nonce = btoa(crypto.randomUUID());
+  const contentSecurityPolicy = buildContentSecurityPolicy({ nonce });
+  const requestHeaders = new Headers(request.headers);
+
+  requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set("Content-Security-Policy", contentSecurityPolicy);
+
+  return {
+    requestHeaders,
+    secureResponse(response) {
+      response.headers.set("Content-Security-Policy", contentSecurityPolicy);
+      return response;
+    },
+  };
+}
 
 function redirectPendingEmailLink(request) {
   const url = request.nextUrl;
@@ -18,9 +36,10 @@ function isUuidLike(value = "") {
 }
 
 export async function proxy(request) {
+  const { requestHeaders, secureResponse } = secureRequest(request);
   const path = request.nextUrl.pathname;
   const pendingRedirect = redirectPendingEmailLink(request);
-  if (pendingRedirect) return pendingRedirect;
+  if (pendingRedirect) return secureResponse(pendingRedirect);
 
   if (path === "/") {
     const sharedPostId = request.nextUrl.searchParams.get("post");
@@ -29,7 +48,7 @@ export async function proxy(request) {
       const nextUrl = request.nextUrl.clone();
       nextUrl.pathname = `/post/${sharedPostId}`;
       nextUrl.search = "";
-      return NextResponse.redirect(nextUrl);
+      return secureResponse(NextResponse.redirect(nextUrl));
     }
   }
 
@@ -37,14 +56,18 @@ export async function proxy(request) {
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||
     !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   ) {
-    return NextResponse.next();
+    return secureResponse(
+      NextResponse.next({ request: { headers: requestHeaders } })
+    );
   }
 
-  const { response, supabase, userId } = await updateSession(request);
+  const { response, supabase, userId } = await updateSession(request, {
+    requestHeaders,
+  });
 
   if (path.startsWith("/admin")) {
     if (!supabase || !userId) {
-      return NextResponse.redirect(new URL("/", request.url));
+      return secureResponse(NextResponse.redirect(new URL("/", request.url)));
     }
     const { data: profile } = await supabase
       .from("profiles")
@@ -52,11 +75,11 @@ export async function proxy(request) {
       .eq("id", userId)
       .single();
     if (profile?.role !== "admin") {
-      return NextResponse.redirect(new URL("/", request.url));
+      return secureResponse(NextResponse.redirect(new URL("/", request.url)));
     }
   }
 
-  return response;
+  return secureResponse(response);
 }
 
 export const config = {

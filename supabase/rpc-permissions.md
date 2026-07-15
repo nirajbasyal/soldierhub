@@ -34,12 +34,6 @@ These may be callable by `anon` and `authenticated` because they power public fe
 
 These require `authenticated`. The function body or API route must enforce owner/admin/verification checks:
 
-- `admin_list_profiles(text, integer)`
-- `admin_reject_profile(uuid)`
-- `admin_revoke_profile(uuid)`
-- `admin_revoke_profile_by_email(text)`
-- `admin_verify_profile_by_email(text)`
-- `create_comment_safe(uuid, text)`
 - `delete_comment_safe(uuid)`
 - `delete_own_post(uuid)`
 - `find_verified_profile_by_email(text)`
@@ -50,7 +44,6 @@ These require `authenticated`. The function body or API route must enforce owner
 - `is_verified_profile(uuid)`
 - `list_my_follow_connections(text, integer, integer)`
 - `list_my_notifications_hydrated(integer, timestamptz, uuid, uuid[])`
-- `restore_reported_post(uuid)`
 - `search_verified_profile_by_email(text)`
 - `search_verified_profiles(text, integer, integer)`
 - `search_verified_profiles_by_name(text, integer, integer)`
@@ -61,10 +54,17 @@ These require `authenticated`. The function body or API route must enforce owner
 These should not be directly executable by `anon` or `authenticated`. They are for triggers, auth signup, maintenance, or service-role-only flows:
 
 - `create_follow_notification()`
+- `admin_list_profiles(text, integer)`
+- `admin_reject_profile(uuid)`
+- `admin_revoke_profile(uuid)`
+- `admin_revoke_profile_by_email(text)`
+- `admin_verify_profile_by_email(text)`
+- `create_comment_safe(uuid, text)`
 - `delete_post(uuid)`
 - `handle_new_user()`
 - `protect_profile_sensitive_fields()`
 - `recount_post_counters(uuid)`
+- `restore_reported_post(uuid)`
 - `tg_cache_author_fields()`
 - `tg_cache_comment_author()`
 - `tg_mark_post_reported()`
@@ -78,12 +78,18 @@ These should not be directly executable by `anon` or `authenticated`. They are f
 
 The current permission allowlist migration is:
 
-`supabase/migrations/20260606213000_harden_rpc_permissions_allowlist.sql`
+`supabase/migrations/20260715154252_enforce_admin_mfa_boundaries.sql`
 
 It revokes broad execute access and grants each exposed RPC intentionally.
 
 ## Important Supabase advisor note
 
 Supabase may still warn when a `SECURITY DEFINER` function is intentionally executable by `anon` or `authenticated`. That does not automatically mean the app is broken. It means the function is powerful and should be reviewed. This allowlist is the review record.
+
+`public.is_admin()` deliberately remains executable by `authenticated` because
+RLS policies call it. It returns true only for `service_role`; browser JWTs are
+never database administrators, even after MFA. Protected admin routes verify
+the configured email allowlist and AAL2 before obtaining their server-only
+client. Admin profile and post-moderation RPCs are not browser-callable.
 
 Before changing any grant, search the app code for `.rpc("function_name")` and confirm the feature still works after the change.

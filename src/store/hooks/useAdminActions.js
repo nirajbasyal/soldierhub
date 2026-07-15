@@ -1,4 +1,3 @@
-import { createClient } from "@/lib/supabase/client";
 import * as ProfilesDB from "@/lib/db/profiles";
 import * as PostsDB from "@/lib/db/posts";
 
@@ -170,17 +169,7 @@ export function useAdminActions({
     }
 
     if (SUPA) {
-      const supabase = createClient();
-      if (!supabase) {
-        pushToast("Database connection is not available.", "error");
-        return;
-      }
-
-      const { error } = await supabase
-        .from("posts")
-        .delete()
-        .eq("id", postId);
-
+      const { error } = await PostsDB.adminDeletePost(postId);
       if (error) return pushToast(error.message, "error");
       pushToast("Post permanently deleted", "info");
       reloadPosts();

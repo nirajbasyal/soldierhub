@@ -1,70 +1,16 @@
 import { withSentryConfig } from "@sentry/nextjs";
 
-const isProduction = process.env.NODE_ENV === "production";
-
-function getLoopbackSupabaseSources(value) {
-  try {
-    const url = new URL(value || "");
-    if (!["127.0.0.1", "localhost"].includes(url.hostname)) return [];
-    if (!["http:", "https:"].includes(url.protocol)) return [];
-
-    const websocketProtocol = url.protocol === "https:" ? "wss:" : "ws:";
-    return [url.origin, `${websocketProtocol}//${url.host}`];
-  } catch {
-    return [];
-  }
-}
-
-const loopbackSupabaseSources = getLoopbackSupabaseSources(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-);
-
-const scriptSources = [
-  "'self'",
-  "'unsafe-inline'",
-  !isProduction ? "'unsafe-eval'" : "",
-  "blob:",
-  "https://static.cloudflareinsights.com",
-].filter(Boolean);
-
-const cspDirectives = [
-  "default-src 'self'",
-  "base-uri 'self'",
-  "object-src 'none'",
-  "frame-ancestors 'none'",
-  "form-action 'self'",
-  "manifest-src 'self'",
-  "img-src 'self' data: blob: https:",
-  "font-src 'self' data: https://fonts.gstatic.com",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  `script-src ${scriptSources.join(" ")}`,
-  "script-src-elem 'self' 'unsafe-inline' https://static.cloudflareinsights.com",
-  "worker-src 'self' blob:",
-  "frame-src 'none'",
-  [
-    "connect-src 'self'",
-    "https://*.supabase.co",
-    "wss://*.supabase.co",
-    ...loopbackSupabaseSources,
-    "https://api.weather.gov",
-    "https://*.r2.cloudflarestorage.com",
-    "https://*.r2.dev",
-    "https://*.ingest.sentry.io",
-    "https://*.sentry.io",
-    "https://vitals.vercel-insights.com",
-    "https://static.cloudflareinsights.com",
-  ].join(" "),
-  isProduction && loopbackSupabaseSources.length === 0 ? "upgrade-insecure-requests" : "",
-].filter(Boolean);
-
-const contentSecurityPolicy = cspDirectives.join("; ");
+const hostedProductionHeaders =
+  process.env.VERCEL_ENV === "production"
+    ? [
+        {
+          key: "Strict-Transport-Security",
+          value: "max-age=63072000; includeSubDomains; preload",
+        },
+      ]
+    : [];
 
 const securityHeaders = [
-  {
-    key: "Content-Security-Policy",
-    value: contentSecurityPolicy,
-  },
   {
     key: "X-DNS-Prefetch-Control",
     value: "on",
@@ -76,6 +22,15 @@ const securityHeaders = [
   {
     key: "X-Content-Type-Options",
     value: "nosniff",
+  },
+  ...hostedProductionHeaders,
+  {
+    key: "Cross-Origin-Opener-Policy",
+    value: "same-origin-allow-popups",
+  },
+  {
+    key: "X-Permitted-Cross-Domain-Policies",
+    value: "none",
   },
   {
     key: "Referrer-Policy",
@@ -90,6 +45,7 @@ const securityHeaders = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  poweredByHeader: false,
   async headers() {
     return [
       {

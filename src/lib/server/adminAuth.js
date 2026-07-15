@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { requireServiceRoleClient } from "@/lib/server/supabaseAdmin";
 
 export function getBearerToken(request) {
   const header = request.headers.get("authorization") || "";
@@ -103,4 +104,24 @@ export async function requireAdmin(request, { requireMfa = true } = {}) {
   }
 
   return { ok: true, supabase, user, profile, accessToken };
+}
+
+/**
+ * Authenticate an allowlisted AAL2 administrator, then return the server-only
+ * database client for privileged reads and writes. Keeping this composition in
+ * one helper prevents API routes from accidentally performing admin work with
+ * the browser's bearer token.
+ */
+export async function requireAdminService(request) {
+  const admin = await requireAdmin(request);
+  if (!admin.ok) return admin;
+
+  const serviceRole = requireServiceRoleClient();
+  if (!serviceRole.ok) return serviceRole;
+
+  return {
+    ...admin,
+    userSupabase: admin.supabase,
+    supabase: serviceRole.supabase,
+  };
 }

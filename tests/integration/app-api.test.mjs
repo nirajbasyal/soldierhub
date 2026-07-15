@@ -231,12 +231,57 @@ test("admin APIs reject AAL1 and accept the same administrator only after real T
   const { supabase, session } = await signInTestUser(state.admin);
   assert.equal(jwtPayload(session.access_token).aal, "aal1");
 
+  const directProfileRead = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("id", state.verified.id)
+    .maybeSingle();
+  assert.ifError(directProfileRead.error);
+  assert.equal(directProfileRead.data, null, "AAL1 admin inherited database admin read access");
+
+  const directResourceWrite = await supabase.from("resources").insert({
+    section: "AAL1 bypass",
+    title: "Must not persist",
+    description: "Direct admin Data API write without MFA",
+    link: "",
+  });
+  assert.ok(directResourceWrite.error, "AAL1 admin wrote an admin-managed table directly");
+  assert.equal(directResourceWrite.error.code, "42501");
+
+  const directAdminRpc = await supabase.rpc("admin_list_profiles", {
+    p_queue: "verified",
+    p_limit: 5,
+  });
+  assert.ok(directAdminRpc.error, "AAL1 admin called a server-only SECURITY DEFINER RPC");
+  assert.equal(directAdminRpc.error.code, "42501");
+
+  const adminDb = createAdminClient();
+  const { error: reportFixtureError } = await adminDb
+    .from("posts")
+    .update({ status: "reported", report_count: 1 })
+    .eq("id", state.postId);
+  assert.ifError(reportFixtureError);
+
   const beforeMfa = await api("/api/admin/profiles/list", {
     token: session.access_token,
     body: { queue: "verified", limit: 5 },
   });
   assert.equal(beforeMfa.response.status, 403);
   assert.equal(beforeMfa.payload.code, "ADMIN_MFA_REQUIRED");
+
+  const restoreBeforeMfa = await api("/api/admin/posts/action", {
+    token: session.access_token,
+    body: { action: "restore", postId: state.postId },
+  });
+  assert.equal(restoreBeforeMfa.response.status, 403);
+  assert.equal(restoreBeforeMfa.payload.code, "ADMIN_MFA_REQUIRED");
+
+  const reportsBeforeMfa = await api("/api/admin/posts/action", {
+    token: session.access_token,
+    method: "GET",
+  });
+  assert.equal(reportsBeforeMfa.response.status, 403);
+  assert.equal(reportsBeforeMfa.payload.code, "ADMIN_MFA_REQUIRED");
 
   const { data: enrollment, error: enrollError } = await supabase.auth.mfa.enroll({
     factorType: "totp",
@@ -270,4 +315,64 @@ test("admin APIs reject AAL1 and accept the same administrator only after real T
   });
   assert.equal(afterMfa.response.status, 200, JSON.stringify(afterMfa.payload));
   assert.ok(Array.isArray(afterMfa.payload.data));
+
+  const directAdminRpcAfterMfa = await supabase.rpc("admin_list_profiles", {
+    p_queue: "verified",
+    p_limit: 5,
+  });
+  assert.ok(
+    directAdminRpcAfterMfa.error,
+    "AAL2 browser session bypassed the protected admin profile route",
+  );
+  assert.equal(directAdminRpcAfterMfa.error.code, "42501");
+
+  const directResourceWriteAfterMfa = await supabase.from("resources").insert({
+    section: "AAL2 bypass",
+    title: "Must not persist",
+    description: "Direct admin Data API write after MFA",
+    link: "",
+  });
+  assert.ok(
+    directResourceWriteAfterMfa.error,
+    "AAL2 browser session inherited database administrator privileges",
+  );
+  assert.equal(directResourceWriteAfterMfa.error.code, "42501");
+
+  const reportsAfterMfa = await api("/api/admin/posts/action", {
+    token: aal2Token,
+    method: "GET",
+  });
+  assert.equal(reportsAfterMfa.response.status, 200, JSON.stringify(reportsAfterMfa.payload));
+  assert.ok(
+    reportsAfterMfa.payload.data.some((post) => post.id === state.postId),
+    "protected moderation queue did not return the reported fixture",
+  );
+
+  const restored = await api("/api/admin/posts/action", {
+    token: aal2Token,
+    body: { action: "restore", postId: state.postId },
+  });
+  assert.equal(restored.response.status, 200, JSON.stringify(restored.payload));
+
+  const { data: restoredPost, error: restoredReadError } = await adminDb
+    .from("posts")
+    .select("status, report_count")
+    .eq("id", state.postId)
+    .single();
+  assert.ifError(restoredReadError);
+  assert.deepEqual(restoredPost, { status: "active", report_count: 0 });
+
+  const deleted = await api("/api/admin/posts/action", {
+    token: aal2Token,
+    body: { action: "delete", postId: state.postId },
+  });
+  assert.equal(deleted.response.status, 200, JSON.stringify(deleted.payload));
+
+  const { data: missingPost, error: missingPostError } = await adminDb
+    .from("posts")
+    .select("id")
+    .eq("id", state.postId)
+    .maybeSingle();
+  assert.ifError(missingPostError);
+  assert.equal(missingPost, null);
 });

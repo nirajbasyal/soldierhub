@@ -11,7 +11,7 @@ Supabase project and a production Next.js build:
 | --- | --- | --- |
 | Fast checks | `npm test` | Sanitization, migration immutability, and source contracts |
 | Auth/RLS integration | `npm run test:integration:db` | Real Auth sessions, PostgREST grants, RLS isolation, privilege-escalation defenses, anonymous identity masking |
-| API integration | `npm run test:integration:api` | Auth and verification gates, moderation, persisted post/comment writes, upload signing, admin TOTP/AAL2 enforcement |
+| API integration | `npm run test:integration:api` | Auth and verification gates, moderation, persisted post/comment writes, upload signing, admin TOTP/AAL2 enforcement, and denial of direct AAL2 admin Data API writes |
 | Browser E2E | `npm run test:e2e` | Sign-in → publish → render → reply plus browser image processing and direct R2 upload |
 
 ## Local requirements

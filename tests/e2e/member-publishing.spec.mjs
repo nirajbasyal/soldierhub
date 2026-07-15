@@ -72,8 +72,26 @@ test("verified member signs in, publishes, replies, and uploads through the brow
     });
   });
 
-  await page.goto("/");
+  const initialResponse = await page.goto("/");
+  const csp = initialResponse?.headers()["content-security-policy"] || "";
+  const scriptDirective = csp
+    .split(";")
+    .map((directive) => directive.trim())
+    .find((directive) => directive.startsWith("script-src ")) || "";
+  expect(scriptDirective).toContain("'strict-dynamic'");
+  expect(scriptDirective).toMatch(/'nonce-[^']+'/);
+  expect(scriptDirective).not.toContain("'unsafe-inline'");
   await expect(page.getByRole("main")).toBeVisible();
+
+  const executableInlineScriptsMissingNonce = await page.locator("script:not([src])").evaluateAll(
+    (scripts) =>
+      scripts.filter(
+        (script) =>
+          script.type !== "application/ld+json" &&
+          !script.nonce,
+      ).length,
+  );
+  expect(executableInlineScriptsMissingNonce).toBe(0);
 
   await page.getByRole("button", { name: "Sign in", exact: true }).first().click();
   const dialog = page.getByRole("dialog").first();

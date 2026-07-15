@@ -289,6 +289,8 @@ export default function AdminSecurityPage() {
               <form onSubmit={verifyEnrollment} className="mt-4 space-y-4">
                 {qrCode ? (
                   <div className="mx-auto flex max-w-xs justify-center rounded-3xl border p-4" style={{ borderColor: T.border, backgroundColor: T.surface }}>
+                    {/* Data-URI QR codes are already generated at their final size. */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={qrCode} alt="Google Authenticator QR code" className="h-56 w-56 rounded-2xl bg-white p-2" />
                   </div>
                 ) : null}

@@ -321,30 +321,6 @@ async function listMyPostsFromView(supabase, userId, limit) {
   return { data: await hydrateTablePosts(supabase, fallback.data || []), error: fallback.error };
 }
 
-async function listReportedPostsFromView(supabase) {
-  const result = await supabase
-    .from("posts_with_meta")
-    .select("*")
-    .eq("status", "reported")
-    .order("created_at", { ascending: false })
-    .limit(50);
-
-  if (!result.error) {
-    return { data: await attachProfilesToPosts(supabase, result.data || []), error: null };
-  }
-
-  console.error("List reported posts from metadata view failed:", result.error);
-
-  const fallback = await supabase
-    .from("posts")
-    .select(POST_SELECT)
-    .eq("status", "reported")
-    .order("created_at", { ascending: false })
-    .limit(50);
-
-  return { data: await hydrateTablePosts(supabase, fallback.data || []), error: fallback.error };
-}
-
 export async function listMyPosts(userId, { limit = 30 } = {}) {
   const supabase = createClient();
   if (!supabase || !userId) return { data: [], error: null };
@@ -356,7 +332,33 @@ export async function listReportedPosts() {
   const supabase = createClient();
   if (!supabase) return { data: [], error: null };
 
-  return listReportedPostsFromView(supabase);
+  const fallbackMessage = "Could not load reported posts.";
+  const { accessToken, error } = await getAccessTokenForApi(supabase, fallbackMessage);
+  if (error || !accessToken) return { data: [], error };
+
+  const response = await fetch("/api/admin/posts/action", {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    cache: "no-store",
+  });
+
+  let result = null;
+  try {
+    result = await response.json();
+  } catch {
+    result = null;
+  }
+
+  if (!response.ok) {
+    return {
+      data: [],
+      error: { message: result?.error || fallbackMessage },
+    };
+  }
+
+  return {
+    data: (result?.data || []).map(normalizePostRow),
+    error: null,
+  };
 }
 
 async function getAccessTokenForApi(supabase, fallbackMessage) {
@@ -481,15 +483,38 @@ export async function deleteMyPost(postId) {
 
 export async function restoreReportedPost(postId) {
   const supabase = createClient();
-  if (!supabase) return { error: null };
+  if (!supabase) return { data: null, error: null };
 
-  const { data, error } = await supabase.rpc("restore_reported_post", {
-    p_post_id: resolvePostId(postId),
-  });
+  const { accessToken, error } = await getAccessTokenForApi(
+    supabase,
+    "Please verify admin MFA before restoring a post."
+  );
+  if (error || !accessToken) return { data: null, error };
 
-  if (error) console.error("Restore reported post failed:", error);
+  return postJsonToApi(
+    "/api/admin/posts/action",
+    accessToken,
+    { action: "restore", postId: resolvePostId(postId) },
+    "Could not restore the reported post."
+  );
+}
 
-  return { data, error };
+export async function adminDeletePost(postId) {
+  const supabase = createClient();
+  if (!supabase) return { data: null, error: null };
+
+  const { accessToken, error } = await getAccessTokenForApi(
+    supabase,
+    "Please verify admin MFA before deleting a post."
+  );
+  if (error || !accessToken) return { data: null, error };
+
+  return postJsonToApi(
+    "/api/admin/posts/action",
+    accessToken,
+    { action: "delete", postId: resolvePostId(postId) },
+    "Could not delete the post."
+  );
 }
 
 export async function listMyFeedViewerState(userId, postIds = []) {
