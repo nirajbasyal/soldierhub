@@ -297,6 +297,10 @@
     {
       "file": "20260715125700_restore_service_role_content_permissions.sql",
       "sha256": "969644c21e3f8dabd93d51a8f216a757d777e988276ad3ebae14915fc5bc5893"
+    },
+    {
+      "file": "20260715130500_enforce_profile_sensitive_fields_trigger.sql",
+      "sha256": "23a4d4793d15ae916cdf244e3e9c0e1ef0dc9ec5e368115a244cd26e8aa19f9c"
     }
   ]
 }
