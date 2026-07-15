@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 const ALLOWED_ACTIONS = new Set(["delete", "restore"]);
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const REPORTED_POST_SELECT =
-  "id, author_id, author_name_cached, author_color_cached, category, body, anonymous, status, edited, created_at, updated_at, image_url, image_key, image_width, image_height, image_size, image_thumbnail_url, image_thumbnail_key, image_thumbnail_width, image_thumbnail_height, image_thumbnail_size, report_count";
+  "id, author_id, author_name, author_color, category, body, anonymous, status, edited, created_at, updated_at, image_url, image_key, image_width, image_height, image_size, image_thumbnail_url, image_thumbnail_key, image_thumbnail_width, image_thumbnail_height, image_thumbnail_size, report_count";
 
 function cleanText(value) {
   return typeof value === "string" ? value.trim() : "";
