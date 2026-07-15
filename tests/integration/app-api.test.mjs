@@ -255,12 +255,13 @@ test("admin APIs reject AAL1 and accept the same administrator only after real T
   assert.ok(directAdminRpc.error, "AAL1 admin called a server-only SECURITY DEFINER RPC");
   assert.equal(directAdminRpc.error.code, "42501");
 
-  const adminDb = createAdminClient();
-  const { error: reportFixtureError } = await adminDb
-    .from("posts")
-    .update({ status: "reported", report_count: 1 })
-    .eq("id", state.postId);
+  const { error: reportFixtureError } = await supabase.rpc("toggle_post_report", {
+    p_post_id: state.postId,
+    p_reason: "Integration moderation fixture",
+  });
   assert.ifError(reportFixtureError);
+
+  const adminDb = createAdminClient();
 
   const beforeMfa = await api("/api/admin/profiles/list", {
     token: session.access_token,
