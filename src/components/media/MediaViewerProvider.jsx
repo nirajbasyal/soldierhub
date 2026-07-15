@@ -130,6 +130,8 @@ function MediaViewer({ item, onClose }) {
               <span className="mt-2 text-sm font-semibold leading-6 text-white/65">Close this viewer and try opening the image again.</span>
             </span>
           ) : (
+            /* Full-resolution R2 media intentionally bypasses another image proxy. */
+            /* eslint-disable-next-line @next/next/no-img-element */
             <img
               src={displayUrl}
               alt={item?.alt || "Soldier Hub post image"}

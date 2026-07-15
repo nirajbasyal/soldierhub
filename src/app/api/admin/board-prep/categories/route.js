@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { checkRateLimit, rateLimitResponse } from "@/lib/server/rateLimit";
-import { requireAdmin } from "@/lib/server/adminAuth";
+import { requireAdminService } from "@/lib/server/adminAuth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,7 +20,7 @@ async function adminContext(request, prefix) {
   });
   if (!rateLimit.allowed) return { response: rateLimitResponse(rateLimit) };
 
-  const admin = await requireAdmin(request);
+  const admin = await requireAdminService(request);
   if (!admin.ok) {
     return {
       response: NextResponse.json(

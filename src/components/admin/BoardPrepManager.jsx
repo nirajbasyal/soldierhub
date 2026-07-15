@@ -254,6 +254,9 @@ export default function BoardPrepManager({ onPendingRequestCountChange } = {}) {
     }
   }
 
+  // Initial load uses the initial filters. Later filter/search loads are explicit
+  // button actions so typing cannot create an unbounded admin request stream.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, []);
 
   function focusEditor() {

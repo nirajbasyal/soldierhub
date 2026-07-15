@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { checkRateLimit, rateLimitResponse } from "@/lib/server/rateLimit";
 import { requireAdmin } from "@/lib/server/adminAuth";
+import { requireServiceRoleClient } from "@/lib/server/supabaseAdmin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -94,8 +95,16 @@ export async function POST(request) {
     );
   }
 
+  const serviceRole = requireServiceRoleClient();
+  if (!serviceRole.ok) {
+    return NextResponse.json(
+      { error: serviceRole.error },
+      { status: serviceRole.status, headers: { ...userRateLimit.headers, "Cache-Control": "no-store" } }
+    );
+  }
+
   const { data, error } = await runAdminAction({
-    supabase: admin.supabase,
+    supabase: serviceRole.supabase,
     action,
     profileId,
     email,

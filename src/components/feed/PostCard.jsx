@@ -217,6 +217,8 @@ function PostImagePreview({ image, onOpen, alt }) {
       }}
       aria-label={alt ? `Open image: ${alt}` : "Open post image"}
     >
+      {/* R2 supplies the optimized thumbnail/full-size srcSet directly. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={image.url}
         srcSet={
@@ -305,6 +307,8 @@ function PostImageLightbox({ image, onClose, alt }) {
         }}
       >
         <div className={isLongImage ? "min-h-full" : "flex min-h-full items-center justify-center"}>
+          {/* Lightbox media intentionally bypasses another optimization proxy. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={displayUrl}
             alt={alt ? `Full size image: ${alt}` : "Full size image attached to this post"}

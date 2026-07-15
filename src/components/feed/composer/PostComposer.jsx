@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Lock, Pencil, Plus, X } from "lucide-react";
 import { T } from "@/lib/theme";
@@ -380,9 +380,10 @@ export default function PostComposer({ startOpen = false, pageMode = false }) {
     }
   };
 
+  const handleExternalSubmit = useEffectEvent(() => submit());
+
   useEffect(() => {
     if (!pageMode || typeof window === "undefined") return undefined;
-    const handleExternalSubmit = () => submit();
     window.addEventListener(COMPOSE_SUBMIT_EVENT, handleExternalSubmit);
     return () => window.removeEventListener(COMPOSE_SUBMIT_EVENT, handleExternalSubmit);
   }, [pageMode]);

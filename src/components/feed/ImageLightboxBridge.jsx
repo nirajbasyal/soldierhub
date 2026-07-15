@@ -88,6 +88,8 @@ export default function ImageLightboxBridge() {
       </div>
 
       <div className="flex min-h-0 flex-1 items-center justify-center" onClick={() => setImage(null)}>
+        {/* Full-resolution user media must preserve its original URL and dimensions. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={image.src}
           alt={image.alt}

@@ -52,7 +52,6 @@ export default function AdminPage() {
     authLoading,
     pendingUsers,
     blockedUsers,
-    posts,
     users,
   } = useApp();
 
@@ -62,6 +61,7 @@ export default function AdminPage() {
   const [gateCount, setGateCount] = useState(0);
   const [boardRequestCount, setBoardRequestCount] = useState(0);
   const [auditCount, setAuditCount] = useState(0);
+  const [reportedCount, setReportedCount] = useState(0);
   const [mfaChecking, setMfaChecking] = useState(true);
   const [mfaAllowed, setMfaAllowed] = useState(false);
 
@@ -157,7 +157,6 @@ export default function AdminPage() {
 
   if (!currentUser || currentUser.role !== "admin" || !mfaAllowed) return null;
 
-  const reportedCount = posts.filter((p) => p.status === "reported").length;
   const memberCount = users.filter((u) => u.role !== "admin").length;
   const blockedCount = blockedUsers?.length || 0;
 
@@ -287,7 +286,7 @@ export default function AdminPage() {
                 {tab === "pending" && <PendingUsersList searchQuery={searchQuery} />}
                 {tab === "members" && <MembersList searchQuery={searchQuery} />}
                 {tab === "blocked" && <BlockedUsersList searchQuery={searchQuery} />}
-                {tab === "reported" && <ReportedPostsList />}
+                {tab === "reported" && <ReportedPostsList onCountChange={setReportedCount} />}
                 {tab === "board" && <BoardPrepManager onPendingRequestCountChange={setBoardRequestCount} />}
                 {tab === "gates" && <GateManager onCountChange={setGateCount} />}
                 {tab === "resources" && <ResourceManager onCountChange={setResourceCount} />}

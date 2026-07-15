@@ -1,0 +1,55 @@
+name: Deploy production database
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/migrations/**"
+      - "supabase/migration-history.lock.json"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-supabase-migrations
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Push reviewed migrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_PROJECT_ID: ibavzficwjtdbyexuzkh
+
+    steps:
+      - name: Require production migration credentials
+        shell: bash
+        run: |
+          test -n "$SUPABASE_ACCESS_TOKEN"
+          test -n "$SUPABASE_DB_PASSWORD"
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.109.1
+
+      - name: Link production project
+        run: supabase link --project-ref "$SUPABASE_PROJECT_ID" --password "$SUPABASE_DB_PASSWORD"
+
+      - name: Preview pending migrations
+        run: supabase db push --linked --password "$SUPABASE_DB_PASSWORD" --dry-run
+
+      - name: Apply pending migrations
+        run: supabase db push --linked --password "$SUPABASE_DB_PASSWORD" --yes
+
+      - name: Verify repository and production history match
+        run: supabase migration list --linked --password "$SUPABASE_DB_PASSWORD"

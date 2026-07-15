@@ -1,5 +1,6 @@
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { headers } from "next/headers";
 import "./globals.css";
 import "./feed-polish.css";
 import "./board-prep-question-cards.css";
@@ -178,11 +179,14 @@ export const viewport = {
   themeColor: "#0B1C2C",
 };
 
-export default function RootLayout({ children }) {
+export default async function RootLayout({ children }) {
+  const nonce = (await headers()).get("x-nonce") || undefined;
+
   return (
     <html lang="en">
       <body style={{ backgroundColor: "#F6F3EC" }}>
         <script
+          nonce={nonce}
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(siteSchema) }}
         />

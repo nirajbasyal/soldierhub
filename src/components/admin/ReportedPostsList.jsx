@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ArrowLeft, Flag, ShieldCheck, Trash2 } from "lucide-react";
 import { CATEGORIES } from "@/lib/constants";
 import { T } from "@/lib/theme";
@@ -10,13 +10,45 @@ import Button from "@/components/ui/Button";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import EmptyState from "@/components/ui/EmptyState";
 import ExpandableText from "@/components/ui/ExpandableText";
+import * as PostsDB from "@/lib/db/posts";
 
 const REPORTED_POST_PREVIEW_LENGTH = 320;
 
-export default function ReportedPostsList() {
-  const { posts, restoreReportedPost, adminDeletePost } = useApp();
-  const reported = posts.filter((p) => p.status === "reported");
+export default function ReportedPostsList({ onCountChange }) {
+  const { restoreReportedPost, adminDeletePost, pushToast } = useApp();
+  const [reported, setReported] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [confirm, setConfirm] = useState(null);
+
+  const loadReportedPosts = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await PostsDB.listReportedPosts();
+    if (error) {
+      pushToast(error.message || "Could not load reported posts.", "error");
+    } else {
+      setReported(data || []);
+      onCountChange?.((data || []).length);
+    }
+    setLoading(false);
+  }, [onCountChange, pushToast]);
+
+  useEffect(() => {
+    loadReportedPosts();
+  }, [loadReportedPosts]);
+
+  async function restorePost(postId) {
+    await restoreReportedPost(postId);
+    await loadReportedPosts();
+  }
+
+  async function deletePost(postId) {
+    await adminDeletePost(postId);
+    await loadReportedPosts();
+  }
+
+  if (loading) {
+    return <EmptyState icon={Flag} title="Loading reports" body="Checking the protected moderation queue." />;
+  }
 
   if (reported.length === 0) {
     return <EmptyState icon={ShieldCheck} title="No reports" body="No posts are currently flagged." />;
@@ -57,7 +89,7 @@ export default function ReportedPostsList() {
               </div>
 
               <div className="flex flex-col sm:flex-row gap-2 mt-4">
-                <Button variant="softSuccess" size="sm" icon={ArrowLeft} onClick={() => restoreReportedPost(p.id)}>
+                <Button variant="softSuccess" size="sm" icon={ArrowLeft} onClick={() => restorePost(p.id)}>
                   Send back to feed
                 </Button>
                 <Button variant="softDanger" size="sm" icon={Trash2} onClick={() => setConfirm({ id: p.id })}>
@@ -75,7 +107,7 @@ export default function ReportedPostsList() {
         body="The post and all its comments will be removed permanently. This cannot be undone."
         confirmText="Delete permanently"
         danger
-        onConfirm={() => { adminDeletePost(confirm.id); setConfirm(null); }}
+        onConfirm={() => { deletePost(confirm.id); setConfirm(null); }}
         onCancel={() => setConfirm(null)}
       />
     </div>

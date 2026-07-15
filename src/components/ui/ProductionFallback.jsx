@@ -65,6 +65,8 @@ export default function ProductionFallback({
                 className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl border shadow-sm"
                 style={{ backgroundColor: T.brandNavy, borderColor: "rgba(207,218,232,0.9)" }}
               >
+                {/* Static fallback must render even when the image optimizer is unavailable. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/brand/soldierhub-app-icon.svg"
                   alt="Soldier Hub app icon"

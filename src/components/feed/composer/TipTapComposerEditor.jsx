@@ -476,6 +476,8 @@ export default function TipTapComposerEditor({
           onClick={(event) => event.stopPropagation()}
         >
           <div className="relative flex justify-center bg-[#EEF3F8]">
+            {/* Local blob previews cannot be handled by next/image. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={selectedImage.previewUrl} alt="Selected post preview" className="block max-h-[40vh] w-full object-cover md:max-h-[340px]" style={{ aspectRatio: selectedImageAspectRatio }} />
             <button
               type="button"

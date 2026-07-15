@@ -243,7 +243,7 @@ export default function MobileWeatherStrip() {
 
     async function loadWeather({ silent = false } = {}) {
       try {
-        if (!silent && !weather) setStatus("loading");
+        if (!silent) setStatus("loading");
 
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 7000);
@@ -296,7 +296,7 @@ export default function MobileWeatherStrip() {
 
   const time = useMemo(() => formatElPasoTime(now), [now]);
   const date = useMemo(() => formatElPasoDate(now), [now]);
-  const observedLabel = useMemo(() => getObservedLabel(weather), [weather, now]);
+  const observedLabel = useMemo(() => getObservedLabel(weather), [weather]);
   const night = useMemo(() => isElPasoNight(now), [now]);
 
   const tempText = typeof weather?.tempF === "number" ? `${weather.tempF}°F` : status === "error" ? "Weather unavailable" : "Checking weather";

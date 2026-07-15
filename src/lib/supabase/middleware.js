@@ -44,8 +44,10 @@ function clearSupabaseAuthCookies(request, response) {
  * Without periodic refresh, the user appears logged out on Server Components
  * even though their browser session is still alive.
  */
-export async function updateSession(request) {
-  let response = NextResponse.next({ request });
+export async function updateSession(request, { requestHeaders = request.headers } = {}) {
+  const nextResponse = () =>
+    NextResponse.next({ request: { headers: requestHeaders } });
+  let response = nextResponse();
 
   if (
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||
@@ -73,7 +75,7 @@ export async function updateSession(request) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           );
-          response = NextResponse.next({ request });
+          response = nextResponse();
           cookiesToSet.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, options)
           );
