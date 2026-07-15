@@ -38,27 +38,30 @@ test("verified member signs in, publishes, replies, and uploads through the brow
 
   page.on("pageerror", (error) => pageErrors.push(error.message));
 
-  await page.route("https://integration-account.r2.cloudflarestorage.com/**", async (route) => {
-    if (route.request().method() === "OPTIONS") {
-      await route.fulfill({
-        status: 204,
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Methods": "PUT, OPTIONS",
-          "Access-Control-Allow-Headers": "content-type, x-amz-content-sha256, x-amz-date",
-        },
-      });
-      return;
-    }
+  await page.route(
+    "https://soldierhub-integration.integration-account.r2.cloudflarestorage.com/**",
+    async (route) => {
+      if (route.request().method() === "OPTIONS") {
+        await route.fulfill({
+          status: 204,
+          headers: {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "PUT, OPTIONS",
+            "Access-Control-Allow-Headers": "content-type, x-amz-content-sha256, x-amz-date",
+          },
+        });
+        return;
+      }
 
-    assert.equal(route.request().method(), "PUT");
-    r2PutCount += 1;
-    await route.fulfill({
-      status: 200,
-      headers: { "Access-Control-Allow-Origin": "*" },
-      body: "",
-    });
-  });
+      assert.equal(route.request().method(), "PUT");
+      r2PutCount += 1;
+      await route.fulfill({
+        status: 200,
+        headers: { "Access-Control-Allow-Origin": "*" },
+        body: "",
+      });
+    },
+  );
 
   await page.route("https://media.soldierhub.test/**", async (route) => {
     await route.fulfill({

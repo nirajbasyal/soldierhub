@@ -200,7 +200,10 @@ test("upload signing rejects abuse and returns a user-scoped short-lived R2 targ
   assert.equal(signed.payload.publicUrl, `https://media.soldierhub.test/${signed.payload.key}`);
 
   const uploadUrl = new URL(signed.payload.uploadUrl);
-  assert.equal(uploadUrl.hostname, "integration-account.r2.cloudflarestorage.com");
+  assert.equal(
+    uploadUrl.hostname,
+    "soldierhub-integration.integration-account.r2.cloudflarestorage.com",
+  );
   assert.ok(uploadUrl.searchParams.has("X-Amz-Signature"));
   assert.ok(uploadUrl.searchParams.has("X-Amz-Expires"));
 });

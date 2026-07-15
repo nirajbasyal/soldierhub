@@ -69,6 +69,15 @@ jobs:
       - name: Initialize local Supabase config
         run: supabase init
 
+      - name: Enable local TOTP MFA
+        shell: bash
+        run: |
+          sed -i '/^\[auth\.mfa\.totp\]/,/^\[/ {
+            s/^enroll_enabled = false$/enroll_enabled = true/
+            s/^verify_enabled = false$/verify_enabled = true/
+          }' supabase/config.toml
+          grep -A 2 '^\[auth\.mfa\.totp\]' supabase/config.toml
+
       - name: Start disposable Supabase stack
         run: supabase start -x studio,imgproxy,mailpit,edge-runtime,logflare,vector,supavisor
 
