@@ -68,6 +68,8 @@ test("admin post moderation and deletion use the MFA-gated server route", () => 
   assert.match(postsDb, /\/api\/admin\/posts\/action/);
   assert.match(route, /requireAdminService\(request\)/);
   assert.match(route, /export async function GET\(request\)/);
+  assert.match(route, /\.from\("posts"\)[\s\S]*\.eq\("status", "reported"\)/);
+  assert.doesNotMatch(route, /\.from\("posts_with_meta"\)/);
 });
 
 test("database admin privileges are available only through protected service-role routes", () => {
