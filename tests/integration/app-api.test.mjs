@@ -51,12 +51,13 @@ function jwtPayload(token) {
   return JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
 }
 
-async function api(path, { token, body, method = "POST" } = {}) {
+async function api(path, { token, body, headers = {}, method = "POST" } = {}) {
   const response = await fetch(`${baseUrl}${path}`, {
     method,
     headers: {
       ...(body === undefined ? {} : { "Content-Type": "application/json" }),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...headers,
     },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
@@ -202,6 +203,25 @@ test("upload signing rejects abuse and returns a user-scoped short-lived R2 targ
   assert.equal(uploadUrl.hostname, "integration-account.r2.cloudflarestorage.com");
   assert.ok(uploadUrl.searchParams.has("X-Amz-Signature"));
   assert.ok(uploadUrl.searchParams.has("X-Amz-Expires"));
+});
+
+test("production routes enforce the shared IP rate limit", async () => {
+  const headers = { "x-vercel-forwarded-for": "203.0.113.77" };
+
+  for (let attempt = 1; attempt <= 20; attempt += 1) {
+    const result = await api("/api/posts/create", {
+      headers,
+      body: { body: `Rate-limit attempt ${attempt}`, category: "General Q&A" },
+    });
+    assert.equal(result.response.status, 401, `attempt ${attempt}: ${JSON.stringify(result.payload)}`);
+  }
+
+  const blocked = await api("/api/posts/create", {
+    headers,
+    body: { body: "Rate-limit attempt 21", category: "General Q&A" },
+  });
+  assert.equal(blocked.response.status, 429, JSON.stringify(blocked.payload));
+  assert.equal(blocked.payload.retryAfter > 0, true);
 });
 
 test("admin APIs reject AAL1 and accept the same administrator only after real TOTP verification", async () => {
