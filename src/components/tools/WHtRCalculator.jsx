@@ -33,6 +33,8 @@ export default function WHtRCalculator() {
     return {
       error: false,
       heightInches,
+      waistValue,
+      rawRatio,
       recordedRatio,
       passes: recordedRatio < STANDARD,
     };
@@ -60,29 +62,36 @@ export default function WHtRCalculator() {
     boxShadow:
       result && !result.error
         ? result.passes
-          ? "0 0 0 1px rgba(22, 163, 74, 0.20)"
-          : "0 0 0 1px rgba(220, 38, 38, 0.20)"
+          ? "0 0 0 2px rgba(22, 163, 74, 0.16)"
+          : "0 0 0 2px rgba(220, 38, 38, 0.16)"
         : "none",
     transition: "border-color 160ms ease, box-shadow 160ms ease",
   };
 
   return (
     <div className="space-y-4">
-      <section className="rounded-2xl border p-5" style={measurementSectionStyle}>
+      <section className="rounded-2xl border p-4 sm:p-5" style={measurementSectionStyle}>
         <div className="flex items-start gap-3 mb-5">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: T.surface }}>
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+            style={{ backgroundColor: T.surface }}
+          >
             <Ruler size={19} aria-hidden="true" style={{ color: T.text }} />
           </div>
-          <div>
-            <h2 className="text-base font-semibold" style={{ color: T.text }}>Enter measurements</h2>
-            <p className="text-sm mt-1" style={{ color: T.textMuted }}>
+          <div className="min-w-0">
+            <h2 className="text-base font-semibold" style={{ color: T.text }}>
+              Enter measurements
+            </h2>
+            <p className="text-sm mt-1 leading-relaxed" style={{ color: T.textMuted }}>
               Measure waist circumference at the navel. Enter standing height in inches without shoes.
             </p>
           </div>
         </div>
 
         <label className="block">
-          <span className="text-sm font-medium" style={{ color: T.text }}>Height — inches</span>
+          <span className="text-sm font-medium" style={{ color: T.text }}>
+            Height — inches
+          </span>
           <input
             inputMode="decimal"
             type="number"
@@ -99,7 +108,9 @@ export default function WHtRCalculator() {
         </label>
 
         <label className="block mt-4">
-          <span className="text-sm font-medium" style={{ color: T.text }}>Waist at navel — inches</span>
+          <span className="text-sm font-medium" style={{ color: T.text }}>
+            Waist at navel — inches
+          </span>
           <input
             inputMode="decimal"
             type="number"
@@ -128,7 +139,9 @@ export default function WHtRCalculator() {
 
       {result?.error && (
         <div role="alert" className="rounded-2xl border p-4" style={{ backgroundColor: T.surface, borderColor: T.border }}>
-          <p className="text-sm font-semibold" style={{ color: T.text }}>Check your measurements</p>
+          <p className="text-sm font-semibold" style={{ color: T.text }}>
+            Check your measurements
+          </p>
           <p className="text-sm mt-1" style={{ color: T.textMuted }}>
             Enter a valid standing height in inches and a waist measurement greater than zero.
           </p>
@@ -138,52 +151,66 @@ export default function WHtRCalculator() {
       {result && !result.error && (
         <section
           aria-live="polite"
-          className="rounded-2xl border p-5"
+          className="rounded-2xl border p-4 sm:p-5"
           style={{
             backgroundColor: result.passes ? "rgba(22, 163, 74, 0.06)" : "rgba(220, 38, 38, 0.06)",
             borderColor: result.passes ? "rgba(22, 163, 74, 0.35)" : "rgba(220, 38, 38, 0.35)",
           }}
         >
-          <div className="flex items-center gap-3">
+          <div className="flex items-start gap-3">
             {result.passes ? (
-              <CheckCircle2 size={24} aria-hidden="true" style={{ color: "#15803d" }} />
+              <CheckCircle2 size={24} aria-hidden="true" className="shrink-0 mt-0.5" style={{ color: "#15803d" }} />
             ) : (
-              <XCircle size={24} aria-hidden="true" style={{ color: "#b91c1c" }} />
+              <XCircle size={24} aria-hidden="true" className="shrink-0 mt-0.5" style={{ color: "#b91c1c" }} />
             )}
-            <div>
-              <div className="text-lg font-bold" style={{ color: T.text }}>{result.passes ? "PASS" : "FAIL"}</div>
-              <div className="text-sm" style={{ color: T.textMuted }}>Army WHtR standard: less than 0.550</div>
+            <div className="min-w-0">
+              <div className="text-lg font-bold" style={{ color: T.text }}>
+                {result.passes ? "PASS" : "FAIL"}
+              </div>
+              <div className="text-sm leading-relaxed" style={{ color: T.textMuted }}>
+                Army WHtR standard: less than 0.550
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 mt-5">
-            <div className="rounded-xl border p-3" style={{ backgroundColor: T.card, borderColor: T.borderSoft }}>
-              <div className="text-xs" style={{ color: T.textSubtle }}>Recorded WHtR</div>
-              <div className="text-2xl font-bold mt-1 tabular-nums" style={{ color: T.text }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-5">
+            <div className="rounded-xl border p-3 sm:p-4" style={{ backgroundColor: T.card, borderColor: T.borderSoft }}>
+              <div className="text-xs sm:text-sm" style={{ color: T.textSubtle }}>
+                Recorded WHtR
+              </div>
+              <div className="text-2xl sm:text-3xl font-bold mt-1 tabular-nums" style={{ color: T.text }}>
                 {result.recordedRatio.toFixed(3)}
               </div>
             </div>
-            <div className="rounded-xl border p-3" style={{ backgroundColor: T.card, borderColor: T.borderSoft }}>
-              <div className="text-xs" style={{ color: T.textSubtle }}>Calculation</div>
-              <div className="text-sm font-semibold mt-1" style={{ color: T.text }}>
-                {Number(waist).toFixed(1)} ÷ {result.heightInches.toFixed(1)}
+
+            <div className="rounded-xl border p-3 sm:p-4" style={{ backgroundColor: T.card, borderColor: T.borderSoft }}>
+              <div className="text-xs sm:text-sm" style={{ color: T.textSubtle }}>
+                Calculation
+              </div>
+              <div className="text-base sm:text-lg font-semibold mt-1 tabular-nums break-words" style={{ color: T.text }}>
+                {result.waistValue.toFixed(1)} ÷ {result.heightInches.toFixed(1)}
+              </div>
+              <div className="text-xs mt-1 tabular-nums" style={{ color: T.textMuted }}>
+                Raw ratio: {result.rawRatio.toFixed(4)}
               </div>
             </div>
           </div>
 
           {!result.passes && (
-            <p className="text-sm mt-4" style={{ color: T.textMuted }}>
+            <p className="text-sm mt-4 leading-relaxed" style={{ color: T.textMuted }}>
               A recorded WHtR of 0.550 or greater does not meet the standard. Official Army screening and any required confirmation measurement must be completed by the unit.
             </p>
           )}
         </section>
       )}
 
-      <section className="rounded-2xl border p-5" style={{ backgroundColor: T.surface, borderColor: T.borderSoft }}>
+      <section className="rounded-2xl border p-4 sm:p-5" style={{ backgroundColor: T.surface, borderColor: T.borderSoft }}>
         <div className="flex items-start gap-3">
           <Info size={18} aria-hidden="true" className="mt-0.5 shrink-0" style={{ color: T.textMuted }} />
-          <div className="text-sm leading-relaxed" style={{ color: T.textMuted }}>
-            <p><strong style={{ color: T.text }}>How it works:</strong> waist circumference in inches ÷ height in inches.</p>
+          <div className="text-sm leading-relaxed min-w-0" style={{ color: T.textMuted }}>
+            <p>
+              <strong style={{ color: T.text }}>How it works:</strong> waist circumference in inches ÷ height in inches.
+            </p>
             <p className="mt-2">
               Army Directive 2026-13 states the result is recorded to three decimal places without rounding. Any digits after the third decimal place are disregarded. A recorded value of 0.549 passes; 0.550 fails.
             </p>
