@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { CheckCircle2, Info, Ruler, RotateCcw, XCircle } from "lucide-react";
 import { T } from "@/lib/theme";
 
@@ -19,6 +19,7 @@ function truncateToThreeDecimals(value) {
 export default function WHtRCalculator() {
   const [height, setHeight] = useState("");
   const [waist, setWaist] = useState("");
+  const resultRef = useRef(null);
 
   const result = useMemo(() => {
     const heightInches = parseNumber(height);
@@ -45,26 +46,47 @@ export default function WHtRCalculator() {
     setWaist("");
   };
 
+  const showResultOnMobile = () => {
+    if (!result || result.error) return;
+
+    window.setTimeout(() => {
+      resultRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 120);
+  };
+
+  const handleDone = (event) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    event.currentTarget.blur();
+    showResultOnMobile();
+  };
+
+  const statusBorderColor =
+    result && !result.error
+      ? result.passes
+        ? "rgba(22, 163, 74, 0.9)"
+        : "rgba(220, 38, 38, 0.9)"
+      : T.border;
+
+  const statusRing =
+    result && !result.error
+      ? result.passes
+        ? "0 0 0 2px rgba(22, 163, 74, 0.12)"
+        : "0 0 0 2px rgba(220, 38, 38, 0.12)"
+      : "none";
+
   const inputStyle = {
     backgroundColor: T.card,
-    borderColor: T.border,
+    borderColor: statusBorderColor,
     color: T.text,
+    boxShadow: statusRing,
+    transition: "border-color 160ms ease, box-shadow 160ms ease",
   };
 
   const measurementSectionStyle = {
     backgroundColor: T.card,
-    borderColor:
-      result && !result.error
-        ? result.passes
-          ? "rgba(22, 163, 74, 0.85)"
-          : "rgba(220, 38, 38, 0.85)"
-        : T.border,
-    boxShadow:
-      result && !result.error
-        ? result.passes
-          ? "0 0 0 2px rgba(22, 163, 74, 0.16)"
-          : "0 0 0 2px rgba(220, 38, 38, 0.16)"
-        : "none",
+    borderColor: statusBorderColor,
+    boxShadow: statusRing,
     transition: "border-color 160ms ease, box-shadow 160ms ease",
   };
 
@@ -94,6 +116,7 @@ export default function WHtRCalculator() {
           </span>
           <input
             inputMode="decimal"
+            enterKeyHint="next"
             type="number"
             min="1"
             max="120"
@@ -113,12 +136,15 @@ export default function WHtRCalculator() {
           </span>
           <input
             inputMode="decimal"
+            enterKeyHint="done"
             type="number"
             min="1"
             max="100"
             step="0.1"
             value={waist}
             onChange={(event) => setWaist(event.target.value)}
+            onBlur={showResultOnMobile}
+            onKeyDown={handleDone}
             placeholder="34.5"
             className="mt-2 w-full rounded-xl border px-4 py-3 text-base outline-none focus:ring-2 focus:ring-black/10"
             style={inputStyle}
@@ -150,8 +176,9 @@ export default function WHtRCalculator() {
 
       {result && !result.error && (
         <section
+          ref={resultRef}
           aria-live="polite"
-          className="rounded-2xl border p-4 sm:p-5"
+          className="scroll-mb-40 rounded-2xl border p-4 sm:p-5"
           style={{
             backgroundColor: result.passes ? "rgba(22, 163, 74, 0.06)" : "rgba(220, 38, 38, 0.06)",
             borderColor: result.passes ? "rgba(22, 163, 74, 0.35)" : "rgba(220, 38, 38, 0.35)",
@@ -191,7 +218,7 @@ export default function WHtRCalculator() {
                 {result.waistValue.toFixed(1)} ÷ {result.heightInches.toFixed(1)}
               </div>
               <div className="text-xs mt-1 tabular-nums" style={{ color: T.textMuted }}>
-                Raw ratio: {result.rawRatio.toFixed(4)}
+                Raw ratio: {result.rawRatio.toFixed(6)}
               </div>
             </div>
           </div>
