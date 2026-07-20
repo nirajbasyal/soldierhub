@@ -12,6 +12,7 @@ import {
   Compass,
   LogIn,
   LogOut,
+  Ruler,
   Shield,
   UserPlus,
   X,
@@ -91,6 +92,7 @@ export default function MobileMenu() {
 
     router.prefetch?.("/tools/bah");
     router.prefetch?.("/tools/gates");
+    router.prefetch?.("/tools/whtr");
     router.prefetch?.("/tools/board-prep");
     router.prefetch?.("/tools/board-prep/study");
   }, [isAdmin, mobileMenu, router]);
@@ -258,6 +260,13 @@ export default function MobileMenu() {
                 label="Gate Hours"
                 hint="Fort Bliss gate schedule"
                 onClick={() => go("/tools/gates")}
+              />
+
+              <MenuItem
+                icon={Ruler}
+                label="Waist-to-Height Ratio"
+                hint="Check the Army WHtR standard"
+                onClick={() => go("/tools/whtr")}
               />
 
               <BoardPrepMenuCard signedIn={Boolean(currentUser)} onClick={() => go(boardPrepPath)} />
