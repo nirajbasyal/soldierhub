@@ -17,20 +17,15 @@ function truncateToThreeDecimals(value) {
 }
 
 export default function WHtRCalculator() {
-  const [feet, setFeet] = useState("");
-  const [inches, setInches] = useState("");
+  const [height, setHeight] = useState("");
   const [waist, setWaist] = useState("");
 
   const result = useMemo(() => {
-    const feetValue = parseNumber(feet);
-    const inchesValue = parseNumber(inches);
+    const heightInches = parseNumber(height);
     const waistValue = parseNumber(waist);
 
-    if (feetValue === null || inchesValue === null || waistValue === null) return null;
-    if (feetValue < 0 || inchesValue < 0 || inchesValue >= 12 || waistValue <= 0) return { error: true };
-
-    const heightInches = feetValue * 12 + inchesValue;
-    if (heightInches <= 0) return { error: true };
+    if (heightInches === null || waistValue === null) return null;
+    if (heightInches <= 0 || waistValue <= 0) return { error: true };
 
     const rawRatio = waistValue / heightInches;
     const recordedRatio = truncateToThreeDecimals(rawRatio);
@@ -41,11 +36,10 @@ export default function WHtRCalculator() {
       recordedRatio,
       passes: recordedRatio < STANDARD,
     };
-  }, [feet, inches, waist]);
+  }, [height, waist]);
 
   const reset = () => {
-    setFeet("");
-    setInches("");
+    setHeight("");
     setWaist("");
   };
 
@@ -55,9 +49,26 @@ export default function WHtRCalculator() {
     color: T.text,
   };
 
+  const measurementSectionStyle = {
+    backgroundColor: T.card,
+    borderColor:
+      result && !result.error
+        ? result.passes
+          ? "rgba(22, 163, 74, 0.85)"
+          : "rgba(220, 38, 38, 0.85)"
+        : T.border,
+    boxShadow:
+      result && !result.error
+        ? result.passes
+          ? "0 0 0 1px rgba(22, 163, 74, 0.20)"
+          : "0 0 0 1px rgba(220, 38, 38, 0.20)"
+        : "none",
+    transition: "border-color 160ms ease, box-shadow 160ms ease",
+  };
+
   return (
     <div className="space-y-4">
-      <section className="rounded-2xl border p-5" style={{ backgroundColor: T.card, borderColor: T.border }}>
+      <section className="rounded-2xl border p-5" style={measurementSectionStyle}>
         <div className="flex items-start gap-3 mb-5">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: T.surface }}>
             <Ruler size={19} aria-hidden="true" style={{ color: T.text }} />
@@ -65,46 +76,27 @@ export default function WHtRCalculator() {
           <div>
             <h2 className="text-base font-semibold" style={{ color: T.text }}>Enter measurements</h2>
             <p className="text-sm mt-1" style={{ color: T.textMuted }}>
-              Measure waist circumference at the navel. Enter standing height without shoes.
+              Measure waist circumference at the navel. Enter standing height in inches without shoes.
             </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <label className="block">
-            <span className="text-sm font-medium" style={{ color: T.text }}>Height — feet</span>
-            <input
-              inputMode="numeric"
-              type="number"
-              min="0"
-              max="8"
-              step="1"
-              value={feet}
-              onChange={(event) => setFeet(event.target.value)}
-              placeholder="5"
-              className="mt-2 w-full rounded-xl border px-4 py-3 text-base outline-none focus:ring-2 focus:ring-black/10"
-              style={inputStyle}
-              aria-label="Height in feet"
-            />
-          </label>
-
-          <label className="block">
-            <span className="text-sm font-medium" style={{ color: T.text }}>Height — inches</span>
-            <input
-              inputMode="decimal"
-              type="number"
-              min="0"
-              max="11.99"
-              step="0.1"
-              value={inches}
-              onChange={(event) => setInches(event.target.value)}
-              placeholder="8"
-              className="mt-2 w-full rounded-xl border px-4 py-3 text-base outline-none focus:ring-2 focus:ring-black/10"
-              style={inputStyle}
-              aria-label="Additional height in inches"
-            />
-          </label>
-        </div>
+        <label className="block">
+          <span className="text-sm font-medium" style={{ color: T.text }}>Height — inches</span>
+          <input
+            inputMode="decimal"
+            type="number"
+            min="1"
+            max="120"
+            step="0.1"
+            value={height}
+            onChange={(event) => setHeight(event.target.value)}
+            placeholder="63"
+            className="mt-2 w-full rounded-xl border px-4 py-3 text-base outline-none focus:ring-2 focus:ring-black/10"
+            style={inputStyle}
+            aria-label="Standing height in inches"
+          />
+        </label>
 
         <label className="block mt-4">
           <span className="text-sm font-medium" style={{ color: T.text }}>Waist at navel — inches</span>
@@ -138,7 +130,7 @@ export default function WHtRCalculator() {
         <div role="alert" className="rounded-2xl border p-4" style={{ backgroundColor: T.surface, borderColor: T.border }}>
           <p className="text-sm font-semibold" style={{ color: T.text }}>Check your measurements</p>
           <p className="text-sm mt-1" style={{ color: T.textMuted }}>
-            Use a valid height, keep the inches field below 12, and enter a waist measurement greater than zero.
+            Enter a valid standing height in inches and a waist measurement greater than zero.
           </p>
         </div>
       )}
