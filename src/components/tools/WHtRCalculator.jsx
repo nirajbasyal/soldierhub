@@ -54,7 +54,16 @@ export default function WHtRCalculator() {
     }, 120);
   };
 
-  const handleDone = (event) => {
+  const nudgeForHeightEntry = () => {
+    const waistValue = parseNumber(waist);
+    if (waistValue === null || waistValue <= 0) return;
+
+    window.setTimeout(() => {
+      window.scrollBy({ top: 140, behavior: "smooth" });
+    }, 180);
+  };
+
+  const handleHeightDone = (event) => {
     if (event.key !== "Enter") return;
     event.preventDefault();
     event.currentTarget.blur();
@@ -112,43 +121,44 @@ export default function WHtRCalculator() {
 
         <label className="block">
           <span className="text-sm font-medium" style={{ color: T.text }}>
-            Height — inches
+            Waist at navel — inches
           </span>
           <input
             inputMode="decimal"
             enterKeyHint="next"
             type="number"
             min="1"
-            max="120"
+            max="100"
             step="0.1"
-            value={height}
-            onChange={(event) => setHeight(event.target.value)}
-            placeholder="63"
+            value={waist}
+            onChange={(event) => setWaist(event.target.value)}
+            placeholder="34.5"
             className="mt-2 w-full rounded-xl border px-4 py-3 text-base outline-none focus:ring-2 focus:ring-black/10"
             style={inputStyle}
-            aria-label="Standing height in inches"
+            aria-label="Waist circumference at the navel in inches"
           />
         </label>
 
         <label className="block mt-4">
           <span className="text-sm font-medium" style={{ color: T.text }}>
-            Waist at navel — inches
+            Height — inches
           </span>
           <input
             inputMode="decimal"
             enterKeyHint="done"
             type="number"
             min="1"
-            max="100"
+            max="120"
             step="0.1"
-            value={waist}
-            onChange={(event) => setWaist(event.target.value)}
+            value={height}
+            onChange={(event) => setHeight(event.target.value)}
+            onFocus={nudgeForHeightEntry}
             onBlur={showResultOnMobile}
-            onKeyDown={handleDone}
-            placeholder="34.5"
+            onKeyDown={handleHeightDone}
+            placeholder="63"
             className="mt-2 w-full rounded-xl border px-4 py-3 text-base outline-none focus:ring-2 focus:ring-black/10"
             style={inputStyle}
-            aria-label="Waist circumference at the navel in inches"
+            aria-label="Standing height in inches"
           />
         </label>
 
@@ -169,7 +179,7 @@ export default function WHtRCalculator() {
             Check your measurements
           </p>
           <p className="text-sm mt-1" style={{ color: T.textMuted }}>
-            Enter a valid standing height in inches and a waist measurement greater than zero.
+            Enter a valid waist measurement and standing height in inches greater than zero.
           </p>
         </div>
       )}
