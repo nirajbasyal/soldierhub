@@ -190,8 +190,8 @@ export default function NotificationsPage() {
             <div className="rounded-2xl border border-white/80 bg-white/80 p-8 shadow-sm backdrop-blur">
               <EmptyState
                 icon={Bell}
-                title={notificationsLoading ? "Loading activity..." : "You&apos;re all caught up"}
-                body={notificationsLoading ? "Checking your latest replies, upvotes, and follows." : "When someone replies to your posts, upvotes them, or follows your profile, you&apos;ll see it here."}
+                title={notificationsLoading ? "Loading activity..." : "You're all caught up"}
+                body={notificationsLoading ? "Checking your latest replies, upvotes, and follows." : "When someone replies to your posts, upvotes them, or follows your profile, you'll see it here."}
               />
             </div>
           ) : (
