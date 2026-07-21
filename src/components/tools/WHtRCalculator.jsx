@@ -5,7 +5,7 @@ import { CheckCircle2, Info, Ruler, RotateCcw, XCircle } from "lucide-react";
 import { T } from "@/lib/theme";
 
 const STANDARD = 0.55;
-const EMPTY_ATTEMPT = { waist: "", height: "" };
+const EMPTY_WAISTS = ["", "", ""];
 
 function parseNumber(value) {
   if (value === "") return null;
@@ -17,24 +17,20 @@ function truncateToThreeDecimals(value) {
   return Math.trunc((value + Number.EPSILON) * 1000) / 1000;
 }
 
-function getAttemptState(attempt) {
-  const waist = parseNumber(attempt.waist);
-  const height = parseNumber(attempt.height);
-  const hasWaist = attempt.waist !== "";
-  const hasHeight = attempt.height !== "";
-  const partial = hasWaist !== hasHeight;
+function getAttemptState(waistValue, heightValue) {
+  const waist = parseNumber(waistValue);
+  const height = parseNumber(heightValue);
+  const hasWaist = waistValue !== "";
 
-  if (!hasWaist && !hasHeight) return { complete: false, partial: false, valid: true };
-  if (partial) return { complete: false, partial: true, valid: true };
-  if (waist === null || height === null || waist <= 0 || height <= 0) {
-    return { complete: true, partial: false, valid: false };
+  if (!hasWaist) return { complete: false, valid: true };
+  if (waist === null || waist <= 0 || height === null || height <= 0) {
+    return { complete: true, valid: false };
   }
 
   const rawRatio = waist / height;
   const recordedRatio = truncateToThreeDecimals(rawRatio);
   return {
     complete: true,
-    partial: false,
     valid: true,
     waist,
     height,
@@ -45,58 +41,47 @@ function getAttemptState(attempt) {
 }
 
 export default function WHtRCalculator() {
-  const [attempts, setAttempts] = useState(() => [
-    { ...EMPTY_ATTEMPT },
-    { ...EMPTY_ATTEMPT },
-    { ...EMPTY_ATTEMPT },
-  ]);
+  const [height, setHeight] = useState("");
+  const [waists, setWaists] = useState(EMPTY_WAISTS);
 
-  const attemptStates = useMemo(() => attempts.map(getAttemptState), [attempts]);
+  const heightNumber = parseNumber(height);
+  const heightValid = heightNumber !== null && heightNumber > 0;
+  const attemptStates = useMemo(() => waists.map((waist) => getAttemptState(waist, height)), [waists, height]);
 
   const result = useMemo(() => {
+    if (!heightValid) return null;
     const completed = attemptStates.filter((attempt) => attempt.complete && attempt.valid);
-    const firstAttempt = attemptStates[0];
-
-    if (firstAttempt.partial || (firstAttempt.complete && !firstAttempt.valid)) return { error: true };
-    if (!firstAttempt.complete || completed.length === 0) return null;
-
+    if (!completed.length) return null;
     const averageRawRatio = completed.reduce((sum, attempt) => sum + attempt.rawRatio, 0) / completed.length;
     const recordedRatio = truncateToThreeDecimals(averageRawRatio);
-
     return {
-      error: false,
       completed,
       averageRawRatio,
       recordedRatio,
       passes: recordedRatio < STANDARD,
     };
-  }, [attemptStates]);
+  }, [attemptStates, heightValid]);
 
-  const updateAttempt = (index, field, value) => {
-    setAttempts((current) =>
-      current.map((attempt, attemptIndex) =>
-        attemptIndex === index ? { ...attempt, [field]: value } : attempt,
-      ),
-    );
+  const updateWaist = (index, value) => {
+    setWaists((current) => current.map((waist, i) => (i === index ? value : waist)));
   };
 
   const reset = () => {
-    setAttempts([{ ...EMPTY_ATTEMPT }, { ...EMPTY_ATTEMPT }, { ...EMPTY_ATTEMPT }]);
+    setHeight("");
+    setWaists(EMPTY_WAISTS);
   };
 
-  const statusBorderColor =
-    result && !result.error
-      ? result.passes
-        ? "rgba(22, 163, 74, 0.9)"
-        : "rgba(220, 38, 38, 0.9)"
-      : T.border;
+  const statusBorderColor = result
+    ? result.passes
+      ? "rgba(22, 163, 74, 0.9)"
+      : "rgba(220, 38, 38, 0.9)"
+    : T.border;
 
-  const statusRing =
-    result && !result.error
-      ? result.passes
-        ? "0 0 0 2px rgba(22, 163, 74, 0.12)"
-        : "0 0 0 2px rgba(220, 38, 38, 0.12)"
-      : "none";
+  const statusRing = result
+    ? result.passes
+      ? "0 0 0 2px rgba(22, 163, 74, 0.12)"
+      : "0 0 0 2px rgba(220, 38, 38, 0.12)"
+    : "none";
 
   return (
     <div className="space-y-4">
@@ -110,117 +95,96 @@ export default function WHtRCalculator() {
         }}
       >
         <div className="flex items-start gap-3 mb-4">
-          <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-            style={{ backgroundColor: T.surface }}
-          >
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: T.surface }}>
             <Ruler size={19} aria-hidden="true" style={{ color: T.text }} />
           </div>
           <div className="min-w-0">
-            <h2 className="text-base font-semibold" style={{ color: T.text }}>
-              Enter measurements
-            </h2>
+            <h2 className="text-base font-semibold" style={{ color: T.text }}>Enter measurements</h2>
             <p className="text-sm mt-1 leading-relaxed" style={{ color: T.textMuted }}>
-              Measure waist at the navel and standing height in inches without shoes. Attempts 2 and 3 are optional.
+              Enter standing height once, then record up to three waist measurements at the navel. Attempts 2 and 3 are optional.
             </p>
           </div>
         </div>
 
+        <div className="rounded-xl border p-3 mb-3" style={{ backgroundColor: T.surface, borderColor: T.borderSoft }}>
+          <label className="block">
+            <span className="text-sm font-semibold" style={{ color: T.text }}>Height — inches</span>
+            <input
+              inputMode="decimal"
+              enterKeyHint="next"
+              type="number"
+              min="1"
+              max="120"
+              step="0.1"
+              value={height}
+              onChange={(event) => setHeight(event.target.value)}
+              placeholder="63"
+              className="mt-2 w-full rounded-xl border px-3 py-2.5 text-base outline-none focus:ring-2 focus:ring-black/10"
+              style={{ backgroundColor: T.card, borderColor: statusBorderColor, color: T.text }}
+              aria-label="Standing height in inches"
+            />
+          </label>
+          {height !== "" && !heightValid && (
+            <div className="mt-2 text-xs" style={{ color: "#b91c1c" }}>Enter a valid height greater than zero.</div>
+          )}
+        </div>
+
         <div className="space-y-3">
-          {attempts.map((attempt, index) => {
+          {waists.map((waist, index) => {
             const state = attemptStates[index];
             const optional = index > 0;
-
             return (
-              <div
-                key={index}
-                className="rounded-xl border p-3"
-                style={{ backgroundColor: T.surface, borderColor: T.borderSoft }}
-              >
+              <div key={index} className="rounded-xl border p-3" style={{ backgroundColor: T.surface, borderColor: T.borderSoft }}>
                 <div className="flex items-center justify-between gap-2 mb-2.5">
-                  <div className="text-sm font-semibold" style={{ color: T.text }}>
-                    Attempt {index + 1}
-                  </div>
-                  {optional && (
-                    <span className="text-[11px] font-medium" style={{ color: T.textSubtle }}>
-                      Optional
-                    </span>
-                  )}
+                  <div className="text-sm font-semibold" style={{ color: T.text }}>Attempt {index + 1}</div>
+                  {optional && <span className="text-[11px] font-medium" style={{ color: T.textSubtle }}>Optional</span>}
                 </div>
 
-                <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3">
                   <label className="block min-w-0">
-                    <span className="text-xs sm:text-sm font-medium" style={{ color: T.text }}>
-                      Waist — in
-                    </span>
+                    <span className="text-xs sm:text-sm font-medium" style={{ color: T.text }}>Waist — inches</span>
                     <input
                       inputMode="decimal"
-                      enterKeyHint="next"
+                      enterKeyHint={index < 2 ? "next" : "done"}
                       type="number"
                       min="1"
                       max="100"
                       step="0.1"
-                      value={attempt.waist}
-                      onChange={(event) => updateAttempt(index, "waist", event.target.value)}
+                      value={waist}
+                      onChange={(event) => updateWaist(index, event.target.value)}
                       placeholder="34.5"
                       className="mt-1.5 w-full min-w-0 rounded-xl border px-3 py-2.5 text-base outline-none focus:ring-2 focus:ring-black/10"
                       style={{
                         backgroundColor: T.card,
-                        borderColor: statusBorderColor,
+                        borderColor: state.complete && state.valid ? (state.passes ? "rgba(22, 163, 74, 0.9)" : "rgba(220, 38, 38, 0.9)") : T.border,
                         color: T.text,
-                        transition: "border-color 160ms ease",
                       }}
                       aria-label={`Attempt ${index + 1} waist circumference at the navel in inches`}
                     />
                   </label>
 
-                  <label className="block min-w-0">
-                    <span className="text-xs sm:text-sm font-medium" style={{ color: T.text }}>
-                      Height — in
-                    </span>
-                    <input
-                      inputMode="decimal"
-                      enterKeyHint="done"
-                      type="number"
-                      min="1"
-                      max="120"
-                      step="0.1"
-                      value={attempt.height}
-                      onChange={(event) => updateAttempt(index, "height", event.target.value)}
-                      placeholder="63"
-                      className="mt-1.5 w-full min-w-0 rounded-xl border px-3 py-2.5 text-base outline-none focus:ring-2 focus:ring-black/10"
-                      style={{
-                        backgroundColor: T.card,
-                        borderColor: statusBorderColor,
-                        color: T.text,
-                        transition: "border-color 160ms ease",
-                      }}
-                      aria-label={`Attempt ${index + 1} standing height in inches`}
-                    />
-                  </label>
+                  <div className="min-w-[112px] text-right pb-1">
+                    {state.complete && state.valid ? (
+                      <>
+                        <div className="text-[11px] tabular-nums" style={{ color: T.textMuted }}>
+                          {state.waist.toFixed(1)} ÷ {state.height.toFixed(1)}
+                        </div>
+                        <div className="text-sm font-bold tabular-nums" style={{ color: T.text }}>
+                          {state.recordedRatio.toFixed(3)}
+                        </div>
+                        <div className="text-xs font-bold uppercase tracking-wide" style={{ color: state.passes ? "#15803d" : "#b91c1c" }}>
+                          {state.passes ? "Pass" : "Fail"}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-xs" style={{ color: T.textSubtle }}>Enter waist</div>
+                    )}
+                  </div>
                 </div>
-
-                {state.complete && state.valid && (
-                  <div className="mt-2 flex items-center justify-between gap-3 text-xs tabular-nums">
-                    <span style={{ color: T.textMuted }}>Attempt WHtR: {state.recordedRatio.toFixed(3)}</span>
-                    <span
-                      className="font-bold uppercase tracking-wide"
-                      style={{ color: state.passes ? "#15803d" : "#b91c1c" }}
-                    >
-                      {state.passes ? "Pass" : "Fail"}
-                    </span>
-                  </div>
-                )}
-
-                {state.partial && (
-                  <div className="mt-2 text-xs" style={{ color: "#b45309" }}>
-                    Complete both fields or clear this optional attempt. Partial attempts are not included in the average.
-                  </div>
-                )}
 
                 {state.complete && !state.valid && (
                   <div className="mt-2 text-xs" style={{ color: "#b91c1c" }}>
-                    Enter measurements greater than zero.
+                    Enter a valid waist and height greater than zero.
                   </div>
                 )}
               </div>
@@ -239,22 +203,7 @@ export default function WHtRCalculator() {
         </button>
       </section>
 
-      {result?.error && (
-        <div
-          role="alert"
-          className="rounded-2xl border p-4"
-          style={{ backgroundColor: T.surface, borderColor: T.border }}
-        >
-          <p className="text-sm font-semibold" style={{ color: T.text }}>
-            Check Attempt 1
-          </p>
-          <p className="text-sm mt-1" style={{ color: T.textMuted }}>
-            Attempt 1 requires both a valid waist measurement and standing height before a result can be calculated.
-          </p>
-        </div>
-      )}
-
-      {result && !result.error && (
+      {result && (
         <section
           aria-live="polite"
           className="rounded-2xl border p-4 sm:p-5"
@@ -270,32 +219,22 @@ export default function WHtRCalculator() {
               <XCircle size={24} aria-hidden="true" className="shrink-0 mt-0.5" style={{ color: "#b91c1c" }} />
             )}
             <div className="min-w-0">
-              <div className="text-lg font-bold" style={{ color: T.text }}>
-                {result.passes ? "PASS" : "FAIL"}
-              </div>
-              <div className="text-sm leading-relaxed" style={{ color: T.textMuted }}>
-                Army WHtR standard: less than 0.550
-              </div>
+              <div className="text-lg font-bold" style={{ color: T.text }}>{result.passes ? "PASS" : "FAIL"}</div>
+              <div className="text-sm leading-relaxed" style={{ color: T.textMuted }}>Army WHtR standard: less than 0.550</div>
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-5">
             <div className="rounded-xl border p-3 sm:p-4" style={{ backgroundColor: T.card, borderColor: T.borderSoft }}>
-              <div className="text-xs sm:text-sm" style={{ color: T.textSubtle }}>
-                Average recorded WHtR
-              </div>
-              <div className="text-2xl sm:text-3xl font-bold mt-1 tabular-nums" style={{ color: T.text }}>
-                {result.recordedRatio.toFixed(3)}
-              </div>
+              <div className="text-xs sm:text-sm" style={{ color: T.textSubtle }}>Average recorded WHtR</div>
+              <div className="text-2xl sm:text-3xl font-bold mt-1 tabular-nums" style={{ color: T.text }}>{result.recordedRatio.toFixed(3)}</div>
               <div className="text-xs mt-1" style={{ color: T.textMuted }}>
                 Based on {result.completed.length} completed {result.completed.length === 1 ? "attempt" : "attempts"}
               </div>
             </div>
 
             <div className="rounded-xl border p-3 sm:p-4" style={{ backgroundColor: T.card, borderColor: T.borderSoft }}>
-              <div className="text-xs sm:text-sm" style={{ color: T.textSubtle }}>
-                Calculation
-              </div>
+              <div className="text-xs sm:text-sm" style={{ color: T.textSubtle }}>Final calculation</div>
               <div className="space-y-1.5 mt-1.5">
                 {result.completed.map((attempt, index) => (
                   <div key={index} className="text-xs sm:text-sm tabular-nums" style={{ color: T.text }}>
@@ -304,16 +243,10 @@ export default function WHtRCalculator() {
                 ))}
               </div>
               <div className="text-xs mt-2 tabular-nums" style={{ color: T.textMuted }}>
-                Average raw ratio: {result.averageRawRatio.toFixed(6)}
+                Average ratio: {result.recordedRatio.toFixed(3)}
               </div>
             </div>
           </div>
-
-          {!result.passes && (
-            <p className="text-sm mt-4 leading-relaxed" style={{ color: T.textMuted }}>
-              An average recorded WHtR of 0.550 or greater does not meet the calculator standard. Official Army screening and any required confirmation measurement must be completed by the unit.
-            </p>
-          )}
         </section>
       )}
 
@@ -321,15 +254,9 @@ export default function WHtRCalculator() {
         <div className="flex items-start gap-3">
           <Info size={18} aria-hidden="true" className="mt-0.5 shrink-0" style={{ color: T.textMuted }} />
           <div className="text-sm leading-relaxed min-w-0" style={{ color: T.textMuted }}>
-            <p>
-              <strong style={{ color: T.text }}>How it works:</strong> each completed attempt calculates waist circumference ÷ height. If more than one attempt is completed, this tool averages the completed attempt ratios.
-            </p>
-            <p className="mt-2">
-              Army Directive 2026-13 states WHtR is recorded to three decimal places without rounding. A recorded value of 0.549 passes; 0.550 fails.
-            </p>
-            <p className="mt-2">
-              The optional multi-attempt average is a calculator convenience and should not be interpreted as replacing the official Army measurement and confirmation procedures. This tool does not replace DA Form 5500, command guidance, or current Army policy.
-            </p>
+            <p><strong style={{ color: T.text }}>How it works:</strong> height is entered once. Each completed waist attempt is divided by that height. If more than one waist attempt is completed, this tool averages the completed WHtR values.</p>
+            <p className="mt-2">Army Directive 2026-13 states WHtR is recorded to three decimal places without rounding. A recorded value of 0.549 passes; 0.550 fails.</p>
+            <p className="mt-2">The optional multi-attempt average is a calculator convenience and does not replace official Army measurement or confirmation procedures, DA Form 5500, command guidance, or current Army policy.</p>
           </div>
         </div>
       </section>
