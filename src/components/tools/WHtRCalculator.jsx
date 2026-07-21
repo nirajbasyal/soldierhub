@@ -243,7 +243,7 @@ export default function WHtRCalculator() {
                 ))}
               </div>
               <div className="text-xs mt-2 tabular-nums" style={{ color: T.textMuted }}>
-                Average raw ratio: {result.averageRawRatio.toFixed(6)}
+                Average ratio: {result.recordedRatio.toFixed(3)}
               </div>
             </div>
           </div>
